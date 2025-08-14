@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { SQLEditor } from '@/components/sql-editor/SQLEditor';
+import { TableEditor } from '@/components/table-editor/TableEditor';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function App() {
@@ -19,12 +20,9 @@ function App() {
         );
       case 'table-editor':
         return (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">Table Editor</h2>
-              <p className="text-muted-foreground">Coming soon...</p>
-            </div>
-          </div>
+          <ErrorBoundary>
+            <TableEditor />
+          </ErrorBoundary>
         );
       default:
         return (

@@ -196,16 +196,182 @@ export class DatabaseManager {
     try {
       const result = await this.db.query(`
         SELECT 
-          schemaname as schema,
-          tablename as name,
-          n_tup_ins - n_tup_del as rows
-        FROM pg_stat_user_tables 
-        ORDER BY schemaname, tablename;
+          t.table_schema as schema,
+          t.table_name as name,
+          COALESCE(s.n_tup_ins - s.n_tup_del, 0) as rows
+        FROM information_schema.tables t
+        LEFT JOIN pg_stat_user_tables s ON (t.table_name = s.relname AND t.table_schema = s.schemaname)
+        WHERE t.table_type = 'BASE TABLE' 
+          AND t.table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+        ORDER BY t.table_schema, t.table_name;
       `);
       
       return result.rows as Array<{ name: string; schema: string; rows: number }>;
-    } catch {
+    } catch (error) {
+      console.error('Failed to get table list:', error);
       return [];
+    }
+  }
+
+  public async getTableSchema(tableName: string, schema: string = 'public'): Promise<Array<{
+    column_name: string;
+    data_type: string;
+    is_nullable: string;
+    column_default: string | null;
+    is_primary_key: boolean;
+  }>> {
+    if (!this.db || !this.isInitialized) {
+      return [];
+    }
+
+    try {
+      const result = await this.db.query(`
+        SELECT 
+          c.column_name,
+          c.data_type,
+          c.is_nullable,
+          c.column_default,
+          CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END as is_primary_key
+        FROM information_schema.columns c
+        LEFT JOIN (
+          SELECT ku.column_name
+          FROM information_schema.table_constraints tc
+          JOIN information_schema.key_column_usage ku 
+            ON tc.constraint_name = ku.constraint_name
+          WHERE tc.constraint_type = 'PRIMARY KEY'
+            AND tc.table_name = $1
+            AND tc.table_schema = $2
+        ) pk ON c.column_name = pk.column_name
+        WHERE c.table_name = $1 
+          AND c.table_schema = $2
+        ORDER BY c.ordinal_position;
+      `, [tableName, schema]);
+      
+      return result.rows as Array<{
+        column_name: string;
+        data_type: string;
+        is_nullable: string;
+        column_default: string | null;
+        is_primary_key: boolean;
+      }>;
+    } catch (error) {
+      console.error('Failed to get table schema:', error);
+      return [];
+    }
+  }
+
+  public async getTableData(tableName: string, schema: string = 'public', limit: number = 100, offset: number = 0): Promise<{
+    rows: any[];
+    totalCount: number;
+  }> {
+    if (!this.db || !this.isInitialized) {
+      return { rows: [], totalCount: 0 };
+    }
+
+    try {
+      // Get total count
+      const countResult = await this.db.query(`
+        SELECT COUNT(*) as total FROM ${schema}.${tableName};
+      `);
+      const totalCount = (countResult.rows[0] as any)?.total || 0;
+
+      // Get paginated data
+      const dataResult = await this.db.query(`
+        SELECT * FROM ${schema}.${tableName}
+        ORDER BY (SELECT column_name FROM information_schema.columns 
+                  WHERE table_name = '${tableName}' AND table_schema = '${schema}' 
+                  ORDER BY ordinal_position LIMIT 1)
+        LIMIT ${limit} OFFSET ${offset};
+      `);
+      
+      return {
+        rows: dataResult.rows,
+        totalCount: parseInt(totalCount, 10)
+      };
+    } catch (error) {
+      console.error('Failed to get table data:', error);
+      return { rows: [], totalCount: 0 };
+    }
+  }
+
+  public async updateTableRow(
+    tableName: string, 
+    primaryKeyColumn: string, 
+    primaryKeyValue: any, 
+    updates: Record<string, any>,
+    schema: string = 'public'
+  ): Promise<boolean> {
+    if (!this.db || !this.isInitialized) {
+      return false;
+    }
+
+    try {
+      const updateColumns = Object.keys(updates);
+      const updateValues = Object.values(updates);
+      
+      const setClause = updateColumns.map((col, index) => `${col} = $${index + 1}`).join(', ');
+      
+      await this.db.query(`
+        UPDATE ${schema}.${tableName}
+        SET ${setClause}
+        WHERE ${primaryKeyColumn} = $${updateColumns.length + 1};
+      `, [...updateValues, primaryKeyValue]);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to update table row:', error);
+      return false;
+    }
+  }
+
+  public async insertTableRow(
+    tableName: string, 
+    data: Record<string, any>,
+    schema: string = 'public'
+  ): Promise<boolean> {
+    if (!this.db || !this.isInitialized) {
+      return false;
+    }
+
+    try {
+      const columns = Object.keys(data);
+      const values = Object.values(data);
+      
+      const columnsClause = columns.join(', ');
+      const valuesClause = values.map((_, index) => `$${index + 1}`).join(', ');
+      
+      await this.db.query(`
+        INSERT INTO ${schema}.${tableName} (${columnsClause})
+        VALUES (${valuesClause});
+      `, values);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to insert table row:', error);
+      return false;
+    }
+  }
+
+  public async deleteTableRow(
+    tableName: string, 
+    primaryKeyColumn: string, 
+    primaryKeyValue: any,
+    schema: string = 'public'
+  ): Promise<boolean> {
+    if (!this.db || !this.isInitialized) {
+      return false;
+    }
+
+    try {
+      await this.db.query(`
+        DELETE FROM ${schema}.${tableName}
+        WHERE ${primaryKeyColumn} = $1;
+      `, [primaryKeyValue]);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to delete table row:', error);
+      return false;
     }
   }
 

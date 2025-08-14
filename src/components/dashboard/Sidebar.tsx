@@ -49,7 +49,7 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
       id: 'table-editor',
       label: 'Table Editor',
       icon: 'Table' as keyof typeof iconMap,
-      badge: 'Coming Soon',
+      badge: null,
     },
     {
       section: 'Services'

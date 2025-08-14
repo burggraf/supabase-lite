@@ -69,3 +69,30 @@ export interface ServiceStatus {
 }
 
 export type Theme = 'light' | 'dark' | 'system';
+
+// Table Editor Types
+export interface TableInfo {
+  name: string;
+  schema: string;
+  rows: number;
+}
+
+export interface ColumnInfo {
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
+  column_default: string | null;
+  is_primary_key: boolean;
+}
+
+export interface TableDataResponse {
+  rows: any[];
+  totalCount: number;
+}
+
+export interface CellEditProps {
+  value: any;
+  column: ColumnInfo;
+  onSave: (value: any) => void;
+  onCancel: () => void;
+}
