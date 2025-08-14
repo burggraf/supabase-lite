@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-// import Editor from '@monaco-editor/react';
+import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -89,13 +89,24 @@ export function SQLEditor() {
         {/* Editor Panel */}
         <div className="flex-1 flex flex-col">
           <div className="flex-1 border-r">
-            <textarea
-              className="w-full h-full p-4 font-mono text-sm border-0 resize-none focus:outline-none"
-              style={{ height: '50vh' }}
+            <Editor
+              height="50vh"
+              defaultLanguage="sql"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Write your SQL queries here..."
-              spellCheck={false}
+              onChange={(value) => setQuery(value || '')}
+              theme="vs-light"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: 'on',
+                wordWrap: 'on',
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                padding: { top: 16, bottom: 16 },
+                suggestOnTriggerCharacters: true,
+                quickSuggestions: true,
+                tabSize: 2,
+              }}
             />
           </div>
 
