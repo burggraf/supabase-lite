@@ -46,6 +46,7 @@ export class DatabaseManager {
       this.db = new PGlite({
         // Use IndexedDB for persistence in the browser
         dataDir: `idb://${DATABASE_CONFIG.DEFAULT_DB_NAME}`,
+        database: 'postgres',
       });
       console.log('📦 PGlite instance created, waiting for ready...');
 
