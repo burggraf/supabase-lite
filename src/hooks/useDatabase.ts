@@ -8,6 +8,11 @@ export function useDatabase() {
   const [error, setError] = useState<string | null>(null);
 
   const initialize = useCallback(async () => {
+    // Prevent multiple simultaneous initialization attempts
+    if (isConnecting) {
+      return;
+    }
+    
     setIsConnecting(true);
     setError(null);
     
@@ -20,7 +25,7 @@ export function useDatabase() {
     } finally {
       setIsConnecting(false);
     }
-  }, []);
+  }, [isConnecting]);
 
   useEffect(() => {
     initialize();

@@ -7,6 +7,7 @@ export class DatabaseManager {
   private db: PGlite | null = null;
   private isInitialized = false;
   private connectionInfo: DatabaseConnection | null = null;
+  private initializationPromise: Promise<void> | null = null;
 
   private constructor() {}
 
@@ -18,10 +19,28 @@ export class DatabaseManager {
   }
 
   public async initialize(): Promise<void> {
+    // If already initialized, return immediately
     if (this.isInitialized && this.db) {
       return;
     }
 
+    // If initialization is already in progress, wait for it
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    // Start initialization and store the promise
+    this.initializationPromise = this.doInitialization();
+    
+    try {
+      await this.initializationPromise;
+    } finally {
+      // Clear the promise once done (success or failure)
+      this.initializationPromise = null;
+    }
+  }
+
+  private async doInitialization(): Promise<void> {
     try {
       console.log('🚀 Initializing PGlite with config:', DATABASE_CONFIG);
       this.db = new PGlite({
