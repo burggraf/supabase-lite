@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -32,6 +33,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const navigationItems = [
     {
       id: 'dashboard',
@@ -90,27 +92,40 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-card border-r">
+    <div 
+      className={cn(
+        "flex flex-col h-full bg-card border-r transition-all duration-200 ease-in-out",
+        isExpanded ? "w-64" : "w-16"
+      )}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
+    >
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center space-x-2">
-          <Database className="h-6 w-6 text-green-500" />
-          <div>
-            <h1 className="font-semibold text-lg">Supabase Lite</h1>
-            <p className="text-xs text-muted-foreground">Local Development</p>
-          </div>
+          <Database className={cn("text-green-500 flex-shrink-0", isExpanded ? "h-6 w-6" : "h-5 w-5")} />
+          {isExpanded && (
+            <div className="min-w-0">
+              <h1 className="font-semibold text-lg truncate">Supabase Lite</h1>
+              <p className="text-xs text-muted-foreground truncate">Local Development</p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-2 space-y-1 overflow-hidden">
         {navigationItems.map((item, index) => {
           if ('section' in item) {
-            return (
-              <div key={index} className="pt-4 pb-2">
-                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            return isExpanded ? (
+              <div key={index} className="pt-4 pb-2 px-2">
+                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider truncate">
                   {item.section}
                 </h3>
+              </div>
+            ) : (
+              <div key={index} className="pt-2 pb-1">
+                <div className="h-px bg-border mx-2"></div>
               </div>
             );
           }
@@ -124,20 +139,26 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
               key={item.id}
               onClick={() => !isDisabled && onPageChange(item.id)}
               className={cn(
-                "w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                "w-full flex items-center rounded-md text-sm font-medium transition-colors relative group",
+                isExpanded ? "space-x-3 px-3 py-2" : "justify-center p-2",
                 isActive 
                   ? "bg-primary text-primary-foreground" 
                   : "text-muted-foreground hover:text-foreground hover:bg-accent",
                 isDisabled && "opacity-50 cursor-not-allowed"
               )}
               disabled={isDisabled}
+              title={!isExpanded ? item.label : undefined}
             >
-              <Icon className="h-4 w-4" />
-              <span className="flex-1 text-left">{item.label}</span>
-              {item.badge && (
-                <Badge variant="secondary" className="text-xs">
-                  {item.badge}
-                </Badge>
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              {isExpanded && (
+                <>
+                  <span className="flex-1 text-left truncate">{item.label}</span>
+                  {item.badge && (
+                    <Badge variant="secondary" className="text-xs flex-shrink-0">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </>
               )}
             </button>
           );
@@ -146,9 +167,12 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
 
       {/* Footer */}
       <div className="p-4 border-t">
-        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-          <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-          <span>Connected to PGlite</span>
+        <div className={cn(
+          "flex items-center text-xs text-muted-foreground",
+          isExpanded ? "space-x-2" : "justify-center"
+        )}>
+          <div className="h-2 w-2 bg-green-500 rounded-full flex-shrink-0"></div>
+          {isExpanded && <span className="truncate">Connected to PGlite</span>}
         </div>
       </div>
     </div>

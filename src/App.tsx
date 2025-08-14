@@ -38,9 +38,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-background">
-      <div className="w-64 flex-shrink-0">
-        <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} />
-      </div>
+      <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} />
       <div className="flex-1 flex flex-col overflow-hidden">
         {renderCurrentPage()}
       </div>
