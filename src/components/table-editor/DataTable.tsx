@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit2, Filter } from 'lucide-react';
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit2 } from 'lucide-react';
 import { CellEditor } from './CellEditor';
 import type { ColumnInfo } from '@/types';
 
@@ -33,6 +33,7 @@ interface DataTableProps {
   onPaginationChange: (pagination: { pageIndex: number; pageSize: number }) => void;
   onCellUpdate: (rowIndex: number, columnName: string, newValue: any) => Promise<boolean>;
   primaryKeyColumn: string;
+  globalFilter: string;
 }
 
 export function DataTable({
@@ -44,10 +45,10 @@ export function DataTable({
   onPaginationChange,
   onCellUpdate,
   primaryKeyColumn: _primaryKeyColumn,
+  globalFilter: externalGlobalFilter,
 }: DataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState('');
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnId: string } | null>(null);
 
   // Create table columns
@@ -128,7 +129,7 @@ export function DataTable({
     state: {
       sorting,
       columnFilters,
-      globalFilter,
+      globalFilter: externalGlobalFilter,
       pagination: {
         pageIndex,
         pageSize,
@@ -137,7 +138,6 @@ export function DataTable({
     pageCount: Math.ceil(totalCount / pageSize),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: (updater) => {
       const newPagination = typeof updater === 'function' 
         ? updater({ pageIndex, pageSize })
@@ -156,26 +156,6 @@ export function DataTable({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Global Search and Controls */}
-      <div className="flex items-center justify-between p-4 border-b bg-background">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm">
-            Sort
-          </Button>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Input
-            placeholder="Search all columns..."
-            value={globalFilter ?? ''}
-            onChange={(event) => setGlobalFilter(String(event.target.value))}
-            className="w-64"
-          />
-        </div>
-      </div>
 
       {/* Table */}
       <div className="flex-1 overflow-auto">

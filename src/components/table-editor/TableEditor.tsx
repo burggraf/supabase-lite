@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { TableSidebar } from './TableSidebar';
 import { TableHeader } from './TableHeader';
+import { FilterToolbar } from './FilterToolbar';
 import { DataTable } from './DataTable';
 import { useTableData } from '@/hooks/useTableData';
 import { useTableMutations } from '@/hooks/useTableMutations';
@@ -8,6 +9,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 export function TableEditor() {
+  const [globalFilter, setGlobalFilter] = useState('');
+  
   const {
     tables,
     selectedTable,
@@ -134,6 +137,15 @@ export function TableEditor() {
           onExport={handleExport}
         />
 
+        {/* Filter Toolbar */}
+        <FilterToolbar
+          globalFilter={globalFilter}
+          onGlobalFilterChange={setGlobalFilter}
+          selectedTable={selectedTable}
+          loading={loading || isMutating}
+          onAddRow={() => console.log('Add row functionality would be implemented here')}
+        />
+
         {/* Error Display */}
         {error && (
           <div className="p-4 border-b">
@@ -163,6 +175,7 @@ export function TableEditor() {
                   onPaginationChange={handlePaginationChange}
                   onCellUpdate={handleCellUpdate}
                   primaryKeyColumn={getPrimaryKeyColumn()}
+                  globalFilter={globalFilter}
                 />
               </div>
             )

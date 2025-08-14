@@ -1,9 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { 
   RefreshCw, 
-  Plus, 
   Download, 
-  Filter,
   MoreHorizontal,
   Database
 } from 'lucide-react';
@@ -14,7 +12,6 @@ interface TableHeaderProps {
   totalRows: number;
   loading: boolean;
   onRefresh: () => void;
-  onAddRow?: () => void;
   onExport?: () => void;
 }
 
@@ -24,7 +21,6 @@ export function TableHeader({
   totalRows,
   loading,
   onRefresh,
-  onAddRow,
   onExport,
 }: TableHeaderProps) {
   if (!selectedTable) {
@@ -74,29 +70,11 @@ export function TableHeader({
           <Button
             variant="outline"
             size="sm"
-            disabled={loading}
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
             onClick={onExport}
             disabled={!selectedTable || loading}
           >
             <Download className="h-4 w-4 mr-2" />
             Export
-          </Button>
-          
-          <Button
-            size="sm"
-            onClick={onAddRow}
-            disabled={!selectedTable || loading}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Insert
           </Button>
 
           <Button
