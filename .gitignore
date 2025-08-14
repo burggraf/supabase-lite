@@ -32,3 +32,6 @@ dist-ssr
 
 # Claude Code
 .claude/
+
+# Test coverage
+coverage/
