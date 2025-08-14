@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Database, Users, Table, Clock } from 'lucide-react';
 
 export function Dashboard() {
-  const { isConnected, getConnectionInfo } = useDatabase();
+  const { isConnected, isConnecting, error, getConnectionInfo } = useDatabase();
   const connectionInfo = getConnectionInfo();
 
   const stats = [
@@ -73,9 +73,18 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">✅ Database Connected</h4>
+              <h4 className="text-sm font-medium">
+                {isConnected ? "✅ Database Connected" : "❌ Database Disconnected"}
+              </h4>
               <p className="text-xs text-muted-foreground">
-                PGlite is running in your browser with IndexedDB persistence
+                {isConnected 
+                  ? "PGlite is running in your browser with IndexedDB persistence"
+                  : error 
+                    ? `Database connection failed: ${error}`
+                    : isConnecting 
+                      ? "Connecting to database..."
+                      : "Database connection failed - check console for errors"
+                }
               </p>
             </div>
             <div className="space-y-2">

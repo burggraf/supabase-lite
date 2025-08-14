@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import Editor from '@monaco-editor/react';
+// import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,13 +10,11 @@ import type { QueryResult } from '@/types';
 const INITIAL_QUERY = `-- Welcome to Supabase Lite SQL Editor
 -- Try running some queries against your local PostgreSQL database
 
--- Example: View all tables
+-- Example: View all tables in your database
 SELECT table_name, table_schema 
 FROM information_schema.tables 
-WHERE table_schema IN ('public', 'auth', 'storage');
-
--- Example: Check current database
-SELECT current_database();`;
+WHERE table_schema IN ('public', 'auth', 'storage')
+ORDER BY table_schema, table_name;`;
 
 export function SQLEditor() {
   const [query, setQuery] = useState(INITIAL_QUERY);
@@ -91,25 +89,13 @@ export function SQLEditor() {
         {/* Editor Panel */}
         <div className="flex-1 flex flex-col">
           <div className="flex-1 border-r">
-            <Editor
-              height="50vh"
-              defaultLanguage="sql"
+            <textarea
+              className="w-full h-full p-4 font-mono text-sm border-0 resize-none focus:outline-none"
+              style={{ height: '50vh' }}
               value={query}
-              onChange={(value) => setQuery(value || '')}
-              onMount={(editor) => {
-                editorRef.current = editor as any;
-              }}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                suggest: {
-                  insertMode: 'replace',
-                },
-              }}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Write your SQL queries here..."
+              spellCheck={false}
             />
           </div>
 
@@ -214,7 +200,7 @@ export function SQLEditor() {
                       {item.success ? 'Success' : 'Error'}
                     </Badge>
                     <span className="text-xs text-gray-500">
-                      {item.timestamp.toLocaleTimeString()}
+                      {new Date(item.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
                   <p className="text-xs font-mono truncate mb-1">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { SQLEditor } from '@/components/sql-editor/SQLEditor';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -11,7 +12,11 @@ function App() {
       case 'dashboard':
         return <Dashboard />;
       case 'sql-editor':
-        return <SQLEditor />;
+        return (
+          <ErrorBoundary>
+            <SQLEditor />
+          </ErrorBoundary>
+        );
       case 'table-editor':
         return (
           <div className="flex-1 flex items-center justify-center">

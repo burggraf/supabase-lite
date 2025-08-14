@@ -23,10 +23,12 @@ export class DatabaseManager {
     }
 
     try {
+      console.log('🚀 Initializing PGlite with config:', DATABASE_CONFIG);
       this.db = new PGlite({
         // Use IndexedDB for persistence in the browser
         dataDir: `idb://${DATABASE_CONFIG.DEFAULT_DB_NAME}`,
       });
+      console.log('📦 PGlite instance created, waiting for ready...');
 
       await this.db.waitReady;
       
@@ -42,6 +44,8 @@ export class DatabaseManager {
       
       this.isInitialized = true;
       console.log('✅ PGlite initialized successfully');
+      console.log('Database instance:', this.db);
+      console.log('Connection info:', this.connectionInfo);
     } catch (error) {
       console.error('❌ Failed to initialize PGlite:', error);
       throw error;
