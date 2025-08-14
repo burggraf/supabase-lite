@@ -8,6 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run build` - Build for production (TypeScript check + Vite build)
 - `npm run lint` - Run ESLint for code quality checks
 - `npm run preview` - Preview production build locally
+- `npm run test` - Run all tests once
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:ui` - Run tests with UI interface
+- `npm run test:coverage` - Run tests with coverage report
 
 ## Architecture Overview
 
@@ -59,3 +63,148 @@ src/
 
 ### Future Architecture Notes
 Navigation items in constants.ts show planned features (auth, storage, realtime, edge-functions, api) that will extend the current database-focused architecture. The DatabaseManager already creates schemas for these future services.
+
+## Testing Guidelines
+
+### Testing Framework
+- **Vitest**: Modern, fast unit test runner with built-in TypeScript support
+- **React Testing Library**: Component testing with user-centric approach
+- **jsdom**: Browser environment simulation for React components
+- **Coverage**: Built-in coverage reporting with v8
+
+### Test Structure
+```
+src/
+├── components/
+│   └── component-name/
+│       ├── Component.tsx
+│       └── __tests__/
+│           └── Component.test.tsx
+├── hooks/
+│   ├── useHook.ts
+│   └── __tests__/
+│       └── useHook.test.ts
+├── lib/
+│   ├── module/
+│   │   ├── file.ts
+│   │   └── __tests__/
+│   │       └── file.test.ts
+└── test/
+    └── setup.ts  # Global test configuration
+```
+
+### Testing Requirements
+
+#### MANDATORY: Test Everything You Build
+- **Write tests BEFORE or ALONGSIDE implementation** - never after
+- **Test every new feature, component, hook, and utility function**
+- **Run tests immediately after writing them** to ensure they pass
+- **Always run the full test suite before considering a feature complete**
+
+#### For New Features:
+1. **Plan tests first**: Identify what needs testing (happy path, edge cases, errors)
+2. **Write failing tests**: Create tests that describe the expected behavior
+3. **Implement feature**: Write the minimal code to make tests pass
+4. **Refactor**: Improve code while keeping tests green
+5. **Test coverage**: Ensure all branches and edge cases are covered
+
+#### Test Types to Write:
+
+**Component Tests:**
+- Rendering with different props and states
+- User interactions (clicks, form inputs, keyboard events)
+- Conditional rendering based on props/state
+- Error states and loading states
+- Accessibility and proper semantic HTML
+
+**Hook Tests:**
+- Initial state and return values
+- State updates and side effects
+- Error handling and edge cases
+- Cleanup and unmounting behavior
+- Dependencies and re-rendering optimization
+
+**Utility Function Tests:**
+- Pure function behavior with various inputs
+- Edge cases and boundary conditions
+- Error handling for invalid inputs
+- Type safety and parameter validation
+
+**Database/API Tests:**
+- Successful operations and data transformations
+- Error handling and network failures
+- Connection states and initialization
+- Data persistence and retrieval
+- Query formatting and parameter handling
+
+#### Test Quality Standards:
+- **Descriptive test names**: Use "should..." format that explains expected behavior
+- **Arrange-Act-Assert pattern**: Clear test structure with setup, execution, verification
+- **Test isolation**: Each test should be independent and not rely on others
+- **Mock external dependencies**: Database calls, APIs, timers, browser APIs
+- **Test user behavior**: Focus on what users do, not implementation details
+- **Cover error paths**: Test failure scenarios and error boundaries
+
+#### Running Tests:
+- **Before committing**: Always run `npm test` to ensure all tests pass
+- **During development**: Use `npm run test:watch` for immediate feedback
+- **After changes**: Run affected tests to verify no regressions
+- **Before deployment**: Run full test suite including coverage checks
+
+#### Coverage Requirements:
+- **Minimum 90% line coverage** for all new code
+- **100% coverage for critical paths** (database operations, user actions)
+- **No untested error handlers** or catch blocks
+- **All public API methods must be tested**
+
+### Testing Examples:
+
+```typescript
+// Component test example
+describe('DatabaseStatus', () => {
+  it('should display connected status when database is connected', () => {
+    render(<DatabaseStatus isConnected={true} />)
+    expect(screen.getByText('Connected')).toBeInTheDocument()
+    expect(screen.getByTestId('status-indicator')).toHaveClass('bg-green-500')
+  })
+})
+
+// Hook test example  
+describe('useDatabase', () => {
+  it('should execute queries and return results', async () => {
+    const { result } = renderHook(() => useDatabase())
+    await act(async () => {
+      const queryResult = await result.current.executeQuery('SELECT 1')
+      expect(queryResult.rows).toEqual([{ '?column?': 1 }])
+    })
+  })
+})
+
+// Utility test example
+describe('formatBytes', () => {
+  it('should format bytes correctly', () => {
+    expect(formatBytes(1024)).toBe('1 KB')
+    expect(formatBytes(0)).toBe('0 B')
+    expect(formatBytes(1536)).toBe('1.5 KB')
+  })
+})
+```
+
+### CRITICAL TESTING WORKFLOW:
+
+**For Every Feature/Fix:**
+1. ✅ Write tests that describe the expected behavior
+2. ✅ Run tests to ensure they fail initially (red)
+3. ✅ Implement the minimal code to make tests pass (green)
+4. ✅ Refactor code while keeping tests green
+5. ✅ Run full test suite: `npm test`
+6. ✅ Check coverage and add tests for missed cases
+7. ✅ Run lint: `npm run lint`
+8. ✅ Run build: `npm run build`
+
+**Never skip testing!** Tests are as important as the feature itself. Untested code is broken code waiting to happen.
+
+### Test Configuration Files:
+- `vitest.config.ts` - Vitest configuration with React support
+- `src/test/setup.ts` - Global test setup and mocks
+- Tests run with jsdom environment for React component testing
