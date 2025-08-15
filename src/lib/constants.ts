@@ -97,3 +97,8 @@ FROM users u
 LEFT JOIN posts p ON u.id = p.user_id;`,
   },
 ];
+
+export const ROLE_CONFIG = {
+  STORAGE_KEY: 'supabase_lite_current_role',
+  DEFAULT_ROLE_ID: 'postgres',
+};
