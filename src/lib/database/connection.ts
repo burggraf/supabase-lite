@@ -1,6 +1,6 @@
 import { PGlite } from '@electric-sql/pglite';
 import { DATABASE_CONFIG } from '../constants';
-import type { QueryResult, DatabaseConnection } from '@/types';
+import type { QueryResult, ScriptResult, DatabaseConnection } from '@/types';
 
 export class DatabaseManager {
   private static instance: DatabaseManager;
@@ -142,6 +142,56 @@ export class DatabaseManager {
       throw {
         ...errorObj,
         duration: Math.round(duration * 100) / 100,
+      };
+    }
+  }
+
+  public async execScript(sql: string): Promise<ScriptResult> {
+    if (!this.db || !this.isInitialized) {
+      throw new Error('Database not initialized. Call initialize() first.');
+    }
+
+    const startTime = performance.now();
+    
+    try {
+      const results = await this.db.exec(sql);
+      const totalDuration = performance.now() - startTime;
+      
+      // Update last accessed time
+      if (this.connectionInfo) {
+        this.connectionInfo.lastAccessed = new Date();
+      }
+      
+      // Convert PGlite results to our QueryResult format
+      const queryResults: QueryResult[] = results.map((result, index) => {
+        // Extract command from the statement (first word)
+        const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
+        const command = statements[index]?.split(' ')[0]?.toUpperCase() || 'UNKNOWN';
+        
+        return {
+          rows: result.rows || [],
+          fields: result.fields || [],
+          rowCount: (result.rows || []).length,
+          command,
+          duration: Math.round((totalDuration / results.length) * 100) / 100, // Approximate duration per statement
+        };
+      });
+
+      return {
+        results: queryResults,
+        totalDuration: Math.round(totalDuration * 100) / 100,
+        successCount: queryResults.length,
+        errorCount: 0,
+        errors: [],
+      };
+    } catch (error: any) {
+      const totalDuration = performance.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Script execution failed';
+      
+      // If the error occurred, we assume all statements failed
+      throw {
+        message: errorMessage,
+        duration: Math.round(totalDuration * 100) / 100,
       };
     }
   }

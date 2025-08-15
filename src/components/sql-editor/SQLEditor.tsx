@@ -1,11 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useDatabase, useQueryHistory } from '@/hooks/useDatabase';
 import { Play, Save, History } from 'lucide-react';
-import type { QueryResult } from '@/types';
+import type { QueryResult, ScriptResult } from '@/types';
 
 const INITIAL_QUERY = `-- Welcome to Supabase Lite SQL Editor
 -- Try running some queries against your local PostgreSQL database
@@ -20,23 +20,37 @@ export function SQLEditor() {
   const [query, setQuery] = useState(INITIAL_QUERY);
   const [isExecuting, setIsExecuting] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
+  const [scriptResult, setScriptResult] = useState<ScriptResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  const { executeQuery } = useDatabase();
+  const { executeQuery, executeScript } = useDatabase();
   const { history, addToHistory } = useQueryHistory();
-  const editorRef = useRef(null);
 
   const handleExecuteQuery = async () => {
     if (!query.trim()) return;
 
     setIsExecuting(true);
     setError(null);
+    setResult(null);
+    setScriptResult(null);
     const startTime = performance.now();
 
     try {
-      const result = await executeQuery(query);
-      setResult(result);
-      addToHistory(query, result.duration, true);
+      // Detect if this is a multi-statement script by counting meaningful semicolons
+      const statements = query.split(';').map(s => s.trim()).filter(s => s.length > 0);
+      const isMultiStatement = statements.length > 1;
+
+      if (isMultiStatement) {
+        // Execute as script using exec method
+        const scriptResult = await executeScript(query);
+        setScriptResult(scriptResult);
+        addToHistory(query, scriptResult.totalDuration, scriptResult.errorCount === 0);
+      } else {
+        // Execute as single query
+        const result = await executeQuery(query);
+        setResult(result);
+        addToHistory(query, result.duration, true);
+      }
     } catch (err: any) {
       const errorMessage = err?.message || 'Query execution failed';
       setError(errorMessage);
@@ -180,7 +194,85 @@ export function SQLEditor() {
               </div>
             )}
 
-            {!result && !error && !isExecuting && (
+            {scriptResult && (
+              <div className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Script Results</h3>
+                  <div className="flex space-x-2">
+                    <Badge variant="secondary">
+                      {scriptResult.successCount} statement{scriptResult.successCount !== 1 ? 's' : ''}
+                    </Badge>
+                    <Badge variant="secondary">
+                      {scriptResult.totalDuration}ms
+                    </Badge>
+                    {scriptResult.errorCount > 0 && (
+                      <Badge variant="destructive">
+                        {scriptResult.errorCount} error{scriptResult.errorCount !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {scriptResult.results.map((statementResult, index) => (
+                  <Card key={index} className="mb-4">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium">Statement {index + 1}: {statementResult.command}</h4>
+                        <div className="flex space-x-2">
+                          <Badge variant="secondary">
+                            {statementResult.rowCount} row{statementResult.rowCount !== 1 ? 's' : ''}
+                          </Badge>
+                          <Badge variant="secondary">
+                            {statementResult.duration}ms
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {statementResult.rows.length > 0 && (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full border border-gray-200 rounded-lg">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                {statementResult.fields.map((field: any, fieldIndex: number) => (
+                                  <th
+                                    key={fieldIndex}
+                                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b"
+                                  >
+                                    {field.name}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {statementResult.rows.map((row: any, rowIndex: number) => (
+                                <tr key={rowIndex} className="hover:bg-gray-50">
+                                  {statementResult.fields.map((field: any, colIndex: number) => (
+                                    <td
+                                      key={colIndex}
+                                      className="px-4 py-2 text-sm text-gray-900 border-r last:border-r-0"
+                                    >
+                                      {formatValue(row[field.name])}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {statementResult.rows.length === 0 && (
+                        <div className="text-center py-4 text-gray-500">
+                          <p>Statement executed successfully but returned no rows.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {!result && !scriptResult && !error && !isExecuting && (
               <div className="flex items-center justify-center h-full text-gray-500">
                 <div className="text-center">
                   <Play className="h-8 w-8 mx-auto mb-2 opacity-50" />
