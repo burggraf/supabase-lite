@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { dbManager } from '@/lib/database/connection';
-import type { QueryResult, QueryHistory } from '@/types';
+import type { QueryResult, ScriptResult, QueryHistory } from '@/types';
 
 export function useDatabase() {
   console.log('🚀 useDatabase hook called');
@@ -74,6 +74,28 @@ export function useDatabase() {
     }
   }, [isConnected]);
 
+  const executeScript = useCallback(async (sql: string): Promise<ScriptResult> => {
+    console.log('🚀 executeScript called:', { isConnected, sql: sql.slice(0, 100) + '...' });
+    
+    if (!isConnected) {
+      console.log('🚀 executeScript failed - not connected');
+      throw new Error('Database not connected');
+    }
+
+    try {
+      setError(null);
+      console.log('🚀 Executing script via dbManager');
+      const result = await dbManager.execScript(sql);
+      console.log('🚀 Script executed successfully, statements:', result.successCount);
+      return result;
+    } catch (err) {
+      console.error('🚀 Script execution failed:', err);
+      const error = err instanceof Error ? err.message : 'Script execution failed';
+      setError(error);
+      throw err;
+    }
+  }, [isConnected]);
+
   const getConnectionInfo = useCallback(() => {
     return dbManager.getConnectionInfo();
   }, []);
@@ -92,6 +114,7 @@ export function useDatabase() {
     error,
     initialize,
     executeQuery,
+    executeScript,
     getConnectionInfo,
     getDatabaseSize,
     getTableList,

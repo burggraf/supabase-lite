@@ -48,6 +48,7 @@ describe('DatabaseManager', () => {
       const { PGlite } = await import('@electric-sql/pglite')
       expect(PGlite).toHaveBeenCalledWith({
         dataDir: 'idb://supabase_lite_db',
+        database: 'postgres',
       })
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('CREATE SCHEMA IF NOT EXISTS auth'))
       expect(dbManager.isConnected()).toBe(true)
@@ -169,6 +170,103 @@ describe('DatabaseManager', () => {
       await expect(uninitializedManager.exec('CREATE TABLE test (id INTEGER)')).rejects.toThrow(
         'Database not initialized. Call initialize() first.'
       )
+    })
+  })
+
+  describe('Script Execution', () => {
+    beforeEach(async () => {
+      mockExec.mockResolvedValue(undefined)
+      await dbManager.initialize()
+    })
+
+    it('should execute multi-statement scripts successfully', async () => {
+      const mockResults = [
+        {
+          rows: [],
+          fields: [],
+        },
+        {
+          rows: [{ id: 1, name: 'test' }],
+          fields: [{ name: 'id' }, { name: 'name' }],
+        },
+      ]
+      mockExec.mockResolvedValue(mockResults)
+      
+      const script = 'CREATE TABLE test (id INTEGER, name TEXT); SELECT * FROM test;'
+      const result = await dbManager.execScript(script)
+      
+      expect(mockExec).toHaveBeenCalledWith(script)
+      expect(result).toEqual({
+        results: [
+          {
+            rows: [],
+            fields: [],
+            rowCount: 0,
+            command: 'CREATE',
+            duration: expect.any(Number),
+          },
+          {
+            rows: [{ id: 1, name: 'test' }],
+            fields: [{ name: 'id' }, { name: 'name' }],
+            rowCount: 1,
+            command: 'SELECT',
+            duration: expect.any(Number),
+          },
+        ],
+        totalDuration: expect.any(Number),
+        successCount: 2,
+        errorCount: 0,
+        errors: [],
+      })
+    })
+
+    it('should handle script execution errors', async () => {
+      const error = new Error('Script execution failed')
+      mockExec.mockRejectedValue(error)
+      
+      const script = 'CREATE TABLE test (id INTEGER); INVALID STATEMENT;'
+      
+      await expect(dbManager.execScript(script)).rejects.toMatchObject({
+        message: 'Script execution failed',
+        duration: expect.any(Number),
+      })
+    })
+
+    it('should throw error when executing script on uninitialized database', async () => {
+      const uninitializedManager = new (DatabaseManager as any)()
+      
+      await expect(uninitializedManager.execScript('SELECT 1; SELECT 2;')).rejects.toThrow(
+        'Database not initialized. Call initialize() first.'
+      )
+    })
+
+    it('should calculate total duration for script execution', async () => {
+      const mockResults = [
+        { rows: [], fields: [] },
+        { rows: [], fields: [] },
+      ]
+      mockExec.mockResolvedValue(mockResults)
+      
+      const result = await dbManager.execScript('SELECT 1; SELECT 2;')
+      
+      expect(result.totalDuration).toBeGreaterThanOrEqual(0)
+      expect(typeof result.totalDuration).toBe('number')
+    })
+
+    it('should correctly parse commands from script statements', async () => {
+      const mockResults = [
+        { rows: [], fields: [] },
+        { rows: [{ count: 1 }], fields: [{ name: 'count' }] },
+        { rows: [], fields: [] },
+      ]
+      mockExec.mockResolvedValue(mockResults)
+      
+      const script = 'CREATE TABLE test (id INTEGER); SELECT COUNT(*) FROM test; DROP TABLE test;'
+      const result = await dbManager.execScript(script)
+      
+      expect(result.results[0].command).toBe('CREATE')
+      expect(result.results[1].command).toBe('SELECT')
+      expect(result.results[2].command).toBe('DROP')
     })
   })
 

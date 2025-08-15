@@ -13,6 +13,14 @@ export interface QueryResult {
   duration: number;
 }
 
+export interface ScriptResult {
+  results: QueryResult[];
+  totalDuration: number;
+  successCount: number;
+  errorCount: number;
+  errors: Array<{ statement: number; error: string }>;
+}
+
 export interface QueryHistory {
   id: string;
   query: string;
