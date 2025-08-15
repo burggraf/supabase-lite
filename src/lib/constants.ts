@@ -6,6 +6,7 @@ export const DATABASE_CONFIG = {
   STORAGE_KEY: 'supabase_lite_storage',
   HISTORY_KEY: 'supabase_lite_query_history',
   SAVED_QUERIES_KEY: 'supabase_lite_saved_queries',
+  SQL_SNIPPETS_KEY: 'supabase_lite_sql_snippets',
 };
 
 export const NAVIGATION_ITEMS = [
@@ -101,4 +102,11 @@ LEFT JOIN posts p ON u.id = p.user_id;`,
 export const ROLE_CONFIG = {
   STORAGE_KEY: 'supabase_lite_current_role',
   DEFAULT_ROLE_ID: 'postgres',
+};
+
+export const SQL_EDITOR_CONFIG = {
+  MAX_TABS: 10,
+  AUTO_SAVE_DEBOUNCE_MS: 2000,
+  DEFAULT_SNIPPET_NAME: 'Untitled',
+  MAX_SNIPPET_NAME_LENGTH: 50,
 };
