@@ -19,8 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit2 } from 'lucide-react';
-import { CellEditor } from './CellEditor';
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import type { ColumnInfo } from '@/types';
 
 interface DataTableProps {
@@ -30,7 +29,7 @@ interface DataTableProps {
   pageIndex: number;
   pageSize: number;
   onPaginationChange: (pagination: { pageIndex: number; pageSize: number }) => void;
-  onCellUpdate: (rowIndex: number, columnName: string, newValue: any) => Promise<boolean>;
+  onRowClick: (row: any) => void;
   primaryKeyColumn: string;
   globalFilter: string;
 }
@@ -42,13 +41,12 @@ export function DataTable({
   pageIndex,
   pageSize,
   onPaginationChange,
-  onCellUpdate,
+  onRowClick,
   primaryKeyColumn: _primaryKeyColumn,
   globalFilter: externalGlobalFilter,
 }: DataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnId: string } | null>(null);
 
   // Create table columns
   const tableColumns = useMemo<ColumnDef<any>[]>(() => {
@@ -75,52 +73,25 @@ export function DataTable({
       },
       cell: ({ row, column: _col }) => {
         const value = row.getValue(column.column_name);
-        const rowIndex = row.index;
-        const columnId = column.column_name;
-        const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.columnId === columnId;
-
-        if (isEditing) {
-          return (
-            <CellEditor
-              value={value}
-              column={column}
-              onSave={async (newValue) => {
-                const success = await onCellUpdate(rowIndex, columnId, newValue);
-                if (success) {
-                  setEditingCell(null);
-                }
-              }}
-              onCancel={() => setEditingCell(null)}
-            />
-          );
-        }
 
         return (
-          <div
-            className="group relative cursor-pointer p-2 hover:bg-muted/50"
-            onClick={() => setEditingCell({ rowIndex, columnId })}
-          >
-            <div className="flex items-center justify-between">
-              <span className="truncate">
-                {value === null || value === undefined ? (
-                  <span className="text-muted-foreground italic">NULL</span>
-                ) : column.data_type.includes('bool') ? (
-                  <span className={value ? 'text-green-600' : 'text-red-600'}>
-                    {value?.toString()}
-                  </span>
-                ) : (
-                  value?.toString()
-                )}
+          <div className="p-2 truncate">
+            {value === null || value === undefined ? (
+              <span className="text-muted-foreground italic">NULL</span>
+            ) : column.data_type.includes('bool') ? (
+              <span className={value ? 'text-green-600' : 'text-red-600'}>
+                {value?.toString()}
               </span>
-              <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-            </div>
+            ) : (
+              value?.toString()
+            )}
           </div>
         );
       },
       enableSorting: true,
       enableColumnFilter: true,
     }));
-  }, [columns, editingCell, onCellUpdate]);
+  }, [columns]);
 
   const table = useReactTable({
     data,
@@ -178,7 +149,8 @@ export function DataTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  className="hover:bg-muted/50"
+                  className="hover:bg-muted/50 cursor-pointer"
+                  onClick={() => onRowClick(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="p-0">
