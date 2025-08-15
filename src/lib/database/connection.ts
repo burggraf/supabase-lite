@@ -77,15 +77,58 @@ export class DatabaseManager {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      // Create auth schema for future auth functionality
-      await this.db.exec(`
+      // Check if database is already seeded by looking for auth.users table
+      const checkResult = await this.db.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'auth' 
+          AND table_name = 'users'
+        ) as exists;
+      `);
+      
+      const isSeeded = (checkResult.rows[0] as any)?.exists;
+      
+      if (isSeeded) {
+        console.log('✅ Database already seeded with Supabase schema');
+        return;
+      }
+
+      console.log('🌱 Initializing database with Supabase seed schema...');
+      
+      // Load the seed.sql file
+      const seedSql = await this.loadSeedSql();
+      
+      // Execute the seed script
+      await this.db.exec(seedSql);
+
+      console.log('✅ Supabase database schema initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize schemas:', error);
+      throw error;
+    }
+  }
+
+  private async loadSeedSql(): Promise<string> {
+    try {
+      // In a browser environment, we'll need to fetch the seed.sql file
+      // First try to load it as a static asset
+      const response = await fetch('/sql_scripts/seed.sql');
+      if (!response.ok) {
+        throw new Error(`Failed to load seed.sql: ${response.statusText}`);
+      }
+      const seedSql = await response.text();
+      return seedSql;
+    } catch (error) {
+      console.warn('⚠️ Could not load seed.sql file, falling back to basic schema');
+      // Fallback to basic schema if seed.sql is not available
+      return `
+        -- Fallback basic schema
         CREATE SCHEMA IF NOT EXISTS auth;
         CREATE SCHEMA IF NOT EXISTS storage;
         CREATE SCHEMA IF NOT EXISTS realtime;
-      `);
-
-      // Create a simple users table to get started
-      await this.db.exec(`
+        CREATE SCHEMA IF NOT EXISTS extensions;
+        
+        -- Basic users table for compatibility
         CREATE TABLE IF NOT EXISTS public.users (
           id SERIAL PRIMARY KEY,
           email VARCHAR(255) UNIQUE NOT NULL,
@@ -93,10 +136,8 @@ export class DatabaseManager {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-      `);
 
-      // Create a posts table for demo purposes
-      await this.db.exec(`
+        -- Basic posts table for demo
         CREATE TABLE IF NOT EXISTS public.posts (
           id SERIAL PRIMARY KEY,
           title VARCHAR(200) NOT NULL,
@@ -105,12 +146,7 @@ export class DatabaseManager {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-      `);
-
-      console.log('✅ Database schemas initialized');
-    } catch (error) {
-      console.error('❌ Failed to initialize schemas:', error);
-      throw error;
+      `;
     }
   }
 
