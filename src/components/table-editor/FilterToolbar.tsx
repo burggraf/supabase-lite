@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Filter, ArrowUpDown, Plus, ChevronDown, TableProperties, Upload } from 'lucide-react';
+import type { FilterRule } from '@/types';
 
 interface FilterToolbarProps {
   globalFilter: string;
@@ -16,6 +17,8 @@ interface FilterToolbarProps {
   onInsertRow?: () => void;
   onInsertColumn?: () => void;
   onImportCSV?: () => void;
+  filters?: FilterRule[];
+  onOpenFilterDialog?: () => void;
 }
 
 export function FilterToolbar({
@@ -26,17 +29,26 @@ export function FilterToolbar({
   onInsertRow,
   onInsertColumn,
   onImportCSV,
+  filters = [],
+  onOpenFilterDialog,
 }: FilterToolbarProps) {
   if (!selectedTable) {
     return null;
   }
 
+  const hasActiveFilters = filters.length > 0;
+
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b bg-background">
       <div className="flex items-center space-x-2">
-        <Button variant="ghost" size="sm">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={onOpenFilterDialog}
+          className={hasActiveFilters ? "bg-green-100 text-green-700 hover:bg-green-200" : ""}
+        >
           <Filter className="h-4 w-4 mr-2" />
-          Filter
+          {hasActiveFilters ? `Filtered by ${filters.length} rule${filters.length > 1 ? 's' : ''}` : 'Filter'}
         </Button>
         <Button variant="ghost" size="sm">
           <ArrowUpDown className="h-4 w-4 mr-2" />

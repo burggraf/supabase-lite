@@ -260,7 +260,13 @@ export class DatabaseManager {
     }
   }
 
-  public async getTableData(tableName: string, schema: string = 'public', limit: number = 100, offset: number = 0): Promise<{
+  public async getTableData(
+    tableName: string, 
+    schema: string = 'public', 
+    limit: number = 100, 
+    offset: number = 0,
+    filters?: Array<{ column: string; operator: string; value: string }>
+  ): Promise<{
     rows: any[];
     totalCount: number;
   }> {
@@ -269,20 +275,70 @@ export class DatabaseManager {
     }
 
     try {
-      // Get total count
-      const countResult = await this.db.query(`
-        SELECT COUNT(*) as total FROM ${schema}.${tableName};
-      `);
-      const totalCount = (countResult.rows[0] as any)?.total || 0;
+      // Build WHERE clause from filters
+      let whereClause = '';
+      const values: any[] = [];
+      
+      if (filters && filters.length > 0) {
+        const conditions = filters.map((filter, index) => {
+          const paramIndex = index + 1;
+          values.push(filter.value);
+          
+          switch (filter.operator) {
+            case 'equals':
+              return `${filter.column} = $${paramIndex}`;
+            case 'not_equal':
+              return `${filter.column} != $${paramIndex}`;
+            case 'greater_than':
+              return `${filter.column} > $${paramIndex}`;
+            case 'less_than':
+              return `${filter.column} < $${paramIndex}`;
+            case 'greater_than_or_equal':
+              return `${filter.column} >= $${paramIndex}`;
+            case 'less_than_or_equal':
+              return `${filter.column} <= $${paramIndex}`;
+            case 'like':
+              return `${filter.column} LIKE $${paramIndex}`;
+            case 'ilike':
+              return `${filter.column} ILIKE $${paramIndex}`;
+            case 'in':
+              // For IN operator, split comma-separated values
+              const inValues = filter.value.split(',').map(v => v.trim());
+              const inParams = inValues.map((_, i) => `$${paramIndex + i}`).join(',');
+              values.splice(index, 1, ...inValues); // Replace single value with array
+              return `${filter.column} IN (${inParams})`;
+            case 'is':
+              // For IS operator, handle special values
+              if (filter.value.toLowerCase() === 'null') {
+                values.pop(); // Remove the value from parameters
+                return `${filter.column} IS NULL`;
+              } else if (filter.value.toLowerCase() === 'not null') {
+                values.pop(); // Remove the value from parameters
+                return `${filter.column} IS NOT NULL`;
+              } else {
+                return `${filter.column} IS $${paramIndex}`;
+              }
+            default:
+              return `${filter.column} = $${paramIndex}`;
+          }
+        });
+        whereClause = ' WHERE ' + conditions.join(' AND ');
+      }
 
-      // Get paginated data
-      const dataResult = await this.db.query(`
-        SELECT * FROM ${schema}.${tableName}
+      // Get total count with filters
+      const countQuery = `SELECT COUNT(*) as total FROM ${schema}.${tableName}${whereClause}`;
+      const countResult = await this.db.query(countQuery, values);
+      const totalCount = (countResult.rows[0] as any)?.total || 0;
+      
+      // Get paginated data with filters
+      const dataQuery = `
+        SELECT * FROM ${schema}.${tableName}${whereClause}
         ORDER BY (SELECT column_name FROM information_schema.columns 
                   WHERE table_name = '${tableName}' AND table_schema = '${schema}' 
                   ORDER BY ordinal_position LIMIT 1)
-        LIMIT ${limit} OFFSET ${offset};
-      `);
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+      const dataResult = await this.db.query(dataQuery, values);
       
       return {
         rows: dataResult.rows,

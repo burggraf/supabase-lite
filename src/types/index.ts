@@ -96,3 +96,28 @@ export interface CellEditProps {
   onSave: (value: any) => void;
   onCancel: () => void;
 }
+
+// Filter Types
+export type FilterOperator = 
+  | 'equals' 
+  | 'not_equal' 
+  | 'greater_than' 
+  | 'less_than' 
+  | 'greater_than_or_equal' 
+  | 'less_than_or_equal' 
+  | 'like' 
+  | 'ilike' 
+  | 'in' 
+  | 'is';
+
+export interface FilterRule {
+  id: string;
+  column: string;
+  operator: FilterOperator;
+  value: string;
+}
+
+export interface FilterState {
+  rules: FilterRule[];
+  isActive: boolean;
+}

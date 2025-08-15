@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { TableSidebar } from './TableSidebar';
 import { TableHeader } from './TableHeader';
 import { FilterToolbar } from './FilterToolbar';
+import { FilterDialog } from './FilterDialog';
 import { InsertRowDialog } from './InsertRowDialog';
 import { RowEditPanel } from './RowEditPanel';
 import { DataTable } from './DataTable';
@@ -13,6 +14,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 export function TableEditor() {
   const [globalFilter, setGlobalFilter] = useState('');
   const [showInsertDialog, setShowInsertDialog] = useState(false);
+  const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [editingRow, setEditingRow] = useState<Record<string, any> | null>(null);
   
   const {
@@ -22,12 +24,14 @@ export function TableEditor() {
     columns,
     tableData,
     pagination,
+    filters,
     loading,
     error: dataError,
     selectTable,
     updatePagination,
     refreshTableData,
     getPrimaryKeyColumn,
+    setFilters,
   } = useTableData();
 
   const {
@@ -183,7 +187,24 @@ export function TableEditor() {
           onInsertRow={() => setShowInsertDialog(true)}
           onInsertColumn={() => console.log('Insert column functionality coming soon')}
           onImportCSV={() => console.log('Import CSV functionality coming soon')}
+          filters={filters}
+          onOpenFilterDialog={() => setShowFilterDialog(true)}
         />
+
+        {/* Filter Dialog */}
+        {selectedTable && (
+          <FilterDialog
+            open={showFilterDialog}
+            onOpenChange={setShowFilterDialog}
+            columns={columns}
+            filters={filters}
+            onFiltersChange={setFilters}
+            onApplyFilters={() => {
+              // Refresh data with new filters
+              refreshTableData();
+            }}
+          />
+        )}
 
         {/* Insert Row Dialog */}
         {selectedTable && (
