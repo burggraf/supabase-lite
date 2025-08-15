@@ -12,6 +12,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['@electric-sql/pglite'],
+    force: true,
   },
   worker: {
     format: 'es',
@@ -21,5 +22,13 @@ export default defineConfig({
   },
   esbuild: {
     target: 'esnext'
+  },
+  build: {
+    target: 'esnext',
+  },
+  server: {
+    fs: {
+      strict: false
+    }
   }
 })
