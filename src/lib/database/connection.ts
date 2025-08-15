@@ -1,5 +1,6 @@
 import { PGlite } from '@electric-sql/pglite';
 import { DATABASE_CONFIG } from '../constants';
+import { roleSimulator } from './roleSimulator';
 import type { QueryResult, ScriptResult, DatabaseConnection } from '@/types';
 
 export class DatabaseManager {
@@ -121,6 +122,10 @@ export class DatabaseManager {
     const startTime = performance.now();
     
     try {
+      // Validate query permissions based on current role
+      roleSimulator.preprocessQuery(sql); // This now only validates, doesn't modify SQL
+      
+      // Execute the original query
       const result = await this.db.query(sql);
       const duration = performance.now() - startTime;
       
@@ -154,6 +159,10 @@ export class DatabaseManager {
     const startTime = performance.now();
     
     try {
+      // Validate script permissions based on current role
+      roleSimulator.preprocessQuery(sql); // This now only validates, doesn't modify SQL
+      
+      // Execute the original script
       const results = await this.db.exec(sql);
       const totalDuration = performance.now() - startTime;
       

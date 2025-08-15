@@ -3,8 +3,10 @@ import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDatabase, useQueryHistory } from '@/hooks/useDatabase';
-import { Play, Save, History } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
+import { Play, Save, History, User } from 'lucide-react';
 import type { QueryResult, ScriptResult } from '@/types';
 
 const INITIAL_QUERY = `-- Welcome to Supabase Lite SQL Editor
@@ -33,6 +35,7 @@ export function SQLEditor() {
   
   const { executeQuery, executeScript } = useDatabase();
   const { history, addToHistory } = useQueryHistory();
+  const { currentRole, availableRoles, setRole, isLoading: roleLoading } = useRole();
 
   // Resizable split pane handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -139,19 +142,52 @@ export function SQLEditor() {
             Write and execute SQL queries against your local database
           </p>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={handleSaveQuery}>
-            <Save className="h-4 w-4 mr-2" />
-            Save
-          </Button>
-          <Button 
-            size="sm" 
-            onClick={handleExecuteQuery}
-            disabled={isExecuting || !query.trim()}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            {isExecuting ? 'Running...' : 'Run'}
-          </Button>
+        <div className="flex items-center space-x-4">
+          {/* Role Selector */}
+          <div className="flex items-center space-x-2">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={currentRole.id}
+              onValueChange={(roleId) => {
+                const role = availableRoles.find(r => r.id === roleId);
+                if (role) setRole(role);
+              }}
+              disabled={roleLoading || isExecuting}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableRoles.map((role) => (
+                  <SelectItem key={role.id} value={role.id}>
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${
+                        role.isSuperuser ? 'bg-red-500' : 
+                        role.permissions.includes('admin') ? 'bg-orange-500' :
+                        role.permissions.includes('update') ? 'bg-blue-500' : 'bg-green-500'
+                      }`} />
+                      <span>{role.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex space-x-2">
+            <Button variant="outline" size="sm" onClick={handleSaveQuery}>
+              <Save className="h-4 w-4 mr-2" />
+              Save
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handleExecuteQuery}
+              disabled={isExecuting || !query.trim()}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              {isExecuting ? 'Running...' : 'Run'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -222,6 +258,14 @@ export function SQLEditor() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Results</h3>
                   <div className="flex space-x-2">
+                    <Badge variant="outline" className="flex items-center space-x-1">
+                      <span className={`w-2 h-2 rounded-full ${
+                        currentRole.isSuperuser ? 'bg-red-500' : 
+                        currentRole.permissions.includes('admin') ? 'bg-orange-500' :
+                        currentRole.permissions.includes('update') ? 'bg-blue-500' : 'bg-green-500'
+                      }`} />
+                      <span>as {currentRole.name}</span>
+                    </Badge>
                     <Badge variant="secondary">
                       {result.rowCount} row{result.rowCount !== 1 ? 's' : ''}
                     </Badge>
@@ -277,6 +321,14 @@ export function SQLEditor() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Script Results</h3>
                   <div className="flex space-x-2">
+                    <Badge variant="outline" className="flex items-center space-x-1">
+                      <span className={`w-2 h-2 rounded-full ${
+                        currentRole.isSuperuser ? 'bg-red-500' : 
+                        currentRole.permissions.includes('admin') ? 'bg-orange-500' :
+                        currentRole.permissions.includes('update') ? 'bg-blue-500' : 'bg-green-500'
+                      }`} />
+                      <span>as {currentRole.name}</span>
+                    </Badge>
                     <Badge variant="secondary">
                       {scriptResult.successCount} statement{scriptResult.successCount !== 1 ? 's' : ''}
                     </Badge>
