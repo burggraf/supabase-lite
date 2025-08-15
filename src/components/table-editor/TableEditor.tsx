@@ -3,6 +3,7 @@ import { TableSidebar } from './TableSidebar';
 import { TableHeader } from './TableHeader';
 import { FilterToolbar } from './FilterToolbar';
 import { InsertRowDialog } from './InsertRowDialog';
+import { RowEditPanel } from './RowEditPanel';
 import { DataTable } from './DataTable';
 import { useTableData } from '@/hooks/useTableData';
 import { useTableMutations } from '@/hooks/useTableMutations';
@@ -12,6 +13,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 export function TableEditor() {
   const [globalFilter, setGlobalFilter] = useState('');
   const [showInsertDialog, setShowInsertDialog] = useState(false);
+  const [editingRow, setEditingRow] = useState<Record<string, any> | null>(null);
   
   const {
     tables,
@@ -35,41 +37,57 @@ export function TableEditor() {
     isLoading: isMutating,
   } = useTableMutations();
 
-  // Handle cell updates
-  const handleCellUpdate = useCallback(async (
-    rowIndex: number,
-    columnName: string,
-    newValue: any
-  ): Promise<boolean> => {
-    if (!selectedTable || !selectedSchema) {
+  // Handle row click to open edit panel
+  const handleRowClick = useCallback((row: Record<string, any>) => {
+    setEditingRow(row);
+  }, []);
+
+  // Handle row updates
+  const handleRowUpdate = useCallback(async (updatedData: Record<string, any>): Promise<boolean> => {
+    if (!selectedTable || !selectedSchema || !editingRow) {
       return false;
     }
 
     const primaryKeyColumn = getPrimaryKeyColumn();
-    const row = tableData.rows[rowIndex];
-    const primaryKeyValue = row[primaryKeyColumn];
+    const primaryKeyValue = editingRow[primaryKeyColumn];
 
     if (!primaryKeyValue) {
       console.error('No primary key value found for row');
       return false;
     }
 
-    const success = await updateCell(
-      selectedTable,
-      primaryKeyColumn,
-      primaryKeyValue,
-      columnName,
-      newValue,
-      selectedSchema
-    );
+    // Update each changed field
+    const updates: Promise<boolean>[] = [];
+    for (const [columnName, newValue] of Object.entries(updatedData)) {
+      if (editingRow[columnName] !== newValue) {
+        updates.push(
+          updateCell(
+            selectedTable,
+            primaryKeyColumn,
+            primaryKeyValue,
+            columnName,
+            newValue,
+            selectedSchema
+          )
+        );
+      }
+    }
+
+    if (updates.length === 0) {
+      // No changes made
+      return true;
+    }
+
+    const results = await Promise.all(updates);
+    const success = results.every(result => result);
 
     if (success) {
-      // Refresh the table data to show the updated value
+      // Refresh the table data to show the updated values
       refreshTableData();
     }
 
     return success;
-  }, [selectedTable, selectedSchema, tableData.rows, getPrimaryKeyColumn, updateCell, refreshTableData]);
+  }, [selectedTable, selectedSchema, editingRow, getPrimaryKeyColumn, updateCell, refreshTableData]);
 
   // Handle pagination changes
   const handlePaginationChange = useCallback((newPagination: { pageIndex: number; pageSize: number }) => {
@@ -180,6 +198,20 @@ export function TableEditor() {
           />
         )}
 
+        {/* Row Edit Panel */}
+        {selectedTable && (
+          <RowEditPanel
+            isOpen={editingRow !== null}
+            onClose={() => setEditingRow(null)}
+            row={editingRow}
+            columns={columns}
+            tableName={selectedTable}
+            schema={selectedSchema}
+            onSave={handleRowUpdate}
+            loading={loading || isMutating}
+          />
+        )}
+
         {/* Error Display */}
         {error && (
           <div className="p-4 border-b">
@@ -207,7 +239,7 @@ export function TableEditor() {
                   pageIndex={pagination.pageIndex}
                   pageSize={pagination.pageSize}
                   onPaginationChange={handlePaginationChange}
-                  onCellUpdate={handleCellUpdate}
+                  onRowClick={handleRowClick}
                   primaryKeyColumn={getPrimaryKeyColumn()}
                   globalFilter={globalFilter}
                 />
