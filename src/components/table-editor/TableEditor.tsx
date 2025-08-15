@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { TableSidebar } from './TableSidebar';
 import { TableHeader } from './TableHeader';
 import { FilterToolbar } from './FilterToolbar';
+import { InsertRowDialog } from './InsertRowDialog';
 import { DataTable } from './DataTable';
 import { useTableData } from '@/hooks/useTableData';
 import { useTableMutations } from '@/hooks/useTableMutations';
@@ -10,6 +11,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 
 export function TableEditor() {
   const [globalFilter, setGlobalFilter] = useState('');
+  const [showInsertDialog, setShowInsertDialog] = useState(false);
   
   const {
     tables,
@@ -28,6 +30,7 @@ export function TableEditor() {
 
   const {
     updateCell,
+    insertRow,
     error: mutationError,
     isLoading: isMutating,
   } = useTableMutations();
@@ -111,6 +114,22 @@ export function TableEditor() {
     document.body.removeChild(link);
   }, [tableData.rows, columns, selectedSchema, selectedTable]);
 
+  // Handle insert row
+  const handleInsertRow = useCallback(async (data: Record<string, any>): Promise<boolean> => {
+    if (!selectedTable || !selectedSchema) {
+      return false;
+    }
+
+    const success = await insertRow(selectedTable, data, selectedSchema);
+    
+    if (success) {
+      // Refresh the table data to show the new row
+      refreshTableData();
+    }
+    
+    return success;
+  }, [selectedTable, selectedSchema, insertRow, refreshTableData]);
+
   // Show error if any
   const error = dataError || mutationError;
 
@@ -143,8 +162,23 @@ export function TableEditor() {
           onGlobalFilterChange={setGlobalFilter}
           selectedTable={selectedTable}
           loading={loading || isMutating}
-          onAddRow={() => console.log('Add row functionality would be implemented here')}
+          onInsertRow={() => setShowInsertDialog(true)}
+          onInsertColumn={() => console.log('Insert column functionality coming soon')}
+          onImportCSV={() => console.log('Import CSV functionality coming soon')}
         />
+
+        {/* Insert Row Dialog */}
+        {selectedTable && (
+          <InsertRowDialog
+            open={showInsertDialog}
+            onOpenChange={setShowInsertDialog}
+            columns={columns}
+            tableName={selectedTable}
+            schema={selectedSchema}
+            onInsert={handleInsertRow}
+            loading={loading || isMutating}
+          />
+        )}
 
         {/* Error Display */}
         {error && (
