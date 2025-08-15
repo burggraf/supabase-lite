@@ -54,6 +54,12 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
       badge: null,
     },
     {
+      id: 'database',
+      label: 'Database',
+      icon: 'Database' as keyof typeof iconMap,
+      badge: null,
+    },
+    {
       section: 'Services'
     },
     {

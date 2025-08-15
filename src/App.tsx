@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { SQLEditor } from '@/components/sql-editor/SQLEditor';
 import { TableEditor } from '@/components/table-editor/TableEditor';
+import { DatabaseWorking as Database } from '@/components/database/DatabaseWorking';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function App() {
@@ -22,6 +23,12 @@ function App() {
         return (
           <ErrorBoundary>
             <TableEditor />
+          </ErrorBoundary>
+        );
+      case 'database':
+        return (
+          <ErrorBoundary>
+            <Database />
           </ErrorBoundary>
         );
       default:

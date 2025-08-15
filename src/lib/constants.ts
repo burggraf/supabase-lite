@@ -28,6 +28,12 @@ export const NAVIGATION_ITEMS = [
     path: '/table-editor',
   },
   {
+    id: 'database',
+    label: 'Database',
+    icon: 'Database',
+    path: '/database',
+  },
+  {
     id: 'auth',
     label: 'Authentication',
     icon: 'Shield',
