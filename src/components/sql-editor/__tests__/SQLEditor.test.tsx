@@ -18,9 +18,45 @@ const mockUseQueryHistory = vi.fn(() => ({
   addToHistory: mockAddToHistory,
 }))
 
+// Mock SQL Snippets hook
+const mockCreateTab = vi.fn()
+const mockCloseTab = vi.fn()
+const mockSetActiveTab = vi.fn()
+const mockUpdateTabQuery = vi.fn()
+const mockUpdateTabName = vi.fn()
+const mockSaveSnippet = vi.fn()
+const mockLoadSnippet = vi.fn()
+const mockDeleteSnippet = vi.fn()
+const mockGetActiveTab = vi.fn()
+
+const mockUseSQLSnippets = vi.fn(() => ({
+  tabs: [{
+    id: 'tab-1',
+    name: 'Untitled',
+    query: '-- Welcome to Supabase Lite SQL Editor\nSELECT 1;',
+    isDirty: false,
+    snippetId: undefined,
+  }],
+  activeTabId: 'tab-1',
+  snippets: [],
+  createTab: mockCreateTab,
+  closeTab: mockCloseTab,
+  setActiveTab: mockSetActiveTab,
+  updateTabQuery: mockUpdateTabQuery,
+  updateTabName: mockUpdateTabName,
+  saveSnippet: mockSaveSnippet,
+  loadSnippet: mockLoadSnippet,
+  deleteSnippet: mockDeleteSnippet,
+  getActiveTab: mockGetActiveTab,
+}))
+
 vi.mock('@/hooks/useDatabase', () => ({
   useDatabase: () => mockUseDatabase(),
   useQueryHistory: () => mockUseQueryHistory(),
+}))
+
+vi.mock('@/hooks/useSQLSnippets', () => ({
+  useSQLSnippets: () => mockUseSQLSnippets(),
 }))
 
 // Mock Lucide React icons
@@ -28,6 +64,9 @@ vi.mock('lucide-react', () => ({
   Play: () => <div data-testid="play-icon" />,
   Save: () => <div data-testid="save-icon" />,
   History: () => <div data-testid="history-icon" />,
+  Plus: () => <div data-testid="plus-icon" />,
+  X: () => <div data-testid="x-icon" />,
+  Edit2: () => <div data-testid="edit-icon" />,
 }))
 
 describe('SQLEditor', () => {
@@ -55,17 +94,46 @@ describe('SQLEditor', () => {
       history: [],
       addToHistory: mockAddToHistory,
     })
+    mockGetActiveTab.mockReturnValue({
+      id: 'tab-1',
+      name: 'Untitled',
+      query: '-- Welcome to Supabase Lite SQL Editor\nSELECT 1;',
+      isDirty: false,
+      snippetId: undefined,
+    })
+    mockUseSQLSnippets.mockReturnValue({
+      tabs: [{
+        id: 'tab-1',
+        name: 'Untitled',
+        query: '-- Welcome to Supabase Lite SQL Editor\nSELECT 1;',
+        isDirty: false,
+        snippetId: undefined,
+      }],
+      activeTabId: 'tab-1',
+      snippets: [],
+      createTab: mockCreateTab,
+      closeTab: mockCloseTab,
+      setActiveTab: mockSetActiveTab,
+      updateTabQuery: mockUpdateTabQuery,
+      updateTabName: mockUpdateTabName,
+      saveSnippet: mockSaveSnippet,
+      loadSnippet: mockLoadSnippet,
+      deleteSnippet: mockDeleteSnippet,
+      getActiveTab: mockGetActiveTab,
+    })
   })
 
   describe('Initial Render', () => {
-    it('should render the SQL Editor interface', () => {
+    it('should render the SQL Editor interface with tabs', () => {
       render(<SQLEditor />)
       
       expect(screen.getByText('SQL Editor')).toBeInTheDocument()
       expect(screen.getByText('Write and execute SQL queries against your local database')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /run/i })).toBeInTheDocument()
-      expect(screen.getByText('Query History')).toBeInTheDocument()
+      expect(screen.getByText('Saved Snippets')).toBeInTheDocument()
+      expect(screen.getByText('Untitled')).toBeInTheDocument() // Tab name
+      expect(screen.getByTestId('plus-icon')).toBeInTheDocument() // Add tab button
     })
 
     it('should display Monaco Editor loading state', async () => {
@@ -284,26 +352,83 @@ describe('SQLEditor', () => {
   })
 
   describe('Save Query', () => {
-    it('should copy query to clipboard when save is clicked', async () => {
+    it('should save snippet when save is clicked', async () => {
       render(<SQLEditor />)
       
       const saveButton = screen.getByRole('button', { name: /save/i })
       
-      // Click save button (will copy current query to clipboard)
+      // Click save button (will save current tab as snippet)
       await user.click(saveButton)
       
-      expect(mockWriteText).toHaveBeenCalled()
+      expect(mockSaveSnippet).toHaveBeenCalledWith('tab-1')
     })
   })
 
-  describe('Query History Panel', () => {
-    it('should display empty history message when no queries', () => {
+  describe('Tabs and Snippets', () => {
+    it('should create new tab when plus button is clicked', async () => {
       render(<SQLEditor />)
+      
+      const addTabButton = screen.getByTestId('plus-icon').closest('button')
+      
+      await user.click(addTabButton!)
+      
+      expect(mockCreateTab).toHaveBeenCalled()
+    })
+    
+    it('should display snippets panel', () => {
+      render(<SQLEditor />)
+      
+      expect(screen.getByText('Saved Snippets')).toBeInTheDocument()
+      expect(screen.getByText('No saved snippets yet')).toBeInTheDocument()
+    })
+    
+    it('should show snippets when available', () => {
+      mockUseSQLSnippets.mockReturnValue({
+        tabs: [{
+          id: 'tab-1',
+          name: 'Untitled',
+          query: 'SELECT 1;',
+          isDirty: false,
+          snippetId: undefined,
+        }],
+        activeTabId: 'tab-1',
+        snippets: [{
+          id: 'snippet-1',
+          name: 'Test Query',
+          query: 'SELECT * FROM users',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }],
+        createTab: mockCreateTab,
+        closeTab: mockCloseTab,
+        setActiveTab: mockSetActiveTab,
+        updateTabQuery: mockUpdateTabQuery,
+        updateTabName: mockUpdateTabName,
+        saveSnippet: mockSaveSnippet,
+        loadSnippet: mockLoadSnippet,
+        deleteSnippet: mockDeleteSnippet,
+        getActiveTab: mockGetActiveTab,
+      })
+      
+      render(<SQLEditor />)
+      
+      expect(screen.getByText('Test Query')).toBeInTheDocument()
+      expect(screen.getByText('SELECT * FROM users')).toBeInTheDocument()
+    })
+  })
+  
+  describe('Query History Panel', () => {
+    it('should display empty history message when no queries', async () => {
+      render(<SQLEditor />)
+      
+      // Click on History tab
+      const historyTab = screen.getByText('History')
+      await user.click(historyTab)
       
       expect(screen.getByText('No queries executed yet')).toBeInTheDocument()
     })
 
-    it('should display query history items', () => {
+    it('should display query history items', async () => {
       const mockHistory = [
         {
           id: '1',
@@ -329,6 +454,10 @@ describe('SQLEditor', () => {
       
       render(<SQLEditor />)
       
+      // Click on History tab
+      const historyTab = screen.getByText('History')
+      await user.click(historyTab)
+      
       expect(screen.getByText('Success')).toBeInTheDocument()
       expect(screen.getByText('Error')).toBeInTheDocument()
       expect(screen.getByText('SELECT * FROM users')).toBeInTheDocument()
@@ -344,7 +473,7 @@ describe('SQLEditor', () => {
       
       expect(screen.getByTestId('save-icon')).toBeInTheDocument()
       expect(screen.getAllByTestId('play-icon')).toHaveLength(2) // One in button, one in empty state
-      expect(screen.getByTestId('history-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('plus-icon')).toBeInTheDocument()
     })
   })
 
@@ -357,14 +486,15 @@ describe('SQLEditor', () => {
       expect(mainContainer).toHaveClass('flex-1', 'flex', 'flex-col', 'h-full')
     })
 
-    it('should have split view with editor and history panels', () => {
+    it('should have split view with editor and sidebar panels', () => {
       render(<SQLEditor />)
       
       // Monaco Editor loading state should be present
       expect(screen.getByText(/Loading\.\.\./)).toBeInTheDocument()
       
-      // History panel should be present
-      expect(screen.getByText('Query History')).toBeInTheDocument()
+      // Sidebar panels should be present
+      expect(screen.getByText('Snippets')).toBeInTheDocument()
+      expect(screen.getByText('History')).toBeInTheDocument()
     })
   })
 })

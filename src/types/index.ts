@@ -129,3 +129,20 @@ export interface FilterState {
   rules: FilterRule[];
   isActive: boolean;
 }
+
+// SQL Snippets and Tabs Types
+export interface SQLSnippet {
+  id: string;
+  name: string;
+  query: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TabState {
+  id: string;
+  name: string;
+  query: string;
+  isDirty: boolean;
+  snippetId?: string; // null for unsaved snippets
+}

@@ -3,25 +3,20 @@ import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useDatabase, useQueryHistory } from '@/hooks/useDatabase';
-import { Play, Save, History } from 'lucide-react';
+import { useSQLSnippets } from '@/hooks/useSQLSnippets';
+import { Play, Save, History, Plus, X } from 'lucide-react';
 import type { QueryResult, ScriptResult } from '@/types';
 
-const INITIAL_QUERY = `-- Welcome to Supabase Lite SQL Editor
--- Try running some queries against your local PostgreSQL database
-
--- Example: View all tables in your database
-SELECT table_name, table_schema 
-FROM information_schema.tables 
-WHERE table_schema IN ('public', 'auth', 'storage')
-ORDER BY table_schema, table_name;`;
 
 export function SQLEditor() {
-  const [query, setQuery] = useState(INITIAL_QUERY);
   const [isExecuting, setIsExecuting] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [scriptResult, setScriptResult] = useState<ScriptResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editingTabName, setEditingTabName] = useState('');
   
   // Split pane state - using fixed pixel heights instead of percentages
   const [editorHeight, setEditorHeight] = useState(400); // Fixed pixel height
@@ -33,6 +28,20 @@ export function SQLEditor() {
   
   const { executeQuery, executeScript } = useDatabase();
   const { history, addToHistory } = useQueryHistory();
+  const {
+    tabs,
+    activeTabId,
+    snippets,
+    createTab,
+    closeTab,
+    setActiveTab,
+    updateTabQuery,
+    updateTabName,
+    saveSnippet,
+    loadSnippet,
+    deleteSnippet,
+    getActiveTab
+  } = useSQLSnippets();
 
   // Resizable split pane handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -83,7 +92,10 @@ export function SQLEditor() {
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
   const handleExecuteQuery = async () => {
-    if (!query.trim()) return;
+    const activeTab = getActiveTab();
+    if (!activeTab?.query.trim()) return;
+    
+    const query = activeTab.query;
 
     setIsExecuting(true);
     setError(null);
@@ -118,10 +130,55 @@ export function SQLEditor() {
   };
 
   const handleSaveQuery = () => {
-    // For now, just copy to clipboard
-    navigator.clipboard.writeText(query);
-    // TODO: Implement saved queries feature
+    const activeTab = getActiveTab();
+    if (activeTab) {
+      saveSnippet(activeTab.id);
+    }
   };
+  
+  const handleTabNameEdit = (tabId: string, currentName: string) => {
+    setEditingTabId(tabId);
+    setEditingTabName(currentName);
+  };
+  
+  const handleTabNameSave = () => {
+    if (editingTabId && editingTabName.trim()) {
+      updateTabName(editingTabId, editingTabName.trim());
+    }
+    setEditingTabId(null);
+    setEditingTabName('');
+  };
+  
+  const handleTabNameCancel = () => {
+    setEditingTabId(null);
+    setEditingTabName('');
+  };
+  
+  const handleQueryChange = (value: string | undefined) => {
+    const activeTab = getActiveTab();
+    if (activeTab) {
+      updateTabQuery(activeTab.id, value || '');
+    }
+  };
+  
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+      e.preventDefault();
+      createTab();
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
+      e.preventDefault();
+      const activeTab = getActiveTab();
+      if (activeTab) {
+        closeTab(activeTab.id);
+      }
+    }
+  }, [createTab, closeTab, getActiveTab]);
+  
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   const formatValue = (value: any): string => {
     if (value === null) return 'NULL';
@@ -148,13 +205,75 @@ export function SQLEditor() {
             <Button 
               size="sm" 
               onClick={handleExecuteQuery}
-              disabled={isExecuting || !query.trim()}
+              disabled={isExecuting || !getActiveTab()?.query.trim()}
             >
               <Play className="h-4 w-4 mr-2" />
               {isExecuting ? 'Running...' : 'Run'}
             </Button>
           </div>
         </div>
+      </div>
+      
+      {/* Tabs */}
+      <div className="border-b">
+        <Tabs value={activeTabId} onValueChange={setActiveTab} className="w-full">
+          <div className="flex items-center px-4 pt-2">
+            <TabsList className="h-8 p-0 bg-transparent">
+              {tabs.map((tab) => (
+                <div key={tab.id} className="flex items-center group">
+                  <TabsTrigger 
+                    value={tab.id} 
+                    className="relative px-3 py-1 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  >
+                    <div className="flex items-center space-x-2">
+                      {editingTabId === tab.id ? (
+                        <input
+                          className="w-24 px-1 py-0 text-xs border rounded"
+                          value={editingTabName}
+                          onChange={(e) => setEditingTabName(e.target.value)}
+                          onBlur={handleTabNameSave}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleTabNameSave();
+                            if (e.key === 'Escape') handleTabNameCancel();
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <span 
+                          className="cursor-pointer"
+                          onDoubleClick={() => handleTabNameEdit(tab.id, tab.name)}
+                        >
+                          {tab.name}
+                          {tab.isDirty && <span className="ml-1 text-orange-500">•</span>}
+                        </span>
+                      )}
+                      {tabs.length > 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            closeTab(tab.id);
+                          }}
+                          className="ml-1 opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </TabsTrigger>
+                </div>
+              ))}
+            </TabsList>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => createTab()}
+              className="ml-2 h-8 w-8 p-0"
+              disabled={tabs.length >= 10}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </Tabs>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
@@ -168,8 +287,8 @@ export function SQLEditor() {
             <Editor
               height={`${editorHeight}px`}
               defaultLanguage="sql"
-              value={query}
-              onChange={(value) => setQuery(value || '')}
+              value={getActiveTab()?.query || ''}
+              onChange={handleQueryChange}
               theme="vs-light"
               onMount={(editor) => {
                 editorRef.current = editor;
@@ -364,39 +483,101 @@ export function SQLEditor() {
           </div>
         </div>
 
-        {/* History Panel */}
+        {/* Sidebar with Snippets and History */}
         <div className="w-80 border-l bg-gray-50">
-          <div className="p-4 border-b bg-white">
-            <h3 className="font-medium flex items-center">
-              <History className="h-4 w-4 mr-2" />
-              Query History
-            </h3>
-          </div>
-          <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
-            {history.length === 0 && (
-              <p className="text-sm text-gray-500">No queries executed yet</p>
-            )}
-            {history.map((item: any) => (
-              <Card key={item.id} className="cursor-pointer hover:bg-white transition-colors">
-                <CardContent className="p-3">
-                  <div className="flex items-start justify-between mb-2">
-                    <Badge variant={item.success ? 'success' : 'destructive'}>
-                      {item.success ? 'Success' : 'Error'}
-                    </Badge>
-                    <span className="text-xs text-gray-500">
-                      {new Date(item.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="text-xs font-mono truncate mb-1">
-                    {item.query.split('\n')[0]}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {item.duration.toFixed(2)}ms
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Tabs defaultValue="snippets" className="h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-2 mx-4 mt-4">
+              <TabsTrigger value="snippets">Snippets</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="snippets" className="flex-1 overflow-hidden">
+              <div className="p-4 border-b bg-white">
+                <h3 className="font-medium flex items-center">
+                  <Save className="h-4 w-4 mr-2" />
+                  Saved Snippets
+                </h3>
+              </div>
+              <div className="p-4 space-y-2 overflow-y-auto">
+                {snippets.length === 0 && (
+                  <p className="text-sm text-gray-500">No saved snippets yet</p>
+                )}
+                {snippets.map((snippet) => (
+                  <Card 
+                    key={snippet.id} 
+                    className="cursor-pointer hover:bg-white transition-colors group"
+                    onClick={() => loadSnippet(snippet.id)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-sm font-medium truncate flex-1">
+                          {snippet.name}
+                        </h4>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteSnippet(snippet.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <p className="text-xs font-mono truncate mb-1 text-gray-600">
+                        {snippet.query.split('\n')[0]}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(snippet.updatedAt).toLocaleDateString()}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="history" className="flex-1 overflow-hidden">
+              <div className="p-4 border-b bg-white">
+                <h3 className="font-medium flex items-center">
+                  <History className="h-4 w-4 mr-2" />
+                  Query History
+                </h3>
+              </div>
+              <div className="p-4 space-y-2 overflow-y-auto">
+                {history.length === 0 && (
+                  <p className="text-sm text-gray-500">No queries executed yet</p>
+                )}
+                {history.map((item: any) => (
+                  <Card 
+                    key={item.id} 
+                    className="cursor-pointer hover:bg-white transition-colors"
+                    onClick={() => {
+                      const activeTab = getActiveTab();
+                      if (activeTab) {
+                        updateTabQuery(activeTab.id, item.query);
+                      }
+                    }}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <Badge variant={item.success ? 'success' : 'destructive'}>
+                          {item.success ? 'Success' : 'Error'}
+                        </Badge>
+                        <span className="text-xs text-gray-500">
+                          {new Date(item.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="text-xs font-mono truncate mb-1">
+                        {item.query.split('\n')[0]}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {item.duration.toFixed(2)}ms
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
