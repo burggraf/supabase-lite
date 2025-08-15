@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,8 +23,64 @@ export function SQLEditor() {
   const [scriptResult, setScriptResult] = useState<ScriptResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   
+  // Split pane state - using fixed pixel heights instead of percentages
+  const [editorHeight, setEditorHeight] = useState(400); // Fixed pixel height
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<any>(null);
+  const dragStartY = useRef<number>(0);
+  const dragStartHeight = useRef<number>(0);
+  
   const { executeQuery, executeScript } = useDatabase();
   const { history, addToHistory } = useQueryHistory();
+
+  // Resizable split pane handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartY.current = e.clientY;
+    dragStartHeight.current = editorHeight;
+  }, [editorHeight]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    
+    const deltaY = e.clientY - dragStartY.current;
+    const newHeight = dragStartHeight.current + deltaY;
+    
+    // Set minimum and maximum pixel heights
+    const minHeight = 200;
+    const maxHeight = window.innerHeight - 300; // Leave space for header and results
+    
+    const constrainedHeight = Math.min(Math.max(newHeight, minHeight), maxHeight);
+    setEditorHeight(constrainedHeight);
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    // Trigger Monaco Editor layout recalculation after resize
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.layout();
+      }
+    }, 100);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   const handleExecuteQuery = async () => {
     if (!query.trim()) return;
@@ -74,7 +130,7 @@ export function SQLEditor() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full" ref={containerRef}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div>
@@ -99,16 +155,27 @@ export function SQLEditor() {
         </div>
       </div>
 
-      <div className="flex-1 flex">
+      <div className="flex-1 flex overflow-hidden">
         {/* Editor Panel */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 border-r">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* SQL Editor Section */}
+          <div 
+            className="border-r flex-shrink-0"
+            style={{ height: `${editorHeight}px` }}
+          >
             <Editor
-              height="50vh"
+              height={`${editorHeight}px`}
               defaultLanguage="sql"
               value={query}
               onChange={(value) => setQuery(value || '')}
               theme="vs-light"
+              onMount={(editor) => {
+                editorRef.current = editor;
+                // Force layout after mount
+                setTimeout(() => {
+                  editor.layout();
+                }, 100);
+              }}
               options={{
                 minimap: { enabled: false },
                 fontSize: 14,
@@ -124,8 +191,19 @@ export function SQLEditor() {
             />
           </div>
 
+          {/* Resizable Divider */}
+          <div 
+            className={`border-r border-t border-b h-2 bg-gray-100 hover:bg-gray-200 cursor-row-resize flex items-center justify-center transition-colors flex-shrink-0 ${
+              isDragging ? 'bg-gray-300' : ''
+            }`}
+            onMouseDown={handleMouseDown}
+          >
+            <div className="w-8 h-0.5 bg-gray-400 rounded"></div>
+          </div>
+
           {/* Results Panel */}
-          <div className="flex-1 border-t">
+          <div className="border-r flex-1 overflow-hidden">
+            <div className="h-full overflow-y-auto">
             {error && (
               <div className="p-4 bg-red-50 border-l-4 border-red-400">
                 <div className="flex">
@@ -280,6 +358,7 @@ export function SQLEditor() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
 
