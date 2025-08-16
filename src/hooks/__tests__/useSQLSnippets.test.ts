@@ -27,7 +27,7 @@ describe('useSQLSnippets', () => {
 
       expect(result.current.tabs).toHaveLength(1);
       expect(result.current.tabs[0]).toMatchObject({
-        name: SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME,
+        name: '+ New',
         isDirty: false,
         snippetId: undefined,
       });
@@ -80,7 +80,7 @@ describe('useSQLSnippets', () => {
 
       expect(result.current.tabs).toHaveLength(2);
       expect(result.current.tabs[1]).toMatchObject({
-        name: SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME,
+        name: '+ New',
         isDirty: false,
         snippetId: undefined,
       });
@@ -158,7 +158,7 @@ describe('useSQLSnippets', () => {
       expect(result.current.tabs).toHaveLength(1);
       expect(result.current.tabs[0].id).not.toBe(originalTabId);
       expect(result.current.tabs[0]).toMatchObject({
-        name: SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME,
+        name: '+ New',
         isDirty: false,
       });
     });

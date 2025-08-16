@@ -181,6 +181,9 @@ export function SQLEditor() {
     }
   };
   
+  // Check if there's an empty tab that should hide the + button
+  const hasEmptyNewTab = tabs.some(tab => tab.name === '+ New' && !tab.query.trim());
+  
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 't') {
       e.preventDefault();
@@ -344,15 +347,17 @@ export function SQLEditor() {
                         ))}
                       </TabsList>
                     </Tabs>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => createTab()}
-                      className="ml-2 h-8 w-8 p-0 rounded-t-lg bg-transparent hover:bg-gray-100 flex-shrink-0"
-                      disabled={tabs.length >= 10}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    {!hasEmptyNewTab && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => createTab()}
+                        className="ml-2 h-8 w-8 p-0 rounded-t-lg bg-transparent hover:bg-gray-100 flex-shrink-0"
+                        disabled={tabs.length >= 10}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

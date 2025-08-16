@@ -70,7 +70,7 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
     const initialTabId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setTabs([{
       id: initialTabId,
-      name: SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME,
+      name: '+ New',
       query: '',
       isDirty: false,
       snippetId: undefined,
@@ -146,19 +146,30 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
       if (tab && tab.isDirty && tab.query.trim()) {
         const now = new Date();
         
+        // If this was a '+ New' tab and now has content, rename it
+        let tabName = tab.name;
+        if (tab.name === '+ New') {
+          tabName = generateSnippetName(tab.query) || SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME;
+        }
+        
         if (tab.snippetId) {
           // Auto-save existing snippet
           setSnippets(prev => prev.map(snippet => 
             snippet.id === tab.snippetId 
-              ? { ...snippet, name: tab.name, query: tab.query, updatedAt: now }
+              ? { ...snippet, name: tabName, query: tab.query, updatedAt: now }
               : snippet
+          ));
+          
+          // Mark tab as clean and update name
+          setTabs(prev => prev.map(t => 
+            t.id === tabId ? { ...t, name: tabName, isDirty: false } : t
           ));
         } else {
           // Auto-create new snippet
           const snippetId = generateId();
-          const snippetName = tab.name === SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME 
+          const snippetName = (tabName === SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME || tabName === '+ New')
             ? generateSnippetName(tab.query)
-            : tab.name;
+            : tabName;
           
           const newSnippet: SQLSnippet = {
             id: snippetId,
@@ -170,18 +181,13 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
           
           setSnippets(prev => [...prev, newSnippet]);
           
-          // Update tab to reference the snippet
+          // Update tab to reference the snippet, update name, and mark clean
           setTabs(prev => prev.map(t => 
             t.id === tabId 
               ? { ...t, snippetId, name: snippetName, isDirty: false }
               : t
           ));
         }
-        
-        // Mark tab as clean
-        setTabs(prev => prev.map(t => 
-          t.id === tabId ? { ...t, isDirty: false } : t
-        ));
       }
       saveTimeoutRefs.current.delete(tabId);
     }, SQL_EDITOR_CONFIG.AUTO_SAVE_DEBOUNCE_MS);
@@ -199,9 +205,12 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
     const tabId = generateId();
     const defaultQuery = query || '';
     
+    // Use '+ New' for empty tabs, otherwise use provided name or default
+    const tabName = name || (defaultQuery.trim() ? SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME : '+ New');
+    
     const newTab: TabState = {
       id: tabId,
-      name: name || SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME,
+      name: tabName,
       query: defaultQuery,
       isDirty: false,
       snippetId: undefined,
@@ -215,15 +224,16 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
   
   const closeTab = useCallback((tabId: string) => {
     if (tabs.length === 1) {
-      // Don't close the last tab, just reset it
+      // Don't close the last tab, just reset it with '+ New' name for empty tab
+      const newTabId = generateId();
       setTabs([{
-        id: generateId(),
-        name: SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME,
+        id: newTabId,
+        name: '+ New',
         query: '',
         isDirty: false,
         snippetId: undefined,
       }]);
-      setActiveTabId(tabs[0].id);
+      setActiveTabId(newTabId);
       return;
     }
     
@@ -295,7 +305,7 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
     } else {
       // Create new snippet
       const snippetId = generateId();
-      const snippetName = tab.name === SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME 
+      const snippetName = (tab.name === SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME || tab.name === '+ New')
         ? generateSnippetName(tab.query)
         : tab.name;
       
