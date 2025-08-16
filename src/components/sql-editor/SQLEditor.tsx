@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useSQLSnippets } from '@/hooks/useSQLSnippets';
-import { Play, Save, Plus, X, Pencil } from 'lucide-react';
+import { Play, Plus, X, Pencil } from 'lucide-react';
 import type { QueryResult, ScriptResult } from '@/types';
 
 
@@ -38,7 +38,6 @@ export function SQLEditor() {
     setActiveTab,
     updateTabQuery,
     updateTabName,
-    saveSnippet,
     loadSnippet,
     deleteSnippet,
     renameSnippet,
@@ -126,12 +125,6 @@ export function SQLEditor() {
     }
   };
 
-  const handleSaveQuery = () => {
-    const activeTab = getActiveTab();
-    if (activeTab) {
-      saveSnippet(activeTab.id);
-    }
-  };
   
   const handleTabNameEdit = (tabId: string, currentName: string) => {
     setEditingTabId(tabId);
@@ -333,10 +326,6 @@ export function SQLEditor() {
                 </Button>
               </div>
               <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={handleSaveQuery}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save
-                </Button>
                 <Button 
                   size="sm" 
                   onClick={handleExecuteQuery}
