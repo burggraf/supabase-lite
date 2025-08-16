@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useSQLSnippets } from '@/hooks/useSQLSnippets';
-import { Play, Plus, X, Pencil } from 'lucide-react';
+import { Play, Plus, X, Pencil, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { QueryResult, ScriptResult } from '@/types';
 
 
@@ -19,6 +20,7 @@ export function SQLEditor() {
   const [editingTabName, setEditingTabName] = useState('');
   const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
   const [editingSnippetName, setEditingSnippetName] = useState('');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   // Split pane state - using fixed pixel heights instead of percentages
   const [editorHeight, setEditorHeight] = useState(400); // Fixed pixel height
@@ -162,6 +164,10 @@ export function SQLEditor() {
     setEditingSnippetName('');
   };
   
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+  
   const handleQueryChange = (value: string | undefined) => {
     const activeTab = getActiveTab();
     if (activeTab) {
@@ -200,8 +206,13 @@ export function SQLEditor() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar with Saved Snippets */}
-        <div className="w-80 border-r bg-white">
-          <div className="h-full flex flex-col">
+        <div 
+          className={cn(
+            "border-r bg-white transition-all duration-300 ease-in-out overflow-hidden",
+            isSidebarCollapsed ? "w-0" : "w-80"
+          )}
+        >
+          <div className="w-80 h-full flex flex-col">
             <div className="px-4 border-b" style={{height: '38px', display: 'flex', alignItems: 'center'}}>
               <h3 className="font-medium text-sm text-gray-600 uppercase tracking-wide">
                 Saved Snippets
@@ -271,6 +282,15 @@ export function SQLEditor() {
           <div className="bg-white">
             <div className="flex items-center justify-between px-4" style={{height: '38px'}}>
               <div className="flex items-center flex-1">
+                {/* Sidebar Toggle Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleSidebar}
+                  className="h-8 w-8 p-0 mr-2 border border-gray-200 rounded-t-lg bg-gray-50 hover:bg-gray-100"
+                >
+                  {isSidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                </Button>
                 <Tabs value={activeTabId} onValueChange={setActiveTab} className="flex-1">
                   <div className="flex items-center">
                     <TabsList className="h-auto p-0 bg-transparent rounded-none justify-start flex-none">
