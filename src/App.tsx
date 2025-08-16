@@ -1,13 +1,13 @@
-import { useState } from 'react';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { SQLEditor } from '@/components/sql-editor/SQLEditor';
 import { TableEditor } from '@/components/table-editor/TableEditor';
 import { DatabaseWorking as Database } from '@/components/database/DatabaseWorking';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useRouter } from '@/hooks/useRouter';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const { currentPage, navigate } = useRouter();
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -45,7 +45,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} />
+      <Sidebar currentPage={currentPage} onPageChange={navigate} />
       <div className="flex-1 flex flex-col overflow-hidden">
         {renderCurrentPage()}
       </div>
