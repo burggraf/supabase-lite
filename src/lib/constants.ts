@@ -70,6 +70,12 @@ export const NAVIGATION_ITEMS = [
     path: '/api',
     disabled: true,
   },
+  {
+    id: 'api-test',
+    label: 'API Tester',
+    icon: 'TestTube',
+    path: '/api-test',
+  },
 ];
 
 export const QUERY_EXAMPLES = [

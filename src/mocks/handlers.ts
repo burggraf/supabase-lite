@@ -1,36 +1,297 @@
 import { http, HttpResponse } from 'msw'
+import { SupabaseAPIBridge } from './supabase-bridge'
+
+const bridge = new SupabaseAPIBridge()
 
 export const handlers = [
-  // Hello endpoint
-  http.get('/hello', () => {
-    return HttpResponse.json({
-      message: 'Hello, world.',
-      timestamp: new Date().toISOString(),
-      version: '1.0.0'
-    })
+  // PostgREST-compatible REST API endpoints
+  http.get('/rest/v1/:table', async ({ params, request }) => {
+    try {
+      const result = await bridge.handleRestRequest({
+        table: params.table as string,
+        method: 'GET',
+        headers: Object.fromEntries(request.headers.entries()),
+        url: new URL(request.url)
+      })
+      
+      return HttpResponse.json(result, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
   }),
 
-  // Health check endpoint
-  http.get('/api/health', () => {
+  http.post('/rest/v1/:table', async ({ params, request }) => {
+    try {
+      const body = await request.json()
+      const result = await bridge.handleRestRequest({
+        table: params.table as string,
+        method: 'POST',
+        body,
+        headers: Object.fromEntries(request.headers.entries()),
+        url: new URL(request.url)
+      })
+      
+      return HttpResponse.json(result, {
+        status: 201,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+  }),
+
+  http.patch('/rest/v1/:table', async ({ params, request }) => {
+    try {
+      const body = await request.json()
+      const result = await bridge.handleRestRequest({
+        table: params.table as string,
+        method: 'PATCH',
+        body,
+        headers: Object.fromEntries(request.headers.entries()),
+        url: new URL(request.url)
+      })
+      
+      return HttpResponse.json(result, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+  }),
+
+  http.delete('/rest/v1/:table', async ({ params, request }) => {
+    try {
+      const result = await bridge.handleRestRequest({
+        table: params.table as string,
+        method: 'DELETE',
+        headers: Object.fromEntries(request.headers.entries()),
+        url: new URL(request.url)
+      })
+      
+      return HttpResponse.json(result, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+  }),
+
+  // Authentication endpoints
+  http.post('/auth/v1/signup', async ({ request }) => {
+    try {
+      const body = await request.json()
+      const result = await bridge.handleAuth('signup', 'POST', body)
+      
+      return HttpResponse.json(result, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
+          'Access-Control-Allow-Methods': 'POST'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+  }),
+
+  http.post('/auth/v1/signin', async ({ request }) => {
+    try {
+      const body = await request.json()
+      const result = await bridge.handleAuth('signin', 'POST', body)
+      
+      return HttpResponse.json(result, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
+          'Access-Control-Allow-Methods': 'POST'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+  }),
+
+  http.post('/auth/v1/token', async ({ request }) => {
+    try {
+      const body = await request.json()
+      const result = await bridge.handleAuth('refresh', 'POST', body)
+      
+      return HttpResponse.json(result, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
+          'Access-Control-Allow-Methods': 'POST'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+  }),
+
+  http.post('/auth/v1/logout', async () => {
+    try {
+      const result = await bridge.handleAuth('signout', 'POST')
+      
+      return HttpResponse.json(result, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
+          'Access-Control-Allow-Methods': 'POST'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+  }),
+
+  http.get('/auth/v1/user', async ({ request }) => {
+    try {
+      const result = await bridge.handleAuth('user', 'GET')
+      
+      return HttpResponse.json(result, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
+          'Access-Control-Allow-Methods': 'GET'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+  }),
+
+  // Health check endpoint for testing
+  http.get('/health', () => {
     return HttpResponse.json({
       status: 'ok',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      message: 'Supabase Lite API is running'
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     })
   }),
 
-  // Future Supabase-like endpoints (placeholder structure)
-  http.get('/rest/v1/:table', ({ params }) => {
-    return HttpResponse.json({
-      message: `REST API for table: ${params.table}`,
-      status: 'mock_response'
-    })
-  }),
-
-  http.post('/auth/v1/token', () => {
-    return HttpResponse.json({
-      access_token: 'mock_token_' + Math.random().toString(36).substr(2, 9),
-      token_type: 'bearer',
-      expires_in: 3600
+  // CORS preflight requests
+  http.options('*', () => {
+    return new HttpResponse(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+        'Access-Control-Max-Age': '86400'
+      }
     })
   })
 ]

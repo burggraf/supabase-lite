@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Lite API Test</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .test-button { margin: 10px; padding: 10px 20px; cursor: pointer; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; white-space: pre-wrap; }
+        .success { background: #e7f7e7; }
+        .error { background: #ffe7e7; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Supabase Lite API Test</h1>
+    <p>This page tests the browser-only Supabase API endpoints using MSW + PGlite.</p>
+
+    <div>
+        <button class="test-button" onclick="testHealth()">Test Health Check</button>
+        <button class="test-button" onclick="testUsers()">Get Users</button>
+        <button class="test-button" onclick="testCreateUser()">Create User</button>
+        <button class="test-button" onclick="testAuth()">Test Auth Signup</button>
+        <button class="test-button" onclick="testQueryParams()">Test Query Params</button>
+        <button class="test-button" onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        // Note: This page needs to be accessed after visiting the main app first
+        // so that MSW Service Worker is already registered and active
+        let mswReady = false;
+        
+        // Check if Service Worker is already registered
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                if (registrations.length > 0) {
+                    console.log('Service Worker already registered');
+                    mswReady = true;
+                } else {
+                    console.log('No Service Worker found - visit main app first');
+                }
+            });
+        }
+
+        const results = document.getElementById('results');
+
+        function addResult(test, data, isError = false) {
+            const div = document.createElement('div');
+            div.className = `result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `<strong>${test}:</strong>\n${JSON.stringify(data, null, 2)}`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            results.innerHTML = '';
+        }
+
+        async function testHealth() {
+            if (!mswReady) {
+                addResult('Health Check', { error: 'MSW not initialized yet' }, true);
+                return;
+            }
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                addResult('Health Check', data);
+            } catch (error) {
+                addResult('Health Check', { error: error.message }, true);
+            }
+        }
+
+        async function testUsers() {
+            try {
+                const response = await fetch('/rest/v1/users');
+                const data = await response.json();
+                addResult('Get Users', { status: response.status, data });
+            } catch (error) {
+                addResult('Get Users', { error: error.message }, true);
+            }
+        }
+
+        async function testCreateUser() {
+            try {
+                const response = await fetch('/rest/v1/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        name: 'Test User',
+                        created_at: new Date().toISOString()
+                    })
+                });
+                const data = await response.json();
+                addResult('Create User', { status: response.status, data });
+            } catch (error) {
+                addResult('Create User', { error: error.message }, true);
+            }
+        }
+
+        async function testAuth() {
+            try {
+                const response = await fetch('/auth/v1/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'auth@example.com',
+                        password: 'password123',
+                        name: 'Auth User'
+                    })
+                });
+                const data = await response.json();
+                addResult('Auth Signup', { status: response.status, data });
+            } catch (error) {
+                addResult('Auth Signup', { error: error.message }, true);
+            }
+        }
+
+        async function testQueryParams() {
+            try {
+                const response = await fetch('/rest/v1/users?select=id,email,name&limit=5');
+                const data = await response.json();
+                addResult('Query with Params', { status: response.status, data });
+            } catch (error) {
+                addResult('Query with Params', { error: error.message }, true);
+            }
+        }
+
+        // Auto-run health check once MSW is ready
+        function waitForMSW() {
+            if (mswReady) {
+                testHealth();
+            } else {
+                // Check again for service worker
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(registrations => {
+                        if (registrations.length > 0) {
+                            mswReady = true;
+                            testHealth();
+                        } else {
+                            setTimeout(waitForMSW, 1000);
+                        }
+                    });
+                } else {
+                    setTimeout(waitForMSW, 1000);
+                }
+            }
+        }
+        
+        // Add instructions to visit main app first
+        addResult('Instructions', 'Visit http://localhost:5173/ first to initialize MSW, then return here');
+        
+        // Start checking for MSW readiness
+        setTimeout(waitForMSW, 1000);
+    </script>
+</body>
+</html>
