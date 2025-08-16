@@ -115,13 +115,40 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
     
     const timeout = setTimeout(() => {
       const tab = tabs.find(t => t.id === tabId);
-      if (tab && tab.isDirty && tab.snippetId) {
-        // Auto-save existing snippet
-        setSnippets(prev => prev.map(snippet => 
-          snippet.id === tab.snippetId 
-            ? { ...snippet, query: tab.query, updatedAt: new Date() }
-            : snippet
-        ));
+      if (tab && tab.isDirty && tab.query.trim()) {
+        const now = new Date();
+        
+        if (tab.snippetId) {
+          // Auto-save existing snippet
+          setSnippets(prev => prev.map(snippet => 
+            snippet.id === tab.snippetId 
+              ? { ...snippet, name: tab.name, query: tab.query, updatedAt: now }
+              : snippet
+          ));
+        } else {
+          // Auto-create new snippet
+          const snippetId = generateId();
+          const snippetName = tab.name === SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME 
+            ? generateSnippetName(tab.query)
+            : tab.name;
+          
+          const newSnippet: SQLSnippet = {
+            id: snippetId,
+            name: snippetName,
+            query: tab.query,
+            createdAt: now,
+            updatedAt: now,
+          };
+          
+          setSnippets(prev => [...prev, newSnippet]);
+          
+          // Update tab to reference the snippet
+          setTabs(prev => prev.map(t => 
+            t.id === tabId 
+              ? { ...t, snippetId, name: snippetName, isDirty: false }
+              : t
+          ));
+        }
         
         // Mark tab as clean
         setTabs(prev => prev.map(t => 
@@ -132,7 +159,7 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
     }, SQL_EDITOR_CONFIG.AUTO_SAVE_DEBOUNCE_MS);
     
     saveTimeoutRefs.current.set(tabId, timeout);
-  }, [tabs]);
+  }, [tabs, generateId, generateSnippetName]);
   
   // Tab management functions
   const createTab = useCallback((query?: string, name?: string): string => {
