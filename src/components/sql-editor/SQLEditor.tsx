@@ -3,10 +3,10 @@ import Editor from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useDatabase, useQueryHistory } from '@/hooks/useDatabase';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useDatabase } from '@/hooks/useDatabase';
 import { useSQLSnippets } from '@/hooks/useSQLSnippets';
-import { Play, Save, History, Plus, X } from 'lucide-react';
+import { Play, Save, Plus, X } from 'lucide-react';
 import type { QueryResult, ScriptResult } from '@/types';
 
 
@@ -27,7 +27,6 @@ export function SQLEditor() {
   const dragStartHeight = useRef<number>(0);
   
   const { executeQuery, executeScript } = useDatabase();
-  const { history, addToHistory } = useQueryHistory();
   const {
     tabs,
     activeTabId,
@@ -101,7 +100,6 @@ export function SQLEditor() {
     setError(null);
     setResult(null);
     setScriptResult(null);
-    const startTime = performance.now();
 
     try {
       // Detect if this is a multi-statement script by counting meaningful semicolons
@@ -112,18 +110,14 @@ export function SQLEditor() {
         // Execute as script using exec method
         const scriptResult = await executeScript(query);
         setScriptResult(scriptResult);
-        addToHistory(query, scriptResult.totalDuration, scriptResult.errorCount === 0);
       } else {
         // Execute as single query
         const result = await executeQuery(query);
         setResult(result);
-        addToHistory(query, result.duration, true);
       }
     } catch (err: any) {
       const errorMessage = err?.message || 'Query execution failed';
       setError(errorMessage);
-      const duration = performance.now() - startTime;
-      addToHistory(query, duration, false, errorMessage);
     } finally {
       setIsExecuting(false);
     }
@@ -188,194 +182,132 @@ export function SQLEditor() {
 
   return (
     <div className="flex-1 flex flex-col h-full" ref={containerRef}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div>
-          <h2 className="text-2xl font-bold">SQL Editor</h2>
-          <p className="text-sm text-muted-foreground">
-            Write and execute SQL queries against your local database
-          </p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex space-x-2">
-            <Button variant="outline" size="sm" onClick={handleSaveQuery}>
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={handleExecuteQuery}
-              disabled={isExecuting || !getActiveTab()?.query.trim()}
-            >
-              <Play className="h-4 w-4 mr-2" />
-              {isExecuting ? 'Running...' : 'Run'}
-            </Button>
-          </div>
-        </div>
-      </div>
       
-      {/* Tabs */}
-      <div className="border-b">
-        <Tabs value={activeTabId} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center px-4 pt-2">
-            <TabsList className="h-8 p-0 bg-transparent">
-              {tabs.map((tab) => (
-                <div key={tab.id} className="flex items-center group">
-                  <TabsTrigger 
-                    value={tab.id} 
-                    className="relative px-3 py-1 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                  >
-                    <div className="flex items-center space-x-2">
-                      {editingTabId === tab.id ? (
-                        <input
-                          className="w-24 px-1 py-0 text-xs border rounded"
-                          value={editingTabName}
-                          onChange={(e) => setEditingTabName(e.target.value)}
-                          onBlur={handleTabNameSave}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleTabNameSave();
-                            if (e.key === 'Escape') handleTabNameCancel();
-                          }}
-                          autoFocus
-                        />
-                      ) : (
-                        <span 
-                          className="cursor-pointer"
-                          onDoubleClick={() => handleTabNameEdit(tab.id, tab.name)}
-                        >
-                          {tab.name}
-                          {tab.isDirty && <span className="ml-1 text-orange-500">•</span>}
-                        </span>
-                      )}
-                      {tabs.length > 1 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            closeTab(tab.id);
-                          }}
-                          className="ml-1 opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  </TabsTrigger>
-                </div>
-              ))}
-            </TabsList>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => createTab()}
-              className="ml-2 h-8 w-8 p-0"
-              disabled={tabs.length >= 10}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </Tabs>
-      </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar with Snippets and History */}
-        <div className="w-80 border-r bg-gray-50">
-          <Tabs defaultValue="snippets" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 m-4">
-              <TabsTrigger value="snippets">Snippets</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="snippets" className="flex-1 overflow-hidden">
-              <div className="p-4 border-b bg-white">
-                <h3 className="font-medium flex items-center">
-                  <Save className="h-4 w-4 mr-2" />
-                  Saved Snippets
-                </h3>
-              </div>
-              <div className="p-4 space-y-2 overflow-y-auto">
-                {snippets.length === 0 && (
+        {/* Sidebar with Saved Snippets */}
+        <div className="w-80 border-r bg-white">
+          <div className="h-full flex flex-col">
+            <div className="px-4 border-b" style={{height: '38px', display: 'flex', alignItems: 'center'}}>
+              <h3 className="font-medium text-sm text-gray-600 uppercase tracking-wide">
+                Saved Snippets
+              </h3>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {snippets.length === 0 && (
+                <div className="p-4">
                   <p className="text-sm text-gray-500">No saved snippets yet</p>
-                )}
-                {snippets.map((snippet) => (
-                  <Card 
-                    key={snippet.id} 
-                    className="cursor-pointer hover:bg-white transition-colors group"
-                    onClick={() => loadSnippet(snippet.id)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-sm font-medium truncate flex-1">
-                          {snippet.name}
-                        </h4>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteSnippet(snippet.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                      <p className="text-xs font-mono truncate mb-1 text-gray-600">
-                        {snippet.query.split('\n')[0]}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(snippet.updatedAt).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="history" className="flex-1 overflow-hidden">
-              <div className="p-4 border-b bg-white">
-                <h3 className="font-medium flex items-center">
-                  <History className="h-4 w-4 mr-2" />
-                  Query History
-                </h3>
-              </div>
-              <div className="p-4 space-y-2 overflow-y-auto">
-                {history.length === 0 && (
-                  <p className="text-sm text-gray-500">No queries executed yet</p>
-                )}
-                {history.map((item: any) => (
-                  <Card 
-                    key={item.id} 
-                    className="cursor-pointer hover:bg-white transition-colors"
-                    onClick={() => {
-                      const activeTab = getActiveTab();
-                      if (activeTab) {
-                        updateTabQuery(activeTab.id, item.query);
-                      }
-                    }}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between mb-2">
-                        <Badge variant={item.success ? 'success' : 'destructive'}>
-                          {item.success ? 'Success' : 'Error'}
-                        </Badge>
-                        <span className="text-xs text-gray-500">
-                          {new Date(item.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <p className="text-xs font-mono truncate mb-1">
-                        {item.query.split('\n')[0]}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {item.duration.toFixed(2)}ms
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
+                </div>
+              )}
+              {snippets.map((snippet) => (
+                <div
+                  key={snippet.id}
+                  className="px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors group"
+                  onClick={() => loadSnippet(snippet.id)}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="text-sm font-medium truncate flex-1">
+                      {snippet.name}
+                    </h4>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteSnippet(snippet.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <p className="text-xs font-mono truncate mb-1 text-gray-600">
+                    {snippet.query.split('\n')[0]}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(snippet.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Editor Panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Tabs and Header */}
+          <div className="border-b bg-white">
+            <div className="flex items-center justify-between px-4 border-b" style={{height: '38px'}}>
+              <div className="flex items-center flex-1">
+                <Tabs value={activeTabId} onValueChange={setActiveTab} className="flex-1">
+                  <div className="flex items-center">
+                    <TabsList className="h-8 p-0 bg-transparent">
+                      {tabs.map((tab) => (
+                        <div key={tab.id} className="flex items-center group relative">
+                          <TabsTrigger 
+                            value={tab.id} 
+                            className="relative px-3 py-1 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                          >
+                            {editingTabId === tab.id ? (
+                              <input
+                                className="w-24 px-1 py-0 text-xs border rounded"
+                                value={editingTabName}
+                                onChange={(e) => setEditingTabName(e.target.value)}
+                                onBlur={handleTabNameSave}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleTabNameSave();
+                                  if (e.key === 'Escape') handleTabNameCancel();
+                                }}
+                                autoFocus
+                              />
+                            ) : (
+                              <span 
+                                className="cursor-pointer"
+                                onDoubleClick={() => handleTabNameEdit(tab.id, tab.name)}
+                              >
+                                {tab.name}
+                                {tab.isDirty && <span className="ml-1 text-orange-500">•</span>}
+                              </span>
+                            )}
+                          </TabsTrigger>
+                          {tabs.length > 1 && (
+                            <div
+                              onClick={() => closeTab(tab.id)}
+                              className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-0.5 cursor-pointer z-10"
+                            >
+                              <X className="h-3 w-3" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </TabsList>
+                  </div>
+                </Tabs>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => createTab()}
+                  className="ml-2 h-8 w-8 p-0"
+                  disabled={tabs.length >= 10}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" onClick={handleSaveQuery}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={handleExecuteQuery}
+                  disabled={isExecuting || !getActiveTab()?.query.trim()}
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  {isExecuting ? 'Running...' : 'Run'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* SQL Editor Section */}
           <div 
             className="flex-shrink-0"
