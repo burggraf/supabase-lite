@@ -35,3 +35,6 @@ dist-ssr
 
 # Test coverage
 coverage/
+
+# Cloudflare deployment config (auto-generated)
+wrangler.toml

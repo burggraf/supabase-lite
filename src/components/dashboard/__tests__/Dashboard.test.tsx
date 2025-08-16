@@ -208,7 +208,7 @@ describe('Dashboard', () => {
     it('should render all 4 stat cards', () => {
       render(<Dashboard />)
       
-      const statCards = screen.getAllByRole('generic').filter(el => 
+      screen.getAllByRole('generic').filter(el => 
         el.textContent?.includes('Database Status') ||
         el.textContent?.includes('Tables') ||
         el.textContent?.includes('Sample Users') ||
