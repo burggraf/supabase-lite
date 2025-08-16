@@ -277,11 +277,108 @@ export function SQLEditor() {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar with Snippets and History */}
+        <div className="w-80 border-r bg-gray-50">
+          <Tabs defaultValue="snippets" className="h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-2 m-4">
+              <TabsTrigger value="snippets">Snippets</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="snippets" className="flex-1 overflow-hidden">
+              <div className="p-4 border-b bg-white">
+                <h3 className="font-medium flex items-center">
+                  <Save className="h-4 w-4 mr-2" />
+                  Saved Snippets
+                </h3>
+              </div>
+              <div className="p-4 space-y-2 overflow-y-auto">
+                {snippets.length === 0 && (
+                  <p className="text-sm text-gray-500">No saved snippets yet</p>
+                )}
+                {snippets.map((snippet) => (
+                  <Card 
+                    key={snippet.id} 
+                    className="cursor-pointer hover:bg-white transition-colors group"
+                    onClick={() => loadSnippet(snippet.id)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-sm font-medium truncate flex-1">
+                          {snippet.name}
+                        </h4>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteSnippet(snippet.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <p className="text-xs font-mono truncate mb-1 text-gray-600">
+                        {snippet.query.split('\n')[0]}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(snippet.updatedAt).toLocaleDateString()}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="history" className="flex-1 overflow-hidden">
+              <div className="p-4 border-b bg-white">
+                <h3 className="font-medium flex items-center">
+                  <History className="h-4 w-4 mr-2" />
+                  Query History
+                </h3>
+              </div>
+              <div className="p-4 space-y-2 overflow-y-auto">
+                {history.length === 0 && (
+                  <p className="text-sm text-gray-500">No queries executed yet</p>
+                )}
+                {history.map((item: any) => (
+                  <Card 
+                    key={item.id} 
+                    className="cursor-pointer hover:bg-white transition-colors"
+                    onClick={() => {
+                      const activeTab = getActiveTab();
+                      if (activeTab) {
+                        updateTabQuery(activeTab.id, item.query);
+                      }
+                    }}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <Badge variant={item.success ? 'success' : 'destructive'}>
+                          {item.success ? 'Success' : 'Error'}
+                        </Badge>
+                        <span className="text-xs text-gray-500">
+                          {new Date(item.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="text-xs font-mono truncate mb-1">
+                        {item.query.split('\n')[0]}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {item.duration.toFixed(2)}ms
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
         {/* Editor Panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* SQL Editor Section */}
           <div 
-            className="border-r flex-shrink-0"
+            className="flex-shrink-0"
             style={{ height: `${editorHeight}px` }}
           >
             <Editor
@@ -314,7 +411,7 @@ export function SQLEditor() {
 
           {/* Resizable Divider */}
           <div 
-            className={`border-r border-t border-b h-2 bg-gray-100 hover:bg-gray-200 cursor-row-resize flex items-center justify-center transition-colors flex-shrink-0 ${
+            className={`border-t border-b h-2 bg-gray-100 hover:bg-gray-200 cursor-row-resize flex items-center justify-center transition-colors flex-shrink-0 ${
               isDragging ? 'bg-gray-300' : ''
             }`}
             onMouseDown={handleMouseDown}
@@ -323,7 +420,7 @@ export function SQLEditor() {
           </div>
 
           {/* Results Panel */}
-          <div className="border-r flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden">
             <div className="h-full overflow-y-auto">
             {error && (
               <div className="p-4 bg-red-50 border-l-4 border-red-400">
@@ -483,102 +580,6 @@ export function SQLEditor() {
           </div>
         </div>
 
-        {/* Sidebar with Snippets and History */}
-        <div className="w-80 border-l bg-gray-50">
-          <Tabs defaultValue="snippets" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 mx-4 mt-4">
-              <TabsTrigger value="snippets">Snippets</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="snippets" className="flex-1 overflow-hidden">
-              <div className="p-4 border-b bg-white">
-                <h3 className="font-medium flex items-center">
-                  <Save className="h-4 w-4 mr-2" />
-                  Saved Snippets
-                </h3>
-              </div>
-              <div className="p-4 space-y-2 overflow-y-auto">
-                {snippets.length === 0 && (
-                  <p className="text-sm text-gray-500">No saved snippets yet</p>
-                )}
-                {snippets.map((snippet) => (
-                  <Card 
-                    key={snippet.id} 
-                    className="cursor-pointer hover:bg-white transition-colors group"
-                    onClick={() => loadSnippet(snippet.id)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-sm font-medium truncate flex-1">
-                          {snippet.name}
-                        </h4>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteSnippet(snippet.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                      <p className="text-xs font-mono truncate mb-1 text-gray-600">
-                        {snippet.query.split('\n')[0]}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(snippet.updatedAt).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="history" className="flex-1 overflow-hidden">
-              <div className="p-4 border-b bg-white">
-                <h3 className="font-medium flex items-center">
-                  <History className="h-4 w-4 mr-2" />
-                  Query History
-                </h3>
-              </div>
-              <div className="p-4 space-y-2 overflow-y-auto">
-                {history.length === 0 && (
-                  <p className="text-sm text-gray-500">No queries executed yet</p>
-                )}
-                {history.map((item: any) => (
-                  <Card 
-                    key={item.id} 
-                    className="cursor-pointer hover:bg-white transition-colors"
-                    onClick={() => {
-                      const activeTab = getActiveTab();
-                      if (activeTab) {
-                        updateTabQuery(activeTab.id, item.query);
-                      }
-                    }}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between mb-2">
-                        <Badge variant={item.success ? 'success' : 'destructive'}>
-                          {item.success ? 'Success' : 'Error'}
-                        </Badge>
-                        <span className="text-xs text-gray-500">
-                          {new Date(item.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <p className="text-xs font-mono truncate mb-1">
-                        {item.query.split('\n')[0]}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {item.duration.toFixed(2)}ms
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
       </div>
     </div>
   );
