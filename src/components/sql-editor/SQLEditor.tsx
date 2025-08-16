@@ -234,7 +234,7 @@ export function SQLEditor() {
         {/* Editor Panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tabs and Header */}
-          <div className="border-b bg-white">
+          <div className="bg-white">
             <div className="flex items-center justify-between px-4 border-b" style={{height: '38px'}}>
               <div className="flex items-center flex-1">
                 <Tabs value={activeTabId} onValueChange={setActiveTab} className="flex-1">
