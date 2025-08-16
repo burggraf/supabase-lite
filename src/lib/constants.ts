@@ -7,6 +7,7 @@ export const DATABASE_CONFIG = {
   HISTORY_KEY: 'supabase_lite_query_history',
   SAVED_QUERIES_KEY: 'supabase_lite_saved_queries',
   SQL_SNIPPETS_KEY: 'supabase_lite_sql_snippets',
+  TAB_LAYOUT_KEY: 'supabase_lite_tab_layout',
 };
 
 export const NAVIGATION_ITEMS = [
