@@ -1,6 +1,20 @@
 import '@testing-library/jest-dom'
-import { afterEach, vi } from 'vitest'
+import { afterEach, beforeAll, afterAll, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
+import { server } from '../mocks/server'
+
+// Start server before all tests
+beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }))
+
+// Reset handlers after each test (important for test isolation)
+afterEach(() => {
+  server.resetHandlers()
+  cleanup()
+  vi.clearAllMocks()
+})
+
+// Clean up after the tests are finished
+afterAll(() => server.close())
 
 // Mock crypto.randomUUID if not available
 Object.defineProperty(global, 'crypto', {
@@ -27,8 +41,4 @@ Object.defineProperty(window, 'performance', {
   }
 })
 
-// Cleanup after each test
-afterEach(() => {
-  cleanup()
-  vi.clearAllMocks()
-})
+// Note: fetch is provided by MSW, don't mock it globally
