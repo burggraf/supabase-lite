@@ -209,10 +209,11 @@ export function SQLEditor() {
         <div 
           className={cn(
             "border-r bg-white transition-all duration-300 ease-in-out overflow-hidden",
-            isSidebarCollapsed ? "w-0" : "w-80"
+            isSidebarCollapsed ? "w-0" : ""
           )}
+          style={{ width: isSidebarCollapsed ? '0px' : '260px' }}
         >
-          <div className="w-80 h-full flex flex-col">
+          <div className="h-full flex flex-col" style={{ width: '260px' }}>
             <div className="px-4 border-b" style={{height: '38px', display: 'flex', alignItems: 'center'}}>
               <h3 className="font-medium text-sm text-gray-600 uppercase tracking-wide">
                 Saved Snippets
@@ -287,7 +288,7 @@ export function SQLEditor() {
                   variant="ghost"
                   size="sm"
                   onClick={toggleSidebar}
-                  className="h-8 w-8 p-0 mr-2 border border-gray-200 rounded-t-lg bg-gray-50 hover:bg-gray-100"
+                  className="h-8 w-8 p-0 mr-2 rounded-t-lg bg-transparent hover:bg-gray-100"
                 >
                   {isSidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                 </Button>
@@ -339,7 +340,7 @@ export function SQLEditor() {
                   variant="ghost"
                   size="sm"
                   onClick={() => createTab()}
-                  className="ml-2 h-8 w-8 p-0 border border-gray-200 rounded-t-lg bg-gray-50 hover:bg-gray-100"
+                  className="ml-2 h-8 w-8 p-0 rounded-t-lg bg-transparent hover:bg-gray-100"
                   disabled={tabs.length >= 10}
                 >
                   <Plus className="h-4 w-4" />
