@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useSQLSnippets } from '@/hooks/useSQLSnippets';
-import { Play, Save, Plus, X } from 'lucide-react';
+import { Play, Save, Plus, X, Pencil } from 'lucide-react';
 import type { QueryResult, ScriptResult } from '@/types';
 
 
@@ -17,6 +17,8 @@ export function SQLEditor() {
   const [error, setError] = useState<string | null>(null);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTabName, setEditingTabName] = useState('');
+  const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
+  const [editingSnippetName, setEditingSnippetName] = useState('');
   
   // Split pane state - using fixed pixel heights instead of percentages
   const [editorHeight, setEditorHeight] = useState(400); // Fixed pixel height
@@ -39,6 +41,7 @@ export function SQLEditor() {
     saveSnippet,
     loadSnippet,
     deleteSnippet,
+    renameSnippet,
     getActiveTab
   } = useSQLSnippets();
 
@@ -148,6 +151,24 @@ export function SQLEditor() {
     setEditingTabName('');
   };
   
+  const handleSnippetNameEdit = (snippetId: string, currentName: string) => {
+    setEditingSnippetId(snippetId);
+    setEditingSnippetName(currentName);
+  };
+  
+  const handleSnippetNameSave = () => {
+    if (editingSnippetId && editingSnippetName.trim()) {
+      renameSnippet(editingSnippetId, editingSnippetName.trim());
+    }
+    setEditingSnippetId(null);
+    setEditingSnippetName('');
+  };
+  
+  const handleSnippetNameCancel = () => {
+    setEditingSnippetId(null);
+    setEditingSnippetName('');
+  };
+  
   const handleQueryChange = (value: string | undefined) => {
     const activeTab = getActiveTab();
     if (activeTab) {
@@ -205,26 +226,46 @@ export function SQLEditor() {
                   className="px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors group"
                   onClick={() => loadSnippet(snippet.id)}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-sm font-medium truncate flex-1">
-                      {snippet.name}
-                    </h4>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteSnippet(snippet.id);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+                  <div className="flex items-center justify-between">
+                    {editingSnippetId === snippet.id ? (
+                      <input
+                        className="flex-1 px-2 py-1 text-sm border rounded mr-2"
+                        value={editingSnippetName}
+                        onChange={(e) => setEditingSnippetName(e.target.value)}
+                        onBlur={handleSnippetNameSave}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSnippetNameSave();
+                          if (e.key === 'Escape') handleSnippetNameCancel();
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                    ) : (
+                      <h4 className="text-sm font-medium truncate flex-1">
+                        {snippet.name}
+                      </h4>
+                    )}
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSnippetNameEdit(snippet.id, snippet.name);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSnippet(snippet.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs font-mono truncate mb-1 text-gray-600">
-                    {snippet.query.split('\n')[0]}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(snippet.updatedAt).toLocaleDateString()}
-                  </p>
                 </div>
               ))}
             </div>
