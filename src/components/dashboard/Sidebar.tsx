@@ -9,7 +9,8 @@ import {
   Code, 
   BookOpen,
   Database,
-  Settings
+  Settings,
+  TestTube
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ const iconMap = {
   BookOpen,
   Database,
   Settings,
+  TestTube,
 };
 
 interface SidebarProps {
@@ -94,6 +96,12 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
       label: 'API Docs',
       icon: 'BookOpen' as keyof typeof iconMap,
       badge: 'Coming Soon',
+    },
+    {
+      id: 'api-test',
+      label: 'API Tester',
+      icon: 'TestTube' as keyof typeof iconMap,
+      badge: null,
     },
   ];
 

@@ -3,6 +3,7 @@ import { Dashboard } from '@/components/dashboard/Dashboard';
 import { SQLEditor } from '@/components/sql-editor/SQLEditor';
 import { TableEditor } from '@/components/table-editor/TableEditor';
 import { DatabaseWorking as Database } from '@/components/database/DatabaseWorking';
+import { APITester } from '@/components/api-test/APITester';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useRouter } from '@/hooks/useRouter';
 
@@ -29,6 +30,14 @@ function App() {
         return (
           <ErrorBoundary>
             <Database />
+          </ErrorBoundary>
+        );
+      case 'api-test':
+        return (
+          <ErrorBoundary>
+            <div className="flex-1 p-6">
+              <APITester />
+            </div>
           </ErrorBoundary>
         );
       default:
