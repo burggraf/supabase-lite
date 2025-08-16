@@ -20,7 +20,11 @@ export function SQLEditor() {
   const [editingTabName, setEditingTabName] = useState('');
   const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
   const [editingSnippetName, setEditingSnippetName] = useState('');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    // Load sidebar state from localStorage
+    const saved = localStorage.getItem('supabase_lite_sidebar_collapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
   
   // Split pane state - using fixed pixel heights instead of percentages
   const [editorHeight, setEditorHeight] = useState(400); // Fixed pixel height
@@ -165,7 +169,9 @@ export function SQLEditor() {
   };
   
   const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
+    const newState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newState);
+    localStorage.setItem('supabase_lite_sidebar_collapsed', JSON.stringify(newState));
   };
   
   const handleQueryChange = (value: string | undefined) => {

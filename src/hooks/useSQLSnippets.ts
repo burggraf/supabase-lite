@@ -33,8 +33,9 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
   // Refs for debouncing
   const saveTimeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
   
-  // Load snippets from localStorage on mount
+  // Load snippets and tab layout from localStorage on mount
   useEffect(() => {
+    // Load snippets
     const savedSnippets = localStorage.getItem(DATABASE_CONFIG.SQL_SNIPPETS_KEY);
     if (savedSnippets) {
       try {
@@ -50,7 +51,22 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
       }
     }
     
-    // Create initial tab - use direct ID generation to avoid dependency
+    // Load tab layout
+    const savedTabLayout = localStorage.getItem(DATABASE_CONFIG.TAB_LAYOUT_KEY);
+    if (savedTabLayout) {
+      try {
+        const { tabs: savedTabs, activeTabId: savedActiveTabId } = JSON.parse(savedTabLayout);
+        if (savedTabs && Array.isArray(savedTabs) && savedTabs.length > 0 && savedActiveTabId) {
+          setTabs(savedTabs);
+          setActiveTabId(savedActiveTabId);
+          return; // Skip creating initial tab if we have saved state
+        }
+      } catch (error) {
+        console.error('Failed to parse saved tab layout:', error);
+      }
+    }
+    
+    // Create initial tab only if no saved state was loaded
     const initialTabId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setTabs([{
       id: initialTabId,
@@ -68,6 +84,18 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
       localStorage.setItem(DATABASE_CONFIG.SQL_SNIPPETS_KEY, JSON.stringify(snippets));
     }
   }, [snippets]);
+  
+  // Save tab layout to localStorage whenever tabs or activeTabId changes
+  useEffect(() => {
+    if (tabs.length > 0 && activeTabId) {
+      const tabLayout = {
+        tabs,
+        activeTabId,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem(DATABASE_CONFIG.TAB_LAYOUT_KEY, JSON.stringify(tabLayout));
+    }
+  }, [tabs, activeTabId]);
   
   // Generate unique ID
   const generateId = useCallback(() => {
