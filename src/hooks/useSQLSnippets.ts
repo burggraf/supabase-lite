@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { SQLSnippet, TabState } from '@/types';
-import { DATABASE_CONFIG, SQL_EDITOR_CONFIG, QUERY_EXAMPLES } from '@/lib/constants';
+import { DATABASE_CONFIG, SQL_EDITOR_CONFIG } from '@/lib/constants';
 
 interface UseSQLSnippetsReturn {
   tabs: TabState[];
@@ -55,7 +55,7 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
     setTabs([{
       id: initialTabId,
       name: SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME,
-      query: QUERY_EXAMPLES[0].query,
+      query: '',
       isDirty: false,
       snippetId: undefined,
     }]);
@@ -142,7 +142,7 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
     }
     
     const tabId = generateId();
-    const defaultQuery = query || QUERY_EXAMPLES[0].query;
+    const defaultQuery = query || '';
     
     const newTab: TabState = {
       id: tabId,
@@ -164,7 +164,7 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
       setTabs([{
         id: generateId(),
         name: SQL_EDITOR_CONFIG.DEFAULT_SNIPPET_NAME,
-        query: QUERY_EXAMPLES[0].query,
+        query: '',
         isDirty: false,
         snippetId: undefined,
       }]);
