@@ -269,20 +269,20 @@ export function SQLEditor() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tabs and Header */}
           <div className="bg-white">
-            <div className="flex items-center justify-between px-4 border-b" style={{height: '38px'}}>
+            <div className="flex items-center justify-between px-4" style={{height: '38px'}}>
               <div className="flex items-center flex-1">
                 <Tabs value={activeTabId} onValueChange={setActiveTab} className="flex-1">
                   <div className="flex items-center">
-                    <TabsList className="h-8 p-0 bg-transparent">
+                    <TabsList className="h-auto p-0 bg-transparent rounded-none justify-start flex-none">
                       {tabs.map((tab) => (
                         <div key={tab.id} className="flex items-center group relative">
                           <TabsTrigger 
                             value={tab.id} 
-                            className="relative px-3 py-1 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                            className="relative px-4 py-2 text-sm font-medium border-t border-l border-r border-gray-200 rounded-t-lg bg-gray-50 text-gray-600 hover:bg-gray-100 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:border-b-white data-[state=active]:-mb-px data-[state=active]:z-10 transition-colors"
                           >
                             {editingTabId === tab.id ? (
                               <input
-                                className="w-24 px-1 py-0 text-xs border rounded"
+                                className="w-24 px-1 py-0 text-xs border rounded bg-white"
                                 value={editingTabName}
                                 onChange={(e) => setEditingTabName(e.target.value)}
                                 onBlur={handleTabNameSave}
@@ -294,7 +294,7 @@ export function SQLEditor() {
                               />
                             ) : (
                               <span 
-                                className="cursor-pointer"
+                                className="cursor-pointer max-w-32 truncate"
                                 onDoubleClick={() => handleTabNameEdit(tab.id, tab.name)}
                               >
                                 {tab.name}
@@ -305,7 +305,7 @@ export function SQLEditor() {
                           {tabs.length > 1 && (
                             <div
                               onClick={() => closeTab(tab.id)}
-                              className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-0.5 cursor-pointer z-10"
+                              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 hover:bg-gray-300 rounded p-0.5 cursor-pointer z-20"
                             >
                               <X className="h-3 w-3" />
                             </div>
@@ -319,7 +319,7 @@ export function SQLEditor() {
                   variant="ghost"
                   size="sm"
                   onClick={() => createTab()}
-                  className="ml-2 h-8 w-8 p-0"
+                  className="ml-2 h-8 w-8 p-0 border border-gray-200 rounded-t-lg bg-gray-50 hover:bg-gray-100"
                   disabled={tabs.length >= 10}
                 >
                   <Plus className="h-4 w-4" />
@@ -336,6 +336,8 @@ export function SQLEditor() {
                 </Button>
               </div>
             </div>
+            {/* Border line under tabs */}
+            <div className="border-b border-gray-200"></div>
           </div>
 
           {/* SQL Editor Section */}
