@@ -337,6 +337,7 @@ export function SQLEditor() {
                 suggestOnTriggerCharacters: true,
                 quickSuggestions: true,
                 tabSize: 2,
+                placeholder: 'Enter SQL code here...',
               }}
             />
           </div>
