@@ -67,6 +67,9 @@ vi.mock('lucide-react', () => ({
   Plus: () => <div data-testid="plus-icon" />,
   X: () => <div data-testid="x-icon" />,
   Edit2: () => <div data-testid="edit-icon" />,
+  Pencil: () => <div data-testid="pencil-icon" />,
+  PanelLeftClose: () => <div data-testid="panel-left-close-icon" />,
+  PanelLeftOpen: () => <div data-testid="panel-left-open-icon" />,
 }))
 
 describe('SQLEditor', () => {
@@ -127,9 +130,6 @@ describe('SQLEditor', () => {
     it('should render the SQL Editor interface with tabs', () => {
       render(<SQLEditor />)
       
-      expect(screen.getByText('SQL Editor')).toBeInTheDocument()
-      expect(screen.getByText('Write and execute SQL queries against your local database')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /run/i })).toBeInTheDocument()
       expect(screen.getByText('Saved Snippets')).toBeInTheDocument()
       expect(screen.getByText('Untitled')).toBeInTheDocument() // Tab name
@@ -191,8 +191,6 @@ describe('SQLEditor', () => {
         expect(screen.getByText('test')).toBeInTheDocument()
         expect(screen.getByText('test2')).toBeInTheDocument()
       })
-      
-      expect(mockAddToHistory).toHaveBeenCalled()
     })
 
     it('should handle query execution errors', async () => {
@@ -210,13 +208,6 @@ describe('SQLEditor', () => {
         expect(screen.getByText('Query Error')).toBeInTheDocument()
         expect(screen.getByText('Syntax error near SELECT')).toBeInTheDocument()
       })
-      
-      expect(mockAddToHistory).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Number),
-        false,
-        'Syntax error near SELECT'
-      )
     })
 
     it('should show loading state during query execution', async () => {
@@ -351,18 +342,6 @@ describe('SQLEditor', () => {
     })
   })
 
-  describe('Save Query', () => {
-    it('should save snippet when save is clicked', async () => {
-      render(<SQLEditor />)
-      
-      const saveButton = screen.getByRole('button', { name: /save/i })
-      
-      // Click save button (will save current tab as snippet)
-      await user.click(saveButton)
-      
-      expect(mockSaveSnippet).toHaveBeenCalledWith('tab-1')
-    })
-  })
 
   describe('Tabs and Snippets', () => {
     it('should create new tab when plus button is clicked', async () => {
@@ -373,6 +352,62 @@ describe('SQLEditor', () => {
       await user.click(addTabButton!)
       
       expect(mockCreateTab).toHaveBeenCalled()
+    })
+
+    it('should hide plus button when empty "+ New" tab exists', () => {
+      mockUseSQLSnippets.mockReturnValue({
+        tabs: [{
+          id: 'tab-1',
+          name: '+ New',
+          query: '',
+          isDirty: false,
+          snippetId: undefined,
+        }],
+        activeTabId: 'tab-1',
+        snippets: [],
+        createTab: mockCreateTab,
+        closeTab: mockCloseTab,
+        setActiveTab: mockSetActiveTab,
+        updateTabQuery: mockUpdateTabQuery,
+        updateTabName: mockUpdateTabName,
+        saveSnippet: mockSaveSnippet,
+        loadSnippet: mockLoadSnippet,
+        deleteSnippet: mockDeleteSnippet,
+        getActiveTab: mockGetActiveTab,
+      })
+      
+      render(<SQLEditor />)
+      
+      // Plus button should not be visible when there's an empty "+ New" tab
+      expect(screen.queryByTestId('plus-icon')).not.toBeInTheDocument()
+    })
+
+    it('should show plus button when "+ New" tab has content', () => {
+      mockUseSQLSnippets.mockReturnValue({
+        tabs: [{
+          id: 'tab-1',
+          name: '+ New',
+          query: 'SELECT 1;',
+          isDirty: false,
+          snippetId: undefined,
+        }],
+        activeTabId: 'tab-1',
+        snippets: [],
+        createTab: mockCreateTab,
+        closeTab: mockCloseTab,
+        setActiveTab: mockSetActiveTab,
+        updateTabQuery: mockUpdateTabQuery,
+        updateTabName: mockUpdateTabName,
+        saveSnippet: mockSaveSnippet,
+        loadSnippet: mockLoadSnippet,
+        deleteSnippet: mockDeleteSnippet,
+        getActiveTab: mockGetActiveTab,
+      })
+      
+      render(<SQLEditor />)
+      
+      // Plus button should be visible when "+ New" tab has content
+      expect(screen.getByTestId('plus-icon')).toBeInTheDocument()
     })
     
     it('should display snippets panel', () => {
@@ -413,67 +448,17 @@ describe('SQLEditor', () => {
       render(<SQLEditor />)
       
       expect(screen.getByText('Test Query')).toBeInTheDocument()
-      expect(screen.getByText('SELECT * FROM users')).toBeInTheDocument()
     })
   })
   
-  describe('Query History Panel', () => {
-    it('should display empty history message when no queries', async () => {
-      render(<SQLEditor />)
-      
-      // Click on History tab
-      const historyTab = screen.getByText('History')
-      await user.click(historyTab)
-      
-      expect(screen.getByText('No queries executed yet')).toBeInTheDocument()
-    })
-
-    it('should display query history items', async () => {
-      const mockHistory = [
-        {
-          id: '1',
-          query: 'SELECT * FROM users',
-          timestamp: new Date('2023-01-01T12:00:00Z'),
-          duration: 15.5,
-          success: true,
-        },
-        {
-          id: '2',
-          query: 'INVALID SQL',
-          timestamp: new Date('2023-01-01T11:00:00Z'),
-          duration: 8.2,
-          success: false,
-          error: 'Syntax error',
-        },
-      ]
-      
-      mockUseQueryHistory.mockReturnValue({
-        history: mockHistory as any,
-        addToHistory: mockAddToHistory,
-      })
-      
-      render(<SQLEditor />)
-      
-      // Click on History tab
-      const historyTab = screen.getByText('History')
-      await user.click(historyTab)
-      
-      expect(screen.getByText('Success')).toBeInTheDocument()
-      expect(screen.getByText('Error')).toBeInTheDocument()
-      expect(screen.getByText('SELECT * FROM users')).toBeInTheDocument()
-      expect(screen.getByText('INVALID SQL')).toBeInTheDocument()
-      expect(screen.getByText('15.50ms')).toBeInTheDocument()
-      expect(screen.getByText('8.20ms')).toBeInTheDocument()
-    })
-  })
 
   describe('Icons', () => {
     it('should render all required icons', () => {
       render(<SQLEditor />)
       
-      expect(screen.getByTestId('save-icon')).toBeInTheDocument()
       expect(screen.getAllByTestId('play-icon')).toHaveLength(2) // One in button, one in empty state
       expect(screen.getByTestId('plus-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('panel-left-close-icon')).toBeInTheDocument()
     })
   })
 
@@ -492,9 +477,8 @@ describe('SQLEditor', () => {
       // Monaco Editor loading state should be present
       expect(screen.getByText(/Loading\.\.\./)).toBeInTheDocument()
       
-      // Sidebar panels should be present
-      expect(screen.getByText('Snippets')).toBeInTheDocument()
-      expect(screen.getByText('History')).toBeInTheDocument()
+      // Sidebar panel should be present
+      expect(screen.getByText('Saved Snippets')).toBeInTheDocument()
     })
   })
 })
