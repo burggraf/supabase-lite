@@ -281,72 +281,78 @@ export function SQLEditor() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tabs and Header */}
           <div className="bg-white">
-            <div className="flex items-center justify-between px-4" style={{height: '38px'}}>
-              <div className="flex items-center flex-1">
+            <div className="flex items-center px-4" style={{height: '38px'}}>
+              <div className="flex items-center min-w-0 flex-1">
                 {/* Sidebar Toggle Button */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={toggleSidebar}
-                  className="h-8 w-8 p-0 mr-2 rounded-t-lg bg-transparent hover:bg-gray-100"
+                  className="h-8 w-8 p-0 mr-2 rounded-t-lg bg-transparent hover:bg-gray-100 flex-shrink-0"
                 >
                   {isSidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                 </Button>
-                <Tabs value={activeTabId} onValueChange={setActiveTab} className="flex-1">
+                
+                {/* Scrollable Tabs Area */}
+                <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
                   <div className="flex items-center">
-                    <TabsList className="h-auto p-0 bg-transparent rounded-none justify-start flex-none">
-                      {tabs.map((tab) => (
-                        <div key={tab.id} className="flex items-center group relative">
-                          <TabsTrigger 
-                            value={tab.id} 
-                            className="relative px-4 py-2 text-sm font-medium border-t border-l border-r border-gray-200 rounded-t-lg bg-gray-50 text-gray-600 hover:bg-gray-100 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:border-b-white data-[state=active]:-mb-px data-[state=active]:z-10 transition-colors"
-                          >
-                            {editingTabId === tab.id ? (
-                              <input
-                                className="w-24 px-1 py-0 text-xs border rounded bg-white"
-                                value={editingTabName}
-                                onChange={(e) => setEditingTabName(e.target.value)}
-                                onBlur={handleTabNameSave}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleTabNameSave();
-                                  if (e.key === 'Escape') handleTabNameCancel();
-                                }}
-                                autoFocus
-                              />
-                            ) : (
-                              <span 
-                                className="cursor-pointer max-w-32 truncate"
-                                onDoubleClick={() => handleTabNameEdit(tab.id, tab.name)}
-                              >
-                                {tab.name}
-                                {tab.isDirty && <span className="ml-1 text-orange-500">•</span>}
-                              </span>
-                            )}
-                          </TabsTrigger>
-                          {tabs.length > 1 && (
-                            <div
-                              onClick={() => closeTab(tab.id)}
-                              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 hover:bg-gray-300 rounded p-0.5 cursor-pointer z-20"
+                    <Tabs value={activeTabId} onValueChange={setActiveTab}>
+                      <TabsList className="h-auto p-0 bg-transparent rounded-none justify-start flex-none">
+                        {tabs.map((tab) => (
+                          <div key={tab.id} className="flex items-center group relative flex-shrink-0">
+                            <TabsTrigger 
+                              value={tab.id} 
+                              className="relative px-4 py-2 text-sm font-medium border-t border-l border-r border-gray-200 rounded-t-lg bg-gray-50 text-gray-600 hover:bg-gray-100 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:border-b-white data-[state=active]:-mb-px data-[state=active]:z-10 transition-colors whitespace-nowrap"
                             >
-                              <X className="h-3 w-3" />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </TabsList>
+                              {editingTabId === tab.id ? (
+                                <input
+                                  className="w-24 px-1 py-0 text-xs border rounded bg-white"
+                                  value={editingTabName}
+                                  onChange={(e) => setEditingTabName(e.target.value)}
+                                  onBlur={handleTabNameSave}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleTabNameSave();
+                                    if (e.key === 'Escape') handleTabNameCancel();
+                                  }}
+                                  autoFocus
+                                />
+                              ) : (
+                                <span 
+                                  className="cursor-pointer max-w-32 truncate"
+                                  onDoubleClick={() => handleTabNameEdit(tab.id, tab.name)}
+                                >
+                                  {tab.name}
+                                  {tab.isDirty && <span className="ml-1 text-orange-500">•</span>}
+                                </span>
+                              )}
+                            </TabsTrigger>
+                            {tabs.length > 1 && (
+                              <div
+                                onClick={() => closeTab(tab.id)}
+                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 hover:bg-gray-300 rounded p-0.5 cursor-pointer z-20"
+                              >
+                                <X className="h-3 w-3" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => createTab()}
+                      className="ml-2 h-8 w-8 p-0 rounded-t-lg bg-transparent hover:bg-gray-100 flex-shrink-0"
+                      disabled={tabs.length >= 10}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
-                </Tabs>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => createTab()}
-                  className="ml-2 h-8 w-8 p-0 rounded-t-lg bg-transparent hover:bg-gray-100"
-                  disabled={tabs.length >= 10}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
+              
+              {/* Fixed Run Button - Always Visible */}
+              <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
                 <Button 
                   size="sm" 
                   onClick={handleExecuteQuery}
