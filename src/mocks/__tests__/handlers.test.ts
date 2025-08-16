@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach, afterAll, beforeEach, vi } from 'vitest'
 import { setupServer } from 'msw/node'
 import { handlers } from '../handlers'
 
@@ -7,6 +7,15 @@ const testServer = setupServer(...handlers)
 beforeAll(() => testServer.listen({ onUnhandledRequest: 'bypass' }))
 afterEach(() => testServer.resetHandlers())
 afterAll(() => testServer.close())
+
+beforeEach(() => {
+  // Reset mocks before each test
+  vi.clearAllMocks()
+  
+  // Setup specific mock responses for database operations in tests
+  global.mockPGliteInstance.query.mockResolvedValue({ rows: [], affectedRows: 0 })
+  global.mockPGliteInstance.exec.mockResolvedValue()
+})
 
 describe('Supabase Lite API Handlers', () => {
   it('should return health status from /health endpoint', async () => {
@@ -28,6 +37,18 @@ describe('Supabase Lite API Handlers', () => {
   })
 
   it('should handle REST API POST request to create user', async () => {
+    // Mock the database response for INSERT
+    const mockUser = {
+      id: 1,
+      email: 'test@example.com',
+      name: 'Test User',
+      created_at: new Date().toISOString()
+    }
+    global.mockPGliteInstance.query.mockResolvedValue({
+      rows: [mockUser],
+      affectedRows: 1
+    })
+    
     const newUser = {
       email: 'test@example.com',
       name: 'Test User'
@@ -49,6 +70,12 @@ describe('Supabase Lite API Handlers', () => {
   })
 
   it('should handle auth signup request', async () => {
+    // Mock the database responses for auth signup
+    global.mockPGliteInstance.query
+      .mockResolvedValueOnce({ rows: [], affectedRows: 0 }) // Check if user exists (should be empty)
+      .mockResolvedValueOnce({ rows: [{ id: 1 }], affectedRows: 1 }) // Insert user
+      .mockResolvedValueOnce({ rows: [{ id: 1 }], affectedRows: 1 }) // Insert session
+    
     const signupData = {
       email: 'user@test.com',
       password: 'password123'
@@ -62,6 +89,10 @@ describe('Supabase Lite API Handlers', () => {
       body: JSON.stringify(signupData)
     })
     
+    if (response.status !== 200) {
+      const errorData = await response.json()
+      console.error('Signup error:', errorData)
+    }
     expect(response.status).toBe(200)
     const data = await response.json()
     expect(data).toHaveProperty('access_token')
@@ -71,21 +102,19 @@ describe('Supabase Lite API Handlers', () => {
   })
 
   it('should handle auth signin request', async () => {
-    // First signup a user
-    const signupData = {
+    // Mock database responses for signin
+    const hashedPassword = 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f' // SHA-256 of 'password123'
+    const mockUser = {
+      id: 'user-123',
       email: 'signin@test.com',
-      password: 'password123'
+      encrypted_password: hashedPassword,
+      raw_user_meta_data: '{}'
     }
     
-    await fetch('/auth/v1/signup', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(signupData)
-    })
+    global.mockPGliteInstance.query
+      .mockResolvedValueOnce({ rows: [mockUser], affectedRows: 1 }) // Find user
+      .mockResolvedValueOnce({ rows: [{ id: 1 }], affectedRows: 1 }) // Insert session
     
-    // Then try to sign in
     const signinData = {
       email: 'signin@test.com',
       password: 'password123'

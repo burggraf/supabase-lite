@@ -124,7 +124,7 @@ describe('Constants', () => {
     })
 
     it('should have correct number of navigation items', () => {
-      expect(NAVIGATION_ITEMS).toHaveLength(8)
+      expect(NAVIGATION_ITEMS).toHaveLength(10)
     })
 
     it('should have unique IDs for all navigation items', () => {

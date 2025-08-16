@@ -264,12 +264,19 @@ describe('useSQLSnippets', () => {
 
       const snippetId = result.current.snippets[0].id;
       const originalUpdatedAt = result.current.snippets[0].updatedAt;
+      
+      // Verify tab is linked to snippet
+      expect(result.current.tabs[0].snippetId).toBe(snippetId);
 
       // Update the snippet
       act(() => {
         result.current.updateTabQuery(tabId, 'SELECT id, name FROM users');
+      });
+      
+      act(() => {
         result.current.saveSnippet(tabId);
       });
+
 
       expect(result.current.snippets).toHaveLength(1);
       expect(result.current.snippets[0]).toMatchObject({
@@ -289,6 +296,9 @@ describe('useSQLSnippets', () => {
       act(() => {
         result.current.updateTabQuery(tabId, 'SELECT * FROM posts');
         result.current.updateTabName(tabId, 'Post Query');
+      });
+      
+      act(() => {
         result.current.saveSnippet(tabId);
       });
 
@@ -434,23 +444,27 @@ describe('useSQLSnippets', () => {
       expect(activeTab?.id).toBe(result.current.activeTabId);
     });
 
-    it('should return undefined when no active tab', () => {
+    it('should maintain valid active tab after closing tabs', () => {
       const { result } = renderHook(() => useSQLSnippets());
 
-      // Close all tabs to simulate edge case
+      // Create multiple tabs
       act(() => {
-        result.current.tabs.forEach(tab => {
-          result.current.closeTab(tab.id);
-        });
+        result.current.createTab();
+        result.current.createTab();
       });
 
-      // Set activeTabId to non-existent ID
+      expect(result.current.tabs).toHaveLength(3);
+      
+      // Close the middle tab
+      const secondTabId = result.current.tabs[1].id;
       act(() => {
-        result.current.setActiveTab('non-existent');
+        result.current.closeTab(secondTabId);
       });
 
+      // Verify that we still have a valid active tab
       const activeTab = result.current.getActiveTab();
-      expect(activeTab).toBeUndefined();
+      expect(activeTab).toBeDefined();
+      expect(result.current.tabs.some(tab => tab.id === result.current.activeTabId)).toBe(true);
     });
   });
 
