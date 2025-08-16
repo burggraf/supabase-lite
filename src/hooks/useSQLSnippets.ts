@@ -302,6 +302,11 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
           ? { ...snippet, name: tab.name, query: tab.query, updatedAt: now }
           : snippet
       ));
+      
+      // Mark tab as clean
+      setTabs(prev => prev.map(t => 
+        t.id === tabId ? { ...t, isDirty: false } : t
+      ));
     } else {
       // Create new snippet
       const snippetId = generateId();
@@ -319,18 +324,13 @@ export function useSQLSnippets(): UseSQLSnippetsReturn {
       
       setSnippets(prev => [...prev, newSnippet]);
       
-      // Update tab to reference the snippet
+      // Update tab to reference the snippet and mark as clean
       setTabs(prev => prev.map(t => 
         t.id === tabId 
           ? { ...t, snippetId, name: snippetName, isDirty: false }
           : t
       ));
     }
-    
-    // Mark tab as clean
-    setTabs(prev => prev.map(t => 
-      t.id === tabId ? { ...t, isDirty: false } : t
-    ));
   }, [tabs, generateId, generateSnippetName]);
   
   const loadSnippet = useCallback((snippetId: string, tabId?: string) => {

@@ -1,20 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { DatabaseManager } from '../connection'
 
-// Mock PGlite
-const mockQuery = vi.fn()
-const mockExec = vi.fn()
-const mockClose = vi.fn()
-const mockWaitReady = Promise.resolve()
-
-vi.mock('@electric-sql/pglite', () => ({
-  PGlite: vi.fn().mockImplementation(() => ({
-    query: mockQuery,
-    exec: mockExec,
-    close: mockClose,
-    waitReady: mockWaitReady,
-  })),
-}))
+// Get global mock from setup
+declare global {
+  var mockPGliteInstance: {
+    query: any
+    exec: any
+    close: any
+    waitReady: any
+  }
+}
 
 describe('DatabaseManager', () => {
   let dbManager: DatabaseManager
@@ -23,7 +18,12 @@ describe('DatabaseManager', () => {
     // Reset the singleton instance
     ;(DatabaseManager as any).instance = null
     dbManager = DatabaseManager.getInstance()
+    
+    // Reset global mocks
     vi.clearAllMocks()
+    global.mockPGliteInstance.query.mockResolvedValue({ rows: [], affectedRows: 0 })
+    global.mockPGliteInstance.exec.mockResolvedValue()
+    global.mockPGliteInstance.close.mockResolvedValue()
   })
 
   afterEach(async () => {
@@ -41,7 +41,7 @@ describe('DatabaseManager', () => {
 
   describe('Initialization', () => {
     it('should initialize database successfully', async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       
       await dbManager.initialize()
       
@@ -50,7 +50,7 @@ describe('DatabaseManager', () => {
         dataDir: 'idb://supabase_lite_db',
         database: 'postgres',
       })
-      expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('CREATE SCHEMA IF NOT EXISTS auth'))
+      expect(global.mockPGliteInstance.exec).toHaveBeenCalledWith(expect.stringContaining('CREATE SCHEMA IF NOT EXISTS auth'))
       expect(dbManager.isConnected()).toBe(true)
     })
 
@@ -66,7 +66,7 @@ describe('DatabaseManager', () => {
     })
 
     it('should not re-initialize if already initialized', async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       
       await dbManager.initialize()
       const { PGlite } = await import('@electric-sql/pglite')
@@ -79,7 +79,7 @@ describe('DatabaseManager', () => {
     })
 
     it('should handle concurrent initialization attempts', async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       
       const promise1 = dbManager.initialize()
       const promise2 = dbManager.initialize()
@@ -93,7 +93,7 @@ describe('DatabaseManager', () => {
 
   describe('Query Execution', () => {
     beforeEach(async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       await dbManager.initialize()
     })
 
@@ -102,11 +102,11 @@ describe('DatabaseManager', () => {
         rows: [{ id: 1, name: 'test' }],
         fields: [{ name: 'id' }, { name: 'name' }],
       }
-      mockQuery.mockResolvedValue(mockResult)
+      global.mockPGliteInstance.query.mockResolvedValue(mockResult)
       
       const result = await dbManager.query('SELECT * FROM users')
       
-      expect(mockQuery).toHaveBeenCalledWith('SELECT * FROM users')
+      expect(global.mockPGliteInstance.query).toHaveBeenCalledWith('SELECT * FROM users')
       expect(result).toEqual({
         rows: mockResult.rows,
         fields: mockResult.fields,
@@ -118,7 +118,7 @@ describe('DatabaseManager', () => {
 
     it('should handle query errors', async () => {
       const error = new Error('Query failed')
-      mockQuery.mockRejectedValue(error)
+      global.mockPGliteInstance.query.mockRejectedValue(error)
       
       await expect(dbManager.query('INVALID SQL')).rejects.toMatchObject({
         message: 'Query failed',
@@ -136,7 +136,7 @@ describe('DatabaseManager', () => {
 
     it('should calculate query duration', async () => {
       const mockResult = { rows: [], fields: [] }
-      mockQuery.mockResolvedValue(mockResult)
+      global.mockPGliteInstance.query.mockResolvedValue(mockResult)
       
       const result = await dbManager.query('SELECT 1')
       
@@ -147,19 +147,19 @@ describe('DatabaseManager', () => {
 
   describe('Exec Method', () => {
     beforeEach(async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       await dbManager.initialize()
     })
 
     it('should execute SQL statements', async () => {
       await dbManager.exec('CREATE TABLE test (id INTEGER)')
       
-      expect(mockExec).toHaveBeenCalledWith('CREATE TABLE test (id INTEGER)')
+      expect(global.mockPGliteInstance.exec).toHaveBeenCalledWith('CREATE TABLE test (id INTEGER)')
     })
 
     it('should handle exec errors', async () => {
       const error = new Error('Exec failed')
-      mockExec.mockRejectedValue(error)
+      global.mockPGliteInstance.exec.mockRejectedValue(error)
       
       await expect(dbManager.exec('INVALID SQL')).rejects.toThrow('Exec failed')
     })
@@ -175,7 +175,7 @@ describe('DatabaseManager', () => {
 
   describe('Script Execution', () => {
     beforeEach(async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       await dbManager.initialize()
     })
 
@@ -190,12 +190,12 @@ describe('DatabaseManager', () => {
           fields: [{ name: 'id' }, { name: 'name' }],
         },
       ]
-      mockExec.mockResolvedValue(mockResults)
+      global.mockPGliteInstance.exec.mockResolvedValue(mockResults)
       
       const script = 'CREATE TABLE test (id INTEGER, name TEXT); SELECT * FROM test;'
       const result = await dbManager.execScript(script)
       
-      expect(mockExec).toHaveBeenCalledWith(script)
+      expect(global.mockPGliteInstance.exec).toHaveBeenCalledWith(script)
       expect(result).toEqual({
         results: [
           {
@@ -222,7 +222,7 @@ describe('DatabaseManager', () => {
 
     it('should handle script execution errors', async () => {
       const error = new Error('Script execution failed')
-      mockExec.mockRejectedValue(error)
+      global.mockPGliteInstance.exec.mockRejectedValue(error)
       
       const script = 'CREATE TABLE test (id INTEGER); INVALID STATEMENT;'
       
@@ -245,7 +245,7 @@ describe('DatabaseManager', () => {
         { rows: [], fields: [] },
         { rows: [], fields: [] },
       ]
-      mockExec.mockResolvedValue(mockResults)
+      global.mockPGliteInstance.exec.mockResolvedValue(mockResults)
       
       const result = await dbManager.execScript('SELECT 1; SELECT 2;')
       
@@ -259,7 +259,7 @@ describe('DatabaseManager', () => {
         { rows: [{ count: 1 }], fields: [{ name: 'count' }] },
         { rows: [], fields: [] },
       ]
-      mockExec.mockResolvedValue(mockResults)
+      global.mockPGliteInstance.exec.mockResolvedValue(mockResults)
       
       const script = 'CREATE TABLE test (id INTEGER); SELECT COUNT(*) FROM test; DROP TABLE test;'
       const result = await dbManager.execScript(script)
@@ -276,7 +276,7 @@ describe('DatabaseManager', () => {
     })
 
     it('should return connection info after initialization', async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       await dbManager.initialize()
       
       const info = dbManager.getConnectionInfo()
@@ -290,8 +290,8 @@ describe('DatabaseManager', () => {
     })
 
     it('should update lastAccessed when queries are executed', async () => {
-      mockExec.mockResolvedValue(undefined)
-      mockQuery.mockResolvedValue({ rows: [], fields: [] })
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.query.mockResolvedValue({ rows: [], fields: [] })
       
       await dbManager.initialize()
       const initialInfo = dbManager.getConnectionInfo()
@@ -309,12 +309,12 @@ describe('DatabaseManager', () => {
 
   describe('Database Size', () => {
     beforeEach(async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       await dbManager.initialize()
     })
 
     it('should return formatted database size', async () => {
-      mockQuery.mockResolvedValue({
+      global.mockPGliteInstance.query.mockResolvedValue({
         rows: [{ size: 1024 }],
         fields: [{ name: 'size' }],
       })
@@ -325,7 +325,7 @@ describe('DatabaseManager', () => {
     })
 
     it('should handle size query errors', async () => {
-      mockQuery.mockRejectedValue(new Error('Size query failed'))
+      global.mockPGliteInstance.query.mockRejectedValue(new Error('Size query failed'))
       
       const size = await dbManager.getDatabaseSize()
       
@@ -343,7 +343,7 @@ describe('DatabaseManager', () => {
 
   describe('Table List', () => {
     beforeEach(async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       await dbManager.initialize()
     })
 
@@ -352,7 +352,7 @@ describe('DatabaseManager', () => {
         { schema: 'public', name: 'users', rows: 10 },
         { schema: 'public', name: 'posts', rows: 5 },
       ]
-      mockQuery.mockResolvedValue({
+      global.mockPGliteInstance.query.mockResolvedValue({
         rows: mockTables,
         fields: [{ name: 'schema' }, { name: 'name' }, { name: 'rows' }],
       })
@@ -363,7 +363,7 @@ describe('DatabaseManager', () => {
     })
 
     it('should handle table list query errors', async () => {
-      mockQuery.mockRejectedValue(new Error('Table query failed'))
+      global.mockPGliteInstance.query.mockRejectedValue(new Error('Table query failed'))
       
       const tables = await dbManager.getTableList()
       
@@ -381,7 +381,7 @@ describe('DatabaseManager', () => {
 
   describe('Format Bytes', () => {
     beforeEach(async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       await dbManager.initialize()
     })
 
@@ -399,14 +399,14 @@ describe('DatabaseManager', () => {
 
   describe('Close Connection', () => {
     it('should close database connection', async () => {
-      mockExec.mockResolvedValue(undefined)
+      global.mockPGliteInstance.exec.mockResolvedValue(undefined)
       await dbManager.initialize()
       
       expect(dbManager.isConnected()).toBe(true)
       
       await dbManager.close()
       
-      expect(mockClose).toHaveBeenCalled()
+      expect(global.mockPGliteInstance.close).toHaveBeenCalled()
       expect(dbManager.isConnected()).toBe(false)
       expect(dbManager.getConnectionInfo()).toBeNull()
     })
@@ -414,7 +414,7 @@ describe('DatabaseManager', () => {
     it('should handle close on uninitialized database', async () => {
       await dbManager.close()
       
-      expect(mockClose).not.toHaveBeenCalled()
+      expect(global.mockPGliteInstance.close).not.toHaveBeenCalled()
     })
   })
 })
