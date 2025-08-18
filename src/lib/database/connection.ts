@@ -2,6 +2,10 @@ import { PGlite } from '@electric-sql/pglite';
 import { DATABASE_CONFIG } from '../constants';
 import { roleSimulator } from './roleSimulator';
 import type { QueryResult, ScriptResult, DatabaseConnection } from '@/types';
+import type { TransactionOptions, QueryOptions, QueryMetrics } from '@/types/infrastructure';
+import { logger, logQuery, logError, logPerformance } from '../infrastructure/Logger';
+import { errorHandler, createDatabaseError } from '../infrastructure/ErrorHandler';
+import { configManager } from '../infrastructure/ConfigManager';
 
 export class DatabaseManager {
   private static instance: DatabaseManager;
@@ -9,6 +13,10 @@ export class DatabaseManager {
   private isInitialized = false;
   private connectionInfo: DatabaseConnection | null = null;
   private initializationPromise: Promise<void> | null = null;
+  private queryMetrics: QueryMetrics[] = [];
+  private queryCache = new Map<string, { result: QueryResult; timestamp: number }>();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  private readonly MAX_METRICS = 1000;
 
   private constructor() {}
 
@@ -43,18 +51,19 @@ export class DatabaseManager {
 
   private async doInitialization(): Promise<void> {
     try {
-      console.log('🚀 Initializing PGlite with config:', DATABASE_CONFIG);
+      const dbConfig = configManager.getDatabaseConfig();
+      logger.info('Initializing PGlite database', { config: dbConfig });
+      
       this.db = new PGlite({
-        // Use IndexedDB for persistence in the browser
-        dataDir: `idb://${DATABASE_CONFIG.DEFAULT_DB_NAME}`,
+        dataDir: dbConfig.dataDir,
         database: 'postgres',
       });
-      console.log('📦 PGlite instance created, waiting for ready...');
+      logger.debug('PGlite instance created, waiting for ready...');
 
       await this.db.waitReady;
       
       this.connectionInfo = {
-        id: DATABASE_CONFIG.DEFAULT_DB_NAME,
+        id: dbConfig.name,
         name: 'Supabase Lite DB',
         createdAt: new Date(),
         lastAccessed: new Date(),
@@ -64,12 +73,14 @@ export class DatabaseManager {
       await this.initializeSchemas();
       
       this.isInitialized = true;
-      console.log('✅ PGlite initialized successfully');
-      console.log('Database instance:', this.db);
-      console.log('Connection info:', this.connectionInfo);
+      logger.info('PGlite initialized successfully', {
+        databaseId: this.connectionInfo.id,
+        dataDir: dbConfig.dataDir,
+      });
     } catch (error) {
-      console.error('❌ Failed to initialize PGlite:', error);
-      throw error;
+      const dbConfig = configManager.getDatabaseConfig();
+      logError('Database initialization', error as Error, { config: dbConfig });
+      throw createDatabaseError('Failed to initialize database', error as Error);
     }
   }
 
@@ -89,11 +100,11 @@ export class DatabaseManager {
       const isSeeded = (checkResult.rows[0] as any)?.exists;
       
       if (isSeeded) {
-        console.log('✅ Database already seeded with Supabase schema');
+        logger.info('Database already seeded with Supabase schema');
         return;
       }
 
-      console.log('🌱 Initializing database with Supabase seed schema...');
+      logger.info('Initializing database with Supabase seed schema');
       
       // Load the seed.sql file
       const seedSql = await this.loadSeedSql();
@@ -101,10 +112,10 @@ export class DatabaseManager {
       // Execute the seed script
       await this.db.exec(seedSql);
 
-      console.log('✅ Supabase database schema initialized successfully');
+      logger.info('Supabase database schema initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize schemas:', error);
-      throw error;
+      logError('Schema initialization', error as Error);
+      throw createDatabaseError('Failed to initialize database schemas', error as Error);
     }
   }
 
@@ -119,7 +130,7 @@ export class DatabaseManager {
       const seedSql = await response.text();
       return seedSql;
     } catch (error) {
-      console.warn('⚠️ Could not load seed.sql file, falling back to basic schema');
+      logger.warn('Could not load seed.sql file, falling back to basic schema', error as Error);
       // Fallback to basic schema if seed.sql is not available
       return `
         -- Fallback basic schema
@@ -150,40 +161,72 @@ export class DatabaseManager {
     }
   }
 
-  public async query(sql: string): Promise<QueryResult> {
+  public async query(sql: string, options?: QueryOptions): Promise<QueryResult> {
     if (!this.db || !this.isInitialized) {
-      throw new Error('Database not initialized. Call initialize() first.');
+      throw createDatabaseError('Database not initialized. Call initialize() first.');
     }
 
     const startTime = performance.now();
+    const cacheKey = options?.cache ? this.getCacheKey(sql) : null;
     
     try {
+      // Check cache if enabled
+      if (cacheKey && configManager.get('enableQueryCaching')) {
+        const cached = this.getFromCache(cacheKey);
+        if (cached) {
+          logger.debug('Query served from cache', { sql: sql.slice(0, 100), cached: true });
+          return cached;
+        }
+      }
+
       // Validate query permissions based on current role
-      roleSimulator.preprocessQuery(sql); // This now only validates, doesn't modify SQL
+      roleSimulator.preprocessQuery(sql);
       
-      // Execute the original query
-      const result = await this.db.query(sql);
+      // Execute the query with timeout if specified
+      const timeout = options?.timeout || configManager.getDatabaseConfig().queryTimeout;
+      const result = await this.executeWithTimeout(() => this.db!.query(sql), timeout);
+      
       const duration = performance.now() - startTime;
       
       // Update last accessed time
       if (this.connectionInfo) {
         this.connectionInfo.lastAccessed = new Date();
       }
-      
-      return {
+
+      const queryResult: QueryResult = {
         rows: result.rows,
         fields: result.fields,
         rowCount: result.rows.length,
         command: sql.trim().split(' ')[0].toUpperCase(),
-        duration: Math.round(duration * 100) / 100, // Round to 2 decimal places
-      };
-    } catch (error: any) {
-      const duration = performance.now() - startTime;
-      const errorObj = error instanceof Error ? { message: error.message } : error;
-      throw {
-        ...errorObj,
         duration: Math.round(duration * 100) / 100,
       };
+
+      // Cache result if enabled
+      if (cacheKey && this.shouldCacheQuery(sql)) {
+        this.addToCache(cacheKey, queryResult);
+      }
+
+      // Track metrics
+      this.addQueryMetric(sql, duration, queryResult.rowCount, !!cacheKey);
+
+      // Log query execution
+      if (configManager.getDatabaseConfig().enableQueryLogging) {
+        logQuery(sql, duration, queryResult.rowCount);
+      }
+      
+      return queryResult;
+    } catch (error: any) {
+      const duration = performance.now() - startTime;
+      logError('Database query execution', error as Error, { 
+        sql: sql.slice(0, 200), 
+        duration 
+      });
+      
+      throw createDatabaseError(
+        'Database query failed', 
+        error as Error, 
+        `Query: ${sql.slice(0, 100)}${sql.length > 100 ? '...' : ''}`
+      );
     }
   }
 
@@ -523,6 +566,181 @@ export class DatabaseManager {
     } catch (error) {
       console.error('Failed to delete table row:', error);
       return false;
+    }
+  }
+
+  // Transaction support
+  public async transaction<T>(
+    queries: (() => Promise<T>)[], 
+    options?: TransactionOptions
+  ): Promise<T[]> {
+    if (!this.db || !this.isInitialized) {
+      throw createDatabaseError('Database not initialized. Call initialize() first.');
+    }
+
+    const startTime = performance.now();
+    logger.debug('Starting transaction', { queries: queries.length, options });
+
+    try {
+      // Start transaction
+      await this.db.exec('BEGIN');
+
+      // Set isolation level if specified
+      if (options?.isolationLevel) {
+        await this.db.exec(`SET TRANSACTION ISOLATION LEVEL ${options.isolationLevel}`);
+      }
+
+      // Set read-only if specified
+      if (options?.readOnly) {
+        await this.db.exec('SET TRANSACTION READ ONLY');
+      }
+
+      const results: T[] = [];
+      
+      // Execute queries within transaction
+      for (let i = 0; i < queries.length; i++) {
+        try {
+          const result = await queries[i]();
+          results.push(result);
+        } catch (error) {
+          // Rollback on error
+          await this.db.exec('ROLLBACK');
+          const duration = performance.now() - startTime;
+          logError(`Transaction failed at query ${i + 1}`, error as Error, { 
+            duration, 
+            queryIndex: i 
+          });
+          throw createDatabaseError(
+            `Transaction failed at query ${i + 1}`, 
+            error as Error
+          );
+        }
+      }
+
+      // Commit transaction
+      await this.db.exec('COMMIT');
+      
+      const duration = performance.now() - startTime;
+      logger.info('Transaction completed successfully', { 
+        queries: queries.length, 
+        duration 
+      });
+      
+      return results;
+    } catch (error) {
+      // Ensure rollback in case of any error
+      try {
+        await this.db.exec('ROLLBACK');
+      } catch (rollbackError) {
+        logError('Transaction rollback failed', rollbackError as Error);
+      }
+      throw error;
+    }
+  }
+
+  // Get query metrics
+  public getQueryMetrics(): QueryMetrics[] {
+    return [...this.queryMetrics];
+  }
+
+  // Clear query metrics
+  public clearQueryMetrics(): void {
+    this.queryMetrics = [];
+    logger.info('Query metrics cleared');
+  }
+
+  // Clear query cache
+  public clearQueryCache(): void {
+    this.queryCache.clear();
+    logger.info('Query cache cleared');
+  }
+
+  // Get cache statistics
+  public getCacheStats(): { size: number; hitRate: number } {
+    const size = this.queryCache.size;
+    const totalQueries = this.queryMetrics.length;
+    const cachedQueries = this.queryMetrics.filter(m => m.cached).length;
+    const hitRate = totalQueries > 0 ? (cachedQueries / totalQueries) * 100 : 0;
+    
+    return { size, hitRate };
+  }
+
+  private async executeWithTimeout<T>(
+    operation: () => Promise<T>, 
+    timeout?: number
+  ): Promise<T> {
+    if (!timeout) return operation();
+
+    return Promise.race([
+      operation(),
+      new Promise<T>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Operation timed out after ${timeout}ms`));
+        }, timeout);
+      }),
+    ]);
+  }
+
+  private getCacheKey(sql: string): string {
+    // Simple cache key generation - could be enhanced with parameter hashing
+    return sql.toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  private getFromCache(key: string): QueryResult | null {
+    const cached = this.queryCache.get(key);
+    if (!cached) return null;
+
+    // Check if cache entry is still valid
+    if (Date.now() - cached.timestamp > this.CACHE_TTL) {
+      this.queryCache.delete(key);
+      return null;
+    }
+
+    return cached.result;
+  }
+
+  private addToCache(key: string, result: QueryResult): void {
+    // Clean old entries if cache is full
+    if (this.queryCache.size >= 100) {
+      const oldestKey = this.queryCache.keys().next().value;
+      this.queryCache.delete(oldestKey);
+    }
+
+    this.queryCache.set(key, {
+      result: { ...result },
+      timestamp: Date.now(),
+    });
+  }
+
+  private shouldCacheQuery(sql: string): boolean {
+    const command = sql.trim().split(' ')[0].toUpperCase();
+    // Only cache SELECT queries
+    return command === 'SELECT' && !sql.toLowerCase().includes('random()');
+  }
+
+  private addQueryMetric(sql: string, duration: number, rowsAffected: number, cached: boolean): void {
+    const metric: QueryMetrics = {
+      query: sql.slice(0, 200), // Store first 200 chars
+      duration,
+      rowsAffected,
+      cached,
+      timestamp: new Date(),
+    };
+
+    this.queryMetrics.push(metric);
+
+    // Keep only the last MAX_METRICS entries
+    if (this.queryMetrics.length > this.MAX_METRICS) {
+      this.queryMetrics = this.queryMetrics.slice(-this.MAX_METRICS);
+    }
+
+    // Log performance if tracking is enabled
+    if (configManager.get('enablePerformanceTracking')) {
+      logPerformance('Database query', duration, {
+        command: sql.trim().split(' ')[0].toUpperCase(),
+        rowsAffected,
+        cached,
+      });
     }
   }
 
