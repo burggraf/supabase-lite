@@ -506,6 +506,72 @@ export class InfrastructureMigrationManager implements MigrationManager {
           DROP TABLE IF EXISTS products;
         `,
       },
+      {
+        version: '005',
+        name: 'Create RPC functions',
+        up: `
+          -- Create function to get product statistics
+          CREATE OR REPLACE FUNCTION get_product_stats()
+          RETURNS JSON AS $$
+          DECLARE
+            result JSON;
+          BEGIN
+            SELECT json_build_object(
+              'total_products', (SELECT COUNT(*) FROM products),
+              'avg_price', (SELECT ROUND(AVG(price)::numeric, 2) FROM products),
+              'in_stock_count', (SELECT COUNT(*) FROM products WHERE in_stock = true),
+              'categories', (SELECT COUNT(DISTINCT category) FROM products)
+            ) INTO result;
+            
+            RETURN result;
+          END;
+          $$ LANGUAGE plpgsql;
+          
+          -- Create function to get products by category
+          CREATE OR REPLACE FUNCTION get_products_by_category(category_name TEXT)
+          RETURNS TABLE(
+            id INTEGER,
+            name TEXT,
+            price REAL,
+            category TEXT,
+            description TEXT,
+            in_stock BOOLEAN,
+            created_at TIMESTAMP
+          ) AS $$
+          BEGIN
+            RETURN QUERY
+            SELECT p.id, p.name, p.price, p.category, p.description, p.in_stock, p.created_at
+            FROM products p
+            WHERE LOWER(p.category) LIKE LOWER('%' || category_name || '%');
+          END;
+          $$ LANGUAGE plpgsql;
+          
+          -- Create function to get category summary
+          CREATE OR REPLACE FUNCTION get_category_summary()
+          RETURNS TABLE(
+            category TEXT,
+            product_count BIGINT,
+            avg_price NUMERIC
+          ) AS $$
+          BEGIN
+            RETURN QUERY
+            SELECT 
+              p.category,
+              COUNT(*) as product_count,
+              ROUND(AVG(p.price)::numeric, 2) as avg_price
+            FROM products p
+            WHERE p.category IS NOT NULL
+            GROUP BY p.category
+            ORDER BY p.category;
+          END;
+          $$ LANGUAGE plpgsql;
+        `,
+        down: `
+          DROP FUNCTION IF EXISTS get_product_stats();
+          DROP FUNCTION IF EXISTS get_products_by_category(TEXT);
+          DROP FUNCTION IF EXISTS get_category_summary();
+        `,
+      },
     ];
   }
 }
