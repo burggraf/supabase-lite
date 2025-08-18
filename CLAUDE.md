@@ -208,3 +208,10 @@ describe('formatBytes', () => {
 - `vitest.config.ts` - Vitest configuration with React support
 - `src/test/setup.ts` - Global test setup and mocks
 - Tests run with jsdom environment for React component testing
+
+### MSW (Mock Service Worker) Integration
+- **Browser-based API mocking**: MSW handlers in `src/mocks/` provide Supabase-compatible REST API
+- **SupabaseAPIBridge**: Bridge class that translates REST API calls to PGlite database operations
+- **Test isolation**: MSW server setup in test/setup.ts with proper cleanup between tests
+- **API endpoints**: PostgREST-compatible endpoints for GET, POST, PATCH, DELETE operations
+- **Authentication simulation**: Mock auth endpoints for signup, signin, token refresh
