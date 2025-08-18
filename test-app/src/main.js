@@ -5,6 +5,7 @@ import { advancedQueryTests } from './tests/advanced-queries.js'
 import { postgrestOperatorTests } from './tests/postgrest-operators.js'
 import { rpcFunctionTests } from './tests/rpc-functions.js'
 import { authTests } from './tests/auth-tests.js'
+import { worker } from './mocks/browser.js'
 
 // Combine all test suites
 const allTests = {
@@ -18,6 +19,15 @@ const allTests = {
 // Global functions for HTML buttons
 window.runTest = runTest
 window.runAllTests = runAllTests
+
+// Start MSW for local API mocking
+worker.start({
+  onUnhandledRequest: 'bypass',
+}).then(() => {
+  console.log('MSW started for test-app')
+}).catch(err => {
+  console.error('Failed to start MSW:', err)
+})
 
 // Initialize environment switcher
 document.addEventListener('DOMContentLoaded', () => {
