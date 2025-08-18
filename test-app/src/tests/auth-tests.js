@@ -103,6 +103,12 @@ export const authTests = {
       }
     })
 
+    // Sign in explicitly since persistSession is false
+    await supabase.auth.signInWithPassword({
+      email: testEmail,
+      password: testPassword
+    })
+
     console.log('Testing get user')
     
     const { data, error } = await supabase.auth.getUser()
@@ -123,6 +129,12 @@ export const authTests = {
     const testPassword = 'TestPassword123!'
     
     await supabase.auth.signUp({
+      email: testEmail,
+      password: testPassword
+    })
+
+    // Sign in explicitly since persistSession is false
+    await supabase.auth.signInWithPassword({
       email: testEmail,
       password: testPassword
     })

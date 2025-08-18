@@ -74,8 +74,11 @@ export const handlers = [
 
   // Auth signin
   http.post('http://localhost:5173/auth/v1/token', async ({ request }) => {
+    const url = new URL(request.url)
+    const grant_type = url.searchParams.get('grant_type')
     const body = await request.json()
-    const { email, password, grant_type } = body
+    console.log('Token request - grant_type:', grant_type, 'body:', body)
+    const { email, password } = body
     
     if (grant_type === 'password') {
       const user = users.find(u => u.email === email)
@@ -110,24 +113,36 @@ export const handlers = [
     }
     
     if (grant_type === 'refresh_token') {
-      // Simple refresh logic for testing
-      const user = users[0] // Get first user for simplicity
-      if (!user) {
+      const { refresh_token } = body
+      // Simple refresh logic for testing - find user by existing refresh token
+      const existingSession = Object.values(sessions).find(s => s.refresh_token === refresh_token)
+      if (!existingSession) {
         return HttpResponse.json(
           { message: 'Invalid refresh token' },
           { status: 400 }
         )
       }
       
-      const accessToken = generateMockToken(user.id)
+      const accessToken = generateMockToken(existingSession.user.id)
       const refreshToken = generateId()
+      
+      const newSession = {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user: existingSession.user
+      }
+      
+      sessions[accessToken] = newSession
       
       return HttpResponse.json({
         access_token: accessToken,
         refresh_token: refreshToken,
         token_type: 'bearer',
         expires_in: 3600,
-        user
+        user: existingSession.user
       })
     }
     
@@ -142,10 +157,14 @@ export const handlers = [
     const authorization = request.headers.get('authorization')
     const token = authorization?.replace('Bearer ', '')
     
+    console.log('Get user request - Authorization header:', authorization)
+    console.log('Extracted token:', token)
+    console.log('Available sessions:', Object.keys(sessions))
+    
     const session = sessions[token]
     if (!session) {
       return HttpResponse.json(
-        { message: 'Invalid token' },
+        { message: 'Auth session missing!' },
         { status: 401 }
       )
     }
@@ -159,10 +178,14 @@ export const handlers = [
     const token = authorization?.replace('Bearer ', '')
     const body = await request.json()
     
+    console.log('Update user request - Authorization header:', authorization)
+    console.log('Update user extracted token:', token)
+    console.log('Available sessions for update:', Object.keys(sessions))
+    
     const session = sessions[token]
     if (!session) {
       return HttpResponse.json(
-        { message: 'Invalid token' },
+        { message: 'Auth session missing!' },
         { status: 401 }
       )
     }
@@ -262,6 +285,18 @@ export const handlers = [
     }
     
     return HttpResponse.json(factor)
+  }),
+
+
+  // Catch-all to log unhandled requests
+  http.all('http://localhost:5173/auth/v1/*', async ({ request }) => {
+    console.log('Unhandled auth request:', request.method, request.url)
+    const body = await request.text()
+    console.log('Request body:', body)
+    return HttpResponse.json(
+      { message: 'Endpoint not implemented in MSW' },
+      { status: 404 }
+    )
   }),
 
   // CORS preflight
