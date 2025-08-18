@@ -1,24 +1,26 @@
 import { http, HttpResponse } from 'msw'
 import { SupabaseAPIBridge } from './supabase-bridge'
+import { EnhancedSupabaseAPIBridge } from './enhanced-bridge'
 
 const bridge = new SupabaseAPIBridge()
+const enhancedBridge = new EnhancedSupabaseAPIBridge()
 
 export const handlers = [
-  // PostgREST-compatible REST API endpoints
+  // PostgREST-compatible REST API endpoints with enhanced features
   http.get('/rest/v1/:table', async ({ params, request }) => {
     try {
-      const result = await bridge.handleRestRequest({
+      const response = await enhancedBridge.handleRestRequest({
         table: params.table as string,
         method: 'GET',
         headers: Object.fromEntries(request.headers.entries()),
         url: new URL(request.url)
       })
       
-      return HttpResponse.json(result, {
+      return HttpResponse.json(response.data, {
+        status: response.status,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          ...response.headers,
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
           'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
         }
       })
@@ -39,7 +41,7 @@ export const handlers = [
   http.post('/rest/v1/:table', async ({ params, request }) => {
     try {
       const body = await request.json()
-      const result = await bridge.handleRestRequest({
+      const response = await enhancedBridge.handleRestRequest({
         table: params.table as string,
         method: 'POST',
         body,
@@ -47,12 +49,11 @@ export const handlers = [
         url: new URL(request.url)
       })
       
-      return HttpResponse.json(result, {
-        status: 201,
+      return HttpResponse.json(response.data, {
+        status: response.status,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          ...response.headers,
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
           'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
         }
       })
@@ -73,7 +74,7 @@ export const handlers = [
   http.patch('/rest/v1/:table', async ({ params, request }) => {
     try {
       const body = await request.json()
-      const result = await bridge.handleRestRequest({
+      const response = await enhancedBridge.handleRestRequest({
         table: params.table as string,
         method: 'PATCH',
         body,
@@ -81,11 +82,11 @@ export const handlers = [
         url: new URL(request.url)
       })
       
-      return HttpResponse.json(result, {
+      return HttpResponse.json(response.data, {
+        status: response.status,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          ...response.headers,
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
           'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
         }
       })
@@ -105,19 +106,50 @@ export const handlers = [
 
   http.delete('/rest/v1/:table', async ({ params, request }) => {
     try {
-      const result = await bridge.handleRestRequest({
+      const response = await enhancedBridge.handleRestRequest({
         table: params.table as string,
         method: 'DELETE',
         headers: Object.fromEntries(request.headers.entries()),
         url: new URL(request.url)
       })
       
-      return HttpResponse.json(result, {
+      return HttpResponse.json(response.data, {
+        status: response.status,
         headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          ...response.headers,
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
           'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
+        }
+      })
+    } catch (error: any) {
+      return HttpResponse.json(
+        { message: error.message },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+  }),
+
+  // RPC (Remote Procedure Call) endpoints for stored functions
+  http.post('/rest/v1/rpc/:functionName', async ({ params, request }) => {
+    try {
+      const body = await request.json()
+      const response = await enhancedBridge.handleRpc(
+        params.functionName as string,
+        body || {}
+      )
+      
+      return HttpResponse.json(response.data, {
+        status: response.status,
+        headers: {
+          ...response.headers,
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          'Access-Control-Allow-Methods': 'POST'
         }
       })
     } catch (error: any) {
@@ -289,7 +321,8 @@ export const handlers = [
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range, content-range',
+        'Access-Control-Expose-Headers': 'Content-Range, Content-Type',
         'Access-Control-Max-Age': '86400'
       }
     })

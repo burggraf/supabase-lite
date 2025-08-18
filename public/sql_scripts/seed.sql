@@ -528,6 +528,116 @@ CREATE TABLE IF NOT EXISTS public.posts (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- =============================================================================
+-- TEST SCHEMA (For compatibility testing with hosted Supabase)
+-- =============================================================================
+
+-- Products table for testing
+CREATE TABLE IF NOT EXISTS public.products (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  price DECIMAL(10,2),
+  category TEXT,
+  tags TEXT[],
+  metadata JSONB,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Orders table for testing relationships
+CREATE TABLE IF NOT EXISTS public.orders (
+  id SERIAL PRIMARY KEY,
+  user_id UUID,
+  product_id INTEGER REFERENCES public.products(id),
+  quantity INTEGER DEFAULT 1,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Test RPC functions
+CREATE OR REPLACE FUNCTION get_product_stats()
+RETURNS JSON AS $$
+BEGIN
+  RETURN json_build_object(
+    'total_products', (SELECT COUNT(*) FROM products),
+    'avg_price', (SELECT ROUND(AVG(price), 2) FROM products WHERE price IS NOT NULL),
+    'categories', (SELECT COUNT(DISTINCT category) FROM products WHERE category IS NOT NULL),
+    'last_updated', NOW()
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_products_by_category(category_name TEXT)
+RETURNS TABLE(id INTEGER, name TEXT, price DECIMAL, created_at TIMESTAMP) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT p.id, p.name, p.price, p.created_at
+  FROM products p
+  WHERE p.category = category_name
+  ORDER BY p.created_at DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_category_summary()
+RETURNS JSON AS $$
+BEGIN
+  RETURN (
+    SELECT json_object_agg(category, category_stats)
+    FROM (
+      SELECT 
+        category,
+        json_build_object(
+          'count', COUNT(*),
+          'avg_price', ROUND(AVG(price), 2),
+          'min_price', MIN(price),
+          'max_price', MAX(price)
+        ) as category_stats
+      FROM products
+      WHERE category IS NOT NULL
+      GROUP BY category
+    ) category_data
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Insert test products data
+INSERT INTO public.products (name, price, category, tags, metadata, description) VALUES
+('Laptop Pro 15"', 1299.99, 'electronics', ARRAY['laptop', 'computer', 'portable'], '{"brand": "TechCorp", "warranty": "2 years"}', 'High-performance laptop with 15-inch display'),
+('Wireless Mouse', 29.99, 'electronics', ARRAY['mouse', 'wireless', 'computer'], '{"brand": "TechCorp", "wireless": true}', 'Ergonomic wireless mouse with long battery life'),
+('Coffee Maker', 79.99, 'appliances', ARRAY['coffee', 'kitchen', 'appliance'], '{"brand": "BrewMaster", "capacity": "12 cups"}', 'Programmable coffee maker with timer'),
+('Running Shoes', 89.99, 'clothing', ARRAY['shoes', 'running', 'sports'], '{"brand": "RunFast", "size": "10"}', 'Lightweight running shoes for daily training'),
+('Smartphone', 699.99, 'electronics', ARRAY['phone', 'mobile', 'smart'], '{"brand": "PhoneCorp", "storage": "128GB"}', 'Latest smartphone with advanced camera'),
+('Desk Chair', 199.99, 'furniture', ARRAY['chair', 'office', 'ergonomic'], '{"brand": "ComfortSeats", "adjustable": true}', 'Ergonomic office chair with lumbar support'),
+('Water Bottle', 19.99, 'sports', ARRAY['bottle', 'water', 'sports'], '{"brand": "HydroFlow", "capacity": "32oz"}', 'Insulated water bottle keeps drinks cold'),
+('Bluetooth Speaker', 59.99, 'electronics', ARRAY['speaker', 'bluetooth', 'audio'], '{"brand": "SoundWave", "battery": "10 hours"}', 'Portable Bluetooth speaker with rich sound'),
+('Yoga Mat', 39.99, 'sports', ARRAY['yoga', 'fitness', 'exercise'], '{"brand": "FlexFit", "thickness": "6mm"}', 'Non-slip yoga mat for all types of practice'),
+('Kitchen Knife Set', 129.99, 'appliances', ARRAY['knife', 'kitchen', 'cooking'], '{"brand": "ChefPro", "pieces": 8}', 'Professional knife set with storage block'),
+('Tablet 10"', 399.99, 'electronics', ARRAY['tablet', 'portable', 'touch'], '{"brand": "TechCorp", "storage": "64GB"}', '10-inch tablet perfect for reading and browsing'),
+('Backpack', 49.99, 'clothing', ARRAY['bag', 'backpack', 'travel'], '{"brand": "TravelGear", "capacity": "25L"}', 'Durable backpack with multiple compartments'),
+('LED Desk Lamp', 34.99, 'furniture', ARRAY['lamp', 'led', 'office'], '{"brand": "BrightLight", "dimmer": true}', 'Adjustable LED desk lamp with touch controls'),
+('Protein Powder', 39.99, 'sports', ARRAY['protein', 'fitness', 'supplement'], '{"brand": "MuscleFuel", "flavor": "vanilla"}', 'Whey protein powder for muscle building'),
+('Gaming Headset', 79.99, 'electronics', ARRAY['headset', 'gaming', 'audio'], '{"brand": "GameSound", "microphone": true}', 'Gaming headset with noise-cancelling microphone'),
+('Air Purifier', 149.99, 'appliances', ARRAY['purifier', 'air', 'health'], '{"brand": "CleanAir", "coverage": "300 sq ft"}', 'HEPA air purifier for cleaner indoor air'),
+('Fitness Tracker', 99.99, 'electronics', ARRAY['fitness', 'tracker', 'health'], '{"brand": "FitTech", "battery": "7 days"}', 'Fitness tracker with heart rate monitoring'),
+('Cooking Pan Set', 89.99, 'appliances', ARRAY['pan', 'cooking', 'kitchen'], '{"brand": "ChefPro", "pieces": 3}', 'Non-stick cooking pan set with lids'),
+('Sunglasses', 79.99, 'clothing', ARRAY['sunglasses', 'eyewear', 'fashion'], '{"brand": "SunStyle", "uv_protection": "100%"}', 'Polarized sunglasses with UV protection'),
+('Power Bank', 24.99, 'electronics', ARRAY['battery', 'portable', 'charger'], '{"brand": "PowerUp", "capacity": "10000mAh"}', 'Portable power bank for charging devices on the go')
+ON CONFLICT DO NOTHING;
+
+-- Insert test orders data
+INSERT INTO public.orders (user_id, product_id, quantity, status) VALUES
+(gen_random_uuid(), 1, 1, 'completed'),
+(gen_random_uuid(), 2, 2, 'completed'),
+(gen_random_uuid(), 3, 1, 'pending'),
+(gen_random_uuid(), 1, 1, 'shipped'),
+(gen_random_uuid(), 5, 1, 'completed'),
+(gen_random_uuid(), 8, 1, 'pending'),
+(gen_random_uuid(), 10, 1, 'completed'),
+(gen_random_uuid(), 4, 2, 'shipped'),
+(gen_random_uuid(), 7, 3, 'completed'),
+(gen_random_uuid(), 12, 1, 'pending')
+ON CONFLICT DO NOTHING;
+
 -- Success message
 DO $$ 
 BEGIN 
