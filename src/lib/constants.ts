@@ -65,10 +65,10 @@ export const NAVIGATION_ITEMS = [
   },
   {
     id: 'api',
-    label: 'API Docs',
-    icon: 'BookOpen',
+    label: 'API Tester',
+    icon: 'TestTube',
     path: '/api',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'api-test',

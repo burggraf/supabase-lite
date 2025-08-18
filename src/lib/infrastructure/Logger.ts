@@ -139,7 +139,7 @@ export class InfrastructureLogger implements Logger {
     this.trimEntries();
 
     // Also log to console in development
-    if (import.meta.env.DEV) {
+    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
       this.logToConsole(entry);
     }
   }

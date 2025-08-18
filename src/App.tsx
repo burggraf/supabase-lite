@@ -83,6 +83,7 @@ function App() {
           </ErrorBoundary>
         );
       case 'api-test':
+      case 'api':
         return (
           <ErrorBoundary>
             <div className="flex-1 p-6">

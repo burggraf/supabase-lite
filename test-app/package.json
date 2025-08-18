@@ -11,6 +11,7 @@
     "@supabase/supabase-js": "^2.48.1"
   },
   "devDependencies": {
+    "msw": "^2.10.5",
     "vite": "^7.1.2"
   }
 }

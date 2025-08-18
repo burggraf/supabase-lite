@@ -10,17 +10,11 @@ export function createSupabaseClient(environment = 'local') {
     throw new Error(`Unknown environment: ${environment}`)
   }
 
-  // For local environment, we need special configuration
-  const clientConfig = {}
-  
-  if (environment === 'local') {
-    // Configure for local MSW-based API
-    clientConfig.global = {
-      fetch: (url, options = {}) => {
-        // Ensure we're hitting the local dev server
-        const localUrl = url.toString().replace(config.url, 'http://localhost:5173')
-        return fetch(localUrl, options)
-      }
+  // Create client with standard configuration
+  const clientConfig = {
+    auth: {
+      persistSession: false,
+      detectSessionInUrl: false
     }
   }
 
