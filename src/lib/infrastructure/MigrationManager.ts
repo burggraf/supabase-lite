@@ -447,6 +447,65 @@ export class InfrastructureMigrationManager implements MigrationManager {
           DROP SCHEMA IF EXISTS realtime CASCADE;
         `,
       },
+      {
+        version: '004',
+        name: 'Create test tables (products and orders)',
+        up: `
+          CREATE TABLE IF NOT EXISTS products (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            price REAL NOT NULL,
+            category TEXT,
+            description TEXT,
+            in_stock BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          
+          CREATE TABLE IF NOT EXISTS orders (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER,
+            product_id INTEGER REFERENCES products(id),
+            quantity INTEGER NOT NULL DEFAULT 1,
+            total_price REAL NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          
+          CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+          CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id);
+          CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+          
+          -- Insert sample products
+          INSERT INTO products (name, price, category, description, in_stock) VALUES
+            ('Wireless Headphones', 99.99, 'Electronics', 'High-quality wireless headphones with noise cancellation', true),
+            ('Running Shoes', 129.99, 'Footwear', 'Comfortable running shoes for daily exercise', true),
+            ('Coffee Mug', 15.99, 'Home & Kitchen', 'Ceramic coffee mug with ergonomic handle', true),
+            ('Laptop Stand', 49.99, 'Electronics', 'Adjustable aluminum laptop stand', true),
+            ('Desk Lamp', 35.99, 'Home & Kitchen', 'LED desk lamp with adjustable brightness', true),
+            ('Water Bottle', 24.99, 'Sports', 'Stainless steel water bottle with insulation', true),
+            ('Notebook Set', 12.99, 'Office Supplies', 'Set of 3 lined notebooks', true),
+            ('Phone Case', 19.99, 'Electronics', 'Protective phone case with raised edges', true),
+            ('Yoga Mat', 45.99, 'Sports', 'Non-slip yoga mat with carrying strap', true),
+            ('Bluetooth Speaker', 79.99, 'Electronics', 'Portable Bluetooth speaker with bass boost', true);
+          
+          -- Insert sample orders
+          INSERT INTO orders (user_id, product_id, quantity, total_price, status) VALUES
+            (1, 1, 1, 99.99, 'completed'),
+            (1, 3, 2, 31.98, 'completed'),
+            (2, 2, 1, 129.99, 'pending'),
+            (2, 6, 1, 24.99, 'shipped'),
+            (3, 4, 1, 49.99, 'completed'),
+            (1, 10, 1, 79.99, 'pending'),
+            (3, 7, 3, 38.97, 'completed'),
+            (2, 8, 2, 39.98, 'shipped'),
+            (1, 9, 1, 45.99, 'delivered'),
+            (3, 5, 1, 35.99, 'completed');
+        `,
+        down: `
+          DROP TABLE IF EXISTS orders;
+          DROP TABLE IF EXISTS products;
+        `,
+      },
     ];
   }
 }
