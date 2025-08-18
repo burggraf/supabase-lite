@@ -1,4 +1,14 @@
 import type { Plugin } from 'vite'
+import { EnhancedSupabaseAPIBridge } from './mocks/enhanced-bridge'
+import { SupabaseAPIBridge } from './mocks/supabase-bridge'
+
+// Bridge factory function for Vite plugin
+async function getBridges() {
+  return {
+    bridge: new SupabaseAPIBridge(),
+    enhancedBridge: new EnhancedSupabaseAPIBridge()
+  }
+}
 
 export function createApiPlugin(): Plugin {
   // Mock data for server-side responses (since PGlite requires browser context)
@@ -93,11 +103,48 @@ export function createApiPlugin(): Plugin {
                   const bodyStr = Buffer.concat(chunks).toString()
                   body = bodyStr ? JSON.parse(bodyStr) : {}
                   
-                  const { enhancedBridge: bridge } = await getBridges()
-                  const response = await bridge.handleRpc(functionName, body)
+                  let result
+                  
+                  // Implement RPC functions with mock data (since PGlite needs browser context)
+                  switch (functionName) {
+                    case 'get_product_stats':
+                      result = {
+                        total_products: mockData.products.length,
+                        avg_price: Math.round((mockData.products.reduce((sum, p) => sum + p.price, 0) / mockData.products.length) * 100) / 100,
+                        in_stock_count: mockData.products.filter(p => p.in_stock).length,
+                        categories: [...new Set(mockData.products.map(p => p.category))].length
+                      }
+                      break
+                      
+                    case 'get_products_by_category':
+                      const categoryName = body.category_name?.toLowerCase() || ''
+                      result = mockData.products.filter(p => 
+                        p.category.toLowerCase().includes(categoryName)
+                      )
+                      break
+                      
+                    case 'get_category_summary':
+                      const categories = [...new Set(mockData.products.map(p => p.category))]
+                      result = categories.map(category => ({
+                        category,
+                        product_count: mockData.products.filter(p => p.category === category).length,
+                        avg_price: Math.round((mockData.products
+                          .filter(p => p.category === category)
+                          .reduce((sum, p) => sum + p.price, 0) / 
+                          mockData.products.filter(p => p.category === category).length) * 100) / 100
+                      }))
+                      break
+                      
+                    default:
+                      res.statusCode = 404
+                      res.setHeader('Content-Type', 'application/json')
+                      res.end(JSON.stringify({ message: `Function ${functionName} not found` }))
+                      return
+                  }
+                  
                   res.setHeader('Content-Type', 'application/json')
-                  res.statusCode = response.status
-                  res.end(JSON.stringify(response.data))
+                  res.statusCode = 200
+                  res.end(JSON.stringify(result))
                 } catch (error: any) {
                   res.statusCode = 400
                   res.setHeader('Content-Type', 'application/json')
