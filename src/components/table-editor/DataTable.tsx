@@ -68,43 +68,44 @@ export function DataTable({
         accessorKey: column.column_name,
         header: ({ column: col }) => {
           return (
-          <Button
-            variant="ghost"
-            onClick={() => col.toggleSorting(col.getIsSorted() === 'asc')}
-            className="h-8 p-0 font-medium"
-          >
-            <div className="flex flex-col items-start">
-              <span>{column.column_name}</span>
-              <span className="text-xs text-muted-foreground font-normal">
-                {column.data_type}
-                {column.is_primary_key && ' (PK)'}
-                {column.is_nullable === 'NO' && ' *'}
-              </span>
-            </div>
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
-      cell: ({ row, column: _col }) => {
-        const value = row.getValue(column.column_name);
+            <Button
+              variant="ghost"
+              onClick={() => col.toggleSorting(col.getIsSorted() === 'asc')}
+              className="h-8 p-0 font-medium"
+            >
+              <div className="flex flex-col items-start">
+                <span>{column.column_name}</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  {column.data_type}
+                  {column.is_primary_key && ' (PK)'}
+                  {column.is_nullable === 'NO' && ' *'}
+                </span>
+              </div>
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+          );
+        },
+        cell: ({ row, column: _col }) => {
+          const value = row.getValue(column.column_name);
 
-        return (
-          <div className="p-2 truncate">
-            {value === null || value === undefined ? (
-              <span className="text-muted-foreground italic">NULL</span>
-            ) : column.data_type.includes('bool') ? (
-              <span className={value ? 'text-green-600' : 'text-red-600'}>
-                {value?.toString()}
-              </span>
-            ) : (
-              value?.toString()
-            )}
-          </div>
-        );
-      },
-      enableSorting: true,
-      enableColumnFilter: true,
-    }));
+          return (
+            <div className="p-2 truncate">
+              {value === null || value === undefined ? (
+                <span className="text-muted-foreground italic">NULL</span>
+              ) : column.data_type.includes('bool') ? (
+                <span className={value ? 'text-green-600' : 'text-red-600'}>
+                  {value?.toString()}
+                </span>
+              ) : (
+                value?.toString()
+              )}
+            </div>
+          );
+        },
+        enableSorting: true,
+        enableColumnFilter: true,
+      };
+    });
   }, [columns]);
 
   const table = useReactTable({
