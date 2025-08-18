@@ -67,10 +67,11 @@ export class InfrastructureMigrationManager implements MigrationManager {
       `);
 
       if (appliedResult.rows.length > 0) {
+        logger.info(`Migration ${migration.version} already applied, skipping`);
         return {
           version: migration.version,
-          success: false,
-          error: 'Migration already applied',
+          success: true,
+          error: undefined,
           duration: performance.now() - startTime,
         };
       }
@@ -80,20 +81,24 @@ export class InfrastructureMigrationManager implements MigrationManager {
 
       logger.info(`Running migration ${migration.version}: ${migration.name}`);
 
-      // Execute migration in a transaction
-      await this.dbManager.transaction([
-        async () => {
-          // Execute the migration
-          await this.dbManager.exec(migration.up);
-          
-          // Record the migration
-          const checksum = this.calculateChecksum(migration.up);
-          await this.dbManager.query(`
-            INSERT INTO ${this.MIGRATIONS_TABLE} (version, name, up, down, checksum, applied_at)
-            VALUES ('${migration.version}', '${migration.name}', '${migration.up.replace(/'/g, "''")}', ${migration.down ? `'${migration.down.replace(/'/g, "''")}'` : 'NULL'}, '${checksum}', '${new Date().toISOString()}')
-          `);
-        },
-      ]);
+      // Execute the migration first
+      await this.dbManager.exec(migration.up);
+      
+      // Record the migration (handle duplicates gracefully outside of transaction)
+      const checksum = this.calculateChecksum(migration.up);
+      try {
+        await this.dbManager.query(`
+          INSERT INTO ${this.MIGRATIONS_TABLE} (version, name, up, down, checksum, applied_at)
+          VALUES ('${migration.version}', '${migration.name}', '${migration.up.replace(/'/g, "''")}', ${migration.down ? `'${migration.down.replace(/'/g, "''")}'` : 'NULL'}, '${checksum}', '${new Date().toISOString()}')
+        `);
+      } catch (insertError: any) {
+        // If this is a duplicate key error, the migration was already recorded
+        if (insertError.message && insertError.message.includes('duplicate key')) {
+          logger.warn(`Migration ${migration.version} record already exists, continuing`);
+        } else {
+          throw insertError;
+        }
+      }
 
       const duration = performance.now() - startTime;
       logger.info(`Migration ${migration.version} completed successfully`, { duration });
@@ -353,19 +358,19 @@ export class InfrastructureMigrationManager implements MigrationManager {
           CREATE SCHEMA IF NOT EXISTS auth;
           
           CREATE TABLE IF NOT EXISTS auth.users (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id SERIAL PRIMARY KEY,
             email VARCHAR(255) UNIQUE NOT NULL,
             encrypted_password VARCHAR(255),
             email_confirmed_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            raw_user_meta_data JSONB DEFAULT '{}'::jsonb,
-            raw_app_meta_data JSONB DEFAULT '{}'::jsonb
+            raw_user_meta_data TEXT DEFAULT '{}',
+            raw_app_meta_data TEXT DEFAULT '{}'
           );
           
           CREATE TABLE IF NOT EXISTS auth.sessions (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
@@ -388,21 +393,21 @@ export class InfrastructureMigrationManager implements MigrationManager {
           CREATE TABLE IF NOT EXISTS storage.buckets (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
-            owner UUID REFERENCES auth.users(id),
+            owner INTEGER REFERENCES auth.users(id),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             public BOOLEAN DEFAULT false
           );
           
           CREATE TABLE IF NOT EXISTS storage.objects (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id SERIAL PRIMARY KEY,
             bucket_id TEXT NOT NULL REFERENCES storage.buckets(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
-            owner UUID REFERENCES auth.users(id),
+            owner INTEGER REFERENCES auth.users(id),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            metadata JSONB DEFAULT '{}'::jsonb,
+            metadata TEXT DEFAULT '{}',
             UNIQUE(bucket_id, name)
           );
           
@@ -428,11 +433,11 @@ export class InfrastructureMigrationManager implements MigrationManager {
           
           CREATE TABLE IF NOT EXISTS realtime.subscription (
             id BIGSERIAL PRIMARY KEY,
-            subscription_id UUID NOT NULL,
-            entity REGCLASS NOT NULL,
-            filters JSONB DEFAULT '{}'::jsonb,
-            claims JSONB DEFAULT '{}'::jsonb,
-            claims_role REGROLE,
+            subscription_id TEXT NOT NULL,
+            entity TEXT NOT NULL,
+            filters TEXT DEFAULT '{}',
+            claims TEXT DEFAULT '{}',
+            claims_role TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
         `,

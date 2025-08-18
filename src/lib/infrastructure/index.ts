@@ -13,17 +13,32 @@ export { InfrastructureTypeGenerator, typeGenerator, createTypeGenerator } from 
 export type * from '@/types/infrastructure';
 
 // Re-export enhanced DatabaseManager
-export { DatabaseManager, dbManager } from '../database/connection';
+export { DatabaseManager } from '../database/connection';
+
+// Import everything we need for the convenience object
+import { logger } from './Logger';
+import { errorHandler } from './ErrorHandler';
+import { configManager } from './ConfigManager';
+import { apiBridge } from './APIBridge';
+import { migrationManager } from './MigrationManager';
+import { typeGenerator } from './TypeGenerator';
+import { DatabaseManager } from '../database/connection';
+
+// Create database manager instance
+const dbManager = DatabaseManager.getInstance();
+
+// Export the database manager instance
+export { dbManager };
 
 // Convenience utilities
 export const infrastructure = {
-  logger: logger,
-  errorHandler: errorHandler,
-  configManager: configManager,
-  apiBridge: apiBridge,
-  migrationManager: migrationManager,
-  typeGenerator: typeGenerator,
-  dbManager: dbManager,
+  logger,
+  errorHandler,
+  configManager,
+  apiBridge,
+  migrationManager,
+  typeGenerator,
+  dbManager,
 } as const;
 
 // Infrastructure initialization

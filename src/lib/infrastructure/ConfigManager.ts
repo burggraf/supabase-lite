@@ -163,33 +163,36 @@ export class InfrastructureConfigManager implements ConfigManager {
   loadFromEnvironment(): void {
     const envConfig: Partial<AppConfig> = {};
 
+    // Safe environment access
+    const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
+
     // Database config from environment
-    if (import.meta.env.VITE_DB_NAME) {
+    if (env.VITE_DB_NAME) {
       envConfig.database = {
         ...this.config.database,
-        name: import.meta.env.VITE_DB_NAME,
+        name: env.VITE_DB_NAME,
       };
     }
 
     // API config from environment
-    if (import.meta.env.VITE_API_BASE_URL) {
+    if (env.VITE_API_BASE_URL) {
       envConfig.api = {
         ...this.config.api,
-        baseUrl: import.meta.env.VITE_API_BASE_URL,
+        baseUrl: env.VITE_API_BASE_URL,
       };
     }
 
     // Auth config from environment
-    if (import.meta.env.VITE_JWT_SECRET) {
+    if (env.VITE_JWT_SECRET) {
       envConfig.auth = {
         ...this.config.auth,
-        jwtSecret: import.meta.env.VITE_JWT_SECRET,
+        jwtSecret: env.VITE_JWT_SECRET,
       };
     }
 
     // Log level from environment
-    if (import.meta.env.VITE_LOG_LEVEL) {
-      envConfig.logLevel = import.meta.env.VITE_LOG_LEVEL as LogLevel;
+    if (env.VITE_LOG_LEVEL) {
+      envConfig.logLevel = env.VITE_LOG_LEVEL as LogLevel;
     }
 
     if (Object.keys(envConfig).length > 0) {
