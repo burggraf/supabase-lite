@@ -48,13 +48,26 @@ export function DataTable({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-  // Create table columns
+  // Create table columns with unique IDs
   const tableColumns = useMemo<ColumnDef<any>[]>(() => {
-    return columns.map((column, index) => ({
-      id: `${column.column_name}_${index}`, // Ensure unique ID for each column
-      accessorKey: column.column_name,
-      header: ({ column: col }) => {
-        return (
+    const usedIds = new Set<string>();
+    
+    return columns.map((column) => {
+      let columnId = column.column_name;
+      let counter = 1;
+      
+      // Ensure unique ID by appending counter if needed
+      while (usedIds.has(columnId)) {
+        columnId = `${column.column_name}_${counter}`;
+        counter++;
+      }
+      usedIds.add(columnId);
+      
+      return {
+        id: columnId,
+        accessorKey: column.column_name,
+        header: ({ column: col }) => {
+          return (
           <Button
             variant="ghost"
             onClick={() => col.toggleSorting(col.getIsSorted() === 'asc')}
