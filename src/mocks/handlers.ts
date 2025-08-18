@@ -1,9 +1,11 @@
 import { http, HttpResponse } from 'msw'
 import { SupabaseAPIBridge } from './supabase-bridge'
 import { EnhancedSupabaseAPIBridge } from './enhanced-bridge'
+import { AuthBridge } from '../lib/auth/AuthBridge'
 
 const bridge = new SupabaseAPIBridge()
 const enhancedBridge = new EnhancedSupabaseAPIBridge()
+const authBridge = AuthBridge.getInstance()
 
 export const handlers = [
   // PostgREST-compatible REST API endpoints with enhanced features
@@ -138,10 +140,10 @@ export const handlers = [
   // RPC (Remote Procedure Call) endpoints for stored functions
   http.post('/rest/v1/rpc/:functionName', async ({ params, request }) => {
     try {
-      const body = await request.json()
+      const body = await request.json().catch(() => ({}))
       const response = await enhancedBridge.handleRpc(
         params.functionName as string,
-        body || {}
+        body
       )
       
       return HttpResponse.json(response.data, {
@@ -166,138 +168,240 @@ export const handlers = [
     }
   }),
 
-  // Authentication endpoints
+  // Authentication endpoints - Enhanced with AuthBridge
   http.post('/auth/v1/signup', async ({ request }) => {
-    try {
-      const body = await request.json()
-      const result = await bridge.handleAuth('signup', 'POST', body)
-      
-      return HttpResponse.json(result, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
-          'Access-Control-Allow-Methods': 'POST'
-        }
-      })
-    } catch (error: any) {
-      return HttpResponse.json(
-        { message: error.message },
-        { 
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      )
-    }
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'signup',
+      method: 'POST',
+      body: await request.json(),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
   }),
 
   http.post('/auth/v1/signin', async ({ request }) => {
-    try {
-      const body = await request.json()
-      const result = await bridge.handleAuth('signin', 'POST', body)
-      
-      return HttpResponse.json(result, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
-          'Access-Control-Allow-Methods': 'POST'
-        }
-      })
-    } catch (error: any) {
-      return HttpResponse.json(
-        { message: error.message },
-        { 
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      )
-    }
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'signin',
+      method: 'POST',
+      body: await request.json(),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
   }),
 
   http.post('/auth/v1/token', async ({ request }) => {
-    try {
-      const body = await request.json()
-      const result = await bridge.handleAuth('refresh', 'POST', body)
-      
-      return HttpResponse.json(result, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
-          'Access-Control-Allow-Methods': 'POST'
-        }
-      })
-    } catch (error: any) {
-      return HttpResponse.json(
-        { message: error.message },
-        { 
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      )
-    }
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'token',
+      method: 'POST',
+      body: await request.json(),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
   }),
 
-  http.post('/auth/v1/logout', async () => {
-    try {
-      const result = await bridge.handleAuth('signout', 'POST')
-      
-      return HttpResponse.json(result, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
-          'Access-Control-Allow-Methods': 'POST'
-        }
-      })
-    } catch (error: any) {
-      return HttpResponse.json(
-        { message: error.message },
-        { 
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      )
-    }
+  http.post('/auth/v1/logout', async ({ request }) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'logout',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
   }),
 
   http.get('/auth/v1/user', async ({ request }) => {
-    try {
-      const result = await bridge.handleAuth('user', 'GET')
-      
-      return HttpResponse.json(result, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
-          'Access-Control-Allow-Methods': 'GET'
-        }
-      })
-    } catch (error: any) {
-      return HttpResponse.json(
-        { message: error.message },
-        { 
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }
-      )
-    }
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'user',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  }),
+
+  http.put('/auth/v1/user', async ({ request }) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'user',
+      method: 'PUT',
+      body: await request.json(),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  }),
+
+  http.post('/auth/v1/recover', async ({ request }) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'recover',
+      method: 'POST',
+      body: await request.json(),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  }),
+
+  // MFA endpoints
+  http.get('/auth/v1/factors', async ({ request }) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'factors',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  }),
+
+  http.post('/auth/v1/factors', async ({ request }) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'factors',
+      method: 'POST',
+      body: await request.json(),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  }),
+
+  http.post('/auth/v1/factors/:factorId/challenge', async ({ params, request }) => {
+    const requestBody = await request.json().catch(() => ({}))
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'factors/challenge',
+      method: 'POST',
+      body: { factor_id: params.factorId, ...requestBody as Record<string, any> },
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  }),
+
+  http.post('/auth/v1/factors/:factorId/verify', async ({ params, request }) => {
+    const body = await request.json().catch(() => ({})) as Record<string, any>
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'factors/verify',
+      method: 'POST',
+      body: { factor_id: params.factorId, ...body },
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  }),
+
+  http.delete('/auth/v1/factors/:factorId', async ({ params, request }) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'factors',
+      method: 'DELETE',
+      body: { factor_id: params.factorId },
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  }),
+
+  // JWT discovery endpoint
+  http.get('/auth/v1/.well-known/jwks.json', async ({ request }) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: '.well-known/jwks.json',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
   }),
 
   // Health check endpoint for testing

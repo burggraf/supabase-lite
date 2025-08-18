@@ -310,6 +310,49 @@
   </div>
 
   <div class="test-section">
+    <h3>🔐 Authentication</h3>
+    <div class="test-content">
+      <div class="test-buttons">
+        <button onclick="runTest('auth_signup_email')">Sign Up</button>
+        <button onclick="runTest('auth_signin_email')">Sign In</button>
+        <button onclick="runTest('auth_signout')">Sign Out</button>
+        <button onclick="runTest('auth_get_user')">Get User</button>
+        <button onclick="runTest('auth_update_user')">Update User</button>
+        <button onclick="runTest('auth_reset_password')">Reset Password</button>
+      </div>
+      <div id="auth-results" class="results-container" style="display: none;">
+        <div class="result-panel">
+          <div class="result-header">Local Result</div>
+          <div id="auth-local-result" class="result-content"></div>
+        </div>
+        <div class="result-panel">
+          <div class="result-header">Remote Result</div>
+          <div id="auth-remote-result" class="result-content"></div>
+        </div>
+      </div>
+      
+      <h4>Session & Token Management</h4>
+      <div class="test-buttons">
+        <button onclick="runTest('auth_get_session')">Get Session</button>
+        <button onclick="runTest('auth_refresh_session')">Refresh Session</button>
+        <button onclick="runTest('auth_jwt_decode')">JWT Token Structure</button>
+      </div>
+      
+      <h4>Multi-Factor Authentication</h4>
+      <div class="test-buttons">
+        <button onclick="runTest('auth_mfa_enroll_totp')">Enroll TOTP</button>
+        <button onclick="runTest('auth_mfa_list_factors')">List MFA Factors</button>
+      </div>
+      
+      <h4>Error Handling</h4>
+      <div class="test-buttons">
+        <button onclick="runTest('auth_invalid_credentials')">Invalid Credentials</button>
+        <button onclick="runTest('auth_weak_password')">Weak Password</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="test-section">
     <h3>📊 Compatibility Matrix</h3>
     <div class="test-content">
       <button onclick="runAllTests()" class="secondary">Run All Compatibility Tests</button>
@@ -318,7 +361,7 @@
         <div class="matrix-item matrix-pending">Advanced Queries: Pending</div>
         <div class="matrix-item matrix-pending">PostgREST Operators: Pending</div>
         <div class="matrix-item matrix-pending">RPC Functions: Pending</div>
-        <div class="matrix-item matrix-pending">HTTP Headers: Pending</div>
+        <div class="matrix-item matrix-pending">Authentication: Pending</div>
         <div class="matrix-item matrix-pending">Error Handling: Pending</div>
       </div>
     </div>

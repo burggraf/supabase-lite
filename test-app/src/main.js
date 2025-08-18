@@ -4,13 +4,15 @@ import { basicCrudTests } from './tests/basic-crud.js'
 import { advancedQueryTests } from './tests/advanced-queries.js'
 import { postgrestOperatorTests } from './tests/postgrest-operators.js'
 import { rpcFunctionTests } from './tests/rpc-functions.js'
+import { authTests } from './tests/auth-tests.js'
 
 // Combine all test suites
 const allTests = {
   ...basicCrudTests,
   ...advancedQueryTests,
   ...postgrestOperatorTests,
-  ...rpcFunctionTests
+  ...rpcFunctionTests,
+  ...authTests
 }
 
 // Global functions for HTML buttons
@@ -170,6 +172,7 @@ function getTestCategory(testName) {
   if (testName.startsWith('select-') || testName.startsWith('filters-') || testName.startsWith('ordering') || testName.startsWith('pagination') || testName.startsWith('count')) return 'advanced'
   if (testName.startsWith('operators-')) return 'operators'
   if (testName.startsWith('rpc-')) return 'rpc'
+  if (testName.startsWith('auth_')) return 'auth'
   return 'basic'
 }
 
