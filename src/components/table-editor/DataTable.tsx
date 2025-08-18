@@ -50,7 +50,8 @@ export function DataTable({
 
   // Create table columns
   const tableColumns = useMemo<ColumnDef<any>[]>(() => {
-    return columns.map((column) => ({
+    return columns.map((column, index) => ({
+      id: `${column.column_name}_${index}`, // Ensure unique ID for each column
       accessorKey: column.column_name,
       header: ({ column: col }) => {
         return (
