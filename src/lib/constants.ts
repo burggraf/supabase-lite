@@ -40,7 +40,7 @@ export const NAVIGATION_ITEMS = [
     label: 'Authentication',
     icon: 'Shield',
     path: '/auth',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'storage',

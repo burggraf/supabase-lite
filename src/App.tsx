@@ -4,6 +4,7 @@ import { SQLEditor } from '@/components/sql-editor/SQLEditor';
 import { TableEditor } from '@/components/table-editor/TableEditor';
 import { DatabaseWorking as Database } from '@/components/database/DatabaseWorking';
 import { APITester } from '@/components/api-test/APITester';
+import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
@@ -80,6 +81,22 @@ function App() {
         return (
           <ErrorBoundary>
             <Database />
+          </ErrorBoundary>
+        );
+      case 'auth':
+        return (
+          <ErrorBoundary>
+            <div className="flex-1 p-6">
+              <div className="max-w-4xl mx-auto">
+                <div className="mb-6">
+                  <h1 className="text-3xl font-bold">Authentication</h1>
+                  <p className="text-muted-foreground mt-2">
+                    Test and manage authentication features including signup, signin, MFA, and user management.
+                  </p>
+                </div>
+                <AuthTestPanel />
+              </div>
+            </div>
           </ErrorBoundary>
         );
       case 'api-test':
