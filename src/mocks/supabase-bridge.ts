@@ -1,5 +1,6 @@
-import { DatabaseManager } from '../lib/database/connection'
-// import type { QueryResult } from '../types'
+import { DatabaseManager } from '../lib/database/connection';
+import { logger, logError } from '../lib/infrastructure/Logger';
+import { errorHandler, createAPIError } from '../lib/infrastructure/ErrorHandler';
 
 interface SupabaseRequest {
   table: string
@@ -32,6 +33,12 @@ export class SupabaseAPIBridge {
   async handleRestRequest(request: SupabaseRequest): Promise<any> {
     await this.ensureInitialized()
 
+    logger.debug('Handling REST request', {
+      method: request.method,
+      table: request.table,
+      url: request.url.pathname,
+    });
+
     try {
       switch (request.method) {
         case 'GET':
@@ -43,10 +50,13 @@ export class SupabaseAPIBridge {
         case 'DELETE':
           return await this.handleDelete(request)
         default:
-          throw new Error(`Unsupported method: ${request.method}`)
+          throw createAPIError(`Unsupported method: ${request.method}`)
       }
     } catch (error) {
-      console.error('SupabaseAPIBridge error:', error)
+      logError('SupabaseAPIBridge request', error as Error, {
+        method: request.method,
+        table: request.table,
+      });
       throw this.formatError(error)
     }
   }
@@ -291,11 +301,12 @@ export class SupabaseAPIBridge {
   }
 
   private formatError(error: any): PostgRESTError {
+    const infraError = errorHandler.handleError(error);
     return {
-      message: error.message || 'Database operation failed',
-      details: error.detail || error.toString(),
-      hint: error.hint,
-      code: error.code || 'PGRST000'
+      message: infraError.message || 'Database operation failed',
+      details: infraError.details || error.detail || error.toString(),
+      hint: infraError.hint || error.hint,
+      code: infraError.code || 'PGRST000'
     }
   }
 

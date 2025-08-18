@@ -1,0 +1,455 @@
+import type { MigrationManager, Migration, MigrationResult } from '@/types/infrastructure';
+import { DatabaseManager } from '../database/connection';
+import { logger } from './Logger';
+import { createMigrationError } from './ErrorHandler';
+
+export class InfrastructureMigrationManager implements MigrationManager {
+  private dbManager: DatabaseManager;
+  private readonly MIGRATIONS_TABLE = 'supabase_lite_migrations';
+
+  constructor(dbManager: DatabaseManager) {
+    this.dbManager = dbManager;
+  }
+
+  async getMigrations(): Promise<Migration[]> {
+    // In a full implementation, this would read from a migrations directory
+    // For now, we'll return built-in migrations
+    return this.getBuiltInMigrations();
+  }
+
+  async getAppliedMigrations(): Promise<Migration[]> {
+    try {
+      await this.ensureMigrationsTable();
+      
+      const result = await this.dbManager.query(`
+        SELECT version, name, up as query, down, checksum, applied_at 
+        FROM ${this.MIGRATIONS_TABLE} 
+        ORDER BY version ASC
+      `);
+
+      return result.rows.map(row => ({
+        version: row.version,
+        name: row.name,
+        up: row.query,
+        down: row.down || undefined,
+        checksum: row.checksum || undefined,
+        appliedAt: new Date(row.applied_at),
+      }));
+    } catch (error) {
+      logger.error('Failed to get applied migrations', error as Error);
+      throw createMigrationError('Failed to retrieve applied migrations', error as Error);
+    }
+  }
+
+  async getPendingMigrations(): Promise<Migration[]> {
+    try {
+      const allMigrations = await this.getMigrations();
+      const appliedMigrations = await this.getAppliedMigrations();
+      
+      const appliedVersions = new Set(appliedMigrations.map(m => m.version));
+      
+      return allMigrations.filter(migration => !appliedVersions.has(migration.version));
+    } catch (error) {
+      logger.error('Failed to get pending migrations', error as Error);
+      throw createMigrationError('Failed to retrieve pending migrations', error as Error);
+    }
+  }
+
+  async runMigration(migration: Migration): Promise<MigrationResult> {
+    const startTime = performance.now();
+    
+    try {
+      await this.ensureMigrationsTable();
+      
+      // Check if migration is already applied
+      const appliedResult = await this.dbManager.query(`
+        SELECT version FROM ${this.MIGRATIONS_TABLE} WHERE version = '${migration.version}'
+      `);
+
+      if (appliedResult.rows.length > 0) {
+        return {
+          version: migration.version,
+          success: false,
+          error: 'Migration already applied',
+          duration: performance.now() - startTime,
+        };
+      }
+
+      // Validate migration
+      this.validateMigration(migration);
+
+      logger.info(`Running migration ${migration.version}: ${migration.name}`);
+
+      // Execute migration in a transaction
+      await this.dbManager.transaction([
+        async () => {
+          // Execute the migration
+          await this.dbManager.exec(migration.up);
+          
+          // Record the migration
+          const checksum = this.calculateChecksum(migration.up);
+          await this.dbManager.query(`
+            INSERT INTO ${this.MIGRATIONS_TABLE} (version, name, up, down, checksum, applied_at)
+            VALUES ('${migration.version}', '${migration.name}', '${migration.up.replace(/'/g, "''")}', ${migration.down ? `'${migration.down.replace(/'/g, "''")}'` : 'NULL'}, '${checksum}', '${new Date().toISOString()}')
+          `);
+        },
+      ]);
+
+      const duration = performance.now() - startTime;
+      logger.info(`Migration ${migration.version} completed successfully`, { duration });
+
+      return {
+        version: migration.version,
+        success: true,
+        duration,
+      };
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      logger.error(`Migration ${migration.version} failed`, error as Error, { duration });
+      
+      return {
+        version: migration.version,
+        success: false,
+        error: (error as Error).message,
+        duration,
+      };
+    }
+  }
+
+  async rollbackMigration(version: string): Promise<MigrationResult> {
+    const startTime = performance.now();
+    
+    try {
+      await this.ensureMigrationsTable();
+      
+      // Get the migration record
+      const migrationResult = await this.dbManager.query(`
+        SELECT version, name, down FROM ${this.MIGRATIONS_TABLE} 
+        WHERE version = '${version}'
+      `);
+
+      if (migrationResult.rows.length === 0) {
+        return {
+          version,
+          success: false,
+          error: 'Migration not found or not applied',
+          duration: performance.now() - startTime,
+        };
+      }
+
+      const migration = migrationResult.rows[0];
+      
+      if (!migration.down) {
+        return {
+          version,
+          success: false,
+          error: 'Migration does not have a rollback script',
+          duration: performance.now() - startTime,
+        };
+      }
+
+      logger.info(`Rolling back migration ${version}: ${migration.name}`);
+
+      // Execute rollback in a transaction
+      await this.dbManager.transaction([
+        async () => {
+          // Execute the rollback
+          await this.dbManager.exec(migration.down);
+          
+          // Remove the migration record
+          await this.dbManager.query(`
+            DELETE FROM ${this.MIGRATIONS_TABLE} WHERE version = '${version}'
+          `);
+        },
+      ]);
+
+      const duration = performance.now() - startTime;
+      logger.info(`Migration ${version} rolled back successfully`, { duration });
+
+      return {
+        version,
+        success: true,
+        duration,
+      };
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      logger.error(`Migration ${version} rollback failed`, error as Error, { duration });
+      
+      return {
+        version,
+        success: false,
+        error: (error as Error).message,
+        duration,
+      };
+    }
+  }
+
+  async runAll(): Promise<MigrationResult[]> {
+    try {
+      const pendingMigrations = await this.getPendingMigrations();
+      
+      if (pendingMigrations.length === 0) {
+        logger.info('No pending migrations to run');
+        return [];
+      }
+
+      logger.info(`Running ${pendingMigrations.length} pending migrations`);
+      const results: MigrationResult[] = [];
+
+      // Run migrations in order
+      for (const migration of pendingMigrations) {
+        const result = await this.runMigration(migration);
+        results.push(result);
+        
+        // Stop on first failure
+        if (!result.success) {
+          logger.error(`Migration batch stopped at ${migration.version} due to failure`);
+          break;
+        }
+      }
+
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+      
+      logger.info('Migration batch completed', {
+        total: results.length,
+        successful,
+        failed,
+      });
+
+      return results;
+    } catch (error) {
+      logger.error('Failed to run migration batch', error as Error);
+      throw createMigrationError('Failed to run migrations', error as Error);
+    }
+  }
+
+  // Utility methods
+  async getMigrationStatus(): Promise<{
+    total: number;
+    applied: number;
+    pending: number;
+    lastApplied?: string;
+  }> {
+    const [allMigrations, appliedMigrations] = await Promise.all([
+      this.getMigrations(),
+      this.getAppliedMigrations(),
+    ]);
+
+    const lastApplied = appliedMigrations.length > 0 
+      ? appliedMigrations[appliedMigrations.length - 1].version 
+      : undefined;
+
+    return {
+      total: allMigrations.length,
+      applied: appliedMigrations.length,
+      pending: allMigrations.length - appliedMigrations.length,
+      lastApplied,
+    };
+  }
+
+  async validateMigrations(): Promise<{
+    valid: boolean;
+    errors: string[];
+  }> {
+    const errors: string[] = [];
+    
+    try {
+      const migrations = await this.getMigrations();
+      const versions = new Set<string>();
+
+      for (const migration of migrations) {
+        // Check for duplicate versions
+        if (versions.has(migration.version)) {
+          errors.push(`Duplicate migration version: ${migration.version}`);
+        }
+        versions.add(migration.version);
+
+        // Validate migration structure
+        try {
+          this.validateMigration(migration);
+        } catch (error) {
+          errors.push(`Migration ${migration.version}: ${(error as Error).message}`);
+        }
+      }
+
+      // Check version ordering
+      const sortedVersions = Array.from(versions).sort();
+      const originalVersions = migrations.map(m => m.version);
+      
+      if (JSON.stringify(sortedVersions) !== JSON.stringify(originalVersions)) {
+        errors.push('Migration versions are not in chronological order');
+      }
+
+      return {
+        valid: errors.length === 0,
+        errors,
+      };
+    } catch (error) {
+      logger.error('Failed to validate migrations', error as Error);
+      return {
+        valid: false,
+        errors: [`Validation failed: ${(error as Error).message}`],
+      };
+    }
+  }
+
+  private async ensureMigrationsTable(): Promise<void> {
+    try {
+      await this.dbManager.exec(`
+        CREATE TABLE IF NOT EXISTS ${this.MIGRATIONS_TABLE} (
+          version VARCHAR(20) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          up TEXT NOT NULL,
+          down TEXT,
+          checksum VARCHAR(64),
+          applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    } catch (error) {
+      throw createMigrationError('Failed to create migrations table', error as Error);
+    }
+  }
+
+  private validateMigration(migration: Migration): void {
+    if (!migration.version || typeof migration.version !== 'string') {
+      throw new Error('Migration version is required and must be a string');
+    }
+
+    if (!migration.name || typeof migration.name !== 'string') {
+      throw new Error('Migration name is required and must be a string');
+    }
+
+    if (!migration.up || typeof migration.up !== 'string') {
+      throw new Error('Migration up script is required and must be a string');
+    }
+
+    // Validate version format (should be like "001", "002", etc. or timestamp)
+    if (!/^\d{3,14}$/.test(migration.version)) {
+      throw new Error('Migration version must be numeric (e.g., "001" or "20231201120000")');
+    }
+
+    // Basic SQL validation
+    if (migration.up.trim().length === 0) {
+      throw new Error('Migration up script cannot be empty');
+    }
+
+    if (migration.down && migration.down.trim().length === 0) {
+      throw new Error('Migration down script cannot be empty');
+    }
+  }
+
+  private calculateChecksum(sql: string): string {
+    // Simple checksum for migration integrity
+    return btoa(sql).slice(0, 32);
+  }
+
+  private getBuiltInMigrations(): Migration[] {
+    return [
+      {
+        version: '001',
+        name: 'Create auth schema',
+        up: `
+          CREATE SCHEMA IF NOT EXISTS auth;
+          
+          CREATE TABLE IF NOT EXISTS auth.users (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            email VARCHAR(255) UNIQUE NOT NULL,
+            encrypted_password VARCHAR(255),
+            email_confirmed_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            raw_user_meta_data JSONB DEFAULT '{}'::jsonb,
+            raw_app_meta_data JSONB DEFAULT '{}'::jsonb
+          );
+          
+          CREATE TABLE IF NOT EXISTS auth.sessions (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          
+          CREATE INDEX IF NOT EXISTS idx_auth_users_email ON auth.users(email);
+          CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth.sessions(user_id);
+        `,
+        down: `
+          DROP TABLE IF EXISTS auth.sessions;
+          DROP TABLE IF EXISTS auth.users;
+          DROP SCHEMA IF EXISTS auth CASCADE;
+        `,
+      },
+      {
+        version: '002',
+        name: 'Create storage schema',
+        up: `
+          CREATE SCHEMA IF NOT EXISTS storage;
+          
+          CREATE TABLE IF NOT EXISTS storage.buckets (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            owner UUID REFERENCES auth.users(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            public BOOLEAN DEFAULT false
+          );
+          
+          CREATE TABLE IF NOT EXISTS storage.objects (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            bucket_id TEXT NOT NULL REFERENCES storage.buckets(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            owner UUID REFERENCES auth.users(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            metadata JSONB DEFAULT '{}'::jsonb,
+            UNIQUE(bucket_id, name)
+          );
+          
+          CREATE INDEX IF NOT EXISTS idx_storage_objects_bucket_id ON storage.objects(bucket_id);
+          CREATE INDEX IF NOT EXISTS idx_storage_objects_owner ON storage.objects(owner);
+        `,
+        down: `
+          DROP TABLE IF EXISTS storage.objects;
+          DROP TABLE IF EXISTS storage.buckets;
+          DROP SCHEMA IF EXISTS storage CASCADE;
+        `,
+      },
+      {
+        version: '003',
+        name: 'Create realtime schema',
+        up: `
+          CREATE SCHEMA IF NOT EXISTS realtime;
+          
+          CREATE TABLE IF NOT EXISTS realtime.schema_migrations (
+            version VARCHAR(255) PRIMARY KEY,
+            inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          
+          CREATE TABLE IF NOT EXISTS realtime.subscription (
+            id BIGSERIAL PRIMARY KEY,
+            subscription_id UUID NOT NULL,
+            entity REGCLASS NOT NULL,
+            filters JSONB DEFAULT '{}'::jsonb,
+            claims JSONB DEFAULT '{}'::jsonb,
+            claims_role REGROLE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `,
+        down: `
+          DROP TABLE IF EXISTS realtime.subscription;
+          DROP TABLE IF EXISTS realtime.schema_migrations;
+          DROP SCHEMA IF EXISTS realtime CASCADE;
+        `,
+      },
+    ];
+  }
+}
+
+// Factory function to create migration manager
+export const createMigrationManager = (dbManager: DatabaseManager): MigrationManager => {
+  return new InfrastructureMigrationManager(dbManager);
+};
+
+// Default migration manager instance
+export const migrationManager = createMigrationManager(DatabaseManager.getInstance());

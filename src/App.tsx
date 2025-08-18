@@ -6,9 +6,59 @@ import { DatabaseWorking as Database } from '@/components/database/DatabaseWorki
 import { APITester } from '@/components/api-test/APITester';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useRouter } from '@/hooks/useRouter';
+import { useEffect, useState } from 'react';
+import { initializeInfrastructure, logger } from '@/lib/infrastructure';
 
 function App() {
   const { currentPage, navigate } = useRouter();
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        await initializeInfrastructure();
+        logger.info('Application initialized successfully');
+        setIsInitializing(false);
+      } catch (error) {
+        const errorMessage = (error as Error).message;
+        logger.error('Application initialization failed', error as Error);
+        setInitError(errorMessage);
+        setIsInitializing(false);
+      }
+    };
+
+    initialize();
+  }, []);
+
+  if (isInitializing) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Initializing Supabase Lite...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (initError) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="text-red-600 mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold mb-2">Initialization Failed</h2>
+          <p className="text-sm text-muted-foreground mb-4">{initError}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const renderCurrentPage = () => {
     switch (currentPage) {
