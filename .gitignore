@@ -1,3 +1,6 @@
+#local mcp servers
+.mcp.json
+
 # Logs
 logs
 *.log
