@@ -224,6 +224,11 @@ export class InfrastructureConfigManager implements ConfigManager {
 
   private loadFromStorage(): AppConfig | null {
     try {
+      // Server-side compatibility check
+      if (typeof localStorage === 'undefined') {
+        return null;
+      }
+      
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (!stored) return null;
 
@@ -240,6 +245,11 @@ export class InfrastructureConfigManager implements ConfigManager {
 
   private saveToStorage(): void {
     try {
+      // Server-side compatibility check
+      if (typeof localStorage === 'undefined') {
+        return;
+      }
+      
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.config));
       logger.debug('Configuration saved to storage');
     } catch (error) {

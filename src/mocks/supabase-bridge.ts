@@ -2,6 +2,16 @@ import { DatabaseManager } from '../lib/database/connection';
 import { logger, logError } from '../lib/infrastructure/Logger';
 import { errorHandler, createAPIError } from '../lib/infrastructure/ErrorHandler';
 
+// Server-side compatibility: Mock localStorage if not available
+if (typeof localStorage === 'undefined') {
+  (global as any).localStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+    clear: () => {}
+  };
+}
+
 interface SupabaseRequest {
   table: string
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE'

@@ -215,3 +215,46 @@ describe('formatBytes', () => {
 - **Test isolation**: MSW server setup in test/setup.ts with proper cleanup between tests
 - **API endpoints**: PostgREST-compatible endpoints for GET, POST, PATCH, DELETE operations
 - **Authentication simulation**: Mock auth endpoints for signup, signin, token refresh
+
+## Quick Database Access
+
+### SQL Execution via Debug Endpoint
+For quick database queries during development, use the debug SQL endpoint:
+
+```javascript
+// Execute SQL against the local PGlite database
+async function executeSQL(sql) {
+  const response = await fetch('http://localhost:5173/debug/sql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql })
+  });
+  const result = await response.json();
+  console.table(result.data);
+  return result;
+}
+
+// Examples:
+executeSQL('SELECT COUNT(*) FROM auth.users')
+executeSQL('SELECT id, email, created_at FROM auth.users ORDER BY created_at DESC LIMIT 10')
+executeSQL('SELECT * FROM public.products LIMIT 5')
+```
+
+### Browser Console Access
+The debug endpoint is accessible from any browser context (including test-app):
+
+```javascript
+// Check auth users
+fetch('http://localhost:5173/debug/sql', {
+  method: 'POST', 
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({sql: 'SELECT id, email, created_at FROM auth.users'})
+}).then(r => r.json()).then(console.table)
+
+// Check database schema
+fetch('http://localhost:5173/debug/sql', {
+  method: 'POST', 
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({sql: 'SELECT table_name FROM information_schema.tables WHERE table_schema = \'auth\''})
+}).then(r => r.json()).then(console.log)
+```
