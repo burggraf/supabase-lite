@@ -155,6 +155,8 @@ export class AuthBridge {
   }
 
   private async handleSignIn(request: SignInRequest): Promise<AuthAPIResponse> {
+    console.log('AuthBridge handleSignIn received:', request)
+    
     const result = await this.authManager.signIn({
       email: request.email,
       phone: request.phone,
@@ -171,24 +173,57 @@ export class AuthBridge {
   }
 
   private async handleTokenRefresh(request: any): Promise<AuthAPIResponse> {
-    if (request.grant_type !== 'refresh_token') {
+    // Debug logging
+    console.log('AuthBridge handleTokenRefresh received:', request)
+    console.log('Grant type from body:', request.grant_type)
+    
+    // Handle both password authentication and token refresh
+    if (request.grant_type === 'password') {
+      // This is a sign-in request using password
+      console.log('AuthBridge calling authManager.signIn with:', {
+        email: request.username || request.email,
+        password: request.password ? '[REDACTED]' : undefined
+      })
+      
+      let result
+      try {
+        result = await this.authManager.signIn({
+          email: request.username || request.email,
+          password: request.password
+        })
+        console.log('AuthBridge signIn success, returning result')
+      } catch (error) {
+        console.error('AuthBridge signIn failed:', error)
+        throw error
+      }
+
+      return this.createSuccessResponse({
+        access_token: result.session.access_token,
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: result.session.expires_at,
+        refresh_token: result.session.refresh_token,
+        user: this.serializeUser(result.user)
+      }, 200)
+    } else if (request.grant_type === 'refresh_token') {
+      // This is a token refresh request
+      const session = await this.authManager.refreshSession(request.refresh_token)
+      
+      return this.createSuccessResponse({
+        access_token: session.access_token,
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: session.expires_at,
+        refresh_token: session.refresh_token,
+        user: this.serializeUser(this.sessionManager.getUser()!)
+      }, 200)
+    } else {
       return this.createErrorResponse(
-        'Invalid grant type',
+        'Invalid grant type. Supported grant types: password, refresh_token',
         400,
         'invalid_grant'
       )
     }
-
-    const session = await this.authManager.refreshSession(request.refresh_token)
-    
-    return this.createSuccessResponse({
-      access_token: session.access_token,
-      token_type: 'bearer',
-      expires_in: 3600,
-      expires_at: session.expires_at,
-      refresh_token: session.refresh_token,
-      user: this.serializeUser(this.sessionManager.getUser()!)
-    }, 200)
   }
 
   private async handleSignOut(request: any): Promise<AuthAPIResponse> {

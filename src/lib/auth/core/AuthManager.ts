@@ -4,6 +4,7 @@ import { SessionManager } from './SessionManager'
 import { PasswordService } from './PasswordService'
 import { CryptoUtils } from '../utils/crypto'
 import { Validators, ValidationError } from '../utils/validators'
+import { AuthQueryBuilder } from '../utils/DatabaseQueryBuilder'
 import type { 
   User, 
   Session, 
@@ -32,6 +33,7 @@ export interface AuthManagerConfig {
 export class AuthManager {
   private static instance: AuthManager
   private dbManager: DatabaseManager
+  private authQuery: AuthQueryBuilder
   private jwtService: JWTService
   private sessionManager: SessionManager
   private passwordService: PasswordService
@@ -53,6 +55,7 @@ export class AuthManager {
     }
 
     this.dbManager = DatabaseManager.getInstance()
+    this.authQuery = new AuthQueryBuilder(this.dbManager)
     this.jwtService = JWTService.getInstance()
     this.sessionManager = SessionManager.getInstance()
     this.passwordService = PasswordService.getInstance()
@@ -143,6 +146,8 @@ export class AuthManager {
    * Sign in user with email/password
    */
   async signIn(credentials: SignInCredentials): Promise<{ user: User; session: Session }> {
+    console.log('AuthManager signIn called with:', credentials)
+    
     Validators.validateSignInCredentials(credentials)
 
     const { email, phone, password, provider } = credentials
@@ -156,10 +161,12 @@ export class AuthManager {
     }
 
     // Get user by email or phone
+    console.log('AuthManager looking up user by email:', email)
     const user = email 
       ? await this.getUserByEmail(email)
       : await this.getUserByPhone(phone!)
 
+    console.log('AuthManager found user:', user ? 'yes' : 'no')
     if (!user) {
       throw this.createAuthError('Invalid login credentials', 400, 'invalid_credentials')
     }
@@ -476,92 +483,94 @@ export class AuthManager {
   }
 
   private async getUserByEmail(email: string): Promise<User | null> {
+    // Use direct parameterized query to bypass the AuthQueryBuilder issue
     const result = await this.dbManager.query(
-      this.formatSqlWithValues('SELECT * FROM auth.users WHERE email = $1', [email])
+      'SELECT * FROM auth.users WHERE email = $1',
+      [email]
     )
     return result.rows[0] ? this.mapDBUserToUser(result.rows[0]) : null
   }
 
   private async getUserByPhone(phone: string): Promise<User | null> {
     const result = await this.dbManager.query(
-      this.formatSqlWithValues('SELECT * FROM auth.users WHERE phone = $1', [phone])
+      'SELECT * FROM auth.users WHERE phone = $1',
+      [phone]
     )
     return result.rows[0] ? this.mapDBUserToUser(result.rows[0]) : null
   }
 
-  /**
-   * Helper method to format SQL with parameters for PGlite compatibility
-   */
-  private formatSqlWithValues(sql: string, values: any[]): string {
-    let formattedSql = sql
-    values.forEach((value, index) => {
-      const placeholder = `$${index + 1}`
-      let formattedValue: string
-      
-      if (value === null || value === undefined) {
-        formattedValue = 'NULL'
-      } else if (typeof value === 'string') {
-        formattedValue = `'${value.replace(/'/g, "''")}'`
-      } else if (typeof value === 'boolean') {
-        formattedValue = value ? 'true' : 'false'
-      } else {
-        formattedValue = String(value)
-      }
-      
-      formattedSql = formattedSql.replace(placeholder, formattedValue)
-    })
-    return formattedSql
-  }
 
   private async createUserInDB(user: User, hashedPassword: any): Promise<void> {
     // Convert boolean verified fields to timestamp format for Supabase schema
     const emailConfirmedAt = user.email_verified ? user.created_at : null
     const phoneConfirmedAt = user.phone_verified ? user.created_at : null
     
-    await this.dbManager.query(this.formatSqlWithValues(`
+    // Create user record using direct parameterized query
+    await this.dbManager.query(`
       INSERT INTO auth.users (
         id, email, phone, email_confirmed_at, phone_confirmed_at, 
         created_at, updated_at, role, raw_app_meta_data, raw_user_meta_data, is_anonymous
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     `, [
-      user.id, user.email, user.phone, emailConfirmedAt, phoneConfirmedAt,
-      user.created_at, user.updated_at, user.role, 
-      JSON.stringify(user.app_metadata), JSON.stringify(user.user_metadata),
+      user.id,
+      user.email,
+      user.phone,
+      emailConfirmedAt,
+      phoneConfirmedAt,
+      user.created_at,
+      user.updated_at,
+      user.role,
+      JSON.stringify(user.app_metadata),
+      JSON.stringify(user.user_metadata),
       user.is_anonymous
-    ]))
+    ])
 
-    // Store password hash separately (in a real implementation, this would be encrypted)
-    await this.dbManager.query(this.formatSqlWithValues(`
-      INSERT INTO auth.user_passwords (user_id, password_hash, password_salt, algorithm, created_at)
-      VALUES ($1, $2, $3, $4, $5)
+    // Store password hash separately using direct parameterized query
+    await this.dbManager.query(`
+      INSERT INTO auth.user_passwords (
+        user_id, password_hash, password_salt, algorithm, created_at
+      ) VALUES ($1, $2, $3, $4, $5)
     `, [
-      user.id, hashedPassword.hash, hashedPassword.salt, 
-      hashedPassword.algorithm, new Date().toISOString()
-    ]))
+      user.id,
+      hashedPassword.hash,
+      hashedPassword.salt,
+      hashedPassword.algorithm,
+      new Date().toISOString()
+    ])
   }
 
   private async updateUserInDB(userId: string, updates: Partial<User>): Promise<void> {
-    const setClause = []
-    const values = []
-    let paramIndex = 1
+    if (Object.keys(updates).length === 0) return
 
+    // Convert User interface fields to database schema fields
+    const dbUpdates: Record<string, any> = {}
+    
     for (const [key, value] of Object.entries(updates)) {
-      if (key === 'app_metadata' || key === 'user_metadata') {
-        setClause.push(`${key} = $${paramIndex}`)
-        values.push(JSON.stringify(value))
+      if (key === 'app_metadata') {
+        dbUpdates.raw_app_meta_data = JSON.stringify(value)
+      } else if (key === 'user_metadata') {
+        dbUpdates.raw_user_meta_data = JSON.stringify(value)
+      } else if (key === 'email_verified') {
+        // Convert boolean to timestamp
+        dbUpdates.email_confirmed_at = value ? new Date().toISOString() : null
+      } else if (key === 'phone_verified') {
+        // Convert boolean to timestamp
+        dbUpdates.phone_confirmed_at = value ? new Date().toISOString() : null
       } else {
-        setClause.push(`${key} = $${paramIndex}`)
-        values.push(value)
+        dbUpdates[key] = value
       }
-      paramIndex++
     }
 
-    if (setClause.length > 0) {
-      values.push(userId)
-      await this.dbManager.query(`
-        UPDATE auth.users SET ${setClause.join(', ')} WHERE id = $${paramIndex}
-      `, values)
-    }
+    // Build dynamic UPDATE query with parameters
+    const updateKeys = Object.keys(dbUpdates)
+    const updateValues = Object.values(dbUpdates)
+    const setClause = updateKeys.map((key, index) => `${key} = $${index + 1}`).join(', ')
+    
+    await this.dbManager.query(`
+      UPDATE auth.users 
+      SET ${setClause}
+      WHERE id = $${updateKeys.length + 1}
+    `, [...updateValues, userId])
   }
 
   private async getStoredPassword(userId: string): Promise<any> {
@@ -586,26 +595,32 @@ export class AuthManager {
       UPDATE auth.user_passwords 
       SET password_hash = $1, password_salt = $2, updated_at = $3
       WHERE user_id = $4
-    `, [hashedPassword.hash, hashedPassword.salt, new Date().toISOString(), userId])
+    `, [
+      hashedPassword.hash,
+      hashedPassword.salt,
+      new Date().toISOString(),
+      userId
+    ])
   }
 
   private async updateLastSignIn(userId: string): Promise<void> {
-    await this.dbManager.query(
-      'UPDATE auth.users SET last_sign_in_at = $1 WHERE id = $2',
-      [new Date().toISOString(), userId]
-    )
+    await this.dbManager.query(`
+      UPDATE auth.users 
+      SET last_sign_in_at = $1
+      WHERE id = $2
+    `, [new Date().toISOString(), userId])
   }
 
   private async checkAccountLockout(userId: string): Promise<void> {
     const result = await this.dbManager.query(`
-      SELECT COUNT(*) as attempt_count, MAX(attempted_at) as last_attempt
+      SELECT COUNT(*) as count
       FROM auth.failed_login_attempts 
       WHERE user_id = $1 AND attempted_at > NOW() - INTERVAL '${this.config.lockoutDurationMinutes} minutes'
     `, [userId])
+    
+    const attemptCount = result.rows[0]?.count || 0
 
-    const { attempt_count, last_attempt } = result.rows[0] as any
-
-    if (attempt_count >= this.config.maxFailedAttempts) {
+    if (attemptCount >= this.config.maxFailedAttempts) {
       throw this.createAuthError(
         `Account temporarily locked due to too many failed attempts. Try again in ${this.config.lockoutDurationMinutes} minutes.`,
         423,
@@ -617,8 +632,8 @@ export class AuthManager {
   private async recordFailedAttempt(userId: string): Promise<void> {
     await this.dbManager.query(`
       INSERT INTO auth.failed_login_attempts (user_id, attempted_at)
-      VALUES ($1, NOW())
-    `, [userId])
+      VALUES ($1, $2)
+    `, [userId, new Date().toISOString()])
   }
 
   private async clearFailedAttempts(userId: string): Promise<void> {
@@ -668,34 +683,48 @@ export class AuthManager {
 
   private async logAuditEvent(event: string, payload: any): Promise<void> {
     try {
-      await this.dbManager.query(this.formatSqlWithValues(`
+      await this.dbManager.query(`
         INSERT INTO auth.audit_log_entries (id, payload, created_at)
         VALUES ($1, $2, $3)
-      `, [CryptoUtils.generateUUID(), JSON.stringify({ event, ...payload }), new Date().toISOString()]))
+      `, [
+        CryptoUtils.generateUUID(),
+        JSON.stringify({ event, ...payload }),
+        new Date().toISOString()
+      ])
     } catch (error) {
-      // Audit logging is non-critical, don't fail the main operation
       console.warn('Audit logging failed:', error)
     }
   }
 
   private mapDBUserToUser(dbUser: any): User {
+    // Parse metadata fields safely
+    const parseMetadata = (value: any): any => {
+      if (value === null || value === undefined) return {}
+      if (typeof value === 'string') {
+        try {
+          return JSON.parse(value)
+        } catch {
+          return {}
+        }
+      }
+      return value || {}
+    }
+
     return {
       id: dbUser.id,
       email: dbUser.email,
       phone: dbUser.phone,
-      email_verified: dbUser.email_verified,
-      phone_verified: dbUser.phone_verified,
+      // Convert Supabase timestamp fields to boolean
+      email_verified: !!dbUser.email_confirmed_at,
+      phone_verified: !!dbUser.phone_confirmed_at,
       created_at: dbUser.created_at,
       updated_at: dbUser.updated_at,
       last_sign_in_at: dbUser.last_sign_in_at,
       role: dbUser.role,
-      app_metadata: typeof dbUser.app_metadata === 'string' 
-        ? JSON.parse(dbUser.app_metadata) 
-        : dbUser.app_metadata || {},
-      user_metadata: typeof dbUser.user_metadata === 'string'
-        ? JSON.parse(dbUser.user_metadata)
-        : dbUser.user_metadata || {},
-      is_anonymous: dbUser.is_anonymous
+      // Handle both old format (app_metadata) and new format (raw_app_meta_data)
+      app_metadata: parseMetadata(dbUser.raw_app_meta_data || dbUser.app_metadata),
+      user_metadata: parseMetadata(dbUser.raw_user_meta_data || dbUser.user_metadata),
+      is_anonymous: dbUser.is_anonymous || false
     }
   }
 }
