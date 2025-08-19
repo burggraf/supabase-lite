@@ -457,6 +457,8 @@ export class InfrastructureMigrationManager implements MigrationManager {
             price REAL NOT NULL,
             category TEXT,
             description TEXT,
+            tags TEXT[] DEFAULT '{}',
+            metadata JSONB DEFAULT '{}',
             in_stock BOOLEAN DEFAULT true,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           );
@@ -570,6 +572,20 @@ export class InfrastructureMigrationManager implements MigrationManager {
           DROP FUNCTION IF EXISTS get_product_stats();
           DROP FUNCTION IF EXISTS get_products_by_category(TEXT);
           DROP FUNCTION IF EXISTS get_category_summary();
+        `,
+      },
+      {
+        version: '006',
+        name: 'Add tags and metadata columns to products table',
+        up: `
+          ALTER TABLE products 
+          ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}',
+          ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+        `,
+        down: `
+          ALTER TABLE products 
+          DROP COLUMN IF EXISTS tags,
+          DROP COLUMN IF EXISTS metadata;
         `,
       },
     ];
