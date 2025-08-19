@@ -188,10 +188,22 @@ export const handlers = [
   }),
 
   http.post('/auth/v1/signin', async ({ request }) => {
+    console.log('MSW /auth/v1/signin handler called')
+    
+    let body: any = {}
+    try {
+      body = await request.json()
+      console.log('MSW signin parsed JSON body:', body)
+    } catch (error) {
+      console.log('MSW signin failed to parse JSON, trying text:', error)
+      const text = await request.text()
+      console.log('MSW signin raw text:', text)
+    }
+    
     const response = await authBridge.handleAuthRequest({
       endpoint: 'signin',
       method: 'POST',
-      body: await request.json(),
+      body: body,
       headers: Object.fromEntries(request.headers.entries()),
       url: new URL(request.url)
     })
@@ -206,12 +218,52 @@ export const handlers = [
   }),
 
   http.post('/auth/v1/token', async ({ request }) => {
+    let body: any = {}
+    
+    // Handle both JSON and form-encoded data
+    const contentType = request.headers.get('content-type') || ''
+    console.log('MSW /auth/v1/token handler - Content-Type:', contentType)
+    
+    if (contentType.includes('application/json')) {
+      body = await request.json()
+      console.log('MSW parsed JSON body:', body)
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+      const formData = await request.text()
+      const params = new URLSearchParams(formData)
+      body = Object.fromEntries(params.entries())
+      console.log('MSW parsed form body:', body)
+    } else {
+      // Try JSON as fallback
+      try {
+        body = await request.json()
+        console.log('MSW parsed JSON (fallback) body:', body)
+      } catch {
+        const formData = await request.text()
+        const params = new URLSearchParams(formData)
+        body = Object.fromEntries(params.entries())
+        console.log('MSW parsed form (fallback) body:', body)
+      }
+    }
+
+    // Extract grant_type from URL query parameters since Supabase sends it there
+    const url = new URL(request.url)
+    const grantType = url.searchParams.get('grant_type')
+    console.log('MSW extracted grant_type from URL:', grantType)
+    
+    // Merge query params with body
+    const mergedBody = {
+      ...body,
+      grant_type: grantType || body.grant_type
+    }
+    
+    console.log('MSW final merged body:', mergedBody)
+
     const response = await authBridge.handleAuthRequest({
       endpoint: 'token',
       method: 'POST',
-      body: await request.json(),
+      body: mergedBody,
       headers: Object.fromEntries(request.headers.entries()),
-      url: new URL(request.url)
+      url: url
     })
 
     return HttpResponse.json(

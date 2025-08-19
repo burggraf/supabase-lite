@@ -152,9 +152,23 @@ export class DatabaseManager {
     }
   }
 
-  public async query(sql: string, options?: QueryOptions): Promise<QueryResult> {
+  public async query(sql: string, options?: QueryOptions): Promise<QueryResult>
+  public async query(sql: string, params: any[]): Promise<QueryResult>
+  public async query(sql: string, optionsOrParams?: QueryOptions | any[]): Promise<QueryResult> {
     if (!this.db || !this.isInitialized) {
       throw createDatabaseError('Database not initialized. Call initialize() first.');
+    }
+
+    // Handle overloaded method signatures
+    let options: QueryOptions | undefined
+    let params: any[] | undefined
+    
+    if (Array.isArray(optionsOrParams)) {
+      params = optionsOrParams
+      options = undefined
+    } else {
+      options = optionsOrParams
+      params = undefined
     }
 
     const startTime = performance.now();
@@ -175,7 +189,9 @@ export class DatabaseManager {
       
       // Execute the query with timeout if specified
       const timeout = options?.timeout || configManager.getDatabaseConfig().queryTimeout;
-      const result = await this.executeWithTimeout(() => this.db!.query(sql), timeout);
+      const result = params 
+        ? await this.executeWithTimeout(() => this.db!.query(sql, params), timeout)
+        : await this.executeWithTimeout(() => this.db!.query(sql), timeout);
       
       const duration = performance.now() - startTime;
       
