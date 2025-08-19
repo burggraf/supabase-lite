@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Working Sample App</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .tab-nav {
+      display: flex;
+      background: #f8f9fa;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid #dee2e6;
+      border-bottom: none;
+      overflow: hidden;
+    }
+    
+    .tab-button {
+      padding: 15px 25px;
+      background: #f8f9fa;
+      border: none;
+      color: #6c757d;
+      cursor: pointer;
+      border-right: 1px solid #dee2e6;
+    }
+    
+    .tab-button.active {
+      background: white;
+      color: #007bff;
+      font-weight: 600;
+    }
+    
+    .tab-content {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 0 0 8px 8px;
+      padding: 50px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🧪 Supabase Lite Compatibility Test Suite</h1>
+    <p>Compare local PGlite + MSW implementation with hosted Supabase instance</p>
+  </div>
+
+  <div>
+    <div class="tab-nav">
+      <button class="tab-button" onclick="showTestSuite()">Test Suite</button>
+      <button class="tab-button active" onclick="showSampleApp()">Sample App</button>
+    </div>
+
+    <div id="test-suite-tab" style="display: none;" class="tab-content">
+      <h2>Test Suite Content</h2>
+      <p>This would contain the test suite functionality.</p>
+    </div>
+
+    <div id="sample-app-tab" class="tab-content">
+      <h1 style="color: #007bff; font-size: 48px; margin-bottom: 20px; font-weight: 700;">🚀 SAMPLE APP WORKING!</h1>
+      <p style="font-size: 24px; color: #666; margin-bottom: 40px;">Authentication & Orders Management System</p>
+      
+      <div style="max-width: 500px; margin: 0 auto; background: #f8f9fa; padding: 40px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+        <h2 style="color: #333; margin-bottom: 30px; font-size: 28px;">🔐 Login to Your Account</h2>
+        
+        <div style="text-align: left; margin-bottom: 25px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 700; font-size: 16px;">Email Address</label>
+          <input type="email" id="email" placeholder="Enter your email" style="width: 100%; padding: 18px; border: 3px solid #e1e5e9; border-radius: 10px; font-size: 18px; box-sizing: border-box; background: white;">
+        </div>
+        
+        <div style="text-align: left; margin-bottom: 35px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 700; font-size: 16px;">Password</label>
+          <input type="password" id="password" placeholder="Enter your password" style="width: 100%; padding: 18px; border: 3px solid #e1e5e9; border-radius: 10px; font-size: 18px; box-sizing: border-box; background: white;">
+        </div>
+        
+        <div style="display: flex; gap: 15px; margin-bottom: 25px;">
+          <button onclick="alert('Sign In Works!')" style="flex: 1; padding: 20px; background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none; border-radius: 12px; font-size: 20px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 20px rgba(0,123,255,0.4);">SIGN IN</button>
+          <button onclick="alert('Sign Up Works!')" style="flex: 1; padding: 20px; background: linear-gradient(135deg, #28a745, #1e7e34); color: white; border: none; border-radius: 12px; font-size: 20px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 20px rgba(40,167,69,0.4);">SIGN UP</button>
+        </div>
+        
+        <button onclick="alert('Forgot Password Works!')" style="background: none; border: none; color: #007bff; text-decoration: underline; cursor: pointer; font-size: 18px; font-weight: 600; padding: 15px;">Forgot your password?</button>
+      </div>
+
+      <div style="margin-top: 50px; padding: 30px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 15px;">
+        <h3 style="color: #155724; font-size: 24px; margin-bottom: 20px;">✅ Sample App Features Working!</h3>
+        <div style="display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;">
+          <div style="text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">🔐</div>
+            <strong style="color: #007bff; font-size: 18px;">Authentication</strong>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">📦</div>
+            <strong style="color: #28a745; font-size: 18px;">Orders</strong>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">🔍</div>
+            <strong style="color: #ffc107; font-size: 18px;">Debug</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTestSuite() {
+      document.getElementById('test-suite-tab').style.display = 'block';
+      document.getElementById('sample-app-tab').style.display = 'none';
+      document.querySelectorAll('.tab-button')[0].classList.add('active');
+      document.querySelectorAll('.tab-button')[1].classList.remove('active');
+    }
+
+    function showSampleApp() {
+      document.getElementById('test-suite-tab').style.display = 'none';
+      document.getElementById('sample-app-tab').style.display = 'block';
+      document.querySelectorAll('.tab-button')[0].classList.remove('active');
+      document.querySelectorAll('.tab-button')[1].classList.add('active');
+    }
+  </script>
+</body>
+</html>

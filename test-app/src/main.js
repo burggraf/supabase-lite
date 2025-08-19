@@ -326,8 +326,11 @@ async function signIn() {
     if (data.user) {
       currentUser = data.user
       isAuthenticated = true
-      showOrdersSection()
       showAuthMessage('Successfully signed in!', 'success')
+      // Small delay to ensure session is established
+      setTimeout(async () => {
+        await showOrdersSection()
+      }, 100)
     }
   } catch (error) {
     showAuthMessage(`Error: ${error.message}`, 'error')
@@ -367,8 +370,11 @@ async function signUp() {
     if (data.user) {
       currentUser = data.user
       isAuthenticated = true
-      showOrdersSection()
       showAuthMessage('Account created successfully!', 'success')
+      // Small delay to ensure session is established
+      setTimeout(async () => {
+        await showOrdersSection()
+      }, 100)
     }
   } catch (error) {
     showAuthMessage(`Error: ${error.message}`, 'error')
@@ -492,6 +498,10 @@ async function loadOrders() {
   try {
     const environment = getCurrentEnvironment() || 'local'
     const supabase = getSupabaseClient(environment)
+    
+    // Debug: Check current session
+    const { data: session } = await supabase.auth.getSession()
+    console.log('Current session when loading orders:', session)
     
     // Get orders for the current user
     const { data: orders, error } = await supabase

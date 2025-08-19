@@ -13,7 +13,7 @@ export function createSupabaseClient(environment = 'local') {
   // Create client with standard configuration
   const clientConfig = {
     auth: {
-      persistSession: false,
+      persistSession: true,
       detectSessionInUrl: false
     }
   }

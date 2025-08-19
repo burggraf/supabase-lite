@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "msw": "^2.10.5",
+    "puppeteer": "^24.16.2",
     "vite": "^7.1.2"
   }
 }
