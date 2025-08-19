@@ -510,20 +510,12 @@ SELECT
     'Initialized successfully' as status,
     now() as initialized_at;
 
--- Create sample tables for development (maintain compatibility with existing code)
-CREATE TABLE IF NOT EXISTS public.users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
+-- Create sample tables for development (no public.users - use auth.users instead)
 CREATE TABLE IF NOT EXISTS public.posts (
     id SERIAL PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     content TEXT,
-    user_id INTEGER REFERENCES public.users(id),
+    author_email VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

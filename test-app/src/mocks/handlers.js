@@ -1,9 +1,7 @@
 import { http, HttpResponse } from 'msw'
+import authManager from '../lib/auth/AuthManager.js'
 
-// Simple in-memory store for testing
-let users = []
-let sessions = {}
-let mfaFactors = {}
+// Sample orders data for testing
 let orders = [
   {
     id: 1001,
@@ -37,26 +35,8 @@ let orders = [
   }
 ]
 
-// Helper to generate IDs
-function generateId() {
-  return Math.random().toString(36).substr(2, 9)
-}
-
-// Helper to generate JWT-like token (for testing only)
-function generateMockToken(userId) {
-  const header = btoa(JSON.stringify({ alg: 'ES256', typ: 'JWT' }))
-  const payload = btoa(JSON.stringify({
-    sub: userId,
-    email: `user-${userId}@example.com`,
-    role: 'authenticated',
-    aal: 'aal1',
-    aud: 'authenticated',
-    exp: Math.floor(Date.now() / 1000) + 3600,
-    iat: Math.floor(Date.now() / 1000)
-  }))
-  const signature = 'mock-signature'
-  return `${header}.${payload}.${signature}`
-}
+// MFA factors for testing (keeping simple structure for now)
+let mfaFactors = {}
 
 // Helper to extract authorization token
 function getAuthToken(request) {
@@ -64,17 +44,26 @@ function getAuthToken(request) {
   return authorization?.replace('Bearer ', '')
 }
 
-// Helper to get user from token
+// Helper to get user from token using AuthManager
 function getUserFromToken(token) {
-  const session = sessions[token]
-  return session?.user || null
+  return authManager.getUserFromToken(token)
 }
 
 export const handlers = [
   // PostgREST API - Orders table
   http.get('http://localhost:5173/rest/v1/orders', async ({ request }) => {
+    // Debug: Log all headers to see what Supabase is sending
+    console.log('🔍 MSW: Orders request intercepted!')
+    console.log('Orders request headers:', Object.fromEntries(request.headers.entries()))
+    
     const token = getAuthToken(request)
+    console.log('Extracted token:', token)
+    console.log('Token type:', typeof token)
+    console.log('Token length:', token?.length || 0)
+    
     const user = getUserFromToken(token)
+    console.log('User from token:', user)
+    console.log('Available sessions:', Object.keys(sessions))
     
     if (!user) {
       return HttpResponse.json(
@@ -132,262 +121,280 @@ export const handlers = [
 
   // Auth signup
   http.post('http://localhost:5173/auth/v1/signup', async ({ request }) => {
-    const body = await request.json()
-    const { email, password } = body
-    
-    if (!email || !password) {
+    try {
+      const body = await request.json()
+      const { email, password, options } = body
+      
+      console.log('🔐 MSW: Signup request for:', email)
+      
+      const result = await authManager.signUp({
+        email,
+        password,
+        options
+      })
+      
+      console.log('✅ MSW: Signup successful for user:', result.user.id)
+      
+      return HttpResponse.json(result)
+    } catch (error) {
+      console.error('❌ MSW: Signup failed:', error.message)
       return HttpResponse.json(
-        { message: 'Email and password are required' },
+        { message: error.message },
         { status: 400 }
       )
     }
-    
-    const userId = generateId()
-    const user = {
-      id: userId,
-      email,
-      email_confirmed_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      user_metadata: body.options?.data || {},
-      app_metadata: { provider: 'email' }
-    }
-    
-    users.push(user)
-    
-    const accessToken = generateMockToken(userId)
-    const refreshToken = generateId()
-    
-    const session = {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      token_type: 'bearer',
-      expires_in: 3600,
-      expires_at: Math.floor(Date.now() / 1000) + 3600,
-      user
-    }
-    
-    sessions[accessToken] = session
-    
-    return HttpResponse.json({
-      user,
-      session
-    })
   }),
 
   // Auth signin
   http.post('http://localhost:5173/auth/v1/token', async ({ request }) => {
-    const url = new URL(request.url)
-    const grant_type = url.searchParams.get('grant_type')
-    const body = await request.json()
-    console.log('Token request - grant_type:', grant_type, 'body:', body)
-    const { email, password } = body
-    
-    if (grant_type === 'password') {
-      const user = users.find(u => u.email === email)
-      if (!user) {
-        return HttpResponse.json(
-          { message: 'Invalid login credentials' },
-          { status: 400 }
-        )
+    try {
+      const url = new URL(request.url)
+      const grant_type = url.searchParams.get('grant_type')
+      const body = await request.json()
+      
+      console.log('🔐 MSW: Token request - grant_type:', grant_type)
+      
+      if (grant_type === 'password') {
+        const { email, password } = body
+        
+        console.log('🔐 MSW: Signin request for:', email)
+        
+        const result = await authManager.signIn({
+          email,
+          password
+        })
+        
+        console.log('✅ MSW: Signin successful for user:', result.user.id)
+        
+        return HttpResponse.json(result)
       }
       
-      const accessToken = generateMockToken(user.id)
-      const refreshToken = generateId()
-      
-      const session = {
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        token_type: 'bearer',
-        expires_in: 3600,
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-        user
+      if (grant_type === 'refresh_token') {
+        const { refresh_token } = body
+        
+        console.log('🔐 MSW: Refresh token request')
+        
+        const result = await authManager.refreshToken(refresh_token)
+        
+        console.log('✅ MSW: Token refresh successful')
+        
+        return HttpResponse.json(result)
       }
       
-      sessions[accessToken] = session
-      
-      return HttpResponse.json({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        token_type: 'bearer',
-        expires_in: 3600,
-        user
-      })
+      return HttpResponse.json(
+        { message: 'Unsupported grant type' },
+        { status: 400 }
+      )
+    } catch (error) {
+      console.error('❌ MSW: Token request failed:', error.message)
+      return HttpResponse.json(
+        { message: error.message },
+        { status: 400 }
+      )
     }
-    
-    if (grant_type === 'refresh_token') {
-      const { refresh_token } = body
-      // Simple refresh logic for testing - find user by existing refresh token
-      const existingSession = Object.values(sessions).find(s => s.refresh_token === refresh_token)
-      if (!existingSession) {
-        return HttpResponse.json(
-          { message: 'Invalid refresh token' },
-          { status: 400 }
-        )
-      }
-      
-      const accessToken = generateMockToken(existingSession.user.id)
-      const refreshToken = generateId()
-      
-      const newSession = {
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        token_type: 'bearer',
-        expires_in: 3600,
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-        user: existingSession.user
-      }
-      
-      sessions[accessToken] = newSession
-      
-      return HttpResponse.json({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        token_type: 'bearer',
-        expires_in: 3600,
-        user: existingSession.user
-      })
-    }
-    
-    return HttpResponse.json(
-      { message: 'Unsupported grant type' },
-      { status: 400 }
-    )
   }),
 
   // Get user
   http.get('http://localhost:5173/auth/v1/user', async ({ request }) => {
-    const authorization = request.headers.get('authorization')
-    const token = authorization?.replace('Bearer ', '')
-    
-    console.log('Get user request - Authorization header:', authorization)
-    console.log('Extracted token:', token)
-    console.log('Available sessions:', Object.keys(sessions))
-    
-    const session = sessions[token]
-    if (!session) {
+    try {
+      const token = getAuthToken(request)
+      
+      console.log('🔐 MSW: Get user request')
+      
+      if (!token) {
+        return HttpResponse.json(
+          { message: 'Authorization token missing' },
+          { status: 401 }
+        )
+      }
+      
+      const user = getUserFromToken(token)
+      if (!user) {
+        return HttpResponse.json(
+          { message: 'Auth session missing!' },
+          { status: 401 }
+        )
+      }
+      
+      console.log('✅ MSW: User retrieved:', user.email)
+      
+      return HttpResponse.json(user)
+    } catch (error) {
+      console.error('❌ MSW: Get user failed:', error.message)
       return HttpResponse.json(
-        { message: 'Auth session missing!' },
-        { status: 401 }
+        { message: 'Internal server error' },
+        { status: 500 }
       )
     }
-    
-    return HttpResponse.json(session.user)
   }),
 
   // Update user
   http.put('http://localhost:5173/auth/v1/user', async ({ request }) => {
-    const authorization = request.headers.get('authorization')
-    const token = authorization?.replace('Bearer ', '')
-    const body = await request.json()
-    
-    console.log('Update user request - Authorization header:', authorization)
-    console.log('Update user extracted token:', token)
-    console.log('Available sessions for update:', Object.keys(sessions))
-    
-    const session = sessions[token]
-    if (!session) {
+    try {
+      const token = getAuthToken(request)
+      const body = await request.json()
+      
+      console.log('🔐 MSW: Update user request')
+      
+      if (!token) {
+        return HttpResponse.json(
+          { message: 'Authorization token missing' },
+          { status: 401 }
+        )
+      }
+      
+      const updatedUser = await authManager.updateUser(token, body)
+      
+      console.log('✅ MSW: User updated:', updatedUser.email)
+      
+      return HttpResponse.json(updatedUser)
+    } catch (error) {
+      console.error('❌ MSW: Update user failed:', error.message)
+      const status = error.message === 'Auth session missing!' ? 401 : 500
       return HttpResponse.json(
-        { message: 'Auth session missing!' },
-        { status: 401 }
+        { message: error.message },
+        { status }
       )
     }
-    
-    // Update user
-    const userIndex = users.findIndex(u => u.id === session.user.id)
-    if (userIndex !== -1) {
-      users[userIndex] = {
-        ...users[userIndex],
-        ...body,
-        updated_at: new Date().toISOString()
-      }
-      session.user = users[userIndex]
-    }
-    
-    return HttpResponse.json(session.user)
   }),
 
   // Sign out
   http.post('http://localhost:5173/auth/v1/logout', async ({ request }) => {
-    const authorization = request.headers.get('authorization')
-    const token = authorization?.replace('Bearer ', '')
-    
-    if (token && sessions[token]) {
-      delete sessions[token]
+    try {
+      const token = getAuthToken(request)
+      
+      console.log('🔐 MSW: Sign out request')
+      
+      if (token) {
+        await authManager.signOut(token)
+        console.log('✅ MSW: Sign out successful')
+      }
+      
+      return HttpResponse.json({})
+    } catch (error) {
+      console.error('❌ MSW: Sign out failed:', error.message)
+      // Still return success for sign out even if there's an error
+      return HttpResponse.json({})
     }
-    
-    return HttpResponse.json({})
   }),
 
   // Password recovery
   http.post('http://localhost:5173/auth/v1/recover', async ({ request }) => {
-    const body = await request.json()
-    const { email } = body
-    
-    // For testing, always return success
-    return HttpResponse.json({
-      message: 'Recovery email sent (mock)'
-    })
+    try {
+      const body = await request.json()
+      const { email } = body
+      
+      console.log('🔐 MSW: Password recovery request for:', email)
+      
+      const result = await authManager.resetPasswordForEmail(email)
+      
+      console.log('✅ MSW: Password recovery request processed')
+      
+      return HttpResponse.json(result)
+    } catch (error) {
+      console.error('❌ MSW: Password recovery failed:', error.message)
+      return HttpResponse.json(
+        { message: error.message },
+        { status: 400 }
+      )
+    }
   }),
 
   // MFA - List factors
   http.get('http://localhost:5173/auth/v1/factors', async ({ request }) => {
-    const authorization = request.headers.get('authorization')
-    const token = authorization?.replace('Bearer ', '')
-    
-    const session = sessions[token]
-    if (!session) {
+    try {
+      const token = getAuthToken(request)
+      
+      console.log('🔐 MSW: List MFA factors request')
+      
+      if (!token) {
+        return HttpResponse.json(
+          { message: 'Authorization token missing' },
+          { status: 401 }
+        )
+      }
+      
+      const user = getUserFromToken(token)
+      if (!user) {
+        return HttpResponse.json(
+          { message: 'Invalid token' },
+          { status: 401 }
+        )
+      }
+      
+      const userFactors = mfaFactors[user.id] || { totp: [], phone: [] }
+      
+      console.log('✅ MSW: MFA factors retrieved for user:', user.id)
+      
+      return HttpResponse.json(userFactors)
+    } catch (error) {
+      console.error('❌ MSW: List MFA factors failed:', error.message)
       return HttpResponse.json(
-        { message: 'Invalid token' },
-        { status: 401 }
+        { message: 'Internal server error' },
+        { status: 500 }
       )
     }
-    
-    const userFactors = mfaFactors[session.user.id] || { totp: [], phone: [] }
-    return HttpResponse.json(userFactors)
   }),
 
   // MFA - Enroll factor
   http.post('http://localhost:5173/auth/v1/factors', async ({ request }) => {
-    const authorization = request.headers.get('authorization')
-    const token = authorization?.replace('Bearer ', '')
-    const body = await request.json()
-    
-    const session = sessions[token]
-    if (!session) {
+    try {
+      const token = getAuthToken(request)
+      const body = await request.json()
+      
+      console.log('🔐 MSW: Enroll MFA factor request')
+      
+      if (!token) {
+        return HttpResponse.json(
+          { message: 'Authorization token missing' },
+          { status: 401 }
+        )
+      }
+      
+      const user = getUserFromToken(token)
+      if (!user) {
+        return HttpResponse.json(
+          { message: 'Invalid token' },
+          { status: 401 }
+        )
+      }
+      
+      const factorId = crypto.randomUUID()
+      const factor = {
+        id: factorId,
+        type: body.factorType,
+        friendly_name: body.friendlyName,
+        status: 'unverified'
+      }
+      
+      if (body.factorType === 'totp') {
+        factor.totp = {
+          qr_code: 'data:image/png;base64,mock-qr-code',
+          secret: 'JBSWY3DPEHPK3PXP',
+          uri: `otpauth://totp/Test:${user.email}?secret=JBSWY3DPEHPK3PXP&issuer=Test`
+        }
+      }
+      
+      if (!mfaFactors[user.id]) {
+        mfaFactors[user.id] = { totp: [], phone: [] }
+      }
+      
+      if (body.factorType === 'totp') {
+        mfaFactors[user.id].totp.push(factor)
+      } else if (body.factorType === 'phone') {
+        mfaFactors[user.id].phone.push(factor)
+      }
+      
+      console.log('✅ MSW: MFA factor enrolled for user:', user.id)
+      
+      return HttpResponse.json(factor)
+    } catch (error) {
+      console.error('❌ MSW: Enroll MFA factor failed:', error.message)
       return HttpResponse.json(
-        { message: 'Invalid token' },
-        { status: 401 }
+        { message: 'Internal server error' },
+        { status: 500 }
       )
     }
-    
-    const factorId = generateId()
-    const factor = {
-      id: factorId,
-      type: body.factorType,
-      friendly_name: body.friendlyName,
-      status: 'unverified'
-    }
-    
-    if (body.factorType === 'totp') {
-      factor.totp = {
-        qr_code: 'data:image/png;base64,mock-qr-code',
-        secret: 'JBSWY3DPEHPK3PXP',
-        uri: `otpauth://totp/Test:${session.user.email}?secret=JBSWY3DPEHPK3PXP&issuer=Test`
-      }
-    }
-    
-    if (!mfaFactors[session.user.id]) {
-      mfaFactors[session.user.id] = { totp: [], phone: [] }
-    }
-    
-    if (body.factorType === 'totp') {
-      mfaFactors[session.user.id].totp.push(factor)
-    } else if (body.factorType === 'phone') {
-      mfaFactors[session.user.id].phone.push(factor)
-    }
-    
-    return HttpResponse.json(factor)
   }),
 
 
