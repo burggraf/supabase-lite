@@ -20,6 +20,38 @@ const allTests = {
 window.runTest = runTest
 window.runAllTests = runAllTests
 
+// Sample App functions
+window.switchTab = switchTab
+window.signIn = signIn
+window.signUp = signUp
+window.signOut = signOut
+window.forgotPassword = forgotPassword
+
+// New simple tab functions  
+window.showTestSuite = function() {
+  document.getElementById('test-suite-tab').style.display = 'block';
+  document.getElementById('sample-app-tab').style.display = 'none';
+  const buttons = document.querySelectorAll('.tab-button');
+  buttons[0].style.background = 'white';
+  buttons[0].style.color = '#007bff';
+  buttons[0].style.fontWeight = '600';
+  buttons[1].style.background = '#f8f9fa';
+  buttons[1].style.color = '#6c757d';
+  buttons[1].style.fontWeight = 'normal';
+}
+
+window.showSampleApp = function() {
+  document.getElementById('test-suite-tab').style.display = 'none';
+  document.getElementById('sample-app-tab').style.display = 'block';
+  const buttons = document.querySelectorAll('.tab-button');
+  buttons[1].style.background = 'white';
+  buttons[1].style.color = '#007bff';
+  buttons[1].style.fontWeight = '600';
+  buttons[0].style.background = '#f8f9fa';
+  buttons[0].style.color = '#6c757d';
+  buttons[0].style.fontWeight = 'normal';
+}
+
 // Start MSW for local API mocking
 worker.start({
   onUnhandledRequest: 'bypass',
@@ -248,6 +280,263 @@ async function runAllTests() {
   // Restore original environment
   setEnvironment(originalEnvironment)
   console.log('All tests completed!')
+}
+
+// Tab switching functionality
+function switchTab(tabName) {
+  // Remove active class from all tab buttons and content
+  document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'))
+  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'))
+  
+  // Add active class to clicked tab button and corresponding content
+  document.querySelector(`button[onclick="switchTab('${tabName}')"]`).classList.add('active')
+  document.getElementById(`${tabName}-tab`).classList.add('active')
+}
+
+// Sample App state
+let currentUser = null
+let isAuthenticated = false
+
+// Authentication functions
+async function signIn() {
+  const email = document.getElementById('email').value
+  const password = document.getElementById('password').value
+  
+  if (!email || !password) {
+    showAuthMessage('Please enter both email and password', 'error')
+    return
+  }
+
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    showAuthMessage('Signing in...', 'loading')
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    })
+
+    if (error) {
+      showAuthMessage(`Sign in failed: ${error.message}`, 'error')
+      return
+    }
+
+    if (data.user) {
+      currentUser = data.user
+      isAuthenticated = true
+      showOrdersSection()
+      showAuthMessage('Successfully signed in!', 'success')
+    }
+  } catch (error) {
+    showAuthMessage(`Error: ${error.message}`, 'error')
+  }
+}
+
+async function signUp() {
+  const email = document.getElementById('email').value
+  const password = document.getElementById('password').value
+  
+  if (!email || !password) {
+    showAuthMessage('Please enter both email and password', 'error')
+    return
+  }
+
+  if (password.length < 6) {
+    showAuthMessage('Password must be at least 6 characters long', 'error')
+    return
+  }
+
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    showAuthMessage('Creating account...', 'loading')
+    
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+    })
+
+    if (error) {
+      showAuthMessage(`Sign up failed: ${error.message}`, 'error')
+      return
+    }
+
+    if (data.user) {
+      currentUser = data.user
+      isAuthenticated = true
+      showOrdersSection()
+      showAuthMessage('Account created successfully!', 'success')
+    }
+  } catch (error) {
+    showAuthMessage(`Error: ${error.message}`, 'error')
+  }
+}
+
+async function signOut() {
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    const { error } = await supabase.auth.signOut()
+    
+    if (error) {
+      console.error('Sign out error:', error)
+    }
+    
+    currentUser = null
+    isAuthenticated = false
+    showAuthSection()
+    showAuthMessage('Successfully signed out', 'success')
+  } catch (error) {
+    console.error('Sign out error:', error)
+    // Still clear the local state even if the API call fails
+    currentUser = null
+    isAuthenticated = false
+    showAuthSection()
+  }
+}
+
+async function forgotPassword() {
+  const email = document.getElementById('email').value
+  
+  if (!email) {
+    showAuthMessage('Please enter your email address first', 'error')
+    return
+  }
+
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    showAuthMessage('Sending reset email...', 'loading')
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email)
+
+    if (error) {
+      showAuthMessage(`Reset failed: ${error.message}`, 'error')
+      return
+    }
+
+    showAuthMessage('Password reset email sent! Check your inbox.', 'success')
+  } catch (error) {
+    showAuthMessage(`Error: ${error.message}`, 'error')
+  }
+}
+
+// UI helper functions
+function showAuthMessage(message, type) {
+  const messageDiv = document.getElementById('auth-message')
+  messageDiv.className = type === 'error' ? 'error-message' : 
+                        type === 'success' ? 'success-message' : 
+                        type === 'loading' ? 'status-badge loading' : ''
+  messageDiv.textContent = message
+  
+  // Clear message after 5 seconds for success/error messages
+  if (type === 'success' || type === 'error') {
+    setTimeout(() => {
+      messageDiv.textContent = ''
+      messageDiv.className = ''
+    }, 5000)
+  }
+}
+
+function showAuthSection() {
+  document.getElementById('auth-section').style.display = 'block'
+  document.getElementById('orders-section').style.display = 'none'
+  
+  // Clear form
+  document.getElementById('email').value = ''
+  document.getElementById('password').value = ''
+  document.getElementById('auth-message').textContent = ''
+}
+
+async function showOrdersSection() {
+  document.getElementById('auth-section').style.display = 'none'
+  document.getElementById('orders-section').style.display = 'block'
+  
+  // Update user info
+  if (currentUser) {
+    document.getElementById('user-email').textContent = currentUser.email
+    document.getElementById('user-debug-info').textContent = JSON.stringify(currentUser, null, 2)
+    
+    // Load orders from API
+    await loadOrders()
+  }
+}
+
+async function loadOrders() {
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    // Get orders for the current user
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('order_date', { ascending: false })
+    
+    if (error) {
+      console.error('Error loading orders:', error)
+      document.getElementById('orders-list').innerHTML = `
+        <div class="error-message">
+          Failed to load orders: ${error.message}
+        </div>
+      `
+      return
+    }
+    
+    // Display orders
+    displayOrders(orders || [])
+    
+  } catch (error) {
+    console.error('Error loading orders:', error)
+    document.getElementById('orders-list').innerHTML = `
+      <div class="error-message">
+        Failed to load orders: ${error.message}
+      </div>
+    `
+  }
+}
+
+function displayOrders(orders) {
+  const ordersContainer = document.getElementById('orders-list')
+  
+  if (!orders || orders.length === 0) {
+    ordersContainer.innerHTML = `
+      <div class="order-card">
+        <p>No orders found. This is a sample app for testing Supabase authentication and API integration.</p>
+      </div>
+    `
+    return
+  }
+  
+  ordersContainer.innerHTML = orders.map(order => `
+    <div class="order-card">
+      <div class="order-header">
+        <span class="order-id">Order #${order.id}</span>
+        <span class="order-status status-${order.status}">${capitalizeFirst(order.status)}</span>
+      </div>
+      <p><strong>Items:</strong> ${order.items}</p>
+      <p><strong>Total:</strong> $${order.total}</p>
+      <p><strong>Date:</strong> ${formatDate(order.order_date)}</p>
+    </div>
+  `).join('')
+}
+
+function capitalizeFirst(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  })
 }
 
 // Initialize

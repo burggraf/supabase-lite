@@ -4,6 +4,38 @@ import { http, HttpResponse } from 'msw'
 let users = []
 let sessions = {}
 let mfaFactors = {}
+let orders = [
+  {
+    id: 1001,
+    user_id: null, // Will be set when user signs in
+    items: 'Laptop, Mouse',
+    total: 1299.99,
+    status: 'completed',
+    order_date: '2025-01-15T10:30:00Z',
+    created_at: '2025-01-15T10:30:00Z',
+    updated_at: '2025-01-15T10:30:00Z'
+  },
+  {
+    id: 1002,
+    user_id: null,
+    items: 'Keyboard, Monitor',
+    total: 449.99,
+    status: 'shipped',
+    order_date: '2025-01-10T14:20:00Z',
+    created_at: '2025-01-10T14:20:00Z',
+    updated_at: '2025-01-10T14:20:00Z'
+  },
+  {
+    id: 1003,
+    user_id: null,
+    items: 'Desk, Chair',
+    total: 899.99,
+    status: 'pending',
+    order_date: '2025-01-08T09:15:00Z',
+    created_at: '2025-01-08T09:15:00Z',
+    updated_at: '2025-01-08T09:15:00Z'
+  }
+]
 
 // Helper to generate IDs
 function generateId() {
@@ -26,7 +58,78 @@ function generateMockToken(userId) {
   return `${header}.${payload}.${signature}`
 }
 
+// Helper to extract authorization token
+function getAuthToken(request) {
+  const authorization = request.headers.get('authorization')
+  return authorization?.replace('Bearer ', '')
+}
+
+// Helper to get user from token
+function getUserFromToken(token) {
+  const session = sessions[token]
+  return session?.user || null
+}
+
 export const handlers = [
+  // PostgREST API - Orders table
+  http.get('http://localhost:5173/rest/v1/orders', async ({ request }) => {
+    const token = getAuthToken(request)
+    const user = getUserFromToken(token)
+    
+    if (!user) {
+      return HttpResponse.json(
+        { message: 'Authorization required' },
+        { status: 401 }
+      )
+    }
+    
+    // Return orders for the current user
+    const userOrders = orders.map(order => ({
+      ...order,
+      user_id: user.id // Associate orders with current user
+    }))
+    
+    return HttpResponse.json(userOrders, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Range': `0-${userOrders.length - 1}/${userOrders.length}`
+      }
+    })
+  }),
+
+  http.post('http://localhost:5173/rest/v1/orders', async ({ request }) => {
+    const token = getAuthToken(request)
+    const user = getUserFromToken(token)
+    
+    if (!user) {
+      return HttpResponse.json(
+        { message: 'Authorization required' },
+        { status: 401 }
+      )
+    }
+    
+    const body = await request.json()
+    const newOrder = {
+      id: Math.max(...orders.map(o => o.id)) + 1,
+      user_id: user.id,
+      items: body.items,
+      total: body.total,
+      status: body.status || 'pending',
+      order_date: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+    
+    orders.push(newOrder)
+    
+    return HttpResponse.json([newOrder], {
+      status: 201,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+  }),
+
   // Auth signup
   http.post('http://localhost:5173/auth/v1/signup', async ({ request }) => {
     const body = await request.json()
