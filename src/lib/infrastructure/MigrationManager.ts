@@ -578,9 +578,21 @@ export class InfrastructureMigrationManager implements MigrationManager {
         version: '006',
         name: 'Add tags and metadata columns to products table',
         up: `
-          ALTER TABLE products 
-          ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}',
-          ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+          -- Check and add tags column if it doesn't exist
+          DO $$ 
+          BEGIN 
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='tags') THEN
+              ALTER TABLE products ADD COLUMN tags TEXT[] DEFAULT '{}';
+            END IF;
+          END $$;
+          
+          -- Check and add metadata column if it doesn't exist  
+          DO $$ 
+          BEGIN 
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='metadata') THEN
+              ALTER TABLE products ADD COLUMN metadata JSONB DEFAULT '{}';
+            END IF;
+          END $$;
         `,
         down: `
           ALTER TABLE products 
