@@ -6,7 +6,7 @@
 export const authTests = {
   // Basic Authentication Tests
   'auth_signup_email': async (supabase) => {
-    const testEmail = `test-${Date.now()}@example.com`
+    const testEmail = `test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     console.log(`Testing signup with email: ${testEmail}`)
@@ -35,7 +35,7 @@ export const authTests = {
 
   'auth_signin_email': async (supabase) => {
     // First create a user for testing
-    const testEmail = `signin-test-${Date.now()}@example.com`
+    const testEmail = `signin-test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     console.log(`Testing signin with email: ${testEmail}`)
@@ -68,7 +68,7 @@ export const authTests = {
 
   'auth_signout': async (supabase) => {
     // Ensure we have a session first
-    const testEmail = `signout-test-${Date.now()}@example.com`
+    const testEmail = `signout-test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     await supabase.auth.signUp({
@@ -92,7 +92,7 @@ export const authTests = {
 
   'auth_get_user': async (supabase) => {
     // Create and signin user first
-    const testEmail = `getuser-test-${Date.now()}@example.com`
+    const testEmail = `getuser-test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     await supabase.auth.signUp({
@@ -125,7 +125,7 @@ export const authTests = {
 
   'auth_update_user': async (supabase) => {
     // Create and signin user first
-    const testEmail = `update-test-${Date.now()}@example.com`
+    const testEmail = `update-test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     await supabase.auth.signUp({
@@ -158,7 +158,7 @@ export const authTests = {
   },
 
   'auth_reset_password': async (supabase) => {
-    const testEmail = `reset-test-${Date.now()}@example.com`
+    const testEmail = `reset-test-${Date.now()}@testuser.dev`
     
     console.log(`Testing password reset for: ${testEmail}`)
     
@@ -176,7 +176,7 @@ export const authTests = {
   // Session Management Tests
   'auth_refresh_session': async (supabase) => {
     // Create and signin user first
-    const testEmail = `refresh-test-${Date.now()}@example.com`
+    const testEmail = `refresh-test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     await supabase.auth.signUp({
@@ -200,7 +200,7 @@ export const authTests = {
 
   'auth_get_session': async (supabase) => {
     // Create and signin user first
-    const testEmail = `session-test-${Date.now()}@example.com`
+    const testEmail = `session-test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     await supabase.auth.signUp({
@@ -225,7 +225,7 @@ export const authTests = {
   // MFA Tests (will work differently in local vs remote)
   'auth_mfa_enroll_totp': async (supabase) => {
     // Create and signin user first
-    const testEmail = `mfa-test-${Date.now()}@example.com`
+    const testEmail = `mfa-test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     await supabase.auth.signUp({
@@ -262,7 +262,7 @@ export const authTests = {
 
   'auth_mfa_list_factors': async (supabase) => {
     // Create and signin user first
-    const testEmail = `mfa-list-test-${Date.now()}@example.com`
+    const testEmail = `mfa-list-test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     await supabase.auth.signUp({
@@ -295,7 +295,7 @@ export const authTests = {
   // JWT and Token Tests
   'auth_jwt_decode': async (supabase) => {
     // Create and signin user first
-    const testEmail = `jwt-test-${Date.now()}@example.com`
+    const testEmail = `jwt-test-${Date.now()}@testuser.dev`
     const testPassword = 'TestPassword123!'
     
     await supabase.auth.signUp({
@@ -343,7 +343,7 @@ export const authTests = {
     console.log('Testing invalid credentials error handling')
     
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: 'nonexistent@example.com',
+      email: 'nonexistent@testuser.dev',
       password: 'wrongpassword'
     })
 
@@ -364,7 +364,7 @@ export const authTests = {
   },
 
   'auth_weak_password': async (supabase) => {
-    const testEmail = `weak-pwd-test-${Date.now()}@example.com`
+    const testEmail = `weak-pwd-test-${Date.now()}@testuser.dev`
     
     console.log('Testing weak password validation')
     
