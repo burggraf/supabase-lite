@@ -5,7 +5,7 @@ import { advancedQueryTests } from './tests/advanced-queries.js'
 import { postgrestOperatorTests } from './tests/postgrest-operators.js'
 import { rpcFunctionTests } from './tests/rpc-functions.js'
 import { authTests } from './tests/auth-tests.js'
-import { worker } from './mocks/browser.js'
+// import { worker } from './mocks/browser.js' // Disabled - using main app's MSW
 
 // Combine all test suites
 const allTests = {
@@ -19,6 +19,9 @@ const allTests = {
 // Global functions for HTML buttons
 window.runTest = runTest
 window.runAllTests = runAllTests
+
+// Global debugging functions removed since we're not using local AuthManager anymore
+// Local tests now go directly to the main app on localhost:5173
 
 // Sample App functions
 window.switchTab = switchTab
@@ -52,14 +55,29 @@ window.showSampleApp = function() {
   buttons[0].style.fontWeight = 'normal';
 }
 
-// Start MSW for local API mocking
-worker.start({
-  onUnhandledRequest: 'bypass',
-}).then(() => {
-  console.log('MSW started for test-app')
-}).catch(err => {
-  console.error('Failed to start MSW:', err)
-})
+// Initialize MSW in test-app context with main app's handlers
+// Each context needs its own MSW initialization even with shared service worker
+async function initializeMSW() {
+  try {
+    const { setupWorker } = await import('msw/browser')
+    
+    // Import handlers from main app (served from same origin)
+    const { handlers } = await import('/src/mocks/handlers.ts')
+    
+    // Create worker with main app's handlers
+    const worker = setupWorker(...handlers)
+    
+    await worker.start({
+      onUnhandledRequest: 'bypass',
+    })
+    
+    console.log('MSW initialized in test-app context with main app handlers')
+  } catch (error) {
+    console.error('Failed to initialize MSW in test-app:', error)
+  }
+}
+
+initializeMSW()
 
 // Initialize environment switcher
 document.addEventListener('DOMContentLoaded', () => {

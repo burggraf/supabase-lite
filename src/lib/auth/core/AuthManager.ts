@@ -410,7 +410,7 @@ export class AuthManager {
       if (!tablesExist) {
         // Load and execute migration
         const migrationSql = await this.loadMigrationSql()
-        await this.dbManager.query(migrationSql)
+        await this.dbManager.exec(migrationSql)
         console.log('Auth tables migration completed successfully')
       }
     } catch (error) {
@@ -477,41 +477,67 @@ export class AuthManager {
 
   private async getUserByEmail(email: string): Promise<User | null> {
     const result = await this.dbManager.query(
-      'SELECT * FROM auth.users WHERE email = $1',
-      [email]
+      this.formatSqlWithValues('SELECT * FROM auth.users WHERE email = $1', [email])
     )
     return result.rows[0] ? this.mapDBUserToUser(result.rows[0]) : null
   }
 
   private async getUserByPhone(phone: string): Promise<User | null> {
     const result = await this.dbManager.query(
-      'SELECT * FROM auth.users WHERE phone = $1',
-      [phone]
+      this.formatSqlWithValues('SELECT * FROM auth.users WHERE phone = $1', [phone])
     )
     return result.rows[0] ? this.mapDBUserToUser(result.rows[0]) : null
   }
 
+  /**
+   * Helper method to format SQL with parameters for PGlite compatibility
+   */
+  private formatSqlWithValues(sql: string, values: any[]): string {
+    let formattedSql = sql
+    values.forEach((value, index) => {
+      const placeholder = `$${index + 1}`
+      let formattedValue: string
+      
+      if (value === null || value === undefined) {
+        formattedValue = 'NULL'
+      } else if (typeof value === 'string') {
+        formattedValue = `'${value.replace(/'/g, "''")}'`
+      } else if (typeof value === 'boolean') {
+        formattedValue = value ? 'true' : 'false'
+      } else {
+        formattedValue = String(value)
+      }
+      
+      formattedSql = formattedSql.replace(placeholder, formattedValue)
+    })
+    return formattedSql
+  }
+
   private async createUserInDB(user: User, hashedPassword: any): Promise<void> {
-    await this.dbManager.query(`
+    // Convert boolean verified fields to timestamp format for Supabase schema
+    const emailConfirmedAt = user.email_verified ? user.created_at : null
+    const phoneConfirmedAt = user.phone_verified ? user.created_at : null
+    
+    await this.dbManager.query(this.formatSqlWithValues(`
       INSERT INTO auth.users (
-        id, email, phone, email_verified, phone_verified, 
-        created_at, updated_at, role, app_metadata, user_metadata, is_anonymous
+        id, email, phone, email_confirmed_at, phone_confirmed_at, 
+        created_at, updated_at, role, raw_app_meta_data, raw_user_meta_data, is_anonymous
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     `, [
-      user.id, user.email, user.phone, user.email_verified, user.phone_verified,
+      user.id, user.email, user.phone, emailConfirmedAt, phoneConfirmedAt,
       user.created_at, user.updated_at, user.role, 
       JSON.stringify(user.app_metadata), JSON.stringify(user.user_metadata),
       user.is_anonymous
-    ])
+    ]))
 
     // Store password hash separately (in a real implementation, this would be encrypted)
-    await this.dbManager.query(`
+    await this.dbManager.query(this.formatSqlWithValues(`
       INSERT INTO auth.user_passwords (user_id, password_hash, password_salt, algorithm, created_at)
       VALUES ($1, $2, $3, $4, $5)
     `, [
       user.id, hashedPassword.hash, hashedPassword.salt, 
       hashedPassword.algorithm, new Date().toISOString()
-    ])
+    ]))
   }
 
   private async updateUserInDB(userId: string, updates: Partial<User>): Promise<void> {
@@ -641,10 +667,15 @@ export class AuthManager {
   }
 
   private async logAuditEvent(event: string, payload: any): Promise<void> {
-    await this.dbManager.query(`
-      INSERT INTO auth.audit_log_entries (payload, created_at)
-      VALUES ($1, $2)
-    `, [JSON.stringify({ event, ...payload }), new Date().toISOString()])
+    try {
+      await this.dbManager.query(this.formatSqlWithValues(`
+        INSERT INTO auth.audit_log_entries (id, payload, created_at)
+        VALUES ($1, $2, $3)
+      `, [CryptoUtils.generateUUID(), JSON.stringify({ event, ...payload }), new Date().toISOString()]))
+    } catch (error) {
+      // Audit logging is non-critical, don't fail the main operation
+      console.warn('Audit logging failed:', error)
+    }
   }
 
   private mapDBUserToUser(dbUser: any): User {

@@ -364,6 +364,7 @@ class AuthManager {
     this.sessions.clear()
     this.refreshTokens.clear()
   }
+
 }
 
 // Create singleton instance
