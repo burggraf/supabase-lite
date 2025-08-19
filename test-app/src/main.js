@@ -429,38 +429,59 @@ async function forgotPassword() {
 // UI helper functions
 function showAuthMessage(message, type) {
   const messageDiv = document.getElementById('auth-message')
+  if (!messageDiv) return
+  
   messageDiv.className = type === 'error' ? 'error-message' : 
                         type === 'success' ? 'success-message' : 
                         type === 'loading' ? 'status-badge loading' : ''
   messageDiv.textContent = message
+  messageDiv.style.display = 'block'
   
   // Clear message after 5 seconds for success/error messages
   if (type === 'success' || type === 'error') {
     setTimeout(() => {
       messageDiv.textContent = ''
       messageDiv.className = ''
+      messageDiv.style.display = 'none'
     }, 5000)
   }
 }
 
 function showAuthSection() {
-  document.getElementById('auth-section').style.display = 'block'
-  document.getElementById('orders-section').style.display = 'none'
+  // In the new structure, we need to show the login form and hide orders
+  const loginForm = document.querySelector('.login-form')
+  const ordersSection = document.getElementById('orders-section')
+  
+  if (loginForm) loginForm.style.display = 'block'
+  if (ordersSection) ordersSection.style.display = 'none'
   
   // Clear form
-  document.getElementById('email').value = ''
-  document.getElementById('password').value = ''
-  document.getElementById('auth-message').textContent = ''
+  const emailField = document.getElementById('email')
+  const passwordField = document.getElementById('password')
+  const authMessage = document.getElementById('auth-message')
+  
+  if (emailField) emailField.value = ''
+  if (passwordField) passwordField.value = ''
+  if (authMessage) {
+    authMessage.textContent = ''
+    authMessage.style.display = 'none'
+  }
 }
 
 async function showOrdersSection() {
-  document.getElementById('auth-section').style.display = 'none'
-  document.getElementById('orders-section').style.display = 'block'
+  // In the new structure, hide the login form and show orders
+  const loginForm = document.querySelector('.login-form')
+  const ordersSection = document.getElementById('orders-section')
+  
+  if (loginForm) loginForm.style.display = 'none'
+  if (ordersSection) ordersSection.style.display = 'block'
   
   // Update user info
   if (currentUser) {
-    document.getElementById('user-email').textContent = currentUser.email
-    document.getElementById('user-debug-info').textContent = JSON.stringify(currentUser, null, 2)
+    const userDebugInfo = document.getElementById('user-debug-info')
+    if (userDebugInfo) {
+      userDebugInfo.textContent = JSON.stringify(currentUser, null, 2)
+    }
     
     // Load orders from API
     await loadOrders()
