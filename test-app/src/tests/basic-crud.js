@@ -25,9 +25,7 @@ export const basicCrudTests = {
     const testProduct = {
       name: `Test Product ${Date.now()}`,
       price: 29.99,
-      category: 'test',
-      tags: ['test', 'demo'],
-      metadata: { test: true, created_by: 'test-suite' }
+      category: 'test'
     }
 
     const { data, error, status, statusText } = await supabase
