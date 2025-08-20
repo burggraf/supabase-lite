@@ -5,13 +5,10 @@ import { TableEditor } from '@/components/table-editor/TableEditor';
 import { DatabaseWorking as Database } from '@/components/database/DatabaseWorking';
 import { APITester } from '@/components/api-test/APITester';
 import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
-import { AuthEndpoints } from '@/components/api/AuthEndpoints';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
 import { initializeInfrastructure, logger } from '@/lib/infrastructure';
-// Import auth API service to expose it globally
-import '@/services/auth-api';
 
 function App() {
   const { currentPage, navigate } = useRouter();
@@ -129,8 +126,6 @@ function App() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {renderCurrentPage()}
       </div>
-      {/* Auth endpoints component - invisible but handles cross-origin auth requests */}
-      <AuthEndpoints />
     </div>
   );
 }

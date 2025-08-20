@@ -57,24 +57,10 @@ window.showSampleApp = function() {
 
 // Initialize MSW in test-app context with main app's handlers
 // Each context needs its own MSW initialization even with shared service worker
-async function initializeMSW() {
-  try {
-    const { setupWorker } = await import('msw/browser')
-    
-    // Import handlers from main app (served from same origin)
-    const { handlers } = await import('/src/mocks/handlers.ts')
-    
-    // Create worker with main app's handlers
-    const worker = setupWorker(...handlers)
-    
-    await worker.start({
-      onUnhandledRequest: 'bypass',
-    })
-    
-    console.log('MSW initialized in test-app context with main app handlers')
-  } catch (error) {
-    console.error('Failed to initialize MSW in test-app:', error)
-  }
+// MSW initialization removed - test-app uses HTTP middleware from main app
+function initializeMSW() {
+  console.log('Test-app running independently - using HTTP middleware from main app')
+  return Promise.resolve()
 }
 
 initializeMSW()

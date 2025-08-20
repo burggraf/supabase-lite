@@ -76,6 +76,84 @@ src/
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
 
+## 🧪 Testing with External Applications
+
+Supabase Lite provides MSW (Mock Service Worker) HTTP middleware that exposes Supabase-compatible REST API endpoints for cross-origin testing. This allows you to test external applications against your local Supabase Lite instance.
+
+### Creating External Test Apps
+
+1. **Create a new directory** for your test application:
+   ```bash
+   mkdir my-supabase-test-app
+   cd my-supabase-test-app
+   ```
+
+2. **Initialize with package.json**:
+   ```json
+   {
+     "name": "my-supabase-test-app",
+     "type": "module",
+     "scripts": {
+       "dev": "vite"
+     },
+     "dependencies": {
+       "@supabase/supabase-js": "^2.48.1"
+     },
+     "devDependencies": {
+       "vite": "^7.1.2"
+     }
+   }
+   ```
+
+3. **Create your test application**:
+   ```javascript
+   // main.js
+   import { createClient } from '@supabase/supabase-js'
+
+   const supabase = createClient(
+     'http://localhost:5173',  // Your Supabase Lite URL
+     'your-anon-key-here'      // Any key (not validated in local development)
+   )
+
+   // Test your Supabase operations
+   const { data, error } = await supabase
+     .from('products')
+     .select('*')
+
+   console.log('Data:', data)
+   ```
+
+4. **Run your test app**:
+   ```bash
+   npm install
+   npm run dev
+   ```
+
+### Available API Endpoints
+
+When running `npm run dev`, Supabase Lite exposes these endpoints:
+
+- **REST API**: `http://localhost:5173/rest/v1/*` (PostgREST-compatible)
+- **Auth API**: `http://localhost:5173/auth/v1/*` (GoTrue-compatible)
+- **Health Check**: `http://localhost:5173/health`
+
+### Example Test App
+
+See the included `test-app/` directory for a comprehensive example that demonstrates:
+- Basic CRUD operations
+- Authentication flows
+- Error handling
+- Both local and remote environment switching
+
+To run the example:
+```bash
+cd test-app
+npm install
+npm run dev
+```
+
+Then visit `http://localhost:5176` to see the test interface.
+
 ## 🌐 Deployment
 
 Since this is a pure client-side application, you can deploy it to any static hosting service:
