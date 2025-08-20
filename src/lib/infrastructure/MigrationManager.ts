@@ -600,6 +600,218 @@ export class InfrastructureMigrationManager implements MigrationManager {
           DROP COLUMN IF EXISTS metadata;
         `,
       },
+      {
+        version: '007',
+        name: 'Convert orders.user_id to UUID and enable RLS',
+        up: `
+          -- First, we need to fix the auth.users table to use UUID instead of SERIAL
+          -- Step 1: Add new UUID column to auth.users
+          ALTER TABLE auth.users ADD COLUMN user_uuid UUID DEFAULT gen_random_uuid();
+          
+          -- Step 2: Update sessions table to reference the new UUID
+          ALTER TABLE auth.sessions ADD COLUMN user_uuid UUID;
+          UPDATE auth.sessions SET user_uuid = (SELECT user_uuid FROM auth.users WHERE auth.users.id = auth.sessions.user_id);
+          
+          -- Step 3: Drop old foreign key and add new one
+          ALTER TABLE auth.sessions DROP CONSTRAINT auth_sessions_user_id_fkey;
+          ALTER TABLE auth.sessions ADD CONSTRAINT auth_sessions_user_uuid_fkey 
+            FOREIGN KEY (user_uuid) REFERENCES auth.users(user_uuid) ON DELETE CASCADE;
+          
+          -- Step 4: Drop old integer columns and rename UUID columns
+          ALTER TABLE auth.sessions DROP COLUMN user_id;
+          ALTER TABLE auth.sessions RENAME COLUMN user_uuid TO user_id;
+          
+          -- Step 5: Update auth.users primary key
+          ALTER TABLE auth.users DROP CONSTRAINT auth_users_pkey;
+          ALTER TABLE auth.users DROP COLUMN id;
+          ALTER TABLE auth.users RENAME COLUMN user_uuid TO id;
+          ALTER TABLE auth.users ADD PRIMARY KEY (id);
+          
+          -- Step 6: Clear existing orders since we need to regenerate with proper UUIDs
+          DELETE FROM orders;
+          
+          -- Step 7: Convert orders.user_id to UUID
+          ALTER TABLE orders ALTER COLUMN user_id TYPE UUID USING NULL;
+          
+          -- Step 8: Add foreign key constraint to auth.users
+          ALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+          
+          -- Step 9: Enable RLS on orders table
+          ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+          
+          -- Step 10: Create RLS policies for orders
+          CREATE POLICY "users_can_access_own_orders" 
+            ON orders FOR ALL 
+            TO authenticated 
+            USING (user_id = (SELECT auth.uid())) 
+            WITH CHECK (user_id = (SELECT auth.uid()));
+          
+          CREATE POLICY "service_role_full_access" 
+            ON orders FOR ALL 
+            TO service_role 
+            USING (true) 
+            WITH CHECK (true);
+          
+          -- Step 11: Add performance index for RLS
+          CREATE INDEX IF NOT EXISTS idx_orders_user_id_rls ON orders(user_id);
+          
+          -- Step 12: Create auth.uid() function for RLS compatibility
+          CREATE OR REPLACE FUNCTION auth.uid() 
+          RETURNS UUID AS $$
+          BEGIN
+            -- In our local environment, we'll extract from current session context
+            -- This will be set by the API bridge when processing requests
+            RETURN current_setting('jwt.claims.sub', true)::UUID;
+          EXCEPTION
+            WHEN OTHERS THEN
+              RETURN NULL;
+          END;
+          $$ LANGUAGE plpgsql SECURITY DEFINER;
+          
+          -- Step 13: Add missing fields to match test app expectations
+          ALTER TABLE orders 
+          ADD COLUMN IF NOT EXISTS items TEXT,
+          ADD COLUMN IF NOT EXISTS order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+          
+          -- Step 14: Create some sample users and orders for testing
+          INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at) VALUES
+            ('550e8400-e29b-41d4-a716-446655440001', 'user1@example.com', 'hashed_password_1', NOW(), NOW(), NOW()),
+            ('550e8400-e29b-41d4-a716-446655440002', 'user2@example.com', 'hashed_password_2', NOW(), NOW(), NOW()),
+            ('550e8400-e29b-41d4-a716-446655440003', 'user3@example.com', 'hashed_password_3', NOW(), NOW(), NOW())
+          ON CONFLICT (id) DO NOTHING;
+          
+          -- Step 15: Create sample orders with UUID user_ids
+          INSERT INTO orders (user_id, product_id, quantity, total_price, status, items, order_date) VALUES
+            ('550e8400-e29b-41d4-a716-446655440001', 1, 1, 99.99, 'completed', 'Wireless Headphones x1', '2024-01-15 10:30:00'),
+            ('550e8400-e29b-41d4-a716-446655440001', 3, 2, 31.98, 'completed', 'Coffee Mug x2', '2024-01-20 14:22:00'),
+            ('550e8400-e29b-41d4-a716-446655440002', 2, 1, 129.99, 'pending', 'Running Shoes x1', '2024-02-01 09:15:00'),
+            ('550e8400-e29b-41d4-a716-446655440002', 6, 1, 24.99, 'shipped', 'Water Bottle x1', '2024-02-05 16:45:00'),
+            ('550e8400-e29b-41d4-a716-446655440003', 4, 1, 49.99, 'completed', 'Laptop Stand x1', '2024-02-10 11:30:00')
+          ON CONFLICT DO NOTHING;
+        `,
+        down: `
+          -- Rollback script (simplified - removes RLS and reverts to integer IDs)
+          DROP POLICY IF EXISTS "users_can_access_own_orders" ON orders;
+          DROP POLICY IF EXISTS "service_role_full_access" ON orders;
+          ALTER TABLE orders DISABLE ROW LEVEL SECURITY;
+          
+          DROP INDEX IF EXISTS idx_orders_user_id_rls;
+          DROP FUNCTION IF EXISTS auth.uid();
+          
+          -- Remove added columns
+          ALTER TABLE orders 
+          DROP COLUMN IF EXISTS items,
+          DROP COLUMN IF EXISTS order_date;
+          
+          -- Clear data and revert to integer user_id
+          DELETE FROM orders;
+          DELETE FROM auth.sessions;
+          DELETE FROM auth.users;
+          
+          ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_user_id_fkey;
+          ALTER TABLE orders ALTER COLUMN user_id TYPE INTEGER USING NULL;
+          
+          -- Revert auth.users to SERIAL
+          ALTER TABLE auth.users DROP CONSTRAINT IF EXISTS auth_users_pkey;
+          ALTER TABLE auth.users RENAME COLUMN id TO user_uuid;
+          ALTER TABLE auth.users ADD COLUMN id SERIAL PRIMARY KEY;
+          
+          -- Revert sessions table  
+          ALTER TABLE auth.sessions RENAME COLUMN user_id TO user_uuid;
+          ALTER TABLE auth.sessions ADD COLUMN user_id INTEGER;
+          ALTER TABLE auth.sessions ADD CONSTRAINT auth_sessions_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+          ALTER TABLE auth.sessions DROP COLUMN user_uuid;
+          
+          -- Clean up auth.users
+          ALTER TABLE auth.users DROP COLUMN user_uuid;
+        `,
+      },
+      {
+        version: '008',
+        name: 'Actually fix orders table - UUID user_id and RLS',
+        up: `
+          -- STEP 1: Delete all existing orders data
+          DELETE FROM orders;
+          
+          -- STEP 2: Convert orders.user_id from INTEGER to UUID
+          ALTER TABLE orders ALTER COLUMN user_id TYPE UUID USING NULL;
+          
+          -- STEP 3: Add foreign key constraint to auth.users (assuming auth.users.id is UUID)
+          ALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+          
+          -- STEP 4: Enable RLS on orders table
+          ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+          
+          -- STEP 5: Create RLS policies for orders table
+          CREATE POLICY "users_can_access_own_orders" 
+            ON orders FOR ALL 
+            TO authenticated 
+            USING (user_id = (SELECT auth.uid())) 
+            WITH CHECK (user_id = (SELECT auth.uid()));
+          
+          CREATE POLICY "service_role_full_access" 
+            ON orders FOR ALL 
+            TO service_role 
+            USING (true) 
+            WITH CHECK (true);
+          
+          -- STEP 6: Add performance index for RLS
+          CREATE INDEX IF NOT EXISTS idx_orders_user_id_rls ON orders(user_id);
+          
+          -- STEP 7: Create auth.uid() function for RLS compatibility (if not exists)
+          CREATE OR REPLACE FUNCTION auth.uid() 
+          RETURNS UUID AS $$
+          BEGIN
+            -- In our local environment, we'll extract from current session context
+            -- This will be set by the API bridge when processing requests
+            RETURN current_setting('jwt.claims.sub', true)::UUID;
+          EXCEPTION
+            WHEN OTHERS THEN
+              RETURN NULL;
+          END;
+          $$ LANGUAGE plpgsql SECURITY DEFINER;
+          
+          -- STEP 8: Add missing fields for test app compatibility
+          ALTER TABLE orders 
+          ADD COLUMN IF NOT EXISTS items TEXT,
+          ADD COLUMN IF NOT EXISTS order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+          
+          -- STEP 9: Create sample orders with UUID user_ids from auth.users
+          INSERT INTO orders (user_id, product_id, quantity, total_price, status, items, order_date) 
+          SELECT 
+            u.id as user_id,
+            1 as product_id,
+            1 as quantity,
+            99.99 as total_price,
+            'completed' as status,
+            'Sample Order for ' || u.email as items,
+            NOW() as order_date
+          FROM auth.users u 
+          LIMIT 3;
+        `,
+        down: `
+          -- Rollback script
+          DROP POLICY IF EXISTS "users_can_access_own_orders" ON orders;
+          DROP POLICY IF EXISTS "service_role_full_access" ON orders;
+          ALTER TABLE orders DISABLE ROW LEVEL SECURITY;
+          
+          DROP INDEX IF EXISTS idx_orders_user_id_rls;
+          DROP FUNCTION IF EXISTS auth.uid();
+          
+          -- Remove added columns
+          ALTER TABLE orders 
+          DROP COLUMN IF EXISTS items,
+          DROP COLUMN IF EXISTS order_date;
+          
+          -- Clear data and revert to integer user_id
+          DELETE FROM orders;
+          ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_user_id_fkey;
+          ALTER TABLE orders ALTER COLUMN user_id TYPE INTEGER USING NULL;
+        `,
+      },
     ];
   }
 }
