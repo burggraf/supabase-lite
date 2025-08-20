@@ -374,7 +374,13 @@
         </div>
 
         <div id="orders-section" style="display: none; background: white; padding: 40px; margin: 20px 0; border: 2px solid #28a745; border-radius: 10px;">
-          <h2>Your Orders</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #28a745;">
+            <div>
+              <h2 style="margin: 0;">Your Orders</h2>
+              <p style="margin: 5px 0 0 0; color: #666;" id="user-email">Loading...</p>
+            </div>
+            <button onclick="signOut()" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px;">Sign Out</button>
+          </div>
           <div id="orders-list"></div>
           <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 5px;">
             <h3>User Debug Info:</h3>

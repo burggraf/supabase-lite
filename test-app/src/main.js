@@ -37,6 +37,9 @@ window.handleAddOrder = handleAddOrder
 window.editOrder = editOrder
 window.deleteOrder = deleteOrder
 
+// Session management functions
+window.checkExistingSession = checkExistingSession
+
 // New simple tab functions  
 window.showTestSuite = function() {
   document.getElementById('test-suite-tab').style.display = 'block';
@@ -50,7 +53,7 @@ window.showTestSuite = function() {
   buttons[1].style.fontWeight = 'normal';
 }
 
-window.showSampleApp = function() {
+window.showSampleApp = async function() {
   document.getElementById('test-suite-tab').style.display = 'none';
   document.getElementById('sample-app-tab').style.display = 'block';
   const buttons = document.querySelectorAll('.tab-button');
@@ -60,6 +63,9 @@ window.showSampleApp = function() {
   buttons[0].style.background = '#f8f9fa';
   buttons[0].style.color = '#6c757d';
   buttons[0].style.fontWeight = 'normal';
+  
+  // Check for existing session when switching to Sample App tab
+  await checkExistingSession();
 }
 
 // Initialize MSW in test-app context with main app's handlers
@@ -72,8 +78,8 @@ function initializeMSW() {
 
 initializeMSW()
 
-// Initialize environment switcher
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize environment switcher and check for existing session
+document.addEventListener('DOMContentLoaded', async () => {
   const radios = document.querySelectorAll('input[name="environment"]')
   radios.forEach(radio => {
     radio.addEventListener('change', (e) => {
@@ -81,6 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('Environment changed to:', e.target.value)
     })
   })
+  
+  // Check for existing session when page loads
+  await checkExistingSession()
 })
 
 async function runTest(testName) {
@@ -308,6 +317,35 @@ function switchTab(tabName) {
 let currentUser = null
 let isAuthenticated = false
 
+// Session management
+async function checkExistingSession() {
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    const { data: session, error } = await supabase.auth.getSession()
+    
+    if (error) {
+      console.error('Error checking session:', error)
+      return
+    }
+    
+    if (session?.session?.user) {
+      // User is already logged in
+      currentUser = session.session.user
+      isAuthenticated = true
+      console.log('Found existing session for:', currentUser.email)
+      await showOrdersSection()
+    } else {
+      // No active session
+      showAuthSection()
+    }
+  } catch (error) {
+    console.error('Error checking session:', error)
+    showAuthSection()
+  }
+}
+
 // Authentication functions
 async function signIn() {
   const email = document.getElementById('email').value
@@ -495,7 +533,13 @@ async function showOrdersSection() {
   
   // Update user info
   if (currentUser) {
+    const userEmailElement = document.getElementById('user-email')
     const userDebugInfo = document.getElementById('user-debug-info')
+    
+    if (userEmailElement) {
+      userEmailElement.textContent = `Logged in as: ${currentUser.email}`
+    }
+    
     if (userDebugInfo) {
       userDebugInfo.textContent = JSON.stringify(currentUser, null, 2)
     }
