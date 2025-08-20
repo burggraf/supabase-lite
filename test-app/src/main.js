@@ -627,26 +627,44 @@ function displayOrders(orders) {
   
   if (!orders || orders.length === 0) {
     ordersHTML += `
-      <div class="order-card">
+      <div style="text-align: center; padding: 40px; color: #666;">
         <p>No orders found. Create your first order using the "Add New Order" button above.</p>
       </div>
     `
   } else {
-    ordersHTML += orders.map(order => `
-      <div class="order-card" id="order-${order.id}">
-        <div class="order-header">
-          <span class="order-id">Order #${order.id}</span>
-          <span class="order-status status-${order.status}">${capitalizeFirst(order.status)}</span>
-          <div style="margin-left: auto;">
-            <button onclick="editOrder(${order.id})" style="background: #ffc107; color: #000; padding: 5px 10px; font-size: 12px;">Edit</button>
-            <button onclick="deleteOrder(${order.id})" style="background: #dc3545; padding: 5px 10px; font-size: 12px;">Delete</button>
-          </div>
-        </div>
-        <p><strong>Product ID:</strong> ${order.product_id}</p>
-        <p><strong>Quantity:</strong> ${order.quantity}</p>
-        <p><strong>Date:</strong> ${formatDate(order.created_at)}</p>
-      </div>
-    `).join('')
+    ordersHTML += `
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+          <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Order #</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Product ID</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Quantity</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Date</th>
+            <th style="padding: 12px; text-align: center; font-weight: 600;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${orders.map(order => `
+            <tr id="order-${order.id}" style="border-bottom: 1px solid #dee2e6;">
+              <td style="padding: 12px; font-weight: 500;">#${order.id}</td>
+              <td style="padding: 12px;">${order.product_id}</td>
+              <td style="padding: 12px;">${order.quantity}</td>
+              <td style="padding: 12px;">
+                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; background: ${getStatusColor(order.status)}; color: white;">
+                  ${capitalizeFirst(order.status)}
+                </span>
+              </td>
+              <td style="padding: 12px; color: #666;">${formatDate(order.created_at)}</td>
+              <td style="padding: 12px; text-align: center;">
+                <button onclick="editOrder(${order.id})" style="background: #ffc107; color: #000; border: none; padding: 6px 12px; margin-right: 5px; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>
+                <button onclick="deleteOrder(${order.id})" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `
   }
   
   ordersContainer.innerHTML = ordersHTML
@@ -654,6 +672,17 @@ function displayOrders(orders) {
 
 function capitalizeFirst(str) {
   return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+function getStatusColor(status) {
+  switch (status) {
+    case 'pending': return '#ffc107'
+    case 'processing': return '#007bff'
+    case 'shipped': return '#17a2b8'
+    case 'delivered': return '#28a745'
+    case 'completed': return '#28a745'
+    default: return '#6c757d'
+  }
 }
 
 function formatDate(dateString) {
