@@ -22,7 +22,6 @@ export class ResponseFormatter {
   ): FormattedResponse {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
       'Access-Control-Expose-Headers': 'Content-Range'
     }
 
@@ -72,7 +71,6 @@ export class ResponseFormatter {
   ): FormattedResponse {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
     }
 
     let status = 201
@@ -115,7 +113,6 @@ export class ResponseFormatter {
   ): FormattedResponse {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
     }
 
     let status = 200
@@ -143,7 +140,6 @@ export class ResponseFormatter {
   ): FormattedResponse {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
     }
 
     let status = 200
@@ -171,7 +167,6 @@ export class ResponseFormatter {
   ): FormattedResponse {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
     }
 
     return {
@@ -190,7 +185,6 @@ export class ResponseFormatter {
   ): FormattedResponse {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
     }
 
     // PostgREST error format
