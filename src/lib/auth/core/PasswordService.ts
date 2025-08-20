@@ -1,19 +1,23 @@
 import { CryptoUtils } from '../utils/crypto'
 import { Validators, ValidationError } from '../utils/validators'
+import bcrypt from 'bcryptjs'
 
 export interface HashedPassword {
   hash: string
-  salt: string
+  salt?: string
   algorithm: string
-  iterations: number
+  iterations?: number
 }
+
+export type PasswordAlgorithm = 'bcrypt' | 'PBKDF2'
 
 export class PasswordService {
   private static instance: PasswordService
-  private readonly algorithm = 'PBKDF2'
-  private readonly iterations = 100000
+  private readonly defaultAlgorithm: PasswordAlgorithm = 'bcrypt'
+  private readonly pbkdf2Iterations = 100000
   private readonly hashFunction = 'SHA-256'
   private readonly keyLength = 256
+  private readonly bcryptRounds = 10
 
   static getInstance(): PasswordService {
     if (!PasswordService.instance) {
@@ -23,31 +27,55 @@ export class PasswordService {
   }
 
   /**
-   * Hash password using PBKDF2 with Web Crypto API
+   * Hash password using bcrypt (default) or PBKDF2
    */
-  async hashPassword(password: string): Promise<HashedPassword> {
+  async hashPassword(password: string, algorithm: PasswordAlgorithm = this.defaultAlgorithm): Promise<HashedPassword> {
     // Validate password strength
     const validation = Validators.validatePassword(password)
     if (!validation.isValid) {
       throw new ValidationError(validation.errors[0], 'password')
     }
 
-    const { hash, salt } = await CryptoUtils.hashPassword(password)
-
-    return {
-      hash,
-      salt,
-      algorithm: this.algorithm,
-      iterations: this.iterations
+    if (algorithm === 'bcrypt') {
+      const hash = await bcrypt.hash(password, this.bcryptRounds)
+      return {
+        hash,
+        algorithm: 'bcrypt'
+      }
+    } else {
+      // PBKDF2 for backward compatibility
+      const { hash, salt } = await CryptoUtils.hashPassword(password)
+      return {
+        hash,
+        salt,
+        algorithm: 'PBKDF2',
+        iterations: this.pbkdf2Iterations
+      }
     }
   }
 
   /**
-   * Verify password against stored hash
+   * Verify password against stored hash (supports both bcrypt and PBKDF2)
    */
-  async verifyPassword(password: string, hashedPassword: HashedPassword): Promise<boolean> {
+  async verifyPassword(password: string, hashedPasswordOrHash: HashedPassword | string): Promise<boolean> {
     try {
-      return await CryptoUtils.verifyPassword(password, hashedPassword.hash, hashedPassword.salt)
+      // Handle string hash (bcrypt format) - this is for Supabase compatibility
+      if (typeof hashedPasswordOrHash === 'string') {
+        return await bcrypt.compare(password, hashedPasswordOrHash)
+      }
+
+      // Handle HashedPassword object
+      const hashedPassword = hashedPasswordOrHash
+      if (hashedPassword.algorithm === 'bcrypt') {
+        return await bcrypt.compare(password, hashedPassword.hash)
+      } else if (hashedPassword.algorithm === 'PBKDF2') {
+        if (!hashedPassword.salt) {
+          throw new Error('Salt is required for PBKDF2 verification')
+        }
+        return await CryptoUtils.verifyPassword(password, hashedPassword.hash, hashedPassword.salt)
+      } else {
+        throw new Error(`Unsupported algorithm: ${hashedPassword.algorithm}`)
+      }
     } catch (error) {
       console.warn('Password verification error:', error)
       return false

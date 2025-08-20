@@ -264,69 +264,6 @@ export class AuthQueryBuilder extends DatabaseQueryBuilder {
     await this.update('users', updates, 'id', userId, 'auth')
   }
 
-  /**
-   * Get password hash for user
-   */
-  async getPasswordHash(userId: string): Promise<any | null> {
-    const sql = 'SELECT password_hash, password_salt, algorithm FROM auth.user_passwords WHERE user_id = $1'
-    return this.queryOne(sql, [userId])
-  }
-
-  /**
-   * Store password hash for user
-   */
-  async storePasswordHash(userId: string, hashData: {
-    password_hash: string
-    password_salt: string
-    algorithm: string
-    created_at: string
-  }): Promise<void> {
-    await this.insert('user_passwords', {
-      user_id: userId,
-      ...hashData
-    }, 'auth')
-  }
-
-  /**
-   * Update password hash for user
-   */
-  async updatePasswordHash(userId: string, hashData: {
-    password_hash: string
-    password_salt: string
-    updated_at: string
-  }): Promise<void> {
-    await this.update('user_passwords', hashData, 'user_id', userId, 'auth')
-  }
-
-  /**
-   * Record failed login attempt
-   */
-  async recordFailedAttempt(userId: string): Promise<void> {
-    await this.insert('failed_login_attempts', {
-      user_id: userId,
-      attempted_at: new Date().toISOString()
-    }, 'auth')
-  }
-
-  /**
-   * Clear failed login attempts
-   */
-  async clearFailedAttempts(userId: string): Promise<void> {
-    await this.delete('failed_login_attempts', 'user_id', userId, 'auth')
-  }
-
-  /**
-   * Get failed login attempts count in timeframe
-   */
-  async getFailedAttemptsCount(userId: string, minutesBack: number): Promise<number> {
-    const sql = `
-      SELECT COUNT(*) as count
-      FROM auth.failed_login_attempts 
-      WHERE user_id = $1 AND attempted_at > NOW() - INTERVAL '${minutesBack} minutes'
-    `
-    const result = await this.queryOne(sql, [userId])
-    return result?.count || 0
-  }
 
   /**
    * Create session record

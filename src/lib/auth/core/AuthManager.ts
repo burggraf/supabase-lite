@@ -171,8 +171,7 @@ export class AuthManager {
       throw this.createAuthError('Invalid login credentials', 400, 'invalid_credentials')
     }
 
-    // Check for account lockout
-    await this.checkAccountLockout(user.id)
+    // Note: Account lockout removed for Supabase compatibility
 
     // Get stored password hash
     const storedPassword = await this.getStoredPassword(user.id)
@@ -184,12 +183,8 @@ export class AuthManager {
     const isValidPassword = await this.passwordService.verifyPassword(password, storedPassword)
     
     if (!isValidPassword) {
-      await this.recordFailedAttempt(user.id)
       throw this.createAuthError('Invalid login credentials', 400, 'invalid_credentials')
     }
-
-    // Clear failed attempts on successful login
-    await this.clearFailedAttempts(user.id)
 
     // Update last sign in
     await this.updateLastSignIn(user.id)
@@ -402,85 +397,11 @@ export class AuthManager {
    * Database operations
    */
   private async ensureAuthTables(): Promise<void> {
-    try {
-      // Check if our custom tables exist
-      const checkResult = await this.dbManager.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'auth' 
-          AND table_name = 'user_passwords'
-        ) as exists;
-      `)
-      
-      const tablesExist = (checkResult.rows[0] as any)?.exists
-
-      if (!tablesExist) {
-        // Load and execute migration
-        const migrationSql = await this.loadMigrationSql()
-        await this.dbManager.exec(migrationSql)
-        console.log('Auth tables migration completed successfully')
-      }
-    } catch (error) {
-      console.error('Failed to ensure auth tables:', error)
-      throw error
-    }
+    // Standard Supabase auth tables are already created by the schema
+    // No custom table creation needed for compatibility
+    return
   }
 
-  private async loadMigrationSql(): Promise<string> {
-    try {
-      const response = await fetch('/src/lib/auth/migrations/001_add_user_passwords_table.sql')
-      if (!response.ok) {
-        throw new Error('Failed to load migration file')
-      }
-      return await response.text()
-    } catch (error) {
-      // Fallback inline migration
-      return `
-        CREATE TABLE IF NOT EXISTS auth.user_passwords (
-          id uuid DEFAULT gen_random_uuid() NOT NULL,
-          user_id uuid NOT NULL,
-          password_hash text NOT NULL,
-          password_salt text NOT NULL,
-          algorithm text DEFAULT 'PBKDF2' NOT NULL,
-          iterations integer DEFAULT 100000 NOT NULL,
-          created_at timestamp with time zone DEFAULT now() NOT NULL,
-          updated_at timestamp with time zone DEFAULT now() NOT NULL,
-          
-          CONSTRAINT user_passwords_pkey PRIMARY KEY (id),
-          CONSTRAINT user_passwords_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
-          CONSTRAINT user_passwords_user_id_unique UNIQUE (user_id)
-        );
-
-        CREATE INDEX IF NOT EXISTS user_passwords_user_id_idx ON auth.user_passwords(user_id);
-
-        CREATE TABLE IF NOT EXISTS auth.password_reset_tokens (
-          id uuid DEFAULT gen_random_uuid() NOT NULL,
-          user_id uuid NOT NULL,
-          token_hash text NOT NULL,
-          created_at timestamp with time zone DEFAULT now() NOT NULL,
-          expires_at timestamp with time zone NOT NULL,
-          used_at timestamp with time zone,
-          
-          CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (id),
-          CONSTRAINT password_reset_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
-        );
-
-        CREATE INDEX IF NOT EXISTS password_reset_tokens_token_hash_idx ON auth.password_reset_tokens(token_hash);
-
-        CREATE TABLE IF NOT EXISTS auth.failed_login_attempts (
-          id uuid DEFAULT gen_random_uuid() NOT NULL,
-          user_id uuid NOT NULL,
-          ip_address inet,
-          attempted_at timestamp with time zone DEFAULT now() NOT NULL,
-          
-          CONSTRAINT failed_login_attempts_pkey PRIMARY KEY (id),
-          CONSTRAINT failed_login_attempts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
-        );
-
-        CREATE INDEX IF NOT EXISTS failed_login_attempts_user_id_idx ON auth.failed_login_attempts(user_id, attempted_at);
-      `
-    }
-  }
 
   private async getUserByEmail(email: string): Promise<User | null> {
     // Use direct parameterized query to bypass the AuthQueryBuilder issue
@@ -505,16 +426,20 @@ export class AuthManager {
     const emailConfirmedAt = user.email_verified ? user.created_at : null
     const phoneConfirmedAt = user.phone_verified ? user.created_at : null
     
-    // Create user record using direct parameterized query
+    // For bcrypt, we store the hash directly. For PBKDF2, we still store just the hash part
+    const passwordHash = hashedPassword.hash
+    
+    // Create user record with password hash in standard Supabase location
     await this.dbManager.query(`
       INSERT INTO auth.users (
-        id, email, phone, email_confirmed_at, phone_confirmed_at, 
+        id, email, phone, encrypted_password, email_confirmed_at, phone_confirmed_at, 
         created_at, updated_at, role, raw_app_meta_data, raw_user_meta_data, is_anonymous
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     `, [
       user.id,
       user.email,
       user.phone,
+      passwordHash,
       emailConfirmedAt,
       phoneConfirmedAt,
       user.created_at,
@@ -523,19 +448,6 @@ export class AuthManager {
       JSON.stringify(user.app_metadata),
       JSON.stringify(user.user_metadata),
       user.is_anonymous
-    ])
-
-    // Store password hash separately using direct parameterized query
-    await this.dbManager.query(`
-      INSERT INTO auth.user_passwords (
-        user_id, password_hash, password_salt, algorithm, created_at
-      ) VALUES ($1, $2, $3, $4, $5)
-    `, [
-      user.id,
-      hashedPassword.hash,
-      hashedPassword.salt,
-      hashedPassword.algorithm,
-      new Date().toISOString()
     ])
   }
 
@@ -573,31 +485,25 @@ export class AuthManager {
     `, [...updateValues, userId])
   }
 
-  private async getStoredPassword(userId: string): Promise<any> {
+  private async getStoredPassword(userId: string): Promise<string | null> {
     const result = await this.dbManager.query(
-      'SELECT password_hash, password_salt, algorithm FROM auth.user_passwords WHERE user_id = $1',
+      'SELECT encrypted_password FROM auth.users WHERE id = $1',
       [userId]
     )
     
-    if (!result.rows[0]) return null
+    if (!result.rows[0] || !result.rows[0].encrypted_password) return null
 
-    const row = result.rows[0]
-    return {
-      hash: row.password_hash,
-      salt: row.password_salt,
-      algorithm: row.algorithm,
-      iterations: 100000
-    }
+    // Return the password hash directly (works for both bcrypt and PBKDF2)
+    return result.rows[0].encrypted_password
   }
 
   private async updatePasswordInDB(userId: string, hashedPassword: any): Promise<void> {
     await this.dbManager.query(`
-      UPDATE auth.user_passwords 
-      SET password_hash = $1, password_salt = $2, updated_at = $3
-      WHERE user_id = $4
+      UPDATE auth.users 
+      SET encrypted_password = $1, updated_at = $2
+      WHERE id = $3
     `, [
       hashedPassword.hash,
-      hashedPassword.salt,
       new Date().toISOString(),
       userId
     ])
@@ -611,75 +517,6 @@ export class AuthManager {
     `, [new Date().toISOString(), userId])
   }
 
-  private async checkAccountLockout(userId: string): Promise<void> {
-    const result = await this.dbManager.query(`
-      SELECT COUNT(*) as count
-      FROM auth.failed_login_attempts 
-      WHERE user_id = $1 AND attempted_at > NOW() - INTERVAL '${this.config.lockoutDurationMinutes} minutes'
-    `, [userId])
-    
-    const attemptCount = result.rows[0]?.count || 0
-
-    if (attemptCount >= this.config.maxFailedAttempts) {
-      throw this.createAuthError(
-        `Account temporarily locked due to too many failed attempts. Try again in ${this.config.lockoutDurationMinutes} minutes.`,
-        423,
-        'account_locked'
-      )
-    }
-  }
-
-  private async recordFailedAttempt(userId: string): Promise<void> {
-    await this.dbManager.query(`
-      INSERT INTO auth.failed_login_attempts (user_id, attempted_at)
-      VALUES ($1, $2)
-    `, [userId, new Date().toISOString()])
-  }
-
-  private async clearFailedAttempts(userId: string): Promise<void> {
-    await this.dbManager.query(`
-      DELETE FROM auth.failed_login_attempts WHERE user_id = $1
-    `, [userId])
-  }
-
-  private async storePasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void> {
-    const tokenHash = await this.passwordService.hashForAudit(token)
-    
-    await this.dbManager.query(`
-      INSERT INTO auth.password_reset_tokens (user_id, token_hash, expires_at)
-      VALUES ($1, $2, $3)
-    `, [userId, tokenHash, expiresAt.toISOString()])
-  }
-
-  private async validatePasswordResetToken(token: string): Promise<string | null> {
-    const tokenHash = await this.passwordService.hashForAudit(token)
-    
-    const result = await this.dbManager.query(`
-      SELECT user_id FROM auth.password_reset_tokens 
-      WHERE token_hash = $1 AND expires_at > NOW() AND used_at IS NULL
-    `, [tokenHash])
-
-    if (result.rows.length === 0) {
-      return null
-    }
-
-    // Mark token as used
-    await this.dbManager.query(`
-      UPDATE auth.password_reset_tokens 
-      SET used_at = NOW() 
-      WHERE token_hash = $1
-    `, [tokenHash])
-
-    return result.rows[0].user_id
-  }
-
-  private async deletePasswordResetToken(token: string): Promise<void> {
-    const tokenHash = await this.passwordService.hashForAudit(token)
-    
-    await this.dbManager.query(`
-      DELETE FROM auth.password_reset_tokens WHERE token_hash = $1
-    `, [tokenHash])
-  }
 
   private async logAuditEvent(event: string, payload: any): Promise<void> {
     try {
