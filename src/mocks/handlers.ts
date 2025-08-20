@@ -10,6 +10,7 @@ const authBridge = AuthBridge.getInstance()
 export const handlers = [
   // PostgREST-compatible REST API endpoints with enhanced features
   http.get('/rest/v1/:table', async ({ params, request }) => {
+    console.log(`🔍 MSW: GET /rest/v1/${params.table} called`)
     try {
       const response = await enhancedBridge.handleRestRequest({
         table: params.table as string,
@@ -17,6 +18,8 @@ export const handlers = [
         headers: Object.fromEntries(request.headers.entries()),
         url: new URL(request.url)
       })
+      
+      console.log(`✅ MSW: GET response for ${params.table}:`, { status: response.status, dataLength: response.data?.length })
       
       return HttpResponse.json(response.data, {
         status: response.status,
@@ -27,6 +30,7 @@ export const handlers = [
         }
       })
     } catch (error: any) {
+      console.error(`❌ MSW: GET error for ${params.table}:`, error)
       return HttpResponse.json(
         { message: error.message },
         { 
@@ -168,23 +172,58 @@ export const handlers = [
     }
   }),
 
-  // Authentication endpoints - Enhanced with AuthBridge
+  // Authentication endpoints - Use AuthBridge for all auth operations
   http.post('/auth/v1/signup', async ({ request }) => {
-    const response = await authBridge.handleAuthRequest({
-      endpoint: 'signup',
-      method: 'POST',
-      body: await request.json(),
-      headers: Object.fromEntries(request.headers.entries()),
-      url: new URL(request.url)
-    })
-
-    return HttpResponse.json(
-      response.error || response.data,
-      {
-        status: response.status,
-        headers: response.headers
+    console.log('🔐 MSW: Handling signup request')
+    try {
+      let body: any = {}
+      try {
+        // Debug: Let's see the raw request first
+        const rawBody = await request.text()
+        console.log('🔍 Raw request body:', JSON.stringify(rawBody))
+        console.log('🔍 Request content-type:', request.headers.get('content-type'))
+        
+        // Parse the JSON - handle double-escaped characters
+        try {
+          body = JSON.parse(rawBody)
+        } catch (firstParseError) {
+          // Try to fix common escaping issues
+          const fixedBody = rawBody.replace(/\\!/g, '!')
+          body = JSON.parse(fixedBody)
+        }
+        console.log('📝 MSW signup parsed body:', body)
+      } catch (parseError) {
+        console.error('❌ MSW signup JSON parse error:', parseError)
+        return HttpResponse.json(
+          { error: 'invalid_request', error_description: 'Invalid JSON in request body' },
+          { status: 400 }
+        )
       }
-    )
+
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'signup',
+        method: 'POST',
+        body: body,
+        headers: Object.fromEntries(request.headers.entries()),
+        url: new URL(request.url)
+      })
+
+      console.log('✅ MSW signup response:', { status: response.status, hasError: !!response.error })
+
+      return HttpResponse.json(
+        response.error || response.data,
+        {
+          status: response.status,
+          headers: response.headers
+        }
+      )
+    } catch (error) {
+      console.error('💥 MSW signup error:', error)
+      return HttpResponse.json(
+        { error: 'invalid_request', error_description: error?.message || 'Request failed' },
+        { status: 500 }
+      )
+    }
   }),
 
   http.post('/auth/v1/signin', async ({ request }) => {

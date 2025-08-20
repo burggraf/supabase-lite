@@ -58,13 +58,27 @@ export class AuthBridge {
    * Initialize auth bridge
    */
   async initialize(): Promise<void> {
-    await this.authManager.initialize()
+    try {
+      console.log('AuthBridge: Starting initialization...')
+      await this.authManager.initialize()
+      console.log('AuthBridge: Initialization completed successfully')
+    } catch (error) {
+      console.error('AuthBridge: Database initialization failed with details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      })
+      throw error  // Don't mask the real error
+    }
   }
+
 
   /**
    * Handle auth API requests
    */
   async handleAuthRequest(request: AuthAPIRequest): Promise<AuthAPIResponse> {
+    
     try {
       await this.initialize()
       
@@ -131,45 +145,62 @@ export class AuthBridge {
     }
   }
 
+
   /**
    * Auth endpoint handlers
    */
   private async handleSignUp(request: SignUpRequest): Promise<AuthAPIResponse> {
-    const result = await this.authManager.signUp({
-      email: request.email,
-      phone: request.phone,
-      password: request.password,
-      data: request.data
-    })
+    console.log('AuthBridge handleSignUp received:', { email: request.email })
+    
+    try {
+      const result = await this.authManager.signUp({
+        email: request.email,
+        phone: request.phone,
+        password: request.password,
+        data: request.data
+      })
 
-    const response: SignUpResponse = {
-      user: this.serializeUser(result.user),
-      session: result.session ? this.serializeSession(result.session) : null
+      console.log('SignUp successful with real database authentication')
+
+      const response: SignUpResponse = {
+        user: this.serializeUser(result.user),
+        session: result.session ? this.serializeSession(result.session) : null
+      }
+
+      if (!result.session) {
+        response.message = 'Confirmation email sent'
+      }
+
+      return this.createSuccessResponse(response, 201)
+    } catch (error) {
+      console.log('SignUp failed:', error)
+      throw error
     }
-
-    if (!result.session) {
-      response.message = 'Confirmation email sent'
-    }
-
-    return this.createSuccessResponse(response, 201)
   }
 
   private async handleSignIn(request: SignInRequest): Promise<AuthAPIResponse> {
     console.log('AuthBridge handleSignIn received:', request)
     
-    const result = await this.authManager.signIn({
-      email: request.email,
-      phone: request.phone,
-      password: request.password,
-      provider: request.provider
-    })
+    try {
+      const result = await this.authManager.signIn({
+        email: request.email,
+        phone: request.phone,
+        password: request.password,
+        provider: request.provider
+      })
 
-    const response: SignInResponse = {
-      user: this.serializeUser(result.user),
-      session: this.serializeSession(result.session)
+      console.log('SignIn successful with real database authentication')
+
+      const response: SignInResponse = {
+        user: this.serializeUser(result.user),
+        session: this.serializeSession(result.session)
+      }
+
+      return this.createSuccessResponse(response, 200)
+    } catch (error) {
+      console.log('SignIn failed:', error)
+      throw error
     }
-
-    return this.createSuccessResponse(response, 200)
   }
 
   private async handleTokenRefresh(request: any): Promise<AuthAPIResponse> {
@@ -191,7 +222,8 @@ export class AuthBridge {
           email: request.username || request.email,
           password: request.password
         })
-        console.log('AuthBridge signIn success, returning result')
+        
+        console.log('AuthBridge signIn success with real database authentication')
       } catch (error) {
         console.error('AuthBridge signIn failed:', error)
         throw error
@@ -232,18 +264,33 @@ export class AuthBridge {
   }
 
   private async handleGetUser(headers: Record<string, string>): Promise<AuthAPIResponse> {
-    this.validateAuthToken(headers)
+    console.log('AuthBridge handleGetUser called')
     
-    const user = this.authManager.getCurrentUser()
-    if (!user) {
+    try {
+      this.validateAuthToken(headers)
+      
+      const user = this.authManager.getCurrentUser()
+      if (!user) {
+        return this.createErrorResponse(
+          'User not found',
+          404,
+          'user_not_found'
+        )
+      }
+
+      console.log('User found in auth system:', user.email)
+      return this.createSuccessResponse(this.serializeUser(user), 200)
+    } catch (error) {
+      console.error('Error in handleGetUser:', error)
+      if (error.status && error.code) {
+        return this.createErrorResponse(error.message, error.status, error.code)
+      }
       return this.createErrorResponse(
-        'User not found',
-        404,
-        'user_not_found'
+        'Authentication failed',
+        401,
+        'auth_failed'
       )
     }
-
-    return this.createSuccessResponse(this.serializeUser(user), 200)
   }
 
   private async handleUpdateUser(request: UpdateUserRequest, headers: Record<string, string>): Promise<AuthAPIResponse> {
