@@ -1,6 +1,7 @@
 import { DatabaseManager } from '../lib/database/connection'
 import { logger, logError } from '../lib/infrastructure/Logger'
 import { errorHandler, createAPIError } from '../lib/infrastructure/ErrorHandler'
+import bcrypt from 'bcryptjs'
 import {
   QueryParser,
   SQLBuilder,
@@ -412,17 +413,13 @@ export class EnhancedSupabaseAPIBridge {
   }
 
   private async hashPassword(password: string): Promise<string> {
-    // Simple hash for development - in production you'd use bcrypt or similar
-    const encoder = new TextEncoder()
-    const data = encoder.encode(password)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+    // Use bcrypt for Supabase compatibility
+    return await bcrypt.hash(password, 10)
   }
 
   private async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-    const hash = await this.hashPassword(password)
-    return hash === hashedPassword
+    // Use bcrypt for Supabase compatibility
+    return await bcrypt.compare(password, hashedPassword)
   }
 
   private generateJWT(payload: any): string {

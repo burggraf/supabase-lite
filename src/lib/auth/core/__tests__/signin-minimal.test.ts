@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { AuthManager } from '../AuthManager'
+import bcrypt from 'bcryptjs'
 
 // Minimal test to check if the signin variable scope issue is resolved
 describe('Sign In Minimal Test', () => {
@@ -31,7 +32,10 @@ describe('Sign In Minimal Test', () => {
     }
     
     mockPasswordService = {
-      verifyPassword: vi.fn(() => true)
+      verifyPassword: vi.fn(async (password: string, hash: string) => {
+        // Test bcrypt verification directly
+        return await bcrypt.compare(password, hash)
+      })
     }
   })
 
@@ -53,17 +57,15 @@ describe('Sign In Minimal Test', () => {
           }]
         }
       }
-      if (sql.includes('SELECT password_hash')) {
+      if (sql.includes('SELECT encrypted_password FROM auth.users WHERE id = $1')) {
         return {
           rows: [{
-            password_hash: 'hashed_password',
-            password_salt: 'salt',
-            algorithm: 'PBKDF2'
+            encrypted_password: '$2b$10$joIiTSJ/o2vPel8w3RZ2Ae9kyfz159cwX//e6of1IPFRT6bolGsAy' // bcrypt hash for 'password123'
           }]
         }
       }
-      if (sql.includes('COUNT(*) as count FROM auth.failed_login_attempts')) {
-        return { rows: [{ count: 0 }] }
+      if (sql.includes('UPDATE auth.users SET last_sign_in_at')) {
+        return { rows: [] }
       }
       return { rows: [] }
     })
