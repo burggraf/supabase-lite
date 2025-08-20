@@ -20,6 +20,22 @@ function mswHttpMiddleware(): Plugin {
             req.url?.startsWith('/auth/') || 
             req.url?.startsWith('/health')) {
           
+          // Handle CORS for cross-origin requests
+          const origin = req.headers.origin
+          if (origin) {
+            res.setHeader('Access-Control-Allow-Origin', origin)
+            res.setHeader('Access-Control-Allow-Credentials', 'true')
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile')
+          }
+          
+          // Handle preflight OPTIONS requests
+          if (req.method === 'OPTIONS') {
+            res.writeHead(204)
+            res.end()
+            return
+          }
+          
           // Add Express-like methods to the request object for MSW compatibility
           if (!(req as any).get) {
             (req as any).get = (header: string) => req.headers?.[header.toLowerCase()]
@@ -63,6 +79,12 @@ export default defineConfig({
   server: {
     fs: {
       strict: false
+    },
+    cors: {
+      origin: true, // Allow all origins for development
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'apikey', 'prefer', 'range', 'x-supabase-api-version', 'x-client-info', 'accept-profile', 'content-profile']
     }
   }
 })

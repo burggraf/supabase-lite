@@ -6,6 +6,8 @@ const DEFAULT_CONFIG: AppConfig = {
   database: {
     name: 'supabase_lite_db',
     dataDir: 'idb://supabase_lite_db',
+    fileDataDir: './.data/supabase-lite.db', // Shared file-based database path
+    enableFilePersistence: true, // Enable file-based storage for cross-context sharing
     maxConnections: 10,
     queryTimeout: 30000, // 30 seconds
     enableQueryLogging: true,
@@ -272,6 +274,14 @@ export class InfrastructureConfigManager implements ConfigManager {
 
     if (!config.dataDir || typeof config.dataDir !== 'string') {
       throw errorHandler.createValidationError('Database dataDir is required and must be a string');
+    }
+
+    if (config.fileDataDir !== undefined && typeof config.fileDataDir !== 'string') {
+      throw errorHandler.createValidationError('Database fileDataDir must be a string');
+    }
+
+    if (config.enableFilePersistence !== undefined && typeof config.enableFilePersistence !== 'boolean') {
+      throw errorHandler.createValidationError('Database enableFilePersistence must be a boolean');
     }
 
     if (config.maxConnections !== undefined && (config.maxConnections < 1 || config.maxConnections > 100)) {

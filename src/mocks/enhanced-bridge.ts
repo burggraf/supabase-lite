@@ -45,8 +45,12 @@ export class EnhancedSupabaseAPIBridge {
   async handleRestRequest(request: SupabaseRequest): Promise<FormattedResponse> {
     await this.ensureInitialized()
 
+    console.log(`🔍 EnhancedBridge: handleRestRequest ${request.method} ${request.table}`)
+    console.log(`🔍 Database connected:`, this.dbManager.isConnected())
+
     // If database is not connected (HTTP middleware context), serve mock data
     if (!this.dbManager.isConnected()) {
+      console.log(`❌ Database not connected, serving mock data`)
       return this.serveMockData(request)
     }
 
@@ -82,6 +86,7 @@ export class EnhancedSupabaseAPIBridge {
           throw createAPIError(`Unsupported method: ${request.method}`)
       }
     } catch (error) {
+      console.error(`❌ EnhancedBridge error for ${request.method} ${request.table}:`, error)
       logError('EnhancedSupabaseAPIBridge request', error as Error, {
         method: request.method,
         table: request.table,
@@ -119,7 +124,7 @@ export class EnhancedSupabaseAPIBridge {
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         // No auth header, set anonymous context
         this.currentUserId = null
-        await this.executeQuery('SET LOCAL jwt.claims.sub TO NULL')
+        // Skip JWT claims setting for PGlite compatibility
         return
       }
 
@@ -130,18 +135,15 @@ export class EnhancedSupabaseAPIBridge {
       if (userId) {
         // Store user ID for RLS operations
         this.currentUserId = userId
-        // Set user context for auth.uid() function
-        await this.executeQuery(`SET LOCAL jwt.claims.sub TO '${userId}'`)
+        // Skip JWT claims setting for PGlite compatibility - use currentUserId instead
         logger.debug('Set user context for RLS', { userId })
       } else {
         this.currentUserId = null
-        await this.executeQuery('SET LOCAL jwt.claims.sub TO NULL')
       }
     } catch (error) {
       logger.warn('Failed to set user context', { error })
       // Continue without user context
       this.currentUserId = null
-      await this.executeQuery('SET LOCAL jwt.claims.sub TO NULL')
     }
   }
 
