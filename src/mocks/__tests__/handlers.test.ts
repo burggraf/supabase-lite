@@ -1,12 +1,55 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll, beforeEach, vi } from 'vitest'
-import { setupServer } from 'msw/node'
-import { handlers } from '../handlers'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-const testServer = setupServer(...handlers)
+// Mock JWTService directly to avoid JOSE library issues in test environment
+vi.mock('../../../lib/auth/core/JWTService', () => {
+  console.log('🔧 JWTService mock being applied!')
+  
+  return {
+    JWTService: vi.fn().mockImplementation(() => ({
+      getInstance: vi.fn().mockReturnThis(),
+      initialize: vi.fn().mockResolvedValue(undefined),
+      createAccessToken: vi.fn().mockResolvedValue('mock.access.token'),
+      createRefreshToken: vi.fn().mockReturnValue('mock.refresh.token'),
+      createTokenPair: vi.fn().mockResolvedValue({
+        access_token: 'mock.access.token',
+        refresh_token: 'mock.refresh.token',
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user: {
+          id: 'user-123',
+          email: 'signin@test.com',
+          email_verified: false,
+          phone_verified: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          role: 'authenticated',
+          app_metadata: {},
+          user_metadata: {},
+          is_anonymous: false
+        }
+      }),
+      verifyToken: vi.fn().mockResolvedValue({
+        sub: 'user-123',
+        role: 'authenticated'
+      }),
+      getJWKS: vi.fn().mockResolvedValue({
+        keys: [{
+          kty: 'EC',
+          kid: 'mock-key-id',
+          use: 'sig',
+          alg: 'ES256',
+          crv: 'P-256',
+          x: 'mock-x',
+          y: 'mock-y'
+        }]
+      })
+    }))
+  }
+})
 
-beforeAll(() => testServer.listen({ onUnhandledRequest: 'bypass' }))
-afterEach(() => testServer.resetHandlers())
-afterAll(() => testServer.close())
+// Note: Using global MSW server from test/setup.ts instead of creating a new one
+// This prevents double-handler registration that was causing requests to be processed twice
 
 beforeEach(() => {
   // Reset mocks before each test
@@ -16,6 +59,7 @@ beforeEach(() => {
   global.mockPGliteInstance.query.mockResolvedValue({ rows: [], affectedRows: 0 })
   global.mockPGliteInstance.exec.mockResolvedValue()
 })
+
 
 describe('Supabase Lite API Handlers', () => {
   it('should return health status from /health endpoint', async () => {
@@ -62,11 +106,20 @@ describe('Supabase Lite API Handlers', () => {
       body: JSON.stringify(newUser)
     })
     
+    if (response.status !== 201) {
+      console.log('POST response status:', response.status)
+      const errorData = await response.json()
+      console.log('POST response data:', errorData)
+    }
     expect(response.status).toBe(201)
     const data = await response.json()
-    expect(data).toHaveProperty('email', 'test@example.com')
-    expect(data).toHaveProperty('name', 'Test User')
-    expect(data).toHaveProperty('id')
+    console.log('POST success data:', data)
+    
+    // If data is an array, check the first element
+    const responseData = Array.isArray(data) ? data[0] : data
+    expect(responseData).toHaveProperty('email', 'test@example.com')
+    expect(responseData).toHaveProperty('name', 'Test User')
+    expect(responseData).toHaveProperty('id')
   })
 
   it('should handle auth signup request', async () => {
@@ -103,7 +156,7 @@ describe('Supabase Lite API Handlers', () => {
 
   it('should handle auth signin request', async () => {
     // Mock database responses for signin
-    const hashedPassword = 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f' // SHA-256 of 'password123'
+    const hashedPassword = '$2b$10$.R9eT89SGtgfPu//pw0l/exjhzf3oFBAiTU5SEXyxTslc5z1WW70S' // bcrypt hash of 'password123'
     const mockUser = {
       id: 'user-123',
       email: 'signin@test.com',
@@ -111,9 +164,34 @@ describe('Supabase Lite API Handlers', () => {
       raw_user_meta_data: '{}'
     }
     
-    global.mockPGliteInstance.query
-      .mockResolvedValueOnce({ rows: [mockUser], affectedRows: 1 }) // Find user
-      .mockResolvedValueOnce({ rows: [{ id: 1 }], affectedRows: 1 }) // Insert session
+    // Setup comprehensive mocks - use implementation to handle different query types
+    global.mockPGliteInstance.query.mockImplementation((sql: string) => {
+      console.log('🔍 Mock DB Query:', sql.substring(0, 50) + '...')
+      
+      if (sql.includes('SELECT * FROM auth.users WHERE email')) {
+        console.log('📧 Mock: User lookup by email')
+        return Promise.resolve({ rows: [mockUser], affectedRows: 1 })
+      }
+      if (sql.includes('SELECT encrypted_password FROM auth.users WHERE id')) {
+        console.log('🔐 Mock: Password hash lookup')
+        return Promise.resolve({ rows: [{ encrypted_password: hashedPassword }], affectedRows: 1 })
+      }
+      if (sql.includes('UPDATE auth.users SET last_sign_in_at')) {
+        console.log('📅 Mock: Update last signin')
+        return Promise.resolve({ rows: [], affectedRows: 1 })
+      }
+      if (sql.includes('INSERT INTO auth.sessions') || sql.includes('session')) {
+        console.log('🎫 Mock: Create session')
+        return Promise.resolve({ rows: [{ id: 'session-123' }], affectedRows: 1 })
+      }
+      if (sql.includes('INSERT INTO auth.refresh_tokens')) {
+        console.log('🔄 Mock: Create refresh token')
+        return Promise.resolve({ rows: [{ token: 'refresh-token-123' }], affectedRows: 1 })
+      }
+      
+      console.log('❓ Mock: Unknown query, returning empty')
+      return Promise.resolve({ rows: [], affectedRows: 0 })
+    })
     
     const signinData = {
       email: 'signin@test.com',

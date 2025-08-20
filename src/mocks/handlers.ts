@@ -188,36 +188,58 @@ export const handlers = [
   }),
 
   http.post('/auth/v1/signin', async ({ request }) => {
-    console.log('MSW /auth/v1/signin handler called')
+    const callId = Math.random().toString(36).substring(7)
+    console.log(`🔥 MSW /auth/v1/signin handler called [${callId}]`)
+    console.log(`🔍 Request URL [${callId}]:`, request.url)
+    console.log(`🔍 Request method [${callId}]:`, request.method)
+    console.log(`🔍 Request headers [${callId}]:`, Object.fromEntries(request.headers.entries()))
+    
+    // Check if this is a fresh request or reused
+    console.log(`🔍 Request bodyUsed [${callId}]:`, (request as any).bodyUsed)
     
     let body: any = {}
     try {
       body = await request.json()
-      console.log('MSW signin parsed JSON body:', body)
+      console.log(`✅ MSW signin parsed JSON body [${callId}]:`, body)
     } catch (error) {
-      console.log('MSW signin failed to parse JSON, trying text:', error)
-      const text = await request.text()
-      console.log('MSW signin raw text:', text)
+      console.log(`❌ MSW signin failed to parse JSON [${callId}]:`, error?.message)
+      body = {}
     }
     
-    const response = await authBridge.handleAuthRequest({
-      endpoint: 'signin',
-      method: 'POST',
-      body: body,
-      headers: Object.fromEntries(request.headers.entries()),
-      url: new URL(request.url)
-    })
+    console.log(`🚀 Calling authBridge.handleAuthRequest [${callId}]`)
+    
+    try {
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'signin',
+        method: 'POST',
+        body: body,
+        headers: Object.fromEntries(request.headers.entries()),
+        url: new URL(request.url)
+      })
 
-    return HttpResponse.json(
-      response.error || response.data,
-      {
-        status: response.status,
-        headers: response.headers
-      }
-    )
+      console.log(`✅ AuthBridge response [${callId}]:`, { status: response.status, hasError: !!response.error })
+
+      return HttpResponse.json(
+        response.error || response.data,
+        {
+          status: response.status,
+          headers: response.headers
+        }
+      )
+    } catch (error) {
+      console.log(`💥 AuthBridge error [${callId}]:`, error?.message)
+      return HttpResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
   }),
 
   http.post('/auth/v1/token', async ({ request }) => {
+    console.log('🎯 MSW /auth/v1/token handler called')
+    console.log('🔍 Token request URL:', request.url)
+    console.log('🔍 Token request stack trace:', new Error().stack?.split('\n').slice(1, 5))
+    
     let body: any = {}
     
     // Handle both JSON and form-encoded data
