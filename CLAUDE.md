@@ -13,6 +13,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run test:ui` - Run tests with UI interface
 - `npm run test:coverage` - Run tests with coverage report
 
+## CRITICAL REQUIREMENT: 100% BROWSER-ONLY OPERATION
+
+**🚨 ABSOLUTE RULE: This application MUST run entirely in the browser with NO server-side components, NO Node.js code execution, and NO file system access. NEVER add Node.js adapters, server-side storage, or file-based solutions. The MSW HTTP middleware runs in Vite's dev server context but ALL application logic must be browser-compatible.**
+
 ## Architecture Overview
 
 ### Core Database Layer
