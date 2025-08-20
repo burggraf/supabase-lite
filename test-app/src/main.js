@@ -30,6 +30,13 @@ window.signUp = signUp
 window.signOut = signOut
 window.forgotPassword = forgotPassword
 
+// Order management functions
+window.showAddOrderForm = showAddOrderForm
+window.hideAddOrderForm = hideAddOrderForm
+window.handleAddOrder = handleAddOrder
+window.editOrder = editOrder
+window.deleteOrder = deleteOrder
+
 // New simple tab functions  
 window.showTestSuite = function() {
   document.getElementById('test-suite-tab').style.display = 'block';
@@ -549,12 +556,12 @@ function displayOrders(orders) {
       <h4>Add New Order</h4>
       <form onsubmit="handleAddOrder(event)">
         <div style="margin-bottom: 15px;">
-          <label>Items:</label>
-          <input type="text" id="order-items" required placeholder="e.g., Laptop x1, Mouse x2" style="width: 100%; padding: 8px; margin-top: 5px;">
+          <label>Product ID:</label>
+          <input type="number" id="order-product-id" required placeholder="1" value="1" style="width: 100%; padding: 8px; margin-top: 5px;">
         </div>
         <div style="margin-bottom: 15px;">
-          <label>Total Price:</label>
-          <input type="number" step="0.01" id="order-total" required placeholder="0.00" style="width: 100%; padding: 8px; margin-top: 5px;">
+          <label>Quantity:</label>
+          <input type="number" id="order-quantity" required placeholder="1" value="1" style="width: 100%; padding: 8px; margin-top: 5px;">
         </div>
         <div style="margin-bottom: 15px;">
           <label>Status:</label>
@@ -591,8 +598,8 @@ function displayOrders(orders) {
             <button onclick="deleteOrder(${order.id})" style="background: #dc3545; padding: 5px 10px; font-size: 12px;">Delete</button>
           </div>
         </div>
-        <p><strong>Items:</strong> ${order.items}</p>
-        <p><strong>Total:</strong> $${order.total_price}</p>
+        <p><strong>Product ID:</strong> ${order.product_id}</p>
+        <p><strong>Quantity:</strong> ${order.quantity}</p>
         <p><strong>Date:</strong> ${formatDate(order.created_at)}</p>
       </div>
     `).join('')
@@ -622,16 +629,16 @@ function showAddOrderForm() {
 function hideAddOrderForm() {
   document.getElementById('add-order-form').style.display = 'none'
   // Reset form
-  document.getElementById('order-items').value = ''
-  document.getElementById('order-total').value = ''
+  document.getElementById('order-product-id').value = '1'
+  document.getElementById('order-quantity').value = '1'
   document.getElementById('order-status').value = 'pending'
 }
 
 async function handleAddOrder(event) {
   event.preventDefault()
   
-  const items = document.getElementById('order-items').value
-  const totalPrice = parseFloat(document.getElementById('order-total').value)
+  const productId = parseInt(document.getElementById('order-product-id').value)
+  const quantity = parseInt(document.getElementById('order-quantity').value)
   const status = document.getElementById('order-status').value
   
   try {
@@ -642,8 +649,8 @@ async function handleAddOrder(event) {
     const { data, error } = await supabase
       .from('orders')
       .insert({
-        items: items,
-        total_price: totalPrice,
+        product_id: productId,
+        quantity: quantity,
         status: status
       })
       .select()
