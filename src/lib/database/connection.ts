@@ -54,23 +54,9 @@ export class DatabaseManager {
       const dbConfig = configManager.getDatabaseConfig();
       logger.info('Initializing PGlite database', { config: dbConfig });
       
-      // Use appropriate storage for each context
-      const isNodeJS = typeof window === 'undefined' && typeof global !== 'undefined';
-      let dataDir: string | undefined;
-      
-      if (isNodeJS && dbConfig.enableFilePersistence && dbConfig.fileDataDir) {
-        // Node.js HTTP middleware uses file-based PGlite
-        dataDir = dbConfig.fileDataDir;
-        logger.debug(`Using file-based PGlite database for Node.js: ${dataDir}`);
-      } else if (!isNodeJS) {
-        // Browser uses IndexedDB-backed PGlite
-        dataDir = dbConfig.dataDir;
-        logger.debug(`Using IndexedDB PGlite database for browser: ${dataDir}`);
-      } else {
-        // Fallback: in-memory for Node.js
-        dataDir = undefined;
-        logger.debug(`Using in-memory PGlite database`);
-      }
+      // Always use IndexedDB for browser operation
+      const dataDir = dbConfig.dataDir;
+      logger.debug(`Using IndexedDB PGlite database: ${dataDir}`);
       
       this.db = new PGlite({
         dataDir: dataDir,
@@ -92,8 +78,7 @@ export class DatabaseManager {
       this.isInitialized = true;
       logger.info('PGlite initialized successfully', {
         databaseId: this.connectionInfo.id,
-        dataDir: dataDir,
-        enableFilePersistence: dbConfig.enableFilePersistence
+        dataDir: dataDir
       });
     } catch (error) {
       const dbConfig = configManager.getDatabaseConfig();
@@ -138,27 +123,15 @@ export class DatabaseManager {
   }
 
   private async loadSeedSql(): Promise<string> {
-    const isNodeJS = typeof window === 'undefined' && typeof global !== 'undefined';
-    
     try {
-      if (isNodeJS) {
-        // Node.js context - read from filesystem
-        const fs = await import('fs/promises');
-        const path = await import('path');
-        const seedPath = path.join(process.cwd(), 'public', 'sql_scripts', 'seed.sql');
-        const seedSql = await fs.readFile(seedPath, 'utf-8');
-        logger.debug('Loaded seed.sql from filesystem', { path: seedPath });
-        return seedSql;
-      } else {
-        // Browser context - fetch from static assets
-        const response = await fetch('/sql_scripts/seed.sql');
-        if (!response.ok) {
-          throw new Error(`Failed to load seed.sql: ${response.statusText}`);
-        }
-        const seedSql = await response.text();
-        logger.debug('Loaded seed.sql from static assets');
-        return seedSql;
+      // Browser context - fetch from static assets
+      const response = await fetch('/sql_scripts/seed.sql');
+      if (!response.ok) {
+        throw new Error(`Failed to load seed.sql: ${response.statusText}`);
       }
+      const seedSql = await response.text();
+      logger.debug('Loaded seed.sql from static assets');
+      return seedSql;
     } catch (error) {
       logger.warn('Could not load seed.sql file, falling back to basic schema', error as Error);
       // Fallback to basic schema if seed.sql is not available
