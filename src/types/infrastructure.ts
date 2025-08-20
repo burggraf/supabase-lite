@@ -37,8 +37,6 @@ export interface ErrorHandler {
 export interface DatabaseConfig {
   name: string;
   dataDir: string;
-  fileDataDir?: string;  // Path for file-based PGlite database
-  enableFilePersistence?: boolean;  // Enable file-based storage for cross-context sharing
   maxConnections?: number;
   queryTimeout?: number;
   enableQueryLogging?: boolean;
