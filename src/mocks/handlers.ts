@@ -315,21 +315,70 @@ export const handlers = [
     )
   }),
 
-  http.get('/auth/v1/user', async ({ request }) => {
-    const response = await authBridge.handleAuthRequest({
-      endpoint: 'user',
-      method: 'GET',
-      headers: Object.fromEntries(request.headers.entries()),
-      url: new URL(request.url)
-    })
-
-    return HttpResponse.json(
-      response.error || response.data,
-      {
-        status: response.status,
-        headers: response.headers
+  http.get('/auth/v1/session', async ({ request }) => {
+    // Return empty session for unauthenticated users
+    return HttpResponse.json({
+      access_token: null,
+      refresh_token: null,
+      expires_in: null,
+      expires_at: null,
+      token_type: null,
+      user: null
+    }, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       }
-    )
+    })
+  }),
+
+  http.get('/auth/v1/user', async ({ request }) => {
+    // For HTTP middleware context, always return unauthorized for unauthenticated requests
+    // This prevents the "Failed to fetch" error in Supabase client initialization
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return HttpResponse.json({
+        code: 401,
+        msg: 'Invalid JWT: token not provided'
+      }, {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
+    // If there is an auth header, try to use AuthBridge
+    try {
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'user',
+        method: 'GET',
+        headers: Object.fromEntries(request.headers.entries()),
+        url: new URL(request.url)
+      })
+
+      return HttpResponse.json(
+        response.error || response.data,
+        {
+          status: response.status,
+          headers: response.headers
+        }
+      )
+    } catch (error) {
+      // Fallback for HTTP middleware context when database is unavailable
+      return HttpResponse.json({
+        code: 401,
+        msg: 'Invalid JWT: token not provided'
+      }, {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
   }),
 
   http.put('/auth/v1/user', async ({ request }) => {
