@@ -18,6 +18,7 @@ export interface SignInRequest {
   password?: string
   provider?: string
   token?: string
+  grant_type?: string
   gotrue_meta_security?: Record<string, any>
 }
 

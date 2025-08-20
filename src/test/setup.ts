@@ -21,7 +21,7 @@ Object.defineProperty(global, 'crypto', {
   value: {
     randomUUID: () => Math.random().toString(36).substring(2, 15),
     subtle: {
-      digest: vi.fn().mockImplementation(async (algorithm, data) => {
+      digest: vi.fn().mockImplementation(async (_algorithm, _data) => {
         // Simple mock hash - return a consistent hash for 'password123'
         const hashForPassword123 = new Uint8Array([
           0xef, 0x92, 0xb7, 0x78, 0xba, 0xfe, 0x77, 0x1e, 
@@ -58,8 +58,8 @@ Object.defineProperty(window, 'performance', {
 // Global database manager instance mock helpers
 global.mockPGliteInstance = {
   query: vi.fn().mockResolvedValue({ rows: [], affectedRows: 0 }),
-  exec: vi.fn().mockResolvedValue(),
-  close: vi.fn().mockResolvedValue(),
+  exec: vi.fn().mockResolvedValue(undefined),
+  close: vi.fn().mockResolvedValue(undefined),
   waitReady: Promise.resolve(),
 }
 
@@ -74,11 +74,12 @@ vi.mock('@electric-sql/pglite', () => {
 beforeEach(() => {
   // Clear any cached database manager instance
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { DatabaseManager } = require('../lib/database/connection')
     if (DatabaseManager && DatabaseManager.instance) {
       DatabaseManager.instance = null
     }
-  } catch (error) {
+  } catch (_error) {
     // Module might not exist yet, ignore
   }
 })

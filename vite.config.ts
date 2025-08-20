@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
-import { Plugin } from 'vite'
+import type { Plugin } from 'vite'
 
 // Plugin to serve test-app files from the same origin and handle module resolution
 function serveTestApp(): Plugin {
@@ -10,7 +10,7 @@ function serveTestApp(): Plugin {
     name: 'serve-test-app',
     configureServer(server) {
       // Configure Service-Worker-Allowed header for MSW
-      server.middlewares.use('/mockServiceWorker.js', (req, res, next) => {
+      server.middlewares.use('/mockServiceWorker.js', (_req, res, next) => {
         // Allow the MSW service worker to control all pages of the app
         res.setHeader('Service-Worker-Allowed', '/')
         next()

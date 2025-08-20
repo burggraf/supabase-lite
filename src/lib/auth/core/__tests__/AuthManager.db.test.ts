@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { AuthManager } from '../AuthManager'
 import { DatabaseManager } from '../../../database/connection'
-import type { User, SignUpCredentials, SignInCredentials } from '../../types'
+import type { SignUpCredentials } from '../../types'
 
 // Mock the DatabaseManager
 vi.mock('../../../database/connection', () => ({

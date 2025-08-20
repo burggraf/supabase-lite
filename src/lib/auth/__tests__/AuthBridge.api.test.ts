@@ -1,107 +1,90 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { AuthBridge } from '../AuthBridge'
+import { AuthManager } from '../core/AuthManager'
 import type { SignInRequest, SignUpRequest } from '../types'
-
-// Mock all dependencies
-vi.mock('../core/AuthManager', () => ({
-  AuthManager: {
-    getInstance: vi.fn(() => ({
-      initialize: vi.fn(),
-      signUp: vi.fn(),
-      signIn: vi.fn(),
-      signOut: vi.fn(),
-      updateUser: vi.fn(),
-      refreshSession: vi.fn(),
-      requestPasswordRecovery: vi.fn(),
-      resetPassword: vi.fn(),
-      getCurrentUser: vi.fn(),
-      getCurrentSession: vi.fn()
-    }))
-  }
-}))
-
-vi.mock('../core/JWTService', () => ({
-  JWTService: {
-    getInstance: vi.fn(() => ({
-      initialize: vi.fn(),
-      generateToken: vi.fn(),
-      verifyToken: vi.fn(),
-      extractClaims: vi.fn()
-    }))
-  }
-}))
-
-vi.mock('../core/SessionManager', () => ({
-  SessionManager: {
-    getInstance: vi.fn(() => ({
-      initialize: vi.fn(),
-      createSession: vi.fn(),
-      getSession: vi.fn(),
-      refreshSession: vi.fn()
-    }))
-  }
-}))
-
-vi.mock('../services/MFAService', () => ({
-  MFAService: {
-    getInstance: vi.fn(() => ({
-      initialize: vi.fn()
-    }))
-  }
-}))
+import bcrypt from 'bcryptjs'
 
 describe('AuthBridge API Compatibility', () => {
   let authBridge: AuthBridge
-  let mockAuthManager: any
-  let mockJWTService: any
-  let mockSessionManager: any
+  let authManager: AuthManager
 
   beforeEach(async () => {
-    vi.clearAllMocks()
-
-    // Get mocked services
-    const { AuthManager } = await import('../core/AuthManager')
-    const { JWTService } = await import('../core/JWTService')
-    const { SessionManager } = await import('../core/SessionManager')
+    // Create a test instance with mocked database
+    authManager = new (AuthManager as any)()
     
-    mockAuthManager = AuthManager.getInstance()
-    mockJWTService = JWTService.getInstance()
-    mockSessionManager = SessionManager.getInstance()
-
-    authBridge = new AuthBridge()
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  describe('Sign-in Response Format', () => {
-    it('should return response matching exact Supabase sign-in format', async () => {
-      const mockUser = {
-        id: 'user-123',
-        email: 'test@example.com',
-        email_verified: true,
-        phone_verified: false,
-        created_at: '2023-01-01T00:00:00Z',
-        updated_at: '2023-01-01T00:00:00Z',
-        role: 'authenticated',
-        app_metadata: { provider: 'email', providers: ['email'] },
-        user_metadata: { name: 'Test User' },
-        is_anonymous: false
-      }
-
-      const mockSession = {
+    // Mock the database manager
+    const mockDbManager = {
+      query: vi.fn(),
+      initialize: vi.fn(),
+      isConnected: vi.fn(() => true)
+    } as any
+    
+    // Mock other services
+    const mockJwtService = { initialize: vi.fn() } as any
+    const mockSessionManager = { 
+      initialize: vi.fn(),
+      createSession: vi.fn(() => ({
         access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         refresh_token: 'refresh_token_123',
         expires_in: 3600,
         user_id: 'user-123',
         created_at: '2023-01-01T00:00:00Z'
-      }
-
-      mockAuthManager.signIn.mockResolvedValue({
-        user: mockUser,
-        session: mockSession
+      }))
+    } as any
+    const mockPasswordService = {
+      verifyPassword: vi.fn(async (password: string, hash: string) => {
+        return await bcrypt.compare(password, hash)
       })
+    } as any
+    
+    // Inject mocks
+    authManager['dbManager'] = mockDbManager
+    authManager['jwtService'] = mockJwtService
+    authManager['sessionManager'] = mockSessionManager
+    authManager['passwordService'] = mockPasswordService
+
+    // Setup mock database responses
+    const testUserHash = await bcrypt.hash('Password123!', 10)
+    
+    mockDbManager.query.mockImplementation((sql: string, params: any[]) => {
+      if (sql.includes('SELECT * FROM auth.users WHERE email')) {
+        const email = params[0]
+        if (email === 'test@example.com') {
+          return {
+            rows: [{
+              id: 'user-123',
+              email: 'test@example.com',
+              email_confirmed_at: '2023-01-01T00:00:00Z',
+              raw_app_meta_data: '{"provider":"email","providers":["email"]}',
+              raw_user_meta_data: '{"name":"Test User"}',
+              created_at: '2023-01-01T00:00:00Z',
+              updated_at: '2023-01-01T00:00:00Z',
+              role: 'authenticated',
+              is_anonymous: false
+            }]
+          }
+        }
+        return { rows: [] }
+      }
+      if (sql.includes('SELECT encrypted_password FROM auth.users WHERE id = $1')) {
+        return {
+          rows: [{
+            encrypted_password: testUserHash
+          }]
+        }
+      }
+      if (sql.includes('UPDATE auth.users SET last_sign_in_at')) {
+        return { rows: [] }
+      }
+      return { rows: [] }
+    })
+
+    authBridge = new AuthBridge()
+    authBridge['authManager'] = authManager
+  })
+
+  describe('Sign-in Response Format', () => {
+    it('should return response matching exact Supabase sign-in format', async () => {
 
       const signInRequest: SignInRequest = {
         email: 'test@example.com',
@@ -162,7 +145,8 @@ describe('AuthBridge API Compatibility', () => {
       }
 
       // Mock JWT service to return proper claims
-      mockJWTService.extractClaims.mockReturnValue({
+      const mockJwtService2 = mockJwtService as any
+      mockJwtService2.extractClaims = vi.fn().mockReturnValue({
         sub: 'user-123',
         email: 'test@example.com',
         aud: 'authenticated',
@@ -175,7 +159,7 @@ describe('AuthBridge API Compatibility', () => {
         exp: expect.any(Number)
       })
 
-      mockAuthManager.signIn.mockResolvedValue({
+      authManager.signIn = vi.fn().mockResolvedValue({
         user: mockUser,
         session: mockSession
       })
@@ -188,10 +172,10 @@ describe('AuthBridge API Compatibility', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       }
 
-      const response = await authBridge.handleAuthRequest(request)
+      await authBridge.handleAuthRequest(request)
 
       // Extract and verify JWT claims
-      const claims = mockJWTService.extractClaims()
+      const claims = mockJwtService2.extractClaims()
       expect(claims.sub).toBe('user-123')
       expect(claims.aud).toBe('authenticated')
       expect(claims.role).toBe('authenticated')
@@ -205,7 +189,7 @@ describe('AuthBridge API Compatibility', () => {
       authError.status = 400
       authError.code = 'invalid_credentials'
 
-      mockAuthManager.signIn.mockRejectedValue(authError)
+      authManager.signIn = vi.fn().mockRejectedValue(authError)
 
       const request = {
         endpoint: 'token',
@@ -240,7 +224,7 @@ describe('AuthBridge API Compatibility', () => {
         is_anonymous: false
       }
 
-      mockAuthManager.signUp.mockResolvedValue({
+      authManager.signUp = vi.fn().mockResolvedValue({
         user: mockUser,
         session: null // No session until email verified
       })
@@ -300,8 +284,8 @@ describe('AuthBridge API Compatibility', () => {
         role: 'authenticated'
       }
 
-      mockAuthManager.refreshSession.mockResolvedValue(mockSession)
-      mockAuthManager.getCurrentUser.mockReturnValue(mockUser)
+      authManager.refreshSession = vi.fn().mockResolvedValue(mockSession)
+      authManager.getCurrentUser = vi.fn().mockReturnValue(mockUser)
 
       const request = {
         endpoint: 'token',
@@ -354,7 +338,7 @@ describe('AuthBridge API Compatibility', () => {
         is_anonymous: false
       }
 
-      mockAuthManager.getCurrentUser.mockReturnValue(mockUser)
+      authManager.getCurrentUser = vi.fn().mockReturnValue(mockUser)
 
       const request = {
         endpoint: 'user',
@@ -407,7 +391,7 @@ describe('AuthBridge API Compatibility', () => {
         is_anonymous: false
       }
 
-      mockAuthManager.getCurrentUser.mockReturnValue(mockUser)
+      authManager.getCurrentUser = vi.fn().mockReturnValue(mockUser)
 
       const request = {
         endpoint: 'user',
@@ -461,7 +445,7 @@ describe('AuthBridge API Compatibility', () => {
         authError.status = testCase.error.status
         authError.code = testCase.error.code
 
-        mockAuthManager.signIn.mockRejectedValue(authError)
+        authManager.signIn = vi.fn().mockRejectedValue(authError)
 
         const request = {
           endpoint: 'token',

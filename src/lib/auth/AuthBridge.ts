@@ -271,7 +271,7 @@ export class AuthBridge {
     }, 200)
   }
 
-  private async handleVerifyToken(request: VerifyTokenRequest): Promise<AuthAPIResponse> {
+  private async handleVerifyToken(_request: VerifyTokenRequest): Promise<AuthAPIResponse> {
     // Implementation depends on token type
     // For now, return success
     return this.createSuccessResponse({
@@ -410,9 +410,8 @@ export class AuthBridge {
   private createErrorResponse(message: string, status: number, code: string): AuthAPIResponse {
     const error: AuthError = {
       error: code,
-      error_description: message,
-      message
-    }
+      error_description: message
+    } as any
 
     return {
       error,
