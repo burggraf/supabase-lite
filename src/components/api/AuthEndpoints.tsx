@@ -31,7 +31,7 @@ export function AuthEndpoints() {
             success: !result.error,
             data: result.data || result.error,
             status: result.status
-          }, event.origin)
+          }, { targetOrigin: event.origin })
         } catch (error: any) {
           // Send error response back to test-app
           event.source?.postMessage({
@@ -40,7 +40,7 @@ export function AuthEndpoints() {
             success: false,
             error: error.message,
             status: 500
-          }, event.origin)
+          }, { targetOrigin: event.origin })
         }
       }
 

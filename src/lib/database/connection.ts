@@ -1,10 +1,10 @@
 import { PGlite } from '@electric-sql/pglite';
-import { DATABASE_CONFIG } from '../constants';
+// import { DATABASE_CONFIG } from '../constants';
 import { roleSimulator } from './roleSimulator';
 import type { QueryResult, ScriptResult, DatabaseConnection } from '@/types';
 import type { TransactionOptions, QueryOptions, QueryMetrics } from '@/types/infrastructure';
 import { logger, logQuery, logError, logPerformance } from '../infrastructure/Logger';
-import { errorHandler, createDatabaseError } from '../infrastructure/ErrorHandler';
+import { createDatabaseError } from '../infrastructure/ErrorHandler';
 import { configManager } from '../infrastructure/ConfigManager';
 
 export class DatabaseManager {

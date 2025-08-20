@@ -433,7 +433,7 @@ describe('SQLEditor', () => {
           query: 'SELECT * FROM users',
           createdAt: new Date(),
           updatedAt: new Date(),
-        }],
+        }] as any,
         createTab: mockCreateTab,
         closeTab: mockCloseTab,
         setActiveTab: mockSetActiveTab,
