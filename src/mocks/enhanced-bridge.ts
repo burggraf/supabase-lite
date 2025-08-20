@@ -20,6 +20,7 @@ interface SupabaseRequest {
 export class EnhancedSupabaseAPIBridge {
   private dbManager: DatabaseManager
   private sqlBuilder: SQLBuilder
+  private currentUserId: string | null = null // Store current user context
 
   constructor() {
     this.dbManager = DatabaseManager.getInstance()
@@ -46,20 +47,26 @@ export class EnhancedSupabaseAPIBridge {
     })
 
     try {
+      // Extract and set user context for RLS
+      await this.setUserContext(request.headers)
+
       // Parse the request into structured query
       const query = QueryParser.parseQuery(request.url, request.headers)
 
-      logger.debug('Parsed query', { query })
+      // Apply RLS filtering for user-scoped tables
+      const enhancedQuery = this.applyRLSFiltering(request.table, query, request.headers)
+
+      logger.debug('Parsed query with RLS', { query: enhancedQuery })
 
       switch (request.method) {
         case 'GET':
-          return await this.handleSelect(request.table, query)
+          return await this.handleSelect(request.table, enhancedQuery)
         case 'POST':
-          return await this.handleInsert(request.table, query, request.body)
+          return await this.handleInsert(request.table, enhancedQuery, request.body)
         case 'PATCH':
-          return await this.handleUpdate(request.table, query, request.body)
+          return await this.handleUpdate(request.table, enhancedQuery, request.body)
         case 'DELETE':
-          return await this.handleDelete(request.table, query)
+          return await this.handleDelete(request.table, enhancedQuery)
         default:
           throw createAPIError(`Unsupported method: ${request.method}`)
       }
@@ -90,6 +97,115 @@ export class EnhancedSupabaseAPIBridge {
       logError('RPC call failed', error as Error, { functionName, params })
       return ResponseFormatter.formatErrorResponse(error as Error)
     }
+  }
+
+  /**
+   * Extract JWT token and set user context for RLS
+   */
+  private async setUserContext(headers: Record<string, string>): Promise<void> {
+    try {
+      const authHeader = headers.authorization || headers.Authorization
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        // No auth header, set anonymous context
+        this.currentUserId = null
+        await this.executeQuery('SET LOCAL jwt.claims.sub TO NULL')
+        return
+      }
+
+      // Extract JWT token
+      const token = authHeader.replace('Bearer ', '')
+      const userId = this.extractUserIdFromJWT(token)
+      
+      if (userId) {
+        // Store user ID for RLS operations
+        this.currentUserId = userId
+        // Set user context for auth.uid() function
+        await this.executeQuery(`SET LOCAL jwt.claims.sub TO '${userId}'`)
+        logger.debug('Set user context for RLS', { userId })
+      } else {
+        this.currentUserId = null
+        await this.executeQuery('SET LOCAL jwt.claims.sub TO NULL')
+      }
+    } catch (error) {
+      logger.warn('Failed to set user context', { error })
+      // Continue without user context
+      this.currentUserId = null
+      await this.executeQuery('SET LOCAL jwt.claims.sub TO NULL')
+    }
+  }
+
+  /**
+   * Extract user ID from JWT token
+   */
+  private extractUserIdFromJWT(token: string): string | null {
+    try {
+      // Simple JWT parsing for development (in production, use proper JWT library)
+      const parts = token.split('.')
+      if (parts.length !== 3) return null
+      
+      const payload = JSON.parse(atob(parts[1]))
+      return payload.sub || null
+    } catch (error) {
+      logger.warn('Failed to parse JWT token', { error })
+      return null
+    }
+  }
+
+  /**
+   * Apply RLS filtering for user-scoped tables
+   */
+  private applyRLSFiltering(table: string, query: ParsedQuery, headers: Record<string, string>): ParsedQuery {
+    // Tables that require RLS filtering
+    const rlsTables = ['orders', 'profiles', 'user_data']
+    
+    if (!rlsTables.includes(table)) {
+      return query // No RLS filtering needed
+    }
+
+    // Extract user ID from headers
+    const authHeader = headers.authorization || headers.Authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // No authentication, return empty results for RLS tables
+      return {
+        ...query,
+        filters: [
+          ...query.filters,
+          { column: 'id', operator: 'eq', value: 'NULL', negated: false }
+        ]
+      }
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const userId = this.extractUserIdFromJWT(token)
+    
+    if (!userId) {
+      // Invalid token, return empty results
+      return {
+        ...query,
+        filters: [
+          ...query.filters,
+          { column: 'id', operator: 'eq', value: 'NULL', negated: false }
+        ]
+      }
+    }
+
+    // For orders table, filter by user_id
+    if (table === 'orders') {
+      // Check if user_id filter already exists to avoid duplicates
+      const hasUserIdFilter = query.filters.some(filter => filter.column === 'user_id')
+      
+      if (!hasUserIdFilter) {
+        return {
+          ...query,
+          filters: [
+            ...query.filters,
+            { column: 'user_id', operator: 'eq', value: userId, negated: false }
+          ]
+        }
+      }
+    }
+
+    return query
   }
 
   /**
@@ -137,7 +253,11 @@ export class EnhancedSupabaseAPIBridge {
     }
 
     try {
-      const data = Array.isArray(body) ? body : [body]
+      let data = Array.isArray(body) ? body : [body]
+      
+      // Apply RLS data injection for user-scoped tables
+      data = this.applyRLSDataInjection(table, data, query)
+      
       const sqlQuery = this.sqlBuilder.buildInsertQuery(table, data)
       
       logger.debug('Built INSERT SQL', sqlQuery)
@@ -210,6 +330,41 @@ export class EnhancedSupabaseAPIBridge {
       logError('DELETE query failed', error as Error, { table, filters: query.filters })
       throw error
     }
+  }
+
+  /**
+   * Apply RLS data injection for INSERT/UPDATE operations
+   */
+  private applyRLSDataInjection(table: string, data: any[], query: ParsedQuery): any[] {
+    // Tables that require RLS data injection
+    const rlsTables = ['orders', 'profiles', 'user_data']
+    
+    if (!rlsTables.includes(table)) {
+      return data // No RLS injection needed
+    }
+
+    // Extract user ID from current session context
+    const userId = this.getCurrentUserId()
+    if (!userId) {
+      throw new Error('Authentication required for this operation')
+    }
+
+    // For orders table, ensure user_id is set to current user
+    if (table === 'orders') {
+      return data.map(item => ({
+        ...item,
+        user_id: userId // Override any provided user_id with current user
+      }))
+    }
+
+    return data
+  }
+
+  /**
+   * Get current user ID from session context (set by setUserContext)
+   */
+  private getCurrentUserId(): string | null {
+    return this.currentUserId
   }
 
   /**

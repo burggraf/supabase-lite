@@ -525,7 +525,7 @@ async function loadOrders() {
     const { data: orders, error } = await supabase
       .from('orders')
       .select('*')
-      .order('order_date', { ascending: false })
+      .order('created_at', { ascending: false })
     
     if (error) {
       console.error('Error loading orders:', error)
@@ -553,26 +553,66 @@ async function loadOrders() {
 function displayOrders(orders) {
   const ordersContainer = document.getElementById('orders-list')
   
+  // Add header with "Add New Order" button
+  let ordersHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3>My Orders</h3>
+      <button onclick="showAddOrderForm()" style="background: #28a745;">Add New Order</button>
+    </div>
+    <div id="add-order-form" style="display: none; background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+      <h4>Add New Order</h4>
+      <form onsubmit="handleAddOrder(event)">
+        <div style="margin-bottom: 15px;">
+          <label>Items:</label>
+          <input type="text" id="order-items" required placeholder="e.g., Laptop x1, Mouse x2" style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label>Total Price:</label>
+          <input type="number" step="0.01" id="order-total" required placeholder="0.00" style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label>Status:</label>
+          <select id="order-status" style="width: 100%; padding: 8px; margin-top: 5px;">
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button type="submit" style="background: #007bff;">Create Order</button>
+          <button type="button" onclick="hideAddOrderForm()" style="background: #6c757d;">Cancel</button>
+        </div>
+      </form>
+    </div>
+  `
+  
   if (!orders || orders.length === 0) {
-    ordersContainer.innerHTML = `
+    ordersHTML += `
       <div class="order-card">
-        <p>No orders found. This is a sample app for testing Supabase authentication and API integration.</p>
+        <p>No orders found. Create your first order using the "Add New Order" button above.</p>
       </div>
     `
-    return
+  } else {
+    ordersHTML += orders.map(order => `
+      <div class="order-card" id="order-${order.id}">
+        <div class="order-header">
+          <span class="order-id">Order #${order.id}</span>
+          <span class="order-status status-${order.status}">${capitalizeFirst(order.status)}</span>
+          <div style="margin-left: auto;">
+            <button onclick="editOrder(${order.id})" style="background: #ffc107; color: #000; padding: 5px 10px; font-size: 12px;">Edit</button>
+            <button onclick="deleteOrder(${order.id})" style="background: #dc3545; padding: 5px 10px; font-size: 12px;">Delete</button>
+          </div>
+        </div>
+        <p><strong>Items:</strong> ${order.items}</p>
+        <p><strong>Total:</strong> $${order.total_price}</p>
+        <p><strong>Date:</strong> ${formatDate(order.created_at)}</p>
+      </div>
+    `).join('')
   }
   
-  ordersContainer.innerHTML = orders.map(order => `
-    <div class="order-card">
-      <div class="order-header">
-        <span class="order-id">Order #${order.id}</span>
-        <span class="order-status status-${order.status}">${capitalizeFirst(order.status)}</span>
-      </div>
-      <p><strong>Items:</strong> ${order.items}</p>
-      <p><strong>Total:</strong> $${order.total}</p>
-      <p><strong>Date:</strong> ${formatDate(order.order_date)}</p>
-    </div>
-  `).join('')
+  ordersContainer.innerHTML = ordersHTML
 }
 
 function capitalizeFirst(str) {
@@ -586,6 +626,168 @@ function formatDate(dateString) {
     month: 'long', 
     day: 'numeric' 
   })
+}
+
+// Order CRUD Operations
+function showAddOrderForm() {
+  document.getElementById('add-order-form').style.display = 'block'
+}
+
+function hideAddOrderForm() {
+  document.getElementById('add-order-form').style.display = 'none'
+  // Reset form
+  document.getElementById('order-items').value = ''
+  document.getElementById('order-total').value = ''
+  document.getElementById('order-status').value = 'pending'
+}
+
+async function handleAddOrder(event) {
+  event.preventDefault()
+  
+  const items = document.getElementById('order-items').value
+  const totalPrice = parseFloat(document.getElementById('order-total').value)
+  const status = document.getElementById('order-status').value
+  
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    // Insert new order - user_id will be automatically set by RLS in the enhanced bridge
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        items: items,
+        total_price: totalPrice,
+        status: status
+      })
+      .select()
+    
+    if (error) {
+      throw error
+    }
+    
+    console.log('Order created:', data)
+    hideAddOrderForm()
+    await loadOrders() // Refresh the orders list
+    
+  } catch (error) {
+    console.error('Error creating order:', error)
+    alert(`Failed to create order: ${error.message}`)
+  }
+}
+
+async function editOrder(orderId) {
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    // Get current order data
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single()
+    
+    if (error) {
+      throw error
+    }
+    
+    const order = orders
+    
+    // Populate form with current data
+    document.getElementById('order-items').value = order.items || ''
+    document.getElementById('order-total').value = order.total_price || 0
+    document.getElementById('order-status').value = order.status || 'pending'
+    
+    // Show form and change submit handler
+    showAddOrderForm()
+    
+    // Change form title and button text
+    document.querySelector('#add-order-form h4').textContent = 'Edit Order'
+    document.querySelector('#add-order-form button[type="submit"]').textContent = 'Update Order'
+    
+    // Change form handler to update instead of create
+    const form = document.querySelector('#add-order-form form')
+    form.onsubmit = (event) => handleUpdateOrder(event, orderId)
+    
+  } catch (error) {
+    console.error('Error loading order for edit:', error)
+    alert(`Failed to load order: ${error.message}`)
+  }
+}
+
+async function handleUpdateOrder(event, orderId) {
+  event.preventDefault()
+  
+  const items = document.getElementById('order-items').value
+  const totalPrice = parseFloat(document.getElementById('order-total').value)
+  const status = document.getElementById('order-status').value
+  
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        items: items,
+        total_price: totalPrice,
+        status: status
+      })
+      .eq('id', orderId)
+      .select()
+    
+    if (error) {
+      throw error
+    }
+    
+    console.log('Order updated:', data)
+    resetOrderForm()
+    await loadOrders() // Refresh the orders list
+    
+  } catch (error) {
+    console.error('Error updating order:', error)
+    alert(`Failed to update order: ${error.message}`)
+  }
+}
+
+async function deleteOrder(orderId) {
+  if (!confirm('Are you sure you want to delete this order?')) {
+    return
+  }
+  
+  try {
+    const environment = getCurrentEnvironment() || 'local'
+    const supabase = getSupabaseClient(environment)
+    
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId)
+    
+    if (error) {
+      throw error
+    }
+    
+    console.log('Order deleted:', orderId)
+    await loadOrders() // Refresh the orders list
+    
+  } catch (error) {
+    console.error('Error deleting order:', error)
+    alert(`Failed to delete order: ${error.message}`)
+  }
+}
+
+function resetOrderForm() {
+  hideAddOrderForm()
+  
+  // Reset form title and button text
+  document.querySelector('#add-order-form h4').textContent = 'Add New Order'
+  document.querySelector('#add-order-form button[type="submit"]').textContent = 'Create Order'
+  
+  // Reset form handler
+  const form = document.querySelector('#add-order-form form')
+  form.onsubmit = handleAddOrder
 }
 
 // Initialize
