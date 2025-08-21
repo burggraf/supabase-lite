@@ -121,11 +121,9 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
           <Database className={cn("text-green-500 flex-shrink-0", isExpanded ? "h-6 w-6" : "h-5 w-5")} />
           {isExpanded && (
             <div className="min-w-0">
-              <h1 className="font-semibold text-lg truncate">
-                {currentProjectName || 'Supabase Lite'}
-              </h1>
+              <h1 className="font-semibold text-lg truncate">Supabase Lite</h1>
               <p className="text-xs text-muted-foreground truncate">
-                {currentProjectName ? 'Active Project' : 'Local Development'}
+                {currentProjectName || 'Local Development'}
               </p>
             </div>
           )}
