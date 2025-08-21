@@ -21,6 +21,7 @@ import {
   List
 } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
+import { SeedDataSection } from './SeedDataSection';
 
 interface TableInfo {
   name: string;
@@ -36,13 +37,14 @@ const sidebarSections = [
     title: 'DATABASE MANAGEMENT',
     items: [
       { id: 'schema', label: 'Schema Visualizer', icon: BarChart3 },
-      { id: 'tables', label: 'Tables', icon: Table, active: true },
+      { id: 'tables', label: 'Tables', icon: Table },
       { id: 'functions', label: 'Functions', icon: Code },
       { id: 'triggers', label: 'Triggers', icon: Zap },
       { id: 'types', label: 'Enumerated Types', icon: List },
       { id: 'extensions', label: 'Extensions', icon: Plus },
       { id: 'indexes', label: 'Indexes', icon: Key },
       { id: 'publications', label: 'Publications', icon: Link },
+      { id: 'seed-data', label: 'Seed Data', icon: Plus },
       { id: 'replication', label: 'Replication', icon: DatabaseIcon, badge: 'Coming Soon' },
     ]
   },
@@ -80,6 +82,7 @@ export function DatabaseWorking() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSchema, setSelectedSchema] = useState('public');
+  const [activeSection, setActiveSection] = useState('tables');
 
   useEffect(() => {
     if (!isConnected) {
@@ -198,14 +201,14 @@ export function DatabaseWorking() {
                       key={item.id}
                       className={cn(
                         "w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer",
-                        item.active 
+                        activeSection === item.id 
                           ? "bg-primary text-primary-foreground" 
                           : "text-muted-foreground hover:text-foreground hover:bg-accent",
                         item.badge === 'Coming Soon' && "opacity-50 cursor-not-allowed"
                       )}
                       onClick={() => {
                         if (item.badge !== 'Coming Soon') {
-                          console.log(`Navigate to ${item.id}`);
+                          setActiveSection(item.id);
                         }
                       }}
                     >
@@ -227,8 +230,12 @@ export function DatabaseWorking() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="p-6 border-b">
+        {activeSection === 'seed-data' ? (
+          <SeedDataSection />
+        ) : (
+          <>
+            {/* Header */}
+            <div className="p-6 border-b">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Database Tables</h1>
             <Button>
@@ -352,6 +359,8 @@ export function DatabaseWorking() {
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );
