@@ -9,11 +9,13 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
 import { initializeInfrastructure, logger } from '@/lib/infrastructure';
+import { projectManager } from '@/lib/projects/ProjectManager';
 
 function App() {
   const { currentPage, navigate } = useRouter();
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
+  const [currentProjectName, setCurrentProjectName] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -43,6 +45,32 @@ function App() {
     // Cleanup function to prevent state updates if component unmounts
     return () => {
       isCancelled = true;
+    };
+  }, []);
+
+  // Track current project name
+  useEffect(() => {
+    const updateCurrentProject = () => {
+      const activeProject = projectManager.getActiveProject();
+      setCurrentProjectName(activeProject?.name || null);
+    };
+
+    // Initial load
+    updateCurrentProject();
+
+    // Listen for storage changes to update when projects change
+    const handleStorageChange = () => {
+      updateCurrentProject();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically in case of same-tab changes
+    const interval = setInterval(updateCurrentProject, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
     };
   }, []);
 
@@ -136,7 +164,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar currentPage={currentPage} onPageChange={navigate} />
+      <Sidebar currentPage={currentPage} onPageChange={navigate} currentProjectName={currentProjectName} />
       <div className="flex-1 flex flex-col overflow-hidden">
         {renderCurrentPage()}
       </div>

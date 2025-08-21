@@ -32,9 +32,10 @@ const iconMap = {
 interface SidebarProps {
   currentPage: string;
   onPageChange: (page: string) => void;
+  currentProjectName?: string;
 }
 
-export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
+export function Sidebar({ currentPage, onPageChange, currentProjectName }: SidebarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const navigationItems = [
     {
@@ -120,8 +121,12 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
           <Database className={cn("text-green-500 flex-shrink-0", isExpanded ? "h-6 w-6" : "h-5 w-5")} />
           {isExpanded && (
             <div className="min-w-0">
-              <h1 className="font-semibold text-lg truncate">Supabase Lite</h1>
-              <p className="text-xs text-muted-foreground truncate">Local Development</p>
+              <h1 className="font-semibold text-lg truncate">
+                {currentProjectName || 'Supabase Lite'}
+              </h1>
+              <p className="text-xs text-muted-foreground truncate">
+                {currentProjectName ? 'Active Project' : 'Local Development'}
+              </p>
             </div>
           )}
         </div>
