@@ -41,8 +41,37 @@ export const infrastructure = {
   dbManager,
 } as const;
 
+// Singleton pattern for infrastructure initialization
+let initializationPromise: Promise<void> | null = null;
+let isInitialized = false;
+
 // Infrastructure initialization
 export async function initializeInfrastructure(): Promise<void> {
+  // If already initialized, return immediately
+  if (isInitialized) {
+    logger.debug('Infrastructure already initialized, skipping');
+    return;
+  }
+
+  // If initialization is already in progress, wait for it
+  if (initializationPromise) {
+    logger.debug('Infrastructure initialization already in progress, waiting');
+    return initializationPromise;
+  }
+
+  // Start initialization and store the promise
+  initializationPromise = doInitializeInfrastructure();
+  
+  try {
+    await initializationPromise;
+    isInitialized = true;
+  } finally {
+    // Clear the promise once done (success or failure)
+    initializationPromise = null;
+  }
+}
+
+async function doInitializeInfrastructure(): Promise<void> {
   try {
     logger.info('Initializing Supabase Lite infrastructure');
     

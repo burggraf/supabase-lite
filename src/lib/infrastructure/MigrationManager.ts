@@ -61,13 +61,23 @@ export class InfrastructureMigrationManager implements MigrationManager {
     try {
       await this.ensureMigrationsTable();
 
-      // Check if migration is already applied
-      const appliedResult = await this.dbManager.query(`
-        SELECT version FROM ${this.MIGRATIONS_TABLE} WHERE version = '${migration.version}'
+      // Validate migration
+      this.validateMigration(migration);
+
+      // Use a transaction to ensure atomicity and handle concurrent access
+      const checksum = this.calculateChecksum(migration.up);
+      
+      // Try to record the migration first - this acts as a lock
+      const insertResult = await this.dbManager.query(`
+        INSERT INTO ${this.MIGRATIONS_TABLE} (version, name, up, down, checksum, applied_at)
+        VALUES ('${migration.version}', '${migration.name}', '${migration.up.replace(/'/g, "''")}', ${migration.down ? `'${migration.down.replace(/'/g, "''")}'` : 'NULL'}, '${checksum}', '${new Date().toISOString()}')
+        ON CONFLICT (version) DO NOTHING
+        RETURNING version
       `);
 
-      if (appliedResult.rows.length > 0) {
-        logger.info(`Migration ${migration.version} already applied, skipping`);
+      // If no rows returned, migration was already applied by another process
+      if (insertResult.rows.length === 0) {
+        logger.info(`Migration ${migration.version} already applied by another process, skipping`);
         return {
           version: migration.version,
           success: true,
@@ -76,29 +86,10 @@ export class InfrastructureMigrationManager implements MigrationManager {
         };
       }
 
-      // Validate migration
-      this.validateMigration(migration);
-
       logger.info(`Running migration ${migration.version}: ${migration.name}`);
 
-      // Execute the migration first
+      // Execute the migration
       await this.dbManager.exec(migration.up);
-
-      // Record the migration (handle duplicates gracefully outside of transaction)
-      const checksum = this.calculateChecksum(migration.up);
-      try {
-        await this.dbManager.query(`
-          INSERT INTO ${this.MIGRATIONS_TABLE} (version, name, up, down, checksum, applied_at)
-          VALUES ('${migration.version}', '${migration.name}', '${migration.up.replace(/'/g, "''")}', ${migration.down ? `'${migration.down.replace(/'/g, "''")}'` : 'NULL'}, '${checksum}', '${new Date().toISOString()}')
-        `);
-      } catch (insertError: any) {
-        // If this is a duplicate key error, the migration was already recorded
-        if (insertError.message && insertError.message.includes('duplicate key')) {
-          logger.warn(`Migration ${migration.version} record already exists, continuing`);
-        } else {
-          throw insertError;
-        }
-      }
 
       const duration = performance.now() - startTime;
       logger.info(`Migration ${migration.version} completed successfully`, { duration });
@@ -111,6 +102,16 @@ export class InfrastructureMigrationManager implements MigrationManager {
     } catch (error) {
       const duration = performance.now() - startTime;
       logger.error(`Migration ${migration.version} failed`, error as Error, { duration });
+
+      // If migration failed after recording, we should remove the record
+      try {
+        await this.dbManager.query(`
+          DELETE FROM ${this.MIGRATIONS_TABLE} WHERE version = '${migration.version}'
+        `);
+        logger.info(`Cleaned up failed migration record for ${migration.version}`);
+      } catch (cleanupError) {
+        logger.warn(`Failed to cleanup migration record for ${migration.version}`, cleanupError as Error);
+      }
 
       return {
         version: migration.version,
