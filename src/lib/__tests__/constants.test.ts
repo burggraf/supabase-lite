@@ -182,7 +182,7 @@ describe('Constants', () => {
     it('should have join query example', () => {
       const joinQuery = QUERY_EXAMPLES.find(example => example.name === 'Join Query')
       expect(joinQuery).toBeDefined()
-      expect(joinQuery?.query).toContain('LEFT JOIN posts p ON u.id = p.user_id')
+      expect(joinQuery?.query).toContain('LEFT JOIN auth.identities i ON u.id = i.user_id')
     })
 
     it('should have correct number of query examples', () => {

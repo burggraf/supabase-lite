@@ -100,9 +100,9 @@ export const QUERY_EXAMPLES = [
   },
   {
     name: 'Join Query',
-    query: `SELECT u.name, u.email, p.title
-FROM users u
-LEFT JOIN posts p ON u.id = p.user_id;`,
+    query: `SELECT u.email, i.provider
+FROM auth.users u
+LEFT JOIN auth.identities i ON u.id = i.user_id;`,
   },
 ];
 

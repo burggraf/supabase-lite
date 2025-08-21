@@ -169,7 +169,7 @@ export class EnhancedSupabaseAPIBridge {
    */
   private applyRLSFiltering(table: string, query: ParsedQuery, headers: Record<string, string>): ParsedQuery {
     // Tables that require RLS filtering
-    const rlsTables = ['orders', 'profiles', 'user_data']
+    const rlsTables = ['profiles', 'user_data']
     
     if (!rlsTables.includes(table)) {
       return query // No RLS filtering needed
@@ -202,21 +202,6 @@ export class EnhancedSupabaseAPIBridge {
       }
     }
 
-    // For orders table, filter by user_id
-    if (table === 'orders') {
-      // Check if user_id filter already exists to avoid duplicates
-      const hasUserIdFilter = query.filters.some(filter => filter.column === 'user_id')
-      
-      if (!hasUserIdFilter) {
-        return {
-          ...query,
-          filters: [
-            ...query.filters,
-            { column: 'user_id', operator: 'eq', value: userId, negated: false }
-          ]
-        }
-      }
-    }
 
     return query
   }
@@ -350,7 +335,7 @@ export class EnhancedSupabaseAPIBridge {
    */
   private applyRLSDataInjection(table: string, data: any[], query: ParsedQuery): any[] {
     // Tables that require RLS data injection
-    const rlsTables = ['orders', 'profiles', 'user_data']
+    const rlsTables = ['profiles', 'user_data']
     
     if (!rlsTables.includes(table)) {
       return data // No RLS injection needed
@@ -589,34 +574,6 @@ export class EnhancedSupabaseAPIBridge {
       method: request.method 
     })
 
-    // Mock products data for demonstration
-    if (request.table === 'products' && request.method === 'GET') {
-      const mockProducts = [
-        {
-          id: 1,
-          name: 'Sample Product 1',
-          description: 'This is a sample product from HTTP middleware',
-          price: 19.99,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 2,
-          name: 'Sample Product 2', 
-          description: 'Another sample product from HTTP middleware',
-          price: 29.99,
-          created_at: new Date().toISOString()
-        }
-      ]
-
-      return ResponseFormatter.formatSelectResponse(mockProducts, {
-        select: ['*'],
-        count: null,
-        filters: [],
-        orderBy: [],
-        limit: null,
-        offset: null
-      })
-    }
 
     // Default mock response for other tables
     return ResponseFormatter.formatSelectResponse([], {

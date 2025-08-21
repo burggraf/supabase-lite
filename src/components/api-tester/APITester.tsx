@@ -25,7 +25,7 @@ export default function APITester() {
 
       switch (testName) {
         case 'basic-select':
-          response = await fetch('/rest/v1/products?limit=5', {
+          response = await fetch('/rest/v1/users?limit=5', {
             headers: {
               'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
             }
@@ -33,7 +33,7 @@ export default function APITester() {
           break
           
         case 'basic-insert':
-          response = await fetch('/rest/v1/products', {
+          response = await fetch('/rest/v1/users', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -41,15 +41,15 @@ export default function APITester() {
               'Prefer': 'return=representation'
             },
             body: JSON.stringify({
-              name: 'Test Product',
-              price: 99.99,
-              category: 'test'
+              id: '00000000-0000-4000-8000-000000000001',
+              email: 'test@example.com',
+              role: 'authenticated'
             })
           })
           break
           
         case 'basic-filter':
-          response = await fetch('/rest/v1/products?price=gte.50', {
+          response = await fetch('/rest/v1/users?role=eq.authenticated', {
             headers: {
               'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
             }
@@ -132,7 +132,7 @@ export default function APITester() {
               size="sm" 
               className="w-full"
               disabled={loading === 'basic-select'}
-              onClick={() => runTest('basic-select', 'SELECT * FROM products LIMIT 5')}
+              onClick={() => runTest('basic-select', 'SELECT * FROM users LIMIT 5')}
             >
               {loading === 'basic-select' ? 'Testing...' : 'SELECT'}
             </Button>
@@ -140,7 +140,7 @@ export default function APITester() {
               size="sm" 
               className="w-full"
               disabled={loading === 'basic-insert'}
-              onClick={() => runTest('basic-insert', 'INSERT INTO products')}
+              onClick={() => runTest('basic-insert', 'INSERT INTO users')}
             >
               {loading === 'basic-insert' ? 'Testing...' : 'INSERT'}
             </Button>
@@ -156,9 +156,9 @@ export default function APITester() {
               size="sm" 
               className="w-full"
               disabled={loading === 'basic-filter'}
-              onClick={() => runTest('basic-filter', 'SELECT with price >= 50')}
+              onClick={() => runTest('basic-filter', 'SELECT with role = authenticated')}
             >
-              {loading === 'basic-filter' ? 'Testing...' : 'Price Filter'}
+              {loading === 'basic-filter' ? 'Testing...' : 'Role Filter'}
             </Button>
           </CardContent>
         </Card>
