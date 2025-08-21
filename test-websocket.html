@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Bridge Test</title>
+</head>
+<body>
+    <h1>WebSocket Bridge Test</h1>
+    <div id="status">Connecting...</div>
+    <button onclick="testConnection()">Test Connection</button>
+    <pre id="log"></pre>
+    
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        
+        function addLog(message) {
+            log.textContent += new Date().toISOString() + ': ' + message + '\n';
+            console.log(message);
+        }
+        
+        function testConnection() {
+            addLog('Creating WebSocket connection to ws://localhost:5176');
+            
+            const ws = new WebSocket('ws://localhost:5176');
+            
+            ws.onopen = () => {
+                addLog('✅ WebSocket connected successfully');
+                status.textContent = 'Connected';
+                
+                // Set up message handler for API bridge
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        addLog('📥 Received request: ' + message.method + ' ' + message.url);
+                        
+                        if (message.type === 'request') {
+                            // Return mock data
+                            const mockResponse = [
+                                { id: 1, name: 'Test Product', price: 19.99 }
+                            ];
+                            
+                            const response = {
+                                type: 'response',
+                                requestId: message.requestId,
+                                response: {
+                                    status: 200,
+                                    statusText: 'OK',
+                                    headers: { 'content-type': 'application/json' },
+                                    body: mockResponse
+                                }
+                            };
+                            
+                            ws.send(JSON.stringify(response));
+                            addLog('📤 Sent response for request ' + message.requestId);
+                        }
+                    } catch (error) {
+                        addLog('❌ Error processing message: ' + error.message);
+                    }
+                };
+            };
+            
+            ws.onerror = (error) => {
+                addLog('❌ WebSocket error: ' + error);
+                status.textContent = 'Error';
+            };
+            
+            ws.onclose = () => {
+                addLog('🔌 WebSocket connection closed');
+                status.textContent = 'Disconnected';
+            };
+        }
+        
+        // Auto-test on page load
+        setTimeout(testConnection, 1000);
+    </script>
+</body>
+</html>
