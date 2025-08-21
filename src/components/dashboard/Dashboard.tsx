@@ -1,11 +1,157 @@
+import { useState, useEffect } from 'react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Database, Users, Table, Clock } from 'lucide-react';
+import { ProjectsSection } from './ProjectsSection';
+import { projectManager } from '@/lib/projects/ProjectManager';
+import type { Project } from '@/lib/projects/ProjectManager';
 
 export function Dashboard() {
-  const { isConnected, isConnecting, error, getConnectionInfo } = useDatabase();
+  const { isConnected, isConnecting, error, getConnectionInfo, switchToProject, connectionId, getTableList } = useDatabase();
   const connectionInfo = getConnectionInfo();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [isProjectsLoading, setIsProjectsLoading] = useState(false);
+  const [tableCount, setTableCount] = useState(0);
+
+  // Load projects on component mount and create first project if none exist
+  useEffect(() => {
+    const initializeProjects = async () => {
+      console.log('🔍 Dashboard: Starting project initialization');
+      const allProjects = projectManager.getProjects();
+      
+      // If no projects exist, create a default one
+      if (allProjects.length === 0) {
+        try {
+          setIsProjectsLoading(true);
+          console.log('🔍 Dashboard: No projects found, creating default project');
+          const defaultProject = await projectManager.createProject('My First Project');
+          
+          // Switch to the new project's database
+          console.log('🔍 Dashboard: Switching to default project database:', defaultProject.databasePath);
+          await switchToProject(defaultProject.databasePath);
+          
+          // Update state
+          setProjects(projectManager.getProjects());
+          setActiveProject(projectManager.getActiveProject());
+        } catch (error) {
+          console.error('🔍 Dashboard: Failed to create default project:', error);
+        } finally {
+          setIsProjectsLoading(false);
+        }
+      } else {
+        // Load existing projects
+        const active = projectManager.getActiveProject();
+        console.log('🔍 Dashboard: Found existing projects. Active project:', active?.name);
+        setProjects(allProjects);
+        setActiveProject(active);
+        
+        // Switch to active project's database if there is one
+        if (active) {
+          try {
+            console.log('🔍 Dashboard: Switching to active project database:', active.databasePath);
+            await switchToProject(active.databasePath);
+          } catch (error) {
+            console.error('🔍 Dashboard: Failed to switch to active project database:', error);
+          }
+        } else {
+          console.warn('🔍 Dashboard: No active project found - this should not happen');
+        }
+      }
+    };
+
+    initializeProjects();
+  }, []); // Remove switchToProject dependency to avoid loops
+
+  // Update table count when database connection changes
+  useEffect(() => {
+    const updateTableCount = async () => {
+      if (isConnected && connectionId && getTableList) {
+        try {
+          const tables = await getTableList();
+          console.log('🔍 Dashboard: loaded tables for count:', tables);
+          setTableCount(tables.length);
+        } catch (error) {
+          console.error('🔍 Dashboard: failed to get table count:', error);
+          setTableCount(0);
+        }
+      } else {
+        setTableCount(0);
+      }
+    };
+
+    updateTableCount();
+  }, [isConnected, connectionId, getTableList]);
+
+  const handleCreateProject = async (name: string) => {
+    setIsProjectsLoading(true);
+    try {
+      const newProject = await projectManager.createProject(name);
+      
+      // Switch to the new project's database
+      if (switchToProject) {
+        await switchToProject(newProject.databasePath);
+      }
+      
+      // Refresh projects list
+      setProjects(projectManager.getProjects());
+      setActiveProject(projectManager.getActiveProject());
+    } finally {
+      setIsProjectsLoading(false);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    setIsProjectsLoading(true);
+    try {
+      await projectManager.deleteProject(projectId);
+      
+      // Refresh projects list
+      const updatedProjects = projectManager.getProjects();
+      const updatedActiveProject = projectManager.getActiveProject();
+      setProjects(updatedProjects);
+      setActiveProject(updatedActiveProject);
+      
+      // Switch to the new active project's database if there is one
+      if (updatedActiveProject && switchToProject) {
+        await switchToProject(updatedActiveProject.databasePath);
+      }
+    } finally {
+      setIsProjectsLoading(false);
+    }
+  };
+
+  const handleSwitchProject = async (projectId: string) => {
+    setIsProjectsLoading(true);
+    try {
+      const project = await projectManager.switchToProject(projectId);
+      
+      // Switch to the project's database
+      if (switchToProject) {
+        await switchToProject(project.databasePath);
+      }
+      
+      // Refresh projects list
+      setProjects(projectManager.getProjects());
+      setActiveProject(projectManager.getActiveProject());
+    } finally {
+      setIsProjectsLoading(false);
+    }
+  };
+
+  const handleUpdateProjectName = async (projectId: string, newName: string) => {
+    try {
+      projectManager.updateProjectName(projectId, newName);
+      
+      // Refresh projects list
+      setProjects(projectManager.getProjects());
+      setActiveProject(projectManager.getActiveProject());
+    } catch (error) {
+      console.error('Failed to update project name:', error);
+      throw error;
+    }
+  };
 
   const stats = [
     {
@@ -16,7 +162,7 @@ export function Dashboard() {
     },
     {
       title: "Tables",
-      value: "2", // Will be dynamic later
+      value: tableCount.toString(),
       icon: Table,
       badge: "secondary",
     },
@@ -43,6 +189,16 @@ export function Dashboard() {
         </p>
       </div>
 
+      <ProjectsSection
+        projects={projects}
+        activeProject={activeProject}
+        onCreateProject={handleCreateProject}
+        onDeleteProject={handleDeleteProject}
+        onSwitchProject={handleSwitchProject}
+        onUpdateProjectName={handleUpdateProjectName}
+        isLoading={isProjectsLoading}
+      />
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
@@ -55,7 +211,7 @@ export function Dashboard() {
               <CardContent>
                 <div className="flex items-center space-x-2">
                   <div className="text-2xl font-bold">{stat.value}</div>
-                  <Badge variant={stat.badge as any}>{stat.badge}</Badge>
+                  <Badge variant={stat.badge as "default" | "secondary" | "destructive" | "outline"}>{stat.badge}</Badge>
                 </div>
               </CardContent>
             </Card>

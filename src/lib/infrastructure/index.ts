@@ -78,14 +78,11 @@ async function doInitializeInfrastructure(): Promise<void> {
     // Load configuration from environment
     configManager.loadFromEnvironment();
     
-    // Initialize database
-    await dbManager.initialize();
+    // NOTE: Database initialization is now handled by useDatabase hook
+    // to ensure proper project-aware initialization
     
-    // Run pending migrations
-    const migrationResults = await migrationManager.runAll();
-    if (migrationResults.length > 0) {
-      logger.info(`Applied ${migrationResults.length} migrations`);
-    }
+    // Migrations will be run by DatabaseManager after initialization
+    // when the database is actually connected with the correct project context
     
     logger.info('Infrastructure initialization completed');
   } catch (error) {

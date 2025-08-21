@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { dbManager } from '@/lib/database/connection';
+import { projectManager } from '@/lib/projects/ProjectManager';
 import type { QueryResult, ScriptResult, QueryHistory } from '@/types';
 
 export function useDatabase() {
@@ -8,48 +9,66 @@ export function useDatabase() {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionId, setConnectionId] = useState<string>(''); // Track database switches using database path
   const isConnectingRef = useRef(false);
-  const hasInitializedRef = useRef(false);
   
-  console.log('🚀 useDatabase state:', { isConnected, isConnecting, error });
+  console.log('🚀 useDatabase state:', { isConnected, isConnecting, error, connectionId });
 
-  const initialize = useCallback(async () => {
-    console.log('🚀 initialize called, refs:', { 
-      isConnecting: isConnectingRef.current, 
-      hasInitialized: hasInitializedRef.current 
+  const initialize = useCallback(async (customDataDir?: string) => {
+    const targetDataDir = customDataDir || 'idb://supabase_lite_db';
+    console.log('🚀 initialize called with dataDir:', targetDataDir);
+    console.log('🚀 Current state:', { 
+      isConnecting: isConnectingRef.current,
+      currentConnectionId: connectionId 
     });
     
-    // Prevent multiple simultaneous initialization attempts or re-initialization
-    if (isConnectingRef.current || hasInitializedRef.current) {
-      console.log('🚀 Skipping initialization - already running or completed');
+    // If we're already connected to this database, skip initialization
+    if (connectionId === targetDataDir && isConnected) {
+      console.log('🚀 Already connected to target database, skipping initialization');
       return;
     }
     
-    console.log('🚀 Starting database initialization');
-    hasInitializedRef.current = true;
+    // Prevent multiple simultaneous initialization attempts
+    if (isConnectingRef.current) {
+      console.log('🚀 Initialization already in progress, skipping');
+      return;
+    }
+    
+    console.log('🚀 Starting database initialization for:', targetDataDir);
     isConnectingRef.current = true;
     setIsConnecting(true);
     setError(null);
     
     try {
-      console.log('🚀 Calling dbManager.initialize()');
-      await dbManager.initialize();
+      console.log('🚀 Calling dbManager.initialize() with dataDir:', targetDataDir);
+      await dbManager.initialize(targetDataDir);
       console.log('🚀 Database initialization successful');
       setIsConnected(true);
+      setConnectionId(targetDataDir); // Use database path as connection ID
     } catch (err) {
       console.error('🚀 Database initialization failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to initialize database');
       setIsConnected(false);
+      setConnectionId(''); // Clear connection ID on failure
     } finally {
       console.log('🚀 Database initialization cleanup');
       setIsConnecting(false);
       isConnectingRef.current = false;
     }
-  }, []);
+  }, [connectionId, isConnected]);
 
   useEffect(() => {
-    console.log('🚀 useDatabase useEffect triggered');
-    initialize();
+    console.log('🚀 useDatabase useEffect triggered - auto-initializing with active project database');
+    
+    // Get active project and initialize with its database path
+    const activeProject = projectManager.getActiveProject();
+    if (activeProject) {
+      console.log('🚀 Auto-initializing with active project database:', activeProject.databasePath);
+      initialize(activeProject.databasePath);
+    } else {
+      console.log('🚀 No active project found, initializing with default database');
+      initialize();
+    }
   }, [initialize]);
 
   const executeQuery = useCallback(async (sql: string): Promise<QueryResult> => {
@@ -108,16 +127,55 @@ export function useDatabase() {
     return await dbManager.getTableList();
   }, []);
 
+  const switchToProject = useCallback(async (databasePath: string) => {
+    console.log('🚀 switchToProject called:', { databasePath, currentConnectionId: connectionId });
+    
+    // If we're already connected to this database, skip the switch
+    if (connectionId === databasePath && isConnected) {
+      console.log('🚀 Already connected to target database, skipping switch');
+      return;
+    }
+    
+    setIsConnecting(true);
+    setError(null);
+    
+    try {
+      console.log('🚀 Switching database via dbManager to:', databasePath);
+      await dbManager.switchDatabase(databasePath);
+      console.log('🚀 Database switch successful');
+      
+      // Verify the switch worked by checking connection info
+      const newConnectionInfo = dbManager.getConnectionInfo();
+      console.log('🚀 New database connection info:', newConnectionInfo);
+      
+      setIsConnected(true);
+      setConnectionId(databasePath); // Use database path as connection ID
+      console.log('🚀 ConnectionId updated to:', databasePath);
+    } catch (err) {
+      console.error('🚀 Database switch failed:', err);
+      const error = err instanceof Error ? err.message : 'Failed to switch database';
+      setError(error);
+      setIsConnected(false);
+      setConnectionId(''); // Clear connection ID on failure
+      throw err;
+    } finally {
+      console.log('🚀 Database switch cleanup');
+      setIsConnecting(false);
+    }
+  }, [connectionId, isConnected]);
+
   return {
     isConnected,
     isConnecting,
     error,
+    connectionId, // Expose connection ID for other hooks to track changes
     initialize,
     executeQuery,
     executeScript,
     getConnectionInfo,
     getDatabaseSize,
     getTableList,
+    switchToProject,
   };
 }
 
