@@ -19,6 +19,13 @@ const seedOptions: SeedDataOption[] = [
     description: 'Classic sample database with customers, orders, products, employees, and suppliers',
     filename: 'northwind.sql',
     tables: ['categories', 'customers', 'employees', 'order_details', 'orders', 'products', 'shippers', 'suppliers', 'territories', 'region']
+  },
+  {
+    id: 'chinook',
+    name: 'Chinook Database',
+    description: 'Digital media store database with artists, albums, tracks, customers, and invoices',
+    filename: 'chinook.sql',
+    tables: ['Artist', 'Album', 'Track', 'MediaType', 'Genre', 'Customer', 'Employee', 'Invoice', 'InvoiceLine', 'Playlist', 'PlaylistTrack']
   }
 ];
 
