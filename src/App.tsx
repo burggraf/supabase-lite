@@ -16,20 +16,34 @@ function App() {
   const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isCancelled = false;
+    
     const initialize = async () => {
       try {
         await initializeInfrastructure();
-        logger.info('Application initialized successfully');
-        setIsInitializing(false);
+        
+        // Only update state if the effect hasn't been cancelled
+        if (!isCancelled) {
+          logger.info('Application initialized successfully');
+          setIsInitializing(false);
+        }
       } catch (error) {
-        const errorMessage = (error as Error).message;
-        logger.error('Application initialization failed', error as Error);
-        setInitError(errorMessage);
-        setIsInitializing(false);
+        // Only update state if the effect hasn't been cancelled
+        if (!isCancelled) {
+          const errorMessage = (error as Error).message;
+          logger.error('Application initialization failed', error as Error);
+          setInitError(errorMessage);
+          setIsInitializing(false);
+        }
       }
     };
 
     initialize();
+    
+    // Cleanup function to prevent state updates if component unmounts
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   if (isInitializing) {
