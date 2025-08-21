@@ -27,7 +27,7 @@ export class DatabaseManager {
     return DatabaseManager.instance;
   }
 
-  public async initialize(): Promise<void> {
+  public async initialize(customDataDir?: string): Promise<void> {
     // If already initialized, return immediately
     if (this.isInitialized && this.db) {
       return;
@@ -39,7 +39,7 @@ export class DatabaseManager {
     }
 
     // Start initialization and store the promise
-    this.initializationPromise = this.doInitialization();
+    this.initializationPromise = this.doInitialization(customDataDir);
     
     try {
       await this.initializationPromise;
@@ -49,10 +49,113 @@ export class DatabaseManager {
     }
   }
 
-  private async doInitialization(): Promise<void> {
+  public async switchDatabase(dataDir: string): Promise<void> {
+    const currentDataDir = this.connectionInfo?.id || 'none';
+    
+    try {
+      logger.info('Switching database', { 
+        fromDataDir: currentDataDir, 
+        toDataDir: dataDir 
+      });
+      
+      // Skip if we're already connected to this database
+      if (this.isInitialized && this.connectionInfo?.id === dataDir) {
+        logger.debug('Already connected to target database, skipping switch', { dataDir });
+        return;
+      }
+      
+      // Wait for any pending initialization to complete before switching
+      if (this.initializationPromise) {
+        try {
+          await this.initializationPromise;
+        } catch (error) {
+          logger.warn('Previous initialization failed during switch, continuing', error as Error);
+        }
+      }
+      
+      // Close current database if open
+      if (this.db) {
+        logger.debug('Closing current database connection');
+        await this.close();
+      }
+
+      // Reset all state completely to ensure clean switch
+      this.isInitialized = false;
+      this.connectionInfo = null;
+      this.queryMetrics = [];
+      this.queryCache.clear();
+      this.initializationPromise = null;
+      this.db = null; // Explicitly clear database instance
+      
+      logger.debug('Database state reset, initializing with new dataDir', { dataDir });
+
+      // Initialize with new database
+      await this.initialize(dataDir);
+      
+      logger.info('Database switched successfully', { 
+        fromDataDir: currentDataDir,
+        toDataDir: dataDir,
+        newConnectionId: this.connectionInfo?.id 
+      });
+    } catch (error) {
+      logger.error('Database switch failed', error as Error, { 
+        fromDataDir: currentDataDir,
+        toDataDir: dataDir 
+      });
+      
+      // Ensure we're in a clean state even if switch fails
+      this.isInitialized = false;
+      this.connectionInfo = null;
+      this.db = null;
+      
+      throw createDatabaseError('Failed to switch database', error as Error);
+    }
+  }
+
+  public async deleteDatabase(dataDir: string): Promise<void> {
+    try {
+      logger.info('Deleting database', { dataDir });
+      
+      // If this is the current database, close it first
+      const currentDataDir = configManager.getDatabaseConfig().dataDir;
+      if (currentDataDir === dataDir && this.db) {
+        await this.close();
+      }
+
+      // Extract database name from dataDir (e.g., "project_123" from "idb://project_123")
+      const dbName = dataDir.replace('idb://', '');
+      
+      // Delete the IndexedDB database
+      if (typeof indexedDB !== 'undefined') {
+        return new Promise((resolve, reject) => {
+          const deleteRequest = indexedDB.deleteDatabase(dbName);
+          
+          deleteRequest.onsuccess = () => {
+            logger.info('Database deleted successfully', { dataDir, dbName });
+            resolve();
+          };
+          
+          deleteRequest.onerror = () => {
+            logger.error('Failed to delete database', deleteRequest.error as Error, { dataDir, dbName });
+            reject(deleteRequest.error);
+          };
+          
+          deleteRequest.onblocked = () => {
+            logger.warn('Database deletion blocked - connections may still be open', { dataDir, dbName });
+            resolve(); // Resolve anyway as deletion will complete when connections close
+          };
+        });
+      }
+    } catch (error) {
+      logError('Database deletion', error as Error, { dataDir });
+      throw createDatabaseError('Failed to delete database', error as Error);
+    }
+  }
+
+  private async doInitialization(customDataDir?: string): Promise<void> {
     try {
       const dbConfig = configManager.getDatabaseConfig();
-      logger.info('Initializing PGlite database', { config: dbConfig });
+      logger.info('Initializing PGlite database', { config: dbConfig, customDataDir });
       
       // Use appropriate storage for each context
       const isNodeJS = typeof window === 'undefined' && typeof global !== 'undefined';
@@ -64,7 +167,8 @@ export class DatabaseManager {
         logger.debug(`Using in-memory PGlite database for Node.js HTTP middleware`);
       } else {
         // Browser uses IndexedDB-backed PGlite
-        dataDir = dbConfig.dataDir;
+        dataDir = customDataDir || dbConfig.dataDir;
+        console.log('🚀 doInitialization: setting dataDir:', { customDataDir, defaultDataDir: dbConfig.dataDir, finalDataDir: dataDir });
         logger.debug(`Using IndexedDB PGlite database for browser: ${dataDir}`);
       }
       
@@ -76,11 +180,13 @@ export class DatabaseManager {
       await this.db.waitReady;
       
       this.connectionInfo = {
-        id: dbConfig.name,
-        name: 'Supabase Lite DB',
+        id: customDataDir || dbConfig.name,
+        name: customDataDir ? `Project DB (${customDataDir})` : 'Supabase Lite DB',
         createdAt: new Date(),
         lastAccessed: new Date(),
       };
+      
+      console.log('🚀 doInitialization: created connection info:', this.connectionInfo);
 
       // Initialize with some basic schemas
       await this.initializeSchemas();
@@ -350,10 +456,14 @@ export class DatabaseManager {
 
   public async getTableList(): Promise<Array<{ name: string; schema: string; rows: number }>> {
     if (!this.db || !this.isInitialized) {
+      console.log('🚀 getTableList: database not initialized');
       return [];
     }
 
     try {
+      const connectionInfo = this.getConnectionInfo();
+      console.log('🚀 getTableList: querying database with connection:', connectionInfo);
+      
       const result = await this.db.query(`
         SELECT 
           t.table_schema as schema,
@@ -366,9 +476,10 @@ export class DatabaseManager {
         ORDER BY t.table_schema, t.table_name;
       `);
       
+      console.log('🚀 getTableList: query result:', result.rows);
       return result.rows as Array<{ name: string; schema: string; rows: number }>;
     } catch (error) {
-      console.error('Failed to get table list:', error);
+      console.error('🚀 getTableList: Failed to get table list:', error);
       return [];
     }
   }
@@ -778,10 +889,21 @@ export class DatabaseManager {
 
   public async close(): Promise<void> {
     if (this.db) {
-      await this.db.close();
+      try {
+        await this.db.close();
+        logger.debug('Database connection closed successfully');
+      } catch (error) {
+        logger.error('Error closing database connection', error as Error);
+        // Continue with cleanup even if close fails
+      }
+      
+      // Reset all state
       this.db = null;
       this.isInitialized = false;
       this.connectionInfo = null;
+      this.queryMetrics = [];
+      this.queryCache.clear();
+      this.initializationPromise = null;
     }
   }
 }

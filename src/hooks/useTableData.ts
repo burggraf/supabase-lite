@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { dbManager } from '@/lib/database/connection';
+import { useDatabase } from './useDatabase';
 import type { TableInfo, ColumnInfo, TableDataResponse, FilterRule } from '@/types';
 
 export function useTableData() {
+  const { connectionId, isConnected } = useDatabase();
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>('');
   const [selectedSchema, setSelectedSchema] = useState<string>('public');
@@ -19,19 +21,18 @@ export function useTableData() {
   // Load available tables
   const loadTables = useCallback(async () => {
     try {
+      console.log('🚀 loadTables: calling dbManager.getTableList()');
       setError(null);
       const tableList = await dbManager.getTableList();
+      console.log('🚀 loadTables: got table list from dbManager:', tableList);
       setTables(tableList);
-      
-      // Auto-select first table if none selected
-      if (tableList.length > 0 && !selectedTable) {
-        setSelectedTable(tableList[0].name);
-        setSelectedSchema(tableList[0].schema);
-      }
+      return tableList;
     } catch (err) {
+      console.error('🚀 loadTables: error getting table list:', err);
       setError(err instanceof Error ? err.message : 'Failed to load tables');
+      return [];
     }
-  }, [selectedTable]);
+  }, []); // Remove selectedTable dependency to prevent infinite loop
 
   // Load table schema
   const loadTableSchema = useCallback(async (tableName: string, schema: string) => {
@@ -102,10 +103,43 @@ export function useTableData() {
     return columns.find(col => col.is_primary_key)?.column_name || columns[0]?.column_name || 'id';
   }, [columns]);
 
-  // Load initial data
+  // Load initial data and reload when database connection changes
   useEffect(() => {
-    loadTables();
-  }, [loadTables]);
+    console.log('🚀 useTableData: connection changed', { isConnected, connectionId });
+    if (isConnected && connectionId) {
+      console.log('🚀 useTableData: resetting state and loading tables');
+      // Reset state when database changes
+      setSelectedTable('');
+      setSelectedSchema('public');
+      setColumns([]);
+      setTableData({ rows: [], totalCount: 0 });
+      setFilters([]);
+      setPagination({ pageIndex: 0, pageSize: 100 });
+      
+      // Load tables for new database and auto-select first one
+      const loadAndSelect = async () => {
+        try {
+          console.log('🚀 useTableData: calling dbManager.getTableList() directly');
+          setError(null);
+          const tableList = await dbManager.getTableList();
+          console.log('🚀 useTableData: loaded tables:', tableList);
+          setTables(tableList);
+          
+          // Auto-select first table if available
+          if (tableList.length > 0) {
+            console.log('🚀 useTableData: auto-selecting first table:', tableList[0]);
+            setSelectedTable(tableList[0].name);
+            setSelectedSchema(tableList[0].schema);
+          }
+        } catch (err) {
+          console.error('🚀 useTableData: error loading tables:', err);
+          setError(err instanceof Error ? err.message : 'Failed to load tables');
+        }
+      };
+      
+      loadAndSelect();
+    }
+  }, [connectionId, isConnected]); // Remove loadTables from dependencies to prevent infinite loop
 
   // Load schema when table changes
   useEffect(() => {

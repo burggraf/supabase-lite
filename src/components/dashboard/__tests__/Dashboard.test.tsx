@@ -9,12 +9,31 @@ vi.mock('@/hooks/useDatabase', () => ({
   useDatabase: () => mockUseDatabase(),
 }))
 
+// Mock the ProjectManager
+vi.mock('@/lib/projects/ProjectManager', () => ({
+  projectManager: {
+    getProjects: vi.fn(() => []),
+    getActiveProject: vi.fn(() => null),
+    createProject: vi.fn(),
+    deleteProject: vi.fn(),
+    switchToProject: vi.fn(),
+    updateProjectName: vi.fn(),
+  },
+}))
+
 // Mock Lucide React icons
 vi.mock('lucide-react', () => ({
   Database: () => <div data-testid="database-icon" />,
   Users: () => <div data-testid="users-icon" />,
   Table: () => <div data-testid="table-icon" />,
   Clock: () => <div data-testid="clock-icon" />,
+  Folder: () => <div data-testid="folder-icon" />,
+  Plus: () => <div data-testid="plus-icon" />,
+  Trash2: () => <div data-testid="trash2-icon" />,
+  Edit: () => <div data-testid="edit-icon" />,
+  Loader2: () => <div data-testid="loader2-icon" />,
+  AlertTriangle: () => <div data-testid="alert-triangle-icon" />,
+  X: () => <div data-testid="x-icon" />,
 }))
 
 describe('Dashboard', () => {
@@ -36,6 +55,8 @@ describe('Dashboard', () => {
         isConnecting: false,
         error: null,
         getConnectionInfo: () => mockConnectionInfo,
+        switchToProject: vi.fn(),
+        connectionId: 'test-connection-id',
       })
     })
 
@@ -181,6 +202,8 @@ describe('Dashboard', () => {
         isConnecting: false,
         error: null,
         getConnectionInfo: () => mockConnectionInfo,
+        switchToProject: vi.fn(),
+        connectionId: 'test-connection-id',
       })
     })
 
@@ -202,6 +225,8 @@ describe('Dashboard', () => {
         isConnecting: false,
         error: null,
         getConnectionInfo: () => mockConnectionInfo,
+        switchToProject: vi.fn(),
+        connectionId: 'test-connection-id',
       })
     })
 
