@@ -24,9 +24,7 @@ export const handlers = [
       return HttpResponse.json(response.data, {
         status: response.status,
         headers: {
-          ...response.headers,
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-          'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
+          ...response.headers
         }
       })
     } catch (error: any) {
