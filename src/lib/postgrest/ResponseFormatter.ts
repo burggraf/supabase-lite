@@ -13,6 +13,16 @@ export interface CountResult {
 
 export class ResponseFormatter {
   /**
+   * Get standard CORS headers for all responses
+   */
+  private static getCorsHeaders(): Record<string, string> {
+    return {
+      'Content-Type': 'application/json',
+      'Access-Control-Expose-Headers': 'Content-Range'
+    }
+  }
+
+  /**
    * Format query results according to PostgREST conventions
    */
   static formatSelectResponse(
@@ -20,10 +30,7 @@ export class ResponseFormatter {
     query: ParsedQuery,
     totalCount?: CountResult
   ): FormattedResponse {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Access-Control-Expose-Headers': 'Content-Range'
-    }
+    const headers = { ...this.getCorsHeaders() }
 
     // Handle count header
     if (totalCount && query.count) {
@@ -70,7 +77,7 @@ export class ResponseFormatter {
     query: ParsedQuery
   ): FormattedResponse {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...this.getCorsHeaders(),
     }
 
     let status = 201
@@ -112,7 +119,7 @@ export class ResponseFormatter {
     query: ParsedQuery
   ): FormattedResponse {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...this.getCorsHeaders(),
     }
 
     let status = 200
@@ -139,7 +146,7 @@ export class ResponseFormatter {
     query: ParsedQuery
   ): FormattedResponse {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...this.getCorsHeaders(),
     }
 
     let status = 200
@@ -166,7 +173,7 @@ export class ResponseFormatter {
     functionName: string
   ): FormattedResponse {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...this.getCorsHeaders(),
     }
 
     return {
@@ -184,7 +191,7 @@ export class ResponseFormatter {
     statusCode: number = 400
   ): FormattedResponse {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...this.getCorsHeaders(),
     }
 
     // PostgREST error format
