@@ -25,6 +25,24 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 }
 
+export class NoOpStorageAdapter implements StorageAdapter {
+  async getItem(key: string): Promise<string | null> {
+    return null
+  }
+
+  async setItem(key: string, value: string): Promise<void> {
+    // No-op for Node.js environments
+  }
+
+  async removeItem(key: string): Promise<void> {
+    // No-op for Node.js environments
+  }
+
+  async clear(): Promise<void> {
+    // No-op for Node.js environments
+  }
+}
+
 export class IndexedDBAdapter implements StorageAdapter {
   private dbName = 'supabase-lite-auth'
   private version = 1
@@ -166,7 +184,24 @@ export class AuthStorage {
   private namespace: string
 
   constructor(adapter?: StorageAdapter, namespace: string = 'supabase-lite-auth') {
-    this.adapter = adapter || new IndexedDBAdapter()
+    // Auto-detect environment and choose appropriate adapter
+    if (adapter) {
+      this.adapter = adapter
+    } else {
+      // Check if we're in a browser environment with IndexedDB support
+      const hasIndexedDB = typeof indexedDB !== 'undefined'
+      const hasLocalStorage = typeof localStorage !== 'undefined'
+      
+      if (hasIndexedDB) {
+        this.adapter = new IndexedDBAdapter()
+      } else if (hasLocalStorage) {
+        console.log('IndexedDB not available, falling back to localStorage')
+        this.adapter = new LocalStorageAdapter()
+      } else {
+        // Fallback for Node.js environments - use a no-op adapter
+        this.adapter = new NoOpStorageAdapter()
+      }
+    }
     this.namespace = namespace
   }
 
@@ -235,12 +270,17 @@ export class AuthStorage {
 
 export class CrossTabSync {
   private static instance: CrossTabSync
-  private channel: BroadcastChannel
+  private channel: BroadcastChannel | null
   private listeners: Set<(event: any) => void> = new Set()
 
   constructor(channelName: string = 'supabase-lite-auth-sync') {
-    this.channel = new BroadcastChannel(channelName)
-    this.channel.addEventListener('message', this.handleMessage.bind(this))
+    // Only create BroadcastChannel in browser environments
+    if (typeof BroadcastChannel !== 'undefined') {
+      this.channel = new BroadcastChannel(channelName)
+      this.channel.addEventListener('message', this.handleMessage.bind(this))
+    } else {
+      this.channel = null
+    }
   }
 
   static getInstance(): CrossTabSync {
@@ -262,10 +302,14 @@ export class CrossTabSync {
   }
 
   broadcast(type: string, payload: any): void {
-    this.channel.postMessage({ type, payload, timestamp: Date.now() })
+    if (this.channel) {
+      this.channel.postMessage({ type, payload, timestamp: Date.now() })
+    }
   }
 
   close(): void {
-    this.channel.close()
+    if (this.channel) {
+      this.channel.close()
+    }
   }
 }
