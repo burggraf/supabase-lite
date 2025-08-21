@@ -163,16 +163,6 @@ export class DatabaseManager {
         CREATE SCHEMA IF NOT EXISTS storage;
         CREATE SCHEMA IF NOT EXISTS realtime;
         CREATE SCHEMA IF NOT EXISTS extensions;
-        
-        -- Basic posts table for demo (without user reference)
-        CREATE TABLE IF NOT EXISTS public.posts (
-          id SERIAL PRIMARY KEY,
-          title VARCHAR(200) NOT NULL,
-          content TEXT,
-          author_email VARCHAR(255),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
       `;
     }
   }

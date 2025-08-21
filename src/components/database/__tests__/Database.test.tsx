@@ -77,8 +77,8 @@ describe('Database', () => {
         column_count: '5'
       },
       {
-        name: 'posts',
-        description: 'Blog posts',
+        name: 'identities',
+        description: 'User identities',
         estimated_rows: '50',
         size_bytes: '16384',
         column_count: '8'
@@ -91,9 +91,9 @@ describe('Database', () => {
     
     await waitFor(() => {
       expect(screen.getByText('users')).toBeInTheDocument();
-      expect(screen.getByText('posts')).toBeInTheDocument();
+      expect(screen.getByText('identities')).toBeInTheDocument();
       expect(screen.getByText('User accounts')).toBeInTheDocument();
-      expect(screen.getByText('Blog posts')).toBeInTheDocument();
+      expect(screen.getByText('User identities')).toBeInTheDocument();
       expect(screen.getByText('150')).toBeInTheDocument();
       expect(screen.getByText('50')).toBeInTheDocument();
       expect(screen.getByText('5 columns')).toBeInTheDocument();
@@ -122,8 +122,8 @@ describe('Database', () => {
         column_count: '5'
       },
       {
-        name: 'posts',
-        description: 'Blog posts',
+        name: 'identities',
+        description: 'User identities',
         estimated_rows: '50',
         size_bytes: '16384',
         column_count: '8'
@@ -136,14 +136,14 @@ describe('Database', () => {
     
     await waitFor(() => {
       expect(screen.getByText('users')).toBeInTheDocument();
-      expect(screen.getByText('posts')).toBeInTheDocument();
+      expect(screen.getByText('identities')).toBeInTheDocument();
     });
     
     const searchInput = screen.getByPlaceholderText('Search for a table');
     fireEvent.change(searchInput, { target: { value: 'user' } });
     
     expect(screen.getByText('users')).toBeInTheDocument();
-    expect(screen.queryByText('posts')).not.toBeInTheDocument();
+    expect(screen.queryByText('identities')).not.toBeInTheDocument();
   });
 
   it('should display filtered empty state when search has no results', async () => {

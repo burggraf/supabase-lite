@@ -183,7 +183,7 @@ describe('useSQLSnippets', () => {
       const { result } = renderHook(() => useSQLSnippets());
 
       const tabId = result.current.tabs[0].id;
-      const newQuery = 'SELECT * FROM posts';
+      const newQuery = 'SELECT * FROM auth.users';
 
       act(() => {
         result.current.updateTabQuery(tabId, newQuery);
@@ -294,8 +294,8 @@ describe('useSQLSnippets', () => {
       // Create a snippet first
       const tabId = result.current.tabs[0].id;
       act(() => {
-        result.current.updateTabQuery(tabId, 'SELECT * FROM posts');
-        result.current.updateTabName(tabId, 'Post Query');
+        result.current.updateTabQuery(tabId, 'SELECT * FROM auth.users');
+        result.current.updateTabName(tabId, 'User Query');
       });
       
       act(() => {
@@ -316,8 +316,8 @@ describe('useSQLSnippets', () => {
       });
 
       expect(result.current.tabs[1]).toMatchObject({
-        name: 'Post Query',
-        query: 'SELECT * FROM posts',
+        name: 'User Query',
+        query: 'SELECT * FROM auth.users',
         isDirty: false,
         snippetId: snippetId,
       });

@@ -349,8 +349,8 @@ describe('DatabaseManager', () => {
 
     it('should return table list', async () => {
       const mockTables = [
-        { schema: 'public', name: 'users', rows: 10 },
-        { schema: 'public', name: 'posts', rows: 5 },
+        { schema: 'auth', name: 'users', rows: 10 },
+        { schema: 'auth', name: 'identities', rows: 5 },
       ]
       global.mockPGliteInstance.query.mockResolvedValue({
         rows: mockTables,

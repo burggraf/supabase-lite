@@ -203,8 +203,8 @@ describe('useDatabase', () => {
 
     it('should get table list', async () => {
       const mockTables = [
-        { name: 'users', schema: 'public', rows: 10 },
-        { name: 'posts', schema: 'public', rows: 5 },
+        { name: 'users', schema: 'auth', rows: 10 },
+        { name: 'identities', schema: 'auth', rows: 5 },
       ]
       mockDbManager.getTableList.mockResolvedValue(mockTables)
       
