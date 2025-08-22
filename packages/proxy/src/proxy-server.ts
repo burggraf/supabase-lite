@@ -1,27 +1,66 @@
 import express from 'express';
 import cors from 'cors';
 import { WebSocketClient, ProxyRequest } from './websocket-client.js';
+import { PostMessageClient } from './postmessage-client.js';
 
 export interface ProxyServerOptions {
   port: number;
-  websocketUrl: string;
+  targetUrl: string;
+  mode?: 'websocket' | 'postmessage' | 'auto';
   enableLogging?: boolean;
+}
+
+// Abstract interface for both client types
+interface ProxyClient {
+  connect(): Promise<void>;
+  disconnect(): void;
+  sendRequest(request: ProxyRequest): Promise<any>;
+  isConnected(): boolean;
 }
 
 export class ProxyServer {
   private app: express.Application;
-  private wsClient: WebSocketClient;
+  private client: ProxyClient;
   private server: any;
   private enableLogging: boolean;
+  private connectionMode: 'websocket' | 'postmessage';
 
   constructor(private options: ProxyServerOptions) {
     this.app = express();
-    this.wsClient = new WebSocketClient(options.websocketUrl);
     this.enableLogging = options.enableLogging ?? true;
+    
+    // Determine connection mode
+    this.connectionMode = this.determineConnectionMode();
+    
+    // Create appropriate client
+    if (this.connectionMode === 'websocket') {
+      // Convert target URL to WebSocket URL for development
+      const wsUrl = this.options.targetUrl.replace('http', 'ws').replace(':5173', ':5176');
+      this.client = new WebSocketClient(wsUrl);
+      console.log(`🔌 Using WebSocket mode: ${wsUrl}`);
+    } else {
+      this.client = new PostMessageClient(this.options.targetUrl);
+      console.log(`🔗 Using PostMessage mode: ${this.options.targetUrl}`);
+    }
     
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
+  }
+
+  private determineConnectionMode(): 'websocket' | 'postmessage' {
+    // Manual override
+    if (this.options.mode && this.options.mode !== 'auto') {
+      return this.options.mode;
+    }
+    
+    // Auto-detect based on URL
+    const url = this.options.targetUrl.toLowerCase();
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      return 'websocket';
+    } else {
+      return 'postmessage';
+    }
   }
 
   private setupMiddleware(): void {
@@ -63,24 +102,26 @@ export class ProxyServer {
     this.app.get('/health', (req, res) => {
       res.json({
         status: 'healthy',
-        websocketConnected: this.wsClient.isConnected(),
+        connected: this.client.isConnected(),
+        mode: this.connectionMode,
+        targetUrl: this.options.targetUrl,
         timestamp: new Date().toISOString(),
-        version: '1.0.0'
+        version: '1.0.1'
       });
     });
 
-    // Catch-all route for proxying to WebSocket
+    // Catch-all route for proxying requests
     this.app.all('*', async (req, res) => {
       try {
-        // Check if WebSocket is connected
-        if (!this.wsClient.isConnected()) {
-          await this.wsClient.connect();
+        // Check if client is connected
+        if (!this.client.isConnected()) {
+          await this.client.connect();
         }
 
         // Generate unique request ID
         const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        // Prepare request for WebSocket
+        // Prepare request for client
         const proxyRequest: ProxyRequest = {
           id: requestId,
           method: req.method,
@@ -90,11 +131,11 @@ export class ProxyServer {
         };
 
         if (this.enableLogging) {
-          console.log(`🔄 Proxying ${req.method} ${req.url} (ID: ${requestId})`);
+          console.log(`🔄 Proxying ${req.method} ${req.url} via ${this.connectionMode} (ID: ${requestId})`);
         }
 
-        // Send request via WebSocket and wait for response
-        const response = await this.wsClient.sendRequest(proxyRequest);
+        // Send request via client and wait for response
+        const response = await this.client.sendRequest(proxyRequest);
 
         if (this.enableLogging) {
           console.log(`✅ Response received for ${requestId} (status: ${response.status})`);
@@ -103,7 +144,7 @@ export class ProxyServer {
         // Set response headers
         if (response.headers) {
           Object.entries(response.headers).forEach(([key, value]) => {
-            res.setHeader(key, value);
+            res.setHeader(key, String(value));
           });
         }
 
@@ -155,14 +196,15 @@ export class ProxyServer {
   async start(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        // Connect to WebSocket first
-        this.wsClient.connect()
+        // Connect to client first
+        this.client.connect()
           .then(() => {
             // Start HTTP server
             this.server = this.app.listen(this.options.port, () => {
               console.log(`🚀 Supabase Lite Proxy Server running on port ${this.options.port}`);
-              console.log(`📡 WebSocket bridge connected to ${this.options.websocketUrl}`);
+              console.log(`📡 ${this.connectionMode} bridge connected to ${this.options.targetUrl}`);
               console.log(`🌐 Proxy URL: http://localhost:${this.options.port}`);
+              console.log(`💡 Use this URL in your Supabase client: http://localhost:${this.options.port}`);
               resolve();
             });
 
@@ -176,10 +218,12 @@ export class ProxyServer {
           })
           .catch(reject);
 
-        // Handle WebSocket disconnections
-        this.wsClient.on('disconnect', () => {
-          console.log('⚠️ WebSocket disconnected. Requests will fail until reconnection.');
-        });
+        // Handle client disconnections (if it's a WebSocket client)
+        if (this.connectionMode === 'websocket') {
+          (this.client as any).on('disconnect', () => {
+            console.log('⚠️ WebSocket disconnected. Requests will fail until reconnection.');
+          });
+        }
 
       } catch (error) {
         reject(error);
@@ -191,7 +235,7 @@ export class ProxyServer {
     return new Promise((resolve) => {
       console.log('🛑 Stopping proxy server...');
       
-      this.wsClient.disconnect();
+      this.client.disconnect();
       
       if (this.server) {
         this.server.close(() => {
