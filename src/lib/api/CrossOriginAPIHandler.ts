@@ -27,11 +27,17 @@ export class CrossOriginAPIHandler {
     'http://localhost:5174',
     'http://localhost:5175',
     'http://localhost:5176',
-    'http://localhost:8765', // PostMessage bridge port (can vary)
-    'http://localhost:8766',
-    'http://localhost:8767',
-    'http://localhost:8768',
-    'http://localhost:8769'
+    // PostMessage bridge ports (proxy can use any available port)
+    ...Array.from({length: 20}, (_, i) => `http://localhost:${8765 + i}`),
+    // Additional common development ports
+    'http://localhost:3000',
+    'http://localhost:3001', 
+    'http://localhost:4000',
+    'http://localhost:4001',
+    'http://localhost:8000',
+    'http://localhost:8001',
+    'http://localhost:9000',
+    'http://localhost:9001'
   ];
 
   constructor() {
