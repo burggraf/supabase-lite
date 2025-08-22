@@ -2,13 +2,21 @@
 
 import { Command } from 'commander';
 import { ProxyServer } from './proxy-server.js';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get package.json to read version
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
 
 const program = new Command();
 
 program
   .name('supabase-lite-proxy')
   .description('HTTP proxy server for Supabase Lite browser instances')
-  .version('1.0.0');
+  .version(packageJson.version);
 
 program
   .command('start')

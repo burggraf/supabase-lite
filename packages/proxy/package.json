@@ -1,6 +1,6 @@
 {
   "name": "supabase-lite-proxy",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "HTTP proxy server that bridges external API calls to browser-based Supabase Lite instances. Supports WebSocket mode for local development and PostMessage mode for production deployments.",
   "type": "module",
   "main": "dist/index.js",
