@@ -112,10 +112,19 @@ function websocketBridge(): Plugin {
 
       // HTTP middleware
       server.middlewares.use(async (req, res, next) => {
-        // Only handle API routes
-        if (req.url?.startsWith('/rest/') || 
-            req.url?.startsWith('/auth/') || 
-            req.url?.startsWith('/health')) {
+        // Check if this is an API route we should handle
+        const isApiRoute = req.url && (
+          // Standard API routes
+          req.url.startsWith('/rest/') || 
+          req.url.startsWith('/auth/') || 
+          req.url.startsWith('/health') ||
+          req.url.startsWith('/projects') ||
+          req.url.startsWith('/debug/sql') ||
+          // Project-prefixed API routes (pattern: /:projectId/rest|auth|debug)
+          /^\/[^\/]+\/(rest|auth|debug)\//.test(req.url)
+        );
+        
+        if (isApiRoute) {
           
           // Handle CORS preflight
           if (req.method === 'OPTIONS') {
@@ -148,6 +157,14 @@ function websocketBridge(): Plugin {
             // Get request body
             const body = await getRequestBody(req)
             
+            // Extract project context from URL for better logging
+            const urlPath = req.url || '';
+            const projectMatch = urlPath.match(/^\/([^\/]+)\/(rest|auth|debug)\//);
+            const projectContext = projectMatch ? {
+              projectId: projectMatch[1],
+              apiType: projectMatch[2]
+            } : null;
+            
             // Generate unique request ID
             const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
             
@@ -168,16 +185,21 @@ function websocketBridge(): Plugin {
               method: req.method,
               url: req.url,
               headers: req.headers,
-              body: body
+              body: body,
+              projectContext // Include project context in the message
             }
             
             browserSocket.send(JSON.stringify(message))
-            console.log(`📤 Forwarded ${req.method} ${req.url} to browser (ID: ${requestId})`)
+            
+            const contextStr = projectContext 
+              ? ` [${projectContext.projectId}/${projectContext.apiType}]` 
+              : '';
+            console.log(`📤 Forwarded ${req.method} ${req.url}${contextStr} to browser (ID: ${requestId})`)
             
             // Wait for response from browser
             const response = await responsePromise
             
-            console.log(`📥 Received response for ${requestId} (status: ${response.status})`)
+            console.log(`📥 Received response for ${requestId}${contextStr} (status: ${response.status})`)
             
             // Send response back to client
             res.writeHead(response.status || 200, {
