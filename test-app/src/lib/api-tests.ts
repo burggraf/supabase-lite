@@ -69,12 +69,13 @@ export const testCategories: TestCategory[] = [
         method: 'POST',
         endpoint: '/rest/v1/products',
         body: {
+          product_id: 999,
           product_name: 'Test Product',
           unit_price: 25.99,
           units_in_stock: 100,
           category_id: 1,
           supplier_id: 1,
-          discontinued: false
+          discontinued: 0
         },
         description: 'Add a new product to the catalog'
       },
@@ -120,21 +121,21 @@ export const testCategories: TestCategory[] = [
         id: 'complex-filter',
         name: 'Complex Filter + Sort',
         method: 'GET',
-        endpoint: '/rest/v1/products?discontinued=eq.false&order=unit_price.desc&limit=10',
+        endpoint: '/rest/v1/products?discontinued=eq.0&order=unit_price.desc&limit=10',
         description: 'Active products sorted by price (highest first)'
       },
       {
         id: 'multiple-values',
         name: 'Multiple Values (IN)',
         method: 'GET',
-        endpoint: '/rest/v1/products?category_id=in.(1,2,3)',
+        endpoint: '/rest/v1/products?category_id=in.1,2,3',
         description: 'Products from categories 1, 2, or 3'
       },
       {
         id: 'low-stock',
         name: 'Low Stock Alert',
         method: 'GET',
-        endpoint: '/rest/v1/products?units_in_stock=lte.10&discontinued=eq.false',
+        endpoint: '/rest/v1/products?units_in_stock=lte.10&discontinued=eq.0',
         description: 'Find active products with low inventory (≤10 units)'
       }
     ]
