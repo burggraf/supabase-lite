@@ -66,8 +66,8 @@ export function TestButton({ test, onResponse, isLoading = false, existingRespon
       
       <p className="text-xs text-gray-600">{test.description}</p>
       
-      <div className="flex items-center justify-between">
-        <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
+      <div className="space-y-2">
+        <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono block">
           {test.endpoint}
         </code>
         
@@ -75,7 +75,7 @@ export function TestButton({ test, onResponse, isLoading = false, existingRespon
           size="sm"
           onClick={handleClick}
           disabled={isExecuting || isLoading}
-          className="ml-2"
+          className="w-full"
         >
           {isExecuting ? 'Running...' : 'Test'}
         </Button>
