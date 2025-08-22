@@ -34,10 +34,11 @@ export class ProxyServer {
     
     // Create appropriate client
     if (this.connectionMode === 'websocket') {
-      // Convert target URL to WebSocket URL for development
-      const wsUrl = this.options.targetUrl.replace('http', 'ws').replace(':5173', ':5176');
+      // WebSocket bridge always connects to local WebSocket server
+      // This server bridges to your existing browser tab (regardless of dev/prod)
+      const wsUrl = 'ws://localhost:5176';
       this.client = new WebSocketClient(wsUrl);
-      console.log(`🔌 Using WebSocket mode: ${wsUrl}`);
+      console.log(`🔌 Using WebSocket mode: ${wsUrl} (bridging to ${this.options.targetUrl})`);
     } else {
       this.client = new PostMessageClient(this.options.targetUrl);
       console.log(`🔗 Using PostMessage mode: ${this.options.targetUrl}`);
@@ -54,13 +55,10 @@ export class ProxyServer {
       return this.options.mode;
     }
     
-    // Auto-detect based on URL
-    const url = this.options.targetUrl.toLowerCase();
-    if (url.includes('localhost') || url.includes('127.0.0.1')) {
-      return 'websocket';
-    } else {
-      return 'postmessage';
-    }
+    // Always prefer WebSocket for connecting to existing browser tab
+    // PostMessage creates a NEW instance (wrong behavior)
+    // WebSocket connects to existing tab (correct behavior)
+    return 'websocket';
   }
 
   private setupMiddleware(): void {

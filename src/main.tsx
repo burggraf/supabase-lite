@@ -4,20 +4,19 @@ import './index.css'
 import App from './App.tsx'
 import { CrossOriginAPIHandler } from './lib/api/CrossOriginAPIHandler'
 
-// WebSocket bridge client for external API access (development only)
+// WebSocket bridge client for external API access
 function initializeWebSocketBridge() {
-  // WebSocket bridge is ONLY for development to enable external API access (curl, etc.)
-  // In production, MSW still works perfectly for all in-browser API calls!
+  // WebSocket bridge enables external API access via proxy
+  // Works in both development and production modes
   const isDevelopment = import.meta.env.DEV;
   
-  if (!isDevelopment) {
-    console.log('🌐 Production mode: MSW active for in-browser API calls');
-    console.log('📱 External API access (curl) not available in browser-only deployment');
-    return;
+  if (isDevelopment) {
+    console.log('🛠️ Development mode: Enabling WebSocket bridge for external API access');
+  } else {
+    console.log('🌐 Production mode: Enabling WebSocket bridge for proxy connections');
   }
   
-  // Development mode: Enable WebSocket bridge for external API access
-  console.log('🛠️ Development mode: Enabling WebSocket bridge for external API access');
+  // Always enable WebSocket bridge for proxy functionality
   
   // Store reference to native WebSocket before MSW can override it
   const NativeWebSocket = window.WebSocket

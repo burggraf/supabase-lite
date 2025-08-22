@@ -15,7 +15,7 @@ program
   .description('Start the proxy server')
   .option('-p, --port <port>', 'Port to run the proxy server on', '54321')
   .option('-t, --target <url>', 'Target Supabase Lite URL', 'https://supabase-lite.pages.dev')
-  .option('-m, --mode <mode>', 'Connection mode: websocket, postmessage, or auto', 'auto')
+  .option('-m, --mode <mode>', 'Connection mode: websocket, postmessage, or auto', 'websocket')
   .option('-q, --quiet', 'Disable request logging', false)
   .action(async (options) => {
     const port = parseInt(options.port, 10);
@@ -53,7 +53,7 @@ program
       console.log('📋 Usage:');
       console.log(`   Set your Supabase URL to: http://localhost:${port}`);
       console.log(`   Target: ${options.target}`);
-      console.log(`   Mode: ${options.mode} (auto-detected or manual)`);
+      console.log(`   Mode: ${options.mode} (connects to existing browser tab)`);
       console.log('   Press Ctrl+C to stop the server');
     } catch (error: any) {
       console.error('❌ Failed to start proxy server:', error.message);
@@ -65,7 +65,7 @@ program
   .command('test')
   .description('Test connection to Supabase Lite')
   .option('-t, --target <url>', 'Target Supabase Lite URL to test', 'https://supabase-lite.pages.dev')
-  .option('-m, --mode <mode>', 'Test mode: websocket, postmessage, or auto', 'auto')
+  .option('-m, --mode <mode>', 'Test mode: websocket, postmessage, or auto', 'websocket')
   .action(async (options) => {
     console.log(`🔍 Testing connection to ${options.target} (mode: ${options.mode})...`);
     
