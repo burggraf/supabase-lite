@@ -1,0 +1,49 @@
+{
+  "name": "@supabase-lite/proxy",
+  "version": "1.0.0",
+  "description": "HTTP proxy server that bridges external API calls to browser-based Supabase Lite instance",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "supabase-lite-proxy": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch"
+  },
+  "keywords": [
+    "supabase",
+    "proxy",
+    "websocket",
+    "bridge",
+    "database",
+    "pglite"
+  ],
+  "author": "Supabase Lite Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.1",
+    "ws": "^8.18.3",
+    "cors": "^2.8.5",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/ws": "^8.5.13",
+    "@types/cors": "^2.8.19",
+    "@types/node": "^24.2.1",
+    "typescript": "~5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/supabase-lite.git",
+    "directory": "packages/proxy"
+  }
+}
