@@ -1,7 +1,7 @@
 {
   "name": "supabase-lite-proxy",
-  "version": "1.1.0",
-  "description": "HTTP proxy server that bridges external API calls to browser-based Supabase Lite instances via WebSocket (development) or PostMessage (production)",
+  "version": "1.2.0",
+  "description": "HTTP proxy server that bridges external API calls to browser-based Supabase Lite instances. Supports WebSocket mode for local development and PostMessage mode for production deployments.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -18,9 +18,13 @@
     "supabase",
     "proxy",
     "websocket",
+    "postmessage",
     "bridge",
     "database",
-    "pglite"
+    "pglite",
+    "cross-origin",
+    "browser-database",
+    "local-development"
   ],
   "author": "burggraf",
   "license": "MIT",
@@ -44,7 +48,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/burggraf/supabase-lite.git",
+    "url": "git+https://github.com/burggraf/supabase-lite.git",
     "directory": "packages/proxy"
   },
   "homepage": "https://github.com/burggraf/supabase-lite#readme",
