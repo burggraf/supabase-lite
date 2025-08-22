@@ -185,11 +185,17 @@ export class CrossOriginAPIHandler {
     } else {
       // For other endpoints, use fetch to forward to MSW handlers
       try {
-        const response = await fetch(request.path, {
+        const fetchOptions: RequestInit = {
           method: request.method,
-          headers: request.headers,
-          body: request.body ? JSON.stringify(request.body) : undefined
-        });
+          headers: request.headers
+        };
+        
+        // Only add body for methods that support it
+        if (request.body && (request.method === 'POST' || request.method === 'PATCH' || request.method === 'PUT')) {
+          fetchOptions.body = JSON.stringify(request.body);
+        }
+        
+        const response = await fetch(request.path, fetchOptions);
         
         const responseText = await response.text();
         let responseData;
