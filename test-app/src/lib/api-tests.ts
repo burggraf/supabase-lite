@@ -24,7 +24,16 @@ export interface TestCategory {
   tests: ApiTest[];
 }
 
-const BASE_URL = 'http://localhost:5175';
+// Default base URL - can be overridden dynamically
+let BASE_URL = 'http://localhost:5175';
+
+export function setBaseUrl(url: string) {
+  BASE_URL = url;
+}
+
+export function getBaseUrl(): string {
+  return BASE_URL;
+}
 
 // Test Categories
 export const testCategories: TestCategory[] = [

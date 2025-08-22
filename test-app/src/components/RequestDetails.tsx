@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { getBaseUrl } from '../lib/api-tests';
 import type { ApiTest } from '../lib/api-tests';
 
 interface RequestDetailsProps {
@@ -33,7 +34,7 @@ export function RequestDetails({ test }: RequestDetailsProps) {
   };
 
   const generateCurlCommand = (test: ApiTest): string => {
-    const baseUrl = 'http://localhost:5175';
+    const baseUrl = getBaseUrl();
     let curl = `curl -X ${test.method} "${baseUrl}${test.endpoint}"`;
     
     // Add headers
@@ -77,7 +78,7 @@ export function RequestDetails({ test }: RequestDetailsProps) {
             <h3 className="text-sm font-semibold text-gray-700 mb-2">Request URL</h3>
             <div className="bg-gray-100 p-3 rounded font-mono text-sm break-all">
               <span className="text-blue-600">{test.method}</span>{' '}
-              <span>http://localhost:5175{test.endpoint}</span>
+              <span>{getBaseUrl()}{test.endpoint}</span>
             </div>
           </div>
 

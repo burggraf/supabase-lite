@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { testCategories, executeApiTest } from '../lib/api-tests';
+import { testCategories, executeApiTest, getBaseUrl } from '../lib/api-tests';
 import { TestButton } from './TestButton';
 import { ResponseDisplay } from './ResponseDisplay';
 import { RequestDetails } from './RequestDetails';
+import { ApiSettings } from './ApiSettings';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -14,6 +15,7 @@ export function ApiTesting() {
   const [activeResponse, setActiveResponse] = useState<ApiResponse | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['basic-crud']));
   const [isRunningAll, setIsRunningAll] = useState(false);
+  const [currentBaseUrl, setCurrentBaseUrl] = useState(getBaseUrl());
 
   const handleTestResponse = (testId: string, response: ApiResponse) => {
     setResponses(prev => ({ ...prev, [testId]: response }));
@@ -76,15 +78,27 @@ export function ApiTesting() {
 
   const stats = getTestStats();
 
+  const handleSettingsChange = () => {
+    setCurrentBaseUrl(getBaseUrl());
+    // Clear existing responses when URL changes
+    setResponses({});
+    setActiveResponse(null);
+    setSelectedTest(null);
+  };
+
   return (
     <div className="h-screen flex flex-col">
-      {/* Instructions and Notice */}
+      {/* Instructions and Settings */}
       <div className="p-4 border-b space-y-3">
+        {/* API Settings */}
+        <ApiSettings onSettingsChange={handleSettingsChange} />
+        
         <Alert variant="warning">
           <AlertDescription>
             <strong>Prerequisites:</strong> 
             <ol className="list-decimal list-inside mt-1 space-y-1">
-              <li>Open the main Supabase Lite app at <a href="http://localhost:5175" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">localhost:5175</a> to initialize the database connection</li>
+              <li>Configure the correct port above and test the connection</li>
+              <li>Open the main Supabase Lite app at <a href={currentBaseUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{currentBaseUrl}</a> to initialize the database connection</li>
               <li>Load the Northwind database from the Database tab → Seed Data section</li>
               <li>Return here to run comprehensive API tests on the Northwind data</li>
             </ol>
