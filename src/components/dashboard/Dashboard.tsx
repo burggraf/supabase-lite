@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,17 +8,26 @@ import { projectManager } from '@/lib/projects/ProjectManager';
 import type { Project } from '@/lib/projects/ProjectManager';
 
 export function Dashboard() {
-  const { isConnected, isConnecting, error, getConnectionInfo, switchToProject, connectionId, getTableList } = useDatabase();
+  const { isConnected, isConnecting, error, getConnectionInfo, switchToProject, connectionId, getTableList, initialize, close } = useDatabase();
   const connectionInfo = getConnectionInfo();
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isProjectsLoading, setIsProjectsLoading] = useState(false);
   const [tableCount, setTableCount] = useState(0);
+  const hasInitialized = useRef(false);
 
   // Load projects on component mount and create first project if none exist
   useEffect(() => {
+    // Prevent multiple initializations (infinite loop protection)
+    if (hasInitialized.current) {
+      console.log('🔍 Dashboard: Already initialized, skipping');
+      return;
+    }
+
     const initializeProjects = async () => {
       console.log('🔍 Dashboard: Starting project initialization');
+      hasInitialized.current = true;
+      
       const allProjects = projectManager.getProjects();
       
       // If no projects exist, create a default one
@@ -47,22 +56,15 @@ export function Dashboard() {
         setProjects(allProjects);
         setActiveProject(active);
         
-        // Switch to active project's database if there is one
-        if (active) {
-          try {
-            console.log('🔍 Dashboard: Switching to active project database:', active.databasePath);
-            await switchToProject(active.databasePath);
-          } catch (error) {
-            console.error('🔍 Dashboard: Failed to switch to active project database:', error);
-          }
-        } else {
-          console.warn('🔍 Dashboard: No active project found - this should not happen');
-        }
+        // Note: Database initialization is handled by useDatabase hook
+        // We don't need to call switchToProject here as useDatabase hook
+        // will automatically connect to the active project's database
+        console.log('🔍 Dashboard: Active project found, useDatabase hook will handle connection:', active?.name);
       }
     };
 
     initializeProjects();
-  }, []); // Remove switchToProject dependency to avoid loops
+  }, []); // Empty dependency array to run only once
 
   // Update table count when database connection changes
   useEffect(() => {
@@ -89,10 +91,16 @@ export function Dashboard() {
     try {
       const newProject = await projectManager.createProject(name);
       
-      // Switch to the new project's database
-      if (switchToProject) {
-        await switchToProject(newProject.databasePath);
-      }
+      // For NEW projects, use initialize directly (don't switch/close existing DB)
+      console.log('🔍 Dashboard: Initializing new project database directly:', newProject.databasePath);
+      await initialize(newProject.databasePath);
+      
+      // CRITICAL: Force a close/reconnect cycle to simulate page refresh behavior
+      // This is what makes persistence work - reconnecting to an existing database
+      console.log('🔍 Dashboard: Forcing close/reconnect cycle to establish proper persistence...');
+      await close(); // Close current connection
+      await initialize(newProject.databasePath); // Reconnect to the same database
+      console.log('🔍 Dashboard: Close/reconnect cycle completed - persistence should now work');
       
       // Refresh projects list
       setProjects(projectManager.getProjects());

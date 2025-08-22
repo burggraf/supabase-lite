@@ -28,9 +28,9 @@ export function useDatabase() {
       return;
     }
     
-    // Prevent multiple simultaneous initialization attempts
+    // Prevent multiple simultaneous initialization attempts (React StrictMode protection)
     if (isConnectingRef.current) {
-      console.log('🚀 Initialization already in progress, skipping');
+      console.log('🚀 Initialization already in progress, skipping to prevent double initialization');
       return;
     }
     
@@ -55,21 +55,41 @@ export function useDatabase() {
       setIsConnecting(false);
       isConnectingRef.current = false;
     }
-  }, [connectionId, isConnected]);
+  }, []); // Remove circular dependencies!
 
+  // Single useEffect to handle database initialization
   useEffect(() => {
-    console.log('🚀 useDatabase useEffect triggered - auto-initializing with active project database');
+    console.log('🚀🚀🚀 useDatabase useEffect triggered - checking for active project database');
+    
+    // Skip if already connecting or connected
+    if (isConnectingRef.current || isConnecting) {
+      console.log('🚀🚀🚀 Already connecting, skipping initialization');
+      return;
+    }
     
     // Get active project and initialize with its database path
     const activeProject = projectManager.getActiveProject();
     if (activeProject) {
-      console.log('🚀 Auto-initializing with active project database:', activeProject.databasePath);
+      // Skip if already connected to this project's database
+      if (connectionId === activeProject.databasePath && isConnected) {
+        console.log('🚀🚀🚀 Already connected to active project database, skipping');
+        return;
+      }
+      
+      console.log('🚀🚀🚀 Active project found, initializing database:', {
+        name: activeProject.name,
+        id: activeProject.id,
+        databasePath: activeProject.databasePath,
+        currentConnectionId: connectionId,
+        isConnected: isConnected
+      });
       initialize(activeProject.databasePath);
     } else {
-      console.log('🚀 No active project found, initializing with default database');
-      initialize();
+      console.log('🚀🚀🚀 No active project found, waiting for project creation');
+      // Don't initialize with default database - wait for project creation
+      // The Dashboard component will handle creating the first project and calling switchToProject
     }
-  }, [initialize]);
+  }, []); // Only run once on mount
 
   const executeQuery = useCallback(async (sql: string): Promise<QueryResult> => {
     console.log('🚀 executeQuery called:', { isConnected, sql: sql.slice(0, 100) + '...' });
@@ -127,39 +147,70 @@ export function useDatabase() {
     return await dbManager.getTableList();
   }, []);
 
+  const close = useCallback(async () => {
+    console.log('🔴 close called - closing database connection');
+    setIsConnecting(true);
+    try {
+      await dbManager.close();
+      setIsConnected(false);
+      setConnectionId(null);
+      setError(null);
+      console.log('🔴 Database connection closed successfully');
+    } catch (err) {
+      console.error('🔴 Failed to close database:', err);
+      setError(err as Error);
+    } finally {
+      setIsConnecting(false);
+    }
+  }, []);
+
   const switchToProject = useCallback(async (databasePath: string) => {
-    console.log('🚀 switchToProject called:', { databasePath, currentConnectionId: connectionId });
+    console.log('🔴🔴🔴 switchToProject called:', { 
+      databasePath, 
+      currentConnectionId: connectionId,
+      isConnected,
+      isConnecting 
+    });
     
     // If we're already connected to this database, skip the switch
     if (connectionId === databasePath && isConnected) {
-      console.log('🚀 Already connected to target database, skipping switch');
+      console.log('🔴🔴🔴 Already connected to target database, skipping switch');
       return;
     }
     
+    console.log('🔴🔴🔴 Proceeding with database switch...');
     setIsConnecting(true);
     setError(null);
     
     try {
-      console.log('🚀 Switching database via dbManager to:', databasePath);
+      console.log('🔴🔴🔴 Calling dbManager.switchDatabase with:', databasePath);
       await dbManager.switchDatabase(databasePath);
-      console.log('🚀 Database switch successful');
+      console.log('🔴🔴🔴 dbManager.switchDatabase completed successfully');
       
       // Verify the switch worked by checking connection info
       const newConnectionInfo = dbManager.getConnectionInfo();
-      console.log('🚀 New database connection info:', newConnectionInfo);
+      console.log('🔴🔴🔴 New database connection info after switch:', newConnectionInfo);
+      
+      // Verify we can query the database
+      try {
+        const tableList = await dbManager.getTableList();
+        console.log('🔴🔴🔴 Tables in switched database:', tableList);
+      } catch (tableError) {
+        console.error('🔴🔴🔴 Error querying tables after switch:', tableError);
+      }
       
       setIsConnected(true);
       setConnectionId(databasePath); // Use database path as connection ID
-      console.log('🚀 ConnectionId updated to:', databasePath);
+      console.log('🔴🔴🔴 Hook state updated - connectionId set to:', databasePath);
     } catch (err) {
-      console.error('🚀 Database switch failed:', err);
+      console.error('🔴🔴🔴 Database switch failed:', err);
       const error = err instanceof Error ? err.message : 'Failed to switch database';
       setError(error);
       setIsConnected(false);
       setConnectionId(''); // Clear connection ID on failure
       throw err;
     } finally {
-      console.log('🚀 Database switch cleanup');
+      console.log('🔴🔴🔴 Database switch cleanup, setting isConnecting to false');
       setIsConnecting(false);
     }
   }, [connectionId, isConnected]);
@@ -169,7 +220,8 @@ export function useDatabase() {
     isConnecting,
     error,
     connectionId, // Expose connection ID for other hooks to track changes
-    initialize,
+    initialize, // Export initialize for new project creation
+    close, // Export close for forcing reconnection cycles
     executeQuery,
     executeScript,
     getConnectionInfo,
