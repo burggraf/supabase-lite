@@ -37,10 +37,10 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="py-8">
         <Tabs defaultValue="overview" className="w-full">
           {/* Beautiful Modern Tab Navigation */}
-          <div className="mb-8">
+          <div className="mb-8 max-w-7xl mx-auto px-6">
             <TabsList className="inline-flex h-12 items-center justify-center rounded-xl bg-white p-1 shadow-lg border border-gray-200/50 backdrop-blur-sm">
               <TabsTrigger 
                 value="overview"
@@ -96,7 +96,7 @@ function App() {
 
           {/* Tab Contents */}
           <TabsContent value="overview" className="mt-0">
-            <div className="space-y-6">
+            <div className="max-w-7xl mx-auto px-6 space-y-6">
               {/* Hero Section */}
               <Card className="relative overflow-hidden bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white border-0 shadow-2xl">
                 <div className="absolute inset-0 opacity-10">
@@ -190,7 +190,8 @@ function App() {
 
           {/* Other tabs with consistent beautiful styling */}
           <TabsContent value="auth" className="mt-0">
-            <Card className="shadow-2xl border-0 bg-gradient-to-br from-white to-emerald-50 overflow-hidden">
+            <div className="max-w-7xl mx-auto px-6">
+              <Card className="shadow-2xl border-0 bg-gradient-to-br from-white to-emerald-50 overflow-hidden">
               <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-8 text-white">
                 <div className="flex items-center space-x-4">
                   <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
@@ -216,9 +217,11 @@ function App() {
                 </div>
               </CardContent>
             </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="database" className="mt-0">
+            <div className="max-w-7xl mx-auto px-6">
             <Card className="shadow-2xl border-0 bg-gradient-to-br from-white to-purple-50 overflow-hidden">
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-8 text-white">
                 <div className="flex items-center space-x-4">
@@ -245,9 +248,11 @@ function App() {
                 </div>
               </CardContent>
             </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="storage" className="mt-0">
+            <div className="max-w-7xl mx-auto px-6">
             <Card className="shadow-2xl border-0 bg-gradient-to-br from-white to-orange-50 overflow-hidden">
               <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-8 text-white">
                 <div className="flex items-center space-x-4">
@@ -274,10 +279,11 @@ function App() {
                 </div>
               </CardContent>
             </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="api" className="mt-0">
-            <div className="bg-white rounded-lg shadow-xl border">
+            <div className="bg-white rounded-lg shadow-xl border mx-2">
               <ApiTesting />
             </div>
           </TabsContent>
