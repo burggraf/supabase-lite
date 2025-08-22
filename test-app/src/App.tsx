@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card"
+import { Card, CardContent } from "./components/ui/card"
+import { ApiTesting } from "./components/ApiTesting"
 
 function App() {
   return (
@@ -276,32 +277,9 @@ function App() {
           </TabsContent>
 
           <TabsContent value="api" className="mt-0">
-            <Card className="shadow-2xl border-0 bg-gradient-to-br from-white to-cyan-50 overflow-hidden">
-              <div className="bg-gradient-to-r from-cyan-500 to-cyan-600 p-8 text-white">
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-bold">API Testing Suite</h2>
-                    <p className="text-cyan-100 text-lg mt-1">Advanced REST endpoint testing and API validation tools</p>
-                  </div>
-                </div>
-              </div>
-              <CardContent className="p-12 text-center">
-                <div className="max-w-md mx-auto">
-                  <div className="w-24 h-24 bg-cyan-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-12 h-12 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 mb-4">API Testing Module</h3>
-                  <p className="text-gray-600 leading-relaxed text-lg">Professional API testing environment with request builders, response validators, endpoint monitoring, and comprehensive API documentation tools.</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="h-screen bg-white rounded-lg shadow-xl border overflow-hidden">
+              <ApiTesting />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
