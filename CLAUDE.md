@@ -13,6 +13,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run test:ui` - Run tests with UI interface
 - `npm run test:coverage` - Run tests with coverage report
 
+### Testing Single Components/Files
+- `npm test -- src/components/ComponentName` - Run tests for specific component
+- `npm test -- --run src/hooks/useHook.test.ts` - Run specific test file
+- `npm test -- --grep "specific test name"` - Run tests matching pattern
+
+### External Testing with test-app
+- `cd test-app && npm install && npm run dev` - Start external test application on port 5176
+- Test Supabase.js integration against local Supabase Lite instance
+- Demonstrates cross-origin API access and authentication flows
+
 ## CRITICAL REQUIREMENT: 100% BROWSER-ONLY OPERATION
 
 **🚨 ABSOLUTE RULE: This application MUST run entirely in the browser with NO server-side components, NO Node.js code execution, and NO file system access. NEVER add Node.js adapters, server-side storage, or file-based solutions. The MSW HTTP middleware runs in Vite's dev server context but ALL application logic must be browser-compatible.**
@@ -22,12 +32,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Core Database Layer
 - **PGlite Integration**: WebAssembly PostgreSQL running in browser with IndexedDB persistence
 - **DatabaseManager** (`src/lib/database/connection.ts`): Singleton class managing PGlite instance
-  - Handles initialization, schema setup, query execution, and connection state
-  - Auto-creates `auth`, `storage`, `realtime` schemas and sample `users`/`posts` tables
+  - **Connection Pooling**: Manages multiple project databases with automatic cleanup and efficient switching
+  - **Schema Management**: Auto-initializes Supabase-compatible schemas (auth, storage, realtime) from seed SQL files
+  - **Query Caching**: Built-in query caching with TTL and LRU eviction for performance optimization
+  - **Performance Metrics**: Tracks query execution times and provides performance analytics
   - Provides database size calculation and table listing functionality
 - **useDatabase Hook** (`src/hooks/useDatabase.ts`): React hook wrapping DatabaseManager
   - Manages connection state, error handling, and provides query execution interface
   - Includes useQueryHistory hook for localStorage-based query history (limit: 100 queries)
+- **ProjectManager**: Multi-project management with localStorage persistence for seamless project switching
 
 ### Application Structure
 - **Single Page Application**: React 19 + TypeScript + Vite
@@ -42,20 +55,35 @@ src/
 ├── components/
 │   ├── ui/              # shadcn/ui components (button, card, badge)
 │   ├── dashboard/       # Dashboard and Sidebar components
-│   └── sql-editor/      # SQLEditor component
+│   ├── sql-editor/      # SQLEditor component
+│   └── table-editor/    # Full-featured data table with filtering and CRUD
 ├── hooks/               # Custom React hooks for database operations
 ├── lib/
 │   ├── database/        # DatabaseManager and PGlite connection
+│   ├── infrastructure/ # Logger, ErrorHandler, ConfigManager
 │   ├── constants.ts     # App config, navigation items, query examples
 │   └── utils.ts         # Utility functions
+├── mocks/               # MSW handlers and API bridge implementations
 └── types/               # TypeScript interfaces for DB operations
 ```
 
 ### Key Design Patterns
-- **Singleton Database Manager**: Single PGlite instance shared across application
+- **Singleton Managers**: 
+  - `DatabaseManager`: Single PGlite instance with connection pooling for multi-project support
+  - `ProjectManager`: Multi-project management with localStorage persistence
+  - `AuthBridge`: Authentication service integration with JWT token management
+  - `ConfigManager`: Type-safe application configuration management
+- **Bridge Pattern**: 
+  - `SupabaseAPIBridge`: Basic PostgREST compatibility for REST API calls
+  - `EnhancedSupabaseAPIBridge`: Advanced query parsing with full PostgREST syntax support
+  - `AuthBridge`: Authentication endpoint handling with Supabase auth compatibility
+- **Infrastructure Layer**: 
+  - `Logger`: Structured logging with performance tracking
+  - `ErrorHandler`: Centralized error handling with user-friendly messages
+  - `APIBridge`: HTTP request abstraction with retry logic
 - **Hook-based State**: Database operations wrapped in React hooks
 - **Component Composition**: UI built with reusable shadcn/ui components
-- **Local Persistence**: IndexedDB for database, localStorage for query history
+- **Local Persistence**: IndexedDB for database, localStorage for query history and project settings
 - **Error Boundary Pattern**: Try-catch with user-friendly error states
 
 ### Technology Stack Details
@@ -211,14 +239,22 @@ describe('formatBytes', () => {
 ### Test Configuration Files:
 - `vitest.config.ts` - Vitest configuration with React support
 - `src/test/setup.ts` - Global test setup and mocks
+  - PGlite, crypto, localStorage, and performance APIs are globally mocked
+  - MSW server configuration with proper cleanup between tests
+  - React Testing Library custom render with providers
 - Tests run with jsdom environment for React component testing
 
 ### MSW (Mock Service Worker) Integration
 - **Browser-based API mocking**: MSW handlers in `src/mocks/` provide Supabase-compatible REST API
-- **SupabaseAPIBridge**: Bridge class that translates REST API calls to PGlite database operations
+- **EnhancedSupabaseAPIBridge**: Advanced bridge class with full PostgREST compatibility
+  - Complete query syntax support (filters, ordering, pagination, range queries)
+  - Row Level Security (RLS) implementation with user context extraction
+  - Project resolution pattern with `withProjectResolution()` higher-order function
+- **Cross-Origin API Handler**: HTTP middleware for external app integration with 100% Supabase.js compatibility
 - **Test isolation**: MSW server setup in test/setup.ts with proper cleanup between tests
 - **API endpoints**: PostgREST-compatible endpoints for GET, POST, PATCH, DELETE operations
-- **Authentication simulation**: Mock auth endpoints for signup, signin, token refresh
+- **Authentication simulation**: Mock auth endpoints for signup, signin, token refresh with JWT token management
+- **Debug Endpoints**: SQL execution endpoint for development and testing (`/debug/sql`)
 
 ## Quick Database Access
 
