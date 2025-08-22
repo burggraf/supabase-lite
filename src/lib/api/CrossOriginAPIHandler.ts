@@ -175,13 +175,6 @@ export class CrossOriginAPIHandler {
         status: result.status,
         headers: result.headers
       };
-    } else if (pathParts[0] === 'auth') {
-      // Auth endpoint
-      return {
-        data: { message: 'Auth endpoint not yet implemented in cross-origin handler' },
-        status: 501,
-        headers: { 'Content-Type': 'application/json' }
-      };
     } else {
       // For other endpoints, use fetch to forward to MSW handlers
       try {
