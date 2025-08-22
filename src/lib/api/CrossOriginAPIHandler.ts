@@ -26,7 +26,12 @@ export class CrossOriginAPIHandler {
     'http://localhost:5173', // Your test app
     'http://localhost:5174',
     'http://localhost:5175',
-    'http://localhost:5176'
+    'http://localhost:5176',
+    'http://localhost:8765', // PostMessage bridge port (can vary)
+    'http://localhost:8766',
+    'http://localhost:8767',
+    'http://localhost:8768',
+    'http://localhost:8769'
   ];
 
   constructor() {
