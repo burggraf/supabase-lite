@@ -77,17 +77,25 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
     return HttpResponse.json(response.data, {
       status: response.status,
       headers: {
-        ...response.headers
+        ...response.headers,
+        'Access-Control-Allow-Origin': '*'
       }
     })
   } catch (error: any) {
     console.error(`❌ MSW: GET error for ${params.table}:`, error)
+    
+    // Fallback for unexpected errors (should not happen with Enhanced Bridge)
     return HttpResponse.json(
-      { message: error.message },
       { 
-        status: 400,
+        code: 'PGRST100',
+        message: error.message || 'Request failed',
+        details: null,
+        hint: null
+      },
+      { 
+        status: 500,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Access-Control-Allow-Origin': '*'
         }
       }
@@ -110,17 +118,23 @@ const createRestPostHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
         'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
       }
     })
   } catch (error: any) {
     return HttpResponse.json(
-      { message: error.message },
       { 
-        status: 400,
+        code: 'PGRST100',
+        message: error.message || 'Request failed',
+        details: null,
+        hint: null
+      },
+      { 
+        status: 500,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Access-Control-Allow-Origin': '*'
         }
       }
@@ -143,17 +157,23 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
         'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
       }
     })
   } catch (error: any) {
     return HttpResponse.json(
-      { message: error.message },
       { 
-        status: 400,
+        code: 'PGRST100',
+        message: error.message || 'Request failed',
+        details: null,
+        hint: null
+      },
+      { 
+        status: 500,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Access-Control-Allow-Origin': '*'
         }
       }
@@ -174,17 +194,23 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
         'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
       }
     })
   } catch (error: any) {
     return HttpResponse.json(
-      { message: error.message },
       { 
-        status: 400,
+        code: 'PGRST100',
+        message: error.message || 'Request failed',
+        details: null,
+        hint: null
+      },
+      { 
+        status: 500,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Access-Control-Allow-Origin': '*'
         }
       }
@@ -205,17 +231,23 @@ const createRpcHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
         'Access-Control-Allow-Methods': 'POST'
       }
     })
   } catch (error: any) {
     return HttpResponse.json(
-      { message: error.message },
       { 
-        status: 400,
+        code: 'PGRST100',
+        message: error.message || 'Request failed',
+        details: null,
+        hint: null
+      },
+      { 
+        status: 500,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Access-Control-Allow-Origin': '*'
         }
       }

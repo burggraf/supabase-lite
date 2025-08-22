@@ -68,15 +68,23 @@ export class QueryParser {
       query.order = this.parseOrder(order)
     }
 
-    // Parse pagination
+    // Parse pagination with validation
     const limit = params.get('limit')
     if (limit) {
-      query.limit = parseInt(limit, 10)
+      const parsedLimit = parseInt(limit, 10)
+      if (isNaN(parsedLimit) || parsedLimit < 0) {
+        throw new Error(`Invalid limit parameter: "${limit}". Must be a non-negative integer.`)
+      }
+      query.limit = parsedLimit
     }
 
     const offset = params.get('offset')
     if (offset) {
-      query.offset = parseInt(offset, 10)
+      const parsedOffset = parseInt(offset, 10)
+      if (isNaN(parsedOffset) || parsedOffset < 0) {
+        throw new Error(`Invalid offset parameter: "${offset}". Must be a non-negative integer.`)
+      }
+      query.offset = parsedOffset
     }
 
     // Parse Prefer header

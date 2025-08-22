@@ -632,11 +632,9 @@ export class DatabaseManager {
         duration 
       });
       
-      throw createDatabaseError(
-        'Database query failed', 
-        error as Error, 
-        `Query: ${sql.slice(0, 100)}${sql.length > 100 ? '...' : ''}`
-      );
+      // Preserve the original PGlite error for PostgREST error mapping
+      // Don't wrap it in a generic infrastructure error
+      throw error;
     }
   }
 
