@@ -8,6 +8,7 @@ A browser-based implementation of the Supabase stack using PGlite as the core Po
 - **Dashboard**: Overview of your local database and connection status
 - **SQL Editor**: Full-featured SQL editor with syntax highlighting, query execution, and history
 - **PGlite Integration**: PostgreSQL database running in WebAssembly with IndexedDB persistence
+- **Cross-Origin Proxy**: HTTP proxy server for external API access with 100% Supabase.js compatibility
 
 ### 🚧 Coming Soon
 - **Table Editor**: Visual spreadsheet-like interface for data management
@@ -153,6 +154,90 @@ npm run dev
 ```
 
 Then visit `http://localhost:5176` to see the test interface.
+
+## 🌐 Cross-Origin API Access with Supabase Lite Proxy
+
+For external applications that need to connect to Supabase Lite from different origins (e.g., deployed apps connecting to your local development environment), use the **Supabase Lite Proxy**.
+
+### What is the Proxy?
+
+The Supabase Lite Proxy is an HTTP server that bridges external API requests to your browser-based Supabase Lite instance via WebSocket communication. This enables full cross-origin API access and 100% Supabase.js compatibility.
+
+### Installation & Setup
+
+1. **Install the proxy globally**:
+   ```bash
+   npm install -g supabase-lite-proxy
+   ```
+
+2. **Start Supabase Lite in your browser**:
+   ```bash
+   npm run dev
+   # Open http://localhost:5173 in your browser
+   ```
+
+3. **Start the proxy server**:
+   ```bash
+   supabase-lite-proxy start
+   ```
+   
+   The proxy will run on `http://localhost:54321` by default.
+
+### Using with Supabase.js
+
+Once the proxy is running, any external application can connect to Supabase Lite using the standard Supabase.js client:
+
+```javascript
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  'http://localhost:54321',  // Proxy URL
+  'any-key-works-locally'    // Any key (not validated in local development)
+)
+
+// Use Supabase.js normally - 100% compatible!
+const { data, error } = await supabase
+  .from('users')
+  .select('*')
+
+const { data: insertData, error: insertError } = await supabase
+  .from('products')
+  .insert({ name: 'New Product', price: 29.99 })
+```
+
+### Proxy Commands
+
+- **Start server**: `supabase-lite-proxy start [options]`
+  - `-p, --port <port>`: Port to run on (default: 54321)
+  - `-q, --quiet`: Disable request logging
+- **Test connection**: `supabase-lite-proxy test`
+- **Help**: `supabase-lite-proxy --help`
+
+### How It Works
+
+```
+External App ─HTTP─> Proxy Server ─WebSocket─> Browser ─PGlite─> Database
+```
+
+1. **External App**: Your application makes standard HTTP requests to the proxy
+2. **Proxy Server**: Forwards requests via WebSocket to the browser
+3. **Browser**: MSW intercepts and processes requests through PGlite
+4. **Response**: Data flows back through the same chain
+
+### Architecture Benefits
+
+- **100% Supabase.js Compatibility**: No changes needed in your existing code
+- **Cross-Origin Support**: Connect from any domain to your local development environment
+- **Reliable Connection**: Automatic reconnection with exponential backoff
+- **Full API Support**: All REST, Auth, and Debug endpoints work seamlessly
+
+### Use Cases
+
+- **Remote Testing**: Test deployed applications against local database
+- **Team Development**: Share your local Supabase Lite with team members
+- **CI/CD Integration**: Run tests against browser-based database in pipelines
+- **Mobile App Development**: Connect mobile apps to local development environment
+- **API Integration Testing**: Validate external service integrations
 
 ## 🌐 Deployment
 
