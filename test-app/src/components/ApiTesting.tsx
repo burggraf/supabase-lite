@@ -87,7 +87,7 @@ export function ApiTesting() {
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="flex flex-col">
       {/* Instructions and Settings */}
       <div className="p-4 border-b space-y-3">
         {/* API Settings */}

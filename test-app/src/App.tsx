@@ -277,7 +277,7 @@ function App() {
           </TabsContent>
 
           <TabsContent value="api" className="mt-0">
-            <div className="h-screen bg-white rounded-lg shadow-xl border overflow-hidden">
+            <div className="bg-white rounded-lg shadow-xl border">
               <ApiTesting />
             </div>
           </TabsContent>
