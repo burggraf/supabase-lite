@@ -58,7 +58,7 @@ export function ResponseDisplay({ response, testName }: ResponseDisplayProps) {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div>
       {/* Header */}
       <div className="border-b p-4 bg-gray-50">
         <div className="flex items-center justify-between mb-2">
@@ -116,9 +116,9 @@ export function ResponseDisplay({ response, testName }: ResponseDisplayProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div>
         {activeTab === 'response' && (
-          <div className="h-full flex flex-col">
+          <div>
             <div className="flex justify-between items-center p-2 border-b bg-gray-50">
               <span className="text-sm font-medium">Response Body</span>
               <Button
@@ -129,7 +129,7 @@ export function ResponseDisplay({ response, testName }: ResponseDisplayProps) {
                 {copied ? 'Copied!' : 'Copy'}
               </Button>
             </div>
-            <div className="flex-1 overflow-auto p-4">
+            <div className="p-4">
               <pre className="text-sm font-mono whitespace-pre-wrap break-words">
                 {formatData(response.data)}
               </pre>
@@ -138,7 +138,7 @@ export function ResponseDisplay({ response, testName }: ResponseDisplayProps) {
         )}
 
         {activeTab === 'headers' && (
-          <div className="h-full flex flex-col">
+          <div>
             <div className="flex justify-between items-center p-2 border-b bg-gray-50">
               <span className="text-sm font-medium">Response Headers</span>
               <Button
@@ -149,7 +149,7 @@ export function ResponseDisplay({ response, testName }: ResponseDisplayProps) {
                 {copied ? 'Copied!' : 'Copy'}
               </Button>
             </div>
-            <div className="flex-1 overflow-auto p-4">
+            <div className="p-4">
               <div className="space-y-2">
                 {Object.entries(response.headers).map(([key, value]) => (
                   <div key={key} className="flex gap-2">

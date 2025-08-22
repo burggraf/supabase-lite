@@ -51,7 +51,7 @@ export function RequestDetails({ test }: RequestDetailsProps) {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div>
       {/* Header */}
       <div className="border-b p-4 bg-gray-50">
         <div className="flex items-center justify-between mb-2">
@@ -71,7 +71,7 @@ export function RequestDetails({ test }: RequestDetailsProps) {
       </div>
 
       {/* Request Details */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="p-4">
         <div className="space-y-6">
           {/* URL */}
           <div>

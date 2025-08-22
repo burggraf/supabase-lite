@@ -112,7 +112,7 @@ export function ApiTesting() {
       </div>
 
       {/* Main Layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex">
         {/* Left Panel - Test Categories */}
         <div className="w-1/3 border-r bg-gray-50 overflow-auto">
           <div className="p-4">
@@ -205,29 +205,25 @@ export function ApiTesting() {
           </div>
         </div>
 
-        {/* Right Panel - Split between Request Details and Response */}
+        {/* Right Panel - Request Details and Response */}
         <div className="flex-1 flex flex-col">
-          {/* Request Details (Top) */}
-          <div className="h-1/2 border-b">
-            <div className="h-full">
-              <div className="bg-gray-100 px-4 py-2 border-b">
-                <h3 className="font-medium text-gray-900">Request Details</h3>
-              </div>
-              <RequestDetails test={selectedTest} />
+          {/* Request Details */}
+          <div>
+            <div className="bg-gray-100 px-4 py-2 border-b">
+              <h3 className="font-medium text-gray-900">Request Details</h3>
             </div>
+            <RequestDetails test={selectedTest} />
           </div>
 
-          {/* Response Display (Bottom) */}
-          <div className="h-1/2">
-            <div className="h-full">
-              <div className="bg-gray-100 px-4 py-2 border-b">
-                <h3 className="font-medium text-gray-900">Response</h3>
-              </div>
-              <ResponseDisplay 
-                response={activeResponse} 
-                testName={selectedTest?.name}
-              />
+          {/* Response Display */}
+          <div>
+            <div className="bg-gray-100 px-4 py-2 border-b">
+              <h3 className="font-medium text-gray-900">Response</h3>
             </div>
+            <ResponseDisplay 
+              response={activeResponse} 
+              testName={selectedTest?.name}
+            />
           </div>
         </div>
       </div>

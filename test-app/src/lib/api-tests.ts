@@ -25,7 +25,7 @@ export interface TestCategory {
 }
 
 // Default base URL - can be overridden dynamically
-let BASE_URL = 'http://localhost:5175';
+let BASE_URL = 'http://localhost:8080';
 
 export function setBaseUrl(url: string) {
   BASE_URL = url;
