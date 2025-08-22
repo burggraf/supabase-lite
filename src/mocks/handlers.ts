@@ -3,6 +3,8 @@ import { SupabaseAPIBridge } from './supabase-bridge'
 import { EnhancedSupabaseAPIBridge } from './enhanced-bridge'
 import { AuthBridge } from '../lib/auth/AuthBridge'
 import { resolveAndSwitchToProject, normalizeApiPath } from './project-resolver'
+import { projectManager } from '../lib/projects/ProjectManager'
+import { DatabaseManager } from '../lib/database/connection'
 
 const bridge = new SupabaseAPIBridge()
 const enhancedBridge = new EnhancedSupabaseAPIBridge()
@@ -16,6 +18,7 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
   handler: T
 ): T {
   return (async ({ params, request, ...rest }) => {
+    const startTime = performance.now();
     const url = new URL(request.url);
     
     // Resolve and switch to the appropriate project database
@@ -35,18 +38,26 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
       );
     }
 
-    console.log(`🔄 MSW: Using project "${resolution.projectName}" (${resolution.projectId}) for ${url.pathname}`);
+    const resolutionTime = performance.now() - startTime;
+    console.log(`🔄 MSW: Using project "${resolution.projectName}" (${resolution.projectId}) for ${url.pathname} (${resolutionTime.toFixed(1)}ms)`);
 
     // Normalize the URL to remove project identifier for the handler
     const normalizedUrl = normalizeApiPath(url);
     const normalizedRequest = new Request(normalizedUrl, request);
 
     // Call the original handler with normalized parameters
-    return handler({ 
+    const handleStartTime = performance.now();
+    const result = await handler({ 
       params, 
       request: normalizedRequest, 
       ...rest 
     } as any);
+    
+    const totalTime = performance.now() - startTime;
+    const handleTime = performance.now() - handleStartTime;
+    console.log(`✅ MSW: Request completed in ${totalTime.toFixed(1)}ms (resolution: ${resolutionTime.toFixed(1)}ms, handler: ${handleTime.toFixed(1)}ms)`);
+    
+    return result;
   }) as T;
 }
 
@@ -571,6 +582,153 @@ export const handlers = [
           'Access-Control-Allow-Origin': '*'
         }
       })
+    }
+  })),
+
+  // Projects listing endpoint
+  http.get('/projects', () => {
+    try {
+      const projects = projectManager.getProjects();
+      const activeProject = projectManager.getActiveProject();
+      
+      return HttpResponse.json({
+        projects: projects.map(project => ({
+          id: project.id,
+          name: project.name,
+          isActive: project.isActive,
+          createdAt: project.createdAt.toISOString(),
+          lastAccessed: project.lastAccessed.toISOString()
+        })),
+        activeProjectId: activeProject?.id || null,
+        totalCount: projects.length
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    } catch (error) {
+      console.error('❌ MSW: Error listing projects:', error);
+      return HttpResponse.json({
+        error: 'Failed to list projects',
+        message: (error as Error).message
+      }, {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  }),
+
+  // Debug SQL endpoint - uses active project by default
+  http.post('/debug/sql', withProjectResolution(async ({ request }: any) => {
+    try {
+      const { sql } = await request.json();
+      
+      if (!sql || typeof sql !== 'string') {
+        return HttpResponse.json({
+          error: 'SQL query is required',
+          message: 'Request body must contain a "sql" field with a valid SQL string'
+        }, {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+
+      console.log('🐛 MSW: Executing debug SQL:', sql);
+      
+      const dbManager = DatabaseManager.getInstance();
+      if (!dbManager.isConnected()) {
+        throw new Error('Database is not connected');
+      }
+
+      const result = await dbManager.query(sql);
+      
+      console.log('✅ MSW: Debug SQL executed successfully:', { rowCount: result.rows?.length || 0 });
+      
+      return HttpResponse.json({
+        data: result.rows || [],
+        rowCount: result.rows?.length || 0,
+        executedAt: new Date().toISOString()
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ MSW: Debug SQL error:', error);
+      return HttpResponse.json({
+        error: 'SQL execution failed',
+        message: (error as Error).message
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  })),
+
+  // Debug SQL endpoint for specific project
+  http.post('/:projectId/debug/sql', withProjectResolution(async ({ request }: any) => {
+    try {
+      const { sql } = await request.json();
+      
+      if (!sql || typeof sql !== 'string') {
+        return HttpResponse.json({
+          error: 'SQL query is required',
+          message: 'Request body must contain a "sql" field with a valid SQL string'
+        }, {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+
+      console.log('🐛 MSW: Executing debug SQL on specific project:', sql);
+      
+      const dbManager = DatabaseManager.getInstance();
+      if (!dbManager.isConnected()) {
+        throw new Error('Database is not connected');
+      }
+
+      const result = await dbManager.query(sql);
+      
+      console.log('✅ MSW: Debug SQL executed successfully:', { rowCount: result.rows?.length || 0 });
+      
+      return HttpResponse.json({
+        data: result.rows || [],
+        rowCount: result.rows?.length || 0,
+        executedAt: new Date().toISOString()
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ MSW: Debug SQL error:', error);
+      return HttpResponse.json({
+        error: 'SQL execution failed',
+        message: (error as Error).message
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
     }
   })),
 

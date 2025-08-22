@@ -7,16 +7,29 @@ import { logger, logQuery, logError, logPerformance } from '../infrastructure/Lo
 import { createDatabaseError } from '../infrastructure/ErrorHandler';
 import { configManager } from '../infrastructure/ConfigManager';
 
+interface ConnectionPoolEntry {
+  db: PGlite;
+  connectionInfo: DatabaseConnection;
+  lastUsed: number;
+  isInitializing: boolean;
+  initPromise?: Promise<void>;
+}
+
 export class DatabaseManager {
   private static instance: DatabaseManager;
-  private db: PGlite | null = null;
+  private db: PGlite | null = null; // Active connection (for backwards compatibility)
   private isInitialized = false;
-  private connectionInfo: DatabaseConnection | null = null;
+  private connectionInfo: DatabaseConnection | null = null; // Active connection info
   private initializationPromise: Promise<void> | null = null;
   private queryMetrics: QueryMetrics[] = [];
   private queryCache = new Map<string, { result: QueryResult; timestamp: number }>();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private readonly MAX_METRICS = 1000;
+  
+  // Connection pool for multiple database instances
+  private connectionPool = new Map<string, ConnectionPoolEntry>();
+  private readonly MAX_POOL_SIZE = 5;
+  private readonly CONNECTION_TTL = 10 * 60 * 1000; // 10 minutes
 
   private constructor() {}
 
@@ -25,6 +38,178 @@ export class DatabaseManager {
       DatabaseManager.instance = new DatabaseManager();
     }
     return DatabaseManager.instance;
+  }
+
+  /**
+   * Get or create a database connection from the pool
+   */
+  private async getPooledConnection(dataDir: string): Promise<ConnectionPoolEntry> {
+    const existing = this.connectionPool.get(dataDir);
+    
+    if (existing) {
+      // If connection is initializing, wait for it
+      if (existing.isInitializing && existing.initPromise) {
+        await existing.initPromise;
+      }
+      
+      existing.lastUsed = Date.now();
+      logger.debug('Reusing pooled database connection', { dataDir });
+      return existing;
+    }
+
+    // Clean up old connections if pool is full
+    if (this.connectionPool.size >= this.MAX_POOL_SIZE) {
+      await this.cleanupOldConnections();
+    }
+
+    // Create new connection
+    logger.info('Creating new pooled database connection', { dataDir });
+    
+    const entry: ConnectionPoolEntry = {
+      db: null as any, // Will be set during initialization
+      connectionInfo: null as any, // Will be set during initialization
+      lastUsed: Date.now(),
+      isInitializing: true
+    };
+
+    // Add to pool immediately to prevent duplicate creation
+    this.connectionPool.set(dataDir, entry);
+
+    try {
+      // Initialize the connection
+      entry.initPromise = this.initializePooledConnection(entry, dataDir);
+      await entry.initPromise;
+      entry.isInitializing = false;
+      
+      logger.info('Pooled database connection created successfully', { 
+        dataDir, 
+        poolSize: this.connectionPool.size 
+      });
+      
+      return entry;
+    } catch (error) {
+      // Remove failed connection from pool
+      this.connectionPool.delete(dataDir);
+      logger.error('Failed to create pooled database connection', error as Error, { dataDir });
+      throw error;
+    }
+  }
+
+  /**
+   * Initialize a pooled connection
+   */
+  private async initializePooledConnection(entry: ConnectionPoolEntry, dataDir: string): Promise<void> {
+    try {
+      logger.debug('Initializing pooled PGlite connection', { dataDir });
+      
+      const startTime = performance.now();
+      
+      // Create new PGlite instance
+      entry.db = new PGlite(dataDir);
+      
+      // Set connection info
+      entry.connectionInfo = {
+        id: dataDir,
+        host: 'localhost (PGlite)',
+        port: null,
+        database: dataDir,
+        status: 'connected',
+        connectedAt: new Date(),
+        version: 'PGlite',
+        ssl: false
+      };
+
+      const initTime = performance.now() - startTime;
+      
+      // Set up database schema and seeding
+      await this.setupDatabaseSchemas(entry.db, dataDir);
+      
+      const totalTime = performance.now() - startTime;
+      
+      logger.info('Pooled PGlite connection initialized successfully', {
+        dataDir,
+        initTime: `${initTime.toFixed(1)}ms`,
+        totalTime: `${totalTime.toFixed(1)}ms`
+      });
+      
+    } catch (error) {
+      logger.error('Failed to initialize pooled PGlite connection', error as Error, { dataDir });
+      throw createDatabaseError('Failed to initialize pooled database connection', error as Error);
+    }
+  }
+
+  /**
+   * Clean up old connections from the pool
+   */
+  private async cleanupOldConnections(): Promise<void> {
+    const now = Date.now();
+    const connectionsToRemove: string[] = [];
+
+    // Find connections to remove (oldest first, excluding active connection)
+    for (const [dataDir, entry] of this.connectionPool.entries()) {
+      if (dataDir !== this.connectionInfo?.id && 
+          (now - entry.lastUsed) > this.CONNECTION_TTL) {
+        connectionsToRemove.push(dataDir);
+      }
+    }
+
+    // If still too many, remove oldest non-active connections
+    if (this.connectionPool.size - connectionsToRemove.length >= this.MAX_POOL_SIZE) {
+      const sortedConnections = Array.from(this.connectionPool.entries())
+        .filter(([dataDir]) => dataDir !== this.connectionInfo?.id)
+        .sort(([,a], [,b]) => a.lastUsed - b.lastUsed);
+      
+      const additionalToRemove = (this.connectionPool.size - connectionsToRemove.length) - this.MAX_POOL_SIZE + 1;
+      for (let i = 0; i < additionalToRemove && i < sortedConnections.length; i++) {
+        connectionsToRemove.push(sortedConnections[i][0]);
+      }
+    }
+
+    // Remove connections
+    for (const dataDir of connectionsToRemove) {
+      const entry = this.connectionPool.get(dataDir);
+      if (entry) {
+        try {
+          await entry.db.close();
+          logger.debug('Closed old pooled database connection', { dataDir });
+        } catch (error) {
+          logger.warn('Error closing old pooled connection', error as Error, { dataDir });
+        }
+        this.connectionPool.delete(dataDir);
+      }
+    }
+
+    if (connectionsToRemove.length > 0) {
+      logger.info('Cleaned up old database connections', { 
+        removed: connectionsToRemove.length,
+        poolSize: this.connectionPool.size
+      });
+    }
+  }
+
+  /**
+   * Set up database schemas for a pooled connection
+   */
+  private async setupDatabaseSchemas(db: PGlite, dataDir: string): Promise<void> {
+    try {
+      // Temporarily set this.db to the pooled connection for schema initialization
+      const originalDb = this.db;
+      const originalInitialized = this.isInitialized;
+      
+      this.db = db;
+      this.isInitialized = true;
+      
+      // Use existing schema initialization logic
+      await this.initializeSchemas();
+      
+      // Restore original state
+      this.db = originalDb;
+      this.isInitialized = originalInitialized;
+      
+    } catch (error) {
+      logger.error('Failed to set up database schemas for pooled connection', error as Error, { dataDir });
+      throw error;
+    }
   }
 
   public async initialize(customDataDir?: string): Promise<void> {
@@ -79,6 +264,7 @@ export class DatabaseManager {
 
   public async switchDatabase(dataDir: string): Promise<void> {
     const currentDataDir = this.connectionInfo?.id || 'none';
+    const startTime = performance.now();
     
     try {
       console.log('🟠🟠🟠 DatabaseManager.switchDatabase called:', {
@@ -88,7 +274,7 @@ export class DatabaseManager {
         hasDb: !!this.db
       });
       
-      logger.info('Switching database', { 
+      logger.info('Switching database using connection pool', { 
         fromDataDir: currentDataDir, 
         toDataDir: dataDir 
       });
@@ -100,71 +286,51 @@ export class DatabaseManager {
         return;
       }
       
-      console.log('🟠🟠🟠 Proceeding with database switch...');
+      console.log('🟠🟠🟠 Proceeding with database switch using connection pool...');
       
-      // Wait for any pending initialization to complete before switching
-      if (this.initializationPromise) {
-        console.log('🟠🟠🟠 Waiting for pending initialization to complete');
-        try {
-          await this.initializationPromise;
-        } catch (error) {
-          console.warn('🟠🟠🟠 Previous initialization failed during switch, continuing', error);
-          logger.warn('Previous initialization failed during switch, continuing', error as Error);
-        }
-      }
+      // Get or create pooled connection
+      const pooledConnection = await this.getPooledConnection(dataDir);
       
-      // For PGlite, we need to create a new instance rather than switching
-      // Close current database connection
-      if (this.db) {
-        console.log('🟠🟠🟠 Closing current database connection');
-        logger.debug('Closing current database connection');
-        try {
-          await this.db.close();
-          logger.debug('Database connection closed successfully');
-        } catch (error) {
-          logger.error('Error closing database connection', error as Error);
-          // Continue with cleanup even if close fails
-        }
-      }
-
-      // Reset state but don't clear everything yet
-      console.log('🟠🟠🟠 Resetting database state for switch');
-      this.isInitialized = false;
-      this.connectionInfo = null;
+      // Update active connection references
+      this.db = pooledConnection.db;
+      this.connectionInfo = pooledConnection.connectionInfo;
+      this.isInitialized = true;
+      
+      // Clear query metrics and cache for the new connection
+      // (Keep pool-wide but reset for this active connection)
       this.queryMetrics = [];
       this.queryCache.clear();
       this.initializationPromise = null;
-      this.db = null;
       
-      logger.debug('Database state reset, creating new PGlite instance for dataDir', { dataDir });
-
-      // Create new PGlite instance with the target dataDir
-      console.log('🟠🟠🟠 Creating new PGlite instance for dataDir:', dataDir);
-      await this.doInitialization(dataDir);
+      const switchTime = performance.now() - startTime;
       
-      console.log('🟠🟠🟠 Database switch completed successfully:', {
-        newConnectionId: this.connectionInfo?.id
-      });
-      
-      logger.info('Database switched successfully', { 
+      console.log(`🟠🟠🟠 Database switch completed in ${switchTime.toFixed(1)}ms using pooled connection`);
+      logger.info('Database switch completed using pooled connection', {
         fromDataDir: currentDataDir,
         toDataDir: dataDir,
-        newConnectionId: this.connectionInfo?.id 
+        switchTime: `${switchTime.toFixed(1)}ms`,
+        poolSize: this.connectionPool.size
       });
+      
     } catch (error) {
       console.error('🟠🟠🟠 Database switch failed:', error);
       logger.error('Database switch failed', error as Error, { 
         fromDataDir: currentDataDir,
         toDataDir: dataDir 
       });
-      
-      // Ensure we're in a clean state even if switch fails
-      this.isInitialized = false;
-      this.connectionInfo = null;
-      this.db = null;
-      
       throw createDatabaseError('Failed to switch database', error as Error);
     }
+  }
+  
+  // Add a method to get pool status for debugging
+  public getPoolStatus(): { size: number; connections: Array<{ dataDir: string; lastUsed: Date }> } {
+    return {
+      size: this.connectionPool.size,
+      connections: Array.from(this.connectionPool.entries()).map(([dataDir, entry]) => ({
+        dataDir,
+        lastUsed: new Date(entry.lastUsed)
+      }))
+    };
   }
 
   public async deleteDatabase(dataDir: string): Promise<void> {
