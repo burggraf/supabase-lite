@@ -183,7 +183,30 @@ export class CrossOriginAPIHandler {
         headers: { 'Content-Type': 'application/json' }
       };
     } else {
-      throw new Error(`Unsupported endpoint: ${request.path}`);
+      // For other endpoints, use fetch to forward to MSW handlers
+      try {
+        const response = await fetch(request.path, {
+          method: request.method,
+          headers: request.headers,
+          body: request.body ? JSON.stringify(request.body) : undefined
+        });
+        
+        const responseText = await response.text();
+        let responseData;
+        try {
+          responseData = JSON.parse(responseText);
+        } catch {
+          responseData = responseText;
+        }
+        
+        return {
+          data: responseData,
+          status: response.status,
+          headers: Object.fromEntries(response.headers.entries())
+        };
+      } catch (error: any) {
+        throw new Error(`Failed to forward request to ${request.path}: ${error.message}`);
+      }
     }
   }
 }
