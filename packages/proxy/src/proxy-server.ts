@@ -55,10 +55,15 @@ export class ProxyServer {
       return this.options.mode;
     }
     
-    // Always prefer WebSocket for connecting to existing browser tab
-    // PostMessage creates a NEW instance (wrong behavior)
-    // WebSocket connects to existing tab (correct behavior)
-    return 'websocket';
+    // Auto-detect based on URL
+    const url = this.options.targetUrl.toLowerCase();
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      // Use WebSocket for local development (has WebSocket server)
+      return 'websocket';
+    } else {
+      // Use PostMessage + BroadcastChannel for production (connects to existing tab)
+      return 'postmessage';
+    }
   }
 
   private setupMiddleware(): void {

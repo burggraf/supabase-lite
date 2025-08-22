@@ -15,7 +15,7 @@ program
   .description('Start the proxy server')
   .option('-p, --port <port>', 'Port to run the proxy server on', '54321')
   .option('-t, --target <url>', 'Target Supabase Lite URL', 'https://supabase-lite.pages.dev')
-  .option('-m, --mode <mode>', 'Connection mode: websocket, postmessage, or auto', 'websocket')
+  .option('-m, --mode <mode>', 'Connection mode: websocket, postmessage, or auto', 'auto')
   .option('-q, --quiet', 'Disable request logging', false)
   .action(async (options) => {
     const port = parseInt(options.port, 10);

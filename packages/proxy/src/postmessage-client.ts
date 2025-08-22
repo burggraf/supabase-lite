@@ -119,12 +119,6 @@ export class PostMessageClient extends EventEmitter {
         .connected { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .disconnected { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .loading { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
-        iframe {
-            width: 100%;
-            height: 400px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
         .log {
             font-family: monospace;
             font-size: 12px;
@@ -140,14 +134,15 @@ export class PostMessageClient extends EventEmitter {
 <body>
     <div class="container">
         <h1>🔗 Supabase Lite Proxy Bridge</h1>
-        <p>This bridge connects your local proxy to Supabase Lite at:</p>
-        <strong>${this.targetUrl}</strong>
+        <p>This bridge connects your local proxy to your <strong>EXISTING</strong> Supabase Lite tab.</p>
+        <p><strong>Target:</strong> ${this.targetUrl}</p>
+        <p><strong>Method:</strong> PostMessage (connects to your existing browser tab)</p>
         
         <div id="status" class="status loading">
-            🔄 Initializing bridge...
+            🔄 Ready to connect - click button below to establish connection
         </div>
         
-        <iframe id="supabase-iframe" src="${this.targetUrl}" title="Supabase Lite"></iframe>
+        <button id="connectBtn" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 20px 0; font-size: 14px; display: block;">Connect to Existing Tab</button>
         
         <div class="log" id="log">
             <div>🚀 Bridge server started</div>
@@ -155,10 +150,10 @@ export class PostMessageClient extends EventEmitter {
     </div>
 
     <script>
-        const iframe = document.getElementById('supabase-iframe');
         const statusDiv = document.getElementById('status');
         const logDiv = document.getElementById('log');
         
+        let broadcastChannel;
         let isConnected = false;
         const pendingRequests = new Map();
         
@@ -168,36 +163,52 @@ export class PostMessageClient extends EventEmitter {
             logDiv.scrollTop = logDiv.scrollHeight;
         }
         
+        // Manual connection to existing Supabase Lite tab
+        let supabaseWindow = null;
+        
         function updateStatus(connected) {
             isConnected = connected;
             if (connected) {
                 statusDiv.className = 'status connected';
-                statusDiv.innerHTML = '✅ Connected to Supabase Lite';
+                statusDiv.innerHTML = '✅ Connected to your EXISTING Supabase Lite tab';
             } else {
                 statusDiv.className = 'status disconnected';
-                statusDiv.innerHTML = '❌ Disconnected from Supabase Lite';
+                statusDiv.innerHTML = '❌ Not connected - click "Connect to Existing Tab" button';
             }
         }
         
-        // Listen for iframe load
-        iframe.onload = function() {
-            log('📡 Iframe loaded successfully');
-            updateStatus(true);
-        };
+        // Get the connect button from HTML
+        const connectBtn = document.getElementById('connectBtn');
         
-        iframe.onerror = function() {
-            log('❌ Failed to load Supabase Lite iframe');
-            updateStatus(false);
-        };
+        connectBtn.addEventListener('click', function() {
+            try {
+                log('🌐 Opening connection to existing tab: ${this.targetUrl}');
+                supabaseWindow = window.open('${this.targetUrl}', '_blank');
+                
+                if (supabaseWindow) {
+                    log('✅ Tab opened - waiting for connection to existing tab');
+                    isConnected = true;
+                    updateStatus(true);
+                    connectBtn.textContent = 'Connected';
+                    connectBtn.disabled = true;
+                    connectBtn.style.background = '#059669';
+                } else {
+                    throw new Error('Failed to open new tab - check popup blocker');
+                }
+            } catch (error) {
+                log('❌ Failed to connect to existing tab: ' + error.message);
+                updateStatus(false);
+            }
+        });
         
-        // Listen for responses from Supabase Lite iframe
+        // Listen for responses from existing Supabase Lite tab
         window.addEventListener('message', function(event) {
-            // Only accept messages from our target origin
+            // Only accept messages from the target origin
             if (event.origin !== '${new URL(this.targetUrl).origin}') {
                 return;
             }
             
-            log('📥 Received: ' + JSON.stringify(event.data).substring(0, 100) + '...');
+            log('📥 Response from existing tab: ' + JSON.stringify(event.data).substring(0, 100) + '...');
             
             if (event.data.type === 'API_RESPONSE') {
                 const requestId = event.data.data.requestId;
@@ -224,14 +235,17 @@ export class PostMessageClient extends EventEmitter {
                 const response = await fetch('/api/request');
                 if (response.ok) {
                     const request = await response.json();
-                    if (request) {
-                        log('📤 Sending: ' + request.data.method + ' ' + request.data.path);
+                    if (request && supabaseWindow && isConnected) {
+                        log('📤 Sending to existing tab: ' + request.data.method + ' ' + request.data.path);
                         
                         // Store pending request
                         pendingRequests.set(request.data.requestId, request);
                         
-                        // Forward to Supabase Lite iframe
-                        iframe.contentWindow.postMessage(request, '${this.targetUrl}');
+                        // Send to existing Supabase Lite tab via PostMessage
+                        supabaseWindow.postMessage({
+                            type: 'API_REQUEST',
+                            data: request.data
+                        }, '${new URL(this.targetUrl).origin}');
                     }
                 }
             } catch (error) {
@@ -242,12 +256,8 @@ export class PostMessageClient extends EventEmitter {
             setTimeout(pollForRequests, 100);
         }
         
-        // Start polling after iframe loads
-        iframe.onload = function() {
-            log('📡 Iframe loaded, starting request polling');
-            updateStatus(true);
-            pollForRequests();
-        };
+        // Start polling immediately
+        pollForRequests();
     </script>
 </body>
 </html>`;
