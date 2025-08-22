@@ -1,4 +1,5 @@
 import type { ParsedQuery } from './QueryParser'
+import { PostgRESTErrorMapper } from './PostgRESTErrorMapper'
 
 export interface FormattedResponse {
   data: any
@@ -187,25 +188,22 @@ export class ResponseFormatter {
    * Format error response in PostgREST format
    */
   static formatErrorResponse(
-    error: Error,
-    statusCode: number = 400
+    error: Error | any,
+    statusCode?: number
   ): FormattedResponse {
-    const headers: Record<string, string> = {
-      ...this.getCorsHeaders(),
-    }
-
-    // PostgREST error format
-    const errorData = {
-      message: error.message,
-      details: error.message,
-      hint: null,
-      code: this.getErrorCode(error, statusCode)
-    }
-
+    // Use PostgRESTErrorMapper for proper error handling
+    const errorResponse = PostgRESTErrorMapper.mapError(error)
+    
+    // Override status code if explicitly provided
+    const finalStatus = statusCode ?? errorResponse.status
+    
     return {
-      data: errorData,
-      status: statusCode,
-      headers
+      data: errorResponse.error,
+      status: finalStatus,
+      headers: {
+        ...this.getCorsHeaders(),
+        ...errorResponse.headers
+      }
     }
   }
 
@@ -247,42 +245,6 @@ export class ResponseFormatter {
     })
   }
 
-  /**
-   * Get appropriate error code based on error and status
-   */
-  private static getErrorCode(error: Error, statusCode: number): string {
-    // Map common errors to PostgREST error codes
-    if (error.message.includes('duplicate key')) {
-      return 'PGRST202'
-    }
-    
-    if (error.message.includes('foreign key')) {
-      return 'PGRST203'
-    }
-    
-    if (error.message.includes('not found')) {
-      return 'PGRST116'
-    }
-
-    if (error.message.includes('permission denied')) {
-      return 'PGRST301'
-    }
-
-    // Default error codes based on status
-    switch (statusCode) {
-      case 400: return 'PGRST000'
-      case 401: return 'PGRST100'
-      case 403: return 'PGRST301'
-      case 404: return 'PGRST116'
-      case 406: return 'PGRST105'
-      case 409: return 'PGRST109'
-      case 415: return 'PGRST114'
-      case 416: return 'PGRST103'
-      case 422: return 'PGRST200'
-      case 500: return 'PGRST000'
-      default: return 'PGRST000'
-    }
-  }
 
   /**
    * Calculate total count for pagination
