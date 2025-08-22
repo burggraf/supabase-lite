@@ -7,16 +7,18 @@ import { CrossOriginAPIHandler } from './lib/api/CrossOriginAPIHandler'
 // WebSocket bridge client for external API access
 function initializeWebSocketBridge() {
   // WebSocket bridge enables external API access via proxy
-  // Works in both development and production modes
+  // Only enable in development mode (production uses PostMessage only)
   const isDevelopment = import.meta.env.DEV;
   
   if (isDevelopment) {
     console.log('🛠️ Development mode: Enabling WebSocket bridge for external API access');
+    // WebSocket bridge setup (development only)
+    setupWebSocketBridge();
   } else {
-    console.log('🌐 Production mode: Enabling WebSocket bridge for proxy connections');
+    console.log('🌐 Production mode: WebSocket bridge disabled (using PostMessage for proxy connections)');
   }
   
-  // Always enable WebSocket bridge for proxy functionality
+  function setupWebSocketBridge() {
   
   // Store reference to native WebSocket before MSW can override it
   const NativeWebSocket = window.WebSocket
@@ -146,6 +148,7 @@ function initializeWebSocketBridge() {
   
   // Initial connection
   connect()
+  } // End of setupWebSocketBridge function
 }
 
 // Start MSW for browser-based API simulation and cross-origin API handler
