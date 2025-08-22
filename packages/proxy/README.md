@@ -216,6 +216,11 @@ supabase-lite-proxy test --target https://supabase-lite.pages.dev --mode postmes
    - Ensure both the bridge tab and Supabase Lite tab are in the same browser
    - Check browser console for PostMessage errors
 
+4. **WebSocket connection errors in production** (Fixed):
+   - ✅ **Resolved**: Production tabs no longer show WebSocket connection errors
+   - The production site now only uses PostMessage communication
+   - If you still see WebSocket errors, refresh https://supabase-lite.pages.dev
+
 ### Port Conflicts
 ```bash
 # Use a different port
