@@ -57,7 +57,9 @@ export class ProjectManager {
       }
 
       const projectId = crypto.randomUUID();
-      const databasePath = `idb://project_${projectId}`;
+      // Use simpler database naming for better persistence
+      const projectIndex = this.projectsData.projects.length + 1;
+      const databasePath = `idb://project_${projectIndex}`;
       
       const newProject: Project = {
         id: projectId,
