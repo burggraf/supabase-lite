@@ -4,8 +4,21 @@ import './index.css'
 import App from './App.tsx'
 import { CrossOriginAPIHandler } from './lib/api/CrossOriginAPIHandler'
 
-// WebSocket bridge client for external API access
+// WebSocket bridge client for external API access (development only)
 function initializeWebSocketBridge() {
+  // WebSocket bridge is ONLY for development to enable external API access (curl, etc.)
+  // In production, MSW still works perfectly for all in-browser API calls!
+  const isDevelopment = import.meta.env.DEV;
+  
+  if (!isDevelopment) {
+    console.log('🌐 Production mode: MSW active for in-browser API calls');
+    console.log('📱 External API access (curl) not available in browser-only deployment');
+    return;
+  }
+  
+  // Development mode: Enable WebSocket bridge for external API access
+  console.log('🛠️ Development mode: Enabling WebSocket bridge for external API access');
+  
   // Store reference to native WebSocket before MSW can override it
   const NativeWebSocket = window.WebSocket
   let ws: WebSocket
@@ -13,7 +26,11 @@ function initializeWebSocketBridge() {
   
   function connect() {
     try {
-      ws = new NativeWebSocket('ws://localhost:5176')
+      // In development, always connect to localhost:5176
+      const wsUrl = 'ws://localhost:5176';
+      
+      console.log('🔌 Connecting WebSocket bridge to:', wsUrl);
+      ws = new NativeWebSocket(wsUrl)
       
       ws.onopen = () => {
         console.log('🔗 Connected to WebSocket bridge')
@@ -108,11 +125,11 @@ function initializeWebSocketBridge() {
       }
       
       ws.onerror = (error) => {
-        console.error('❌ WebSocket bridge error:', error)
+        console.error('❌ WebSocket bridge error - ensure "npm run dev" is running:', error)
       }
       
     } catch (error) {
-      console.error('❌ Failed to connect to WebSocket bridge:', error)
+      console.error('❌ Failed to connect to WebSocket bridge - ensure "npm run dev" is running:', error)
       // Attempt to reconnect after 5 seconds
       reconnectTimeout = window.setTimeout(connect, 5000)
     }
