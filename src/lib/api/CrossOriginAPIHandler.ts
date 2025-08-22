@@ -23,6 +23,7 @@ export class CrossOriginAPIHandler {
   private apibridge: EnhancedSupabaseAPIBridge;
   private broadcastChannel: BroadcastChannel | null = null;
   private allowedOrigins = [
+    'http://localhost:5173', // Your test app
     'http://localhost:5174',
     'http://localhost:5175',
     'http://localhost:5176'

@@ -9,12 +9,14 @@ interface PendingRequest {
   resolve: (response: any) => void
   reject: (error: any) => void
   timeout: NodeJS.Timeout
+  proxySocket?: any  // Store which proxy sent the request
 }
 
 // WebSocket bridge that forwards HTTP requests to browser for processing
 function websocketBridge(): Plugin {
   let wss: WebSocketServer | null = null
   let browserSocket: any = null
+  let proxyConnections = new Set<any>()
   const pendingRequests = new Map<string, PendingRequest>()
   
   // Helper to get request body
@@ -57,19 +59,106 @@ function websocketBridge(): Plugin {
           console.log('🔌 WebSocket bridge server created on port 5176')
         
           wss.on('connection', (ws) => {
-            console.log('🔗 Browser connected to WebSocket bridge')
-            browserSocket = ws
+            console.log('🔗 New WebSocket connection')
+            
+            // Initially treat as unknown connection
+            let connectionType: 'browser' | 'proxy' | 'unknown' = 'unknown'
             
             ws.on('message', (data) => {
               try {
                 const message = JSON.parse(data.toString())
                 
+                // Handle identification messages
+                if (message.type === 'identify') {
+                  if (message.client === 'browser') {
+                    connectionType = 'browser'
+                    browserSocket = ws
+                    console.log('🔗 Identified as browser connection')
+                  }
+                  return // Don't process identify messages further
+                }
+                
+                // Detect connection type based on first message (fallback)
+                if (connectionType === 'unknown') {
+                  if (message.type === 'request') {
+                    connectionType = 'proxy'
+                    proxyConnections.add(ws)
+                    console.log('🔗 Identified as proxy connection')
+                  } else if (message.type === 'response') {
+                    connectionType = 'browser'
+                    browserSocket = ws
+                    console.log('🔗 Identified as browser connection (via response)')
+                  }
+                }
+                
+                // Handle responses from browser
                 if (message.type === 'response' && message.requestId) {
+                  console.log(`📥 Received response from browser: ${message.requestId}`)
                   const pending = pendingRequests.get(message.requestId)
                   if (pending) {
+                    console.log(`✅ Found pending request, resolving: ${message.requestId}`)
                     clearTimeout(pending.timeout)
                     pending.resolve(message.response)
                     pendingRequests.delete(message.requestId)
+                  } else {
+                    console.log(`❌ No pending request found for: ${message.requestId}`)
+                  }
+                }
+                
+                // Handle requests from proxy - forward to browser
+                else if (message.type === 'request' && message.requestId) {
+                  console.log(`🔄 Forwarding WebSocket request ${message.method} ${message.url} to browser`)
+                  
+                  // Forward the request message to the browser
+                  console.log(`🔍 Browser socket status: exists=${!!browserSocket}, readyState=${browserSocket?.readyState}`)
+                  if (browserSocket && browserSocket.readyState === 1) {
+                    // Create pending request entry for WebSocket requests
+                    const timeout = setTimeout(() => {
+                      pendingRequests.delete(message.requestId)
+                      console.log(`⏰ WebSocket request timeout: ${message.requestId}`)
+                    }, 30000)
+                    
+                    pendingRequests.set(message.requestId, {
+                      resolve: (response) => {
+                        console.log(`🔄 Sending response back to proxy: ${message.requestId}`)
+                        ws.send(JSON.stringify({
+                          type: 'response',
+                          requestId: message.requestId,
+                          response
+                        }))
+                      },
+                      reject: (error) => {
+                        console.log(`❌ Sending error back to proxy: ${message.requestId}`)
+                        ws.send(JSON.stringify({
+                          type: 'response',
+                          requestId: message.requestId,
+                          response: {
+                            status: 500,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: { error: error.message }
+                          }
+                        }))
+                      },
+                      timeout,
+                      proxySocket: ws
+                    })
+                    
+                    console.log(`📤 Sending request to browser: ${JSON.stringify(message).substring(0, 100)}...`)
+                    browserSocket.send(JSON.stringify(message))
+                  } else {
+                    // Send error response back to proxy
+                    ws.send(JSON.stringify({
+                      type: 'response',
+                      requestId: message.requestId,
+                      response: {
+                        status: 503,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: { 
+                          error: 'Browser not connected',
+                          message: 'No browser connection available to process request'
+                        }
+                      }
+                    }))
                   }
                 }
               } catch (error) {
@@ -78,8 +167,15 @@ function websocketBridge(): Plugin {
             })
             
             ws.on('close', () => {
-              console.log('🔌 Browser disconnected from WebSocket bridge')
-              browserSocket = null
+              if (connectionType === 'browser') {
+                console.log('🔌 Browser disconnected from WebSocket bridge')
+                browserSocket = null
+              } else if (connectionType === 'proxy') {
+                console.log('🔌 Proxy disconnected from WebSocket bridge')
+                proxyConnections.delete(ws)
+              } else {
+                console.log('🔌 Unknown connection disconnected from WebSocket bridge')
+              }
               // Reject all pending requests
               for (const [requestId, pending] of pendingRequests) {
                 clearTimeout(pending.timeout)

@@ -1,7 +1,7 @@
 {
-  "name": "@supabase-lite/proxy",
+  "name": "supabase-lite-proxy",
   "version": "1.0.0",
-  "description": "HTTP proxy server that bridges external API calls to browser-based Supabase Lite instance",
+  "description": "HTTP proxy server that bridges external API calls to browser-based Supabase Lite instances",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -22,7 +22,7 @@
     "database",
     "pglite"
   ],
-  "author": "Supabase Lite Team",
+  "author": "burggraf",
   "license": "MIT",
   "dependencies": {
     "express": "^4.21.1",
@@ -43,7 +43,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/supabase-lite.git",
+    "url": "https://github.com/burggraf/supabase-lite.git",
     "directory": "packages/proxy"
+  },
+  "homepage": "https://github.com/burggraf/supabase-lite#readme",
+  "bugs": {
+    "url": "https://github.com/burggraf/supabase-lite/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

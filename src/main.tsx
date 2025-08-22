@@ -32,8 +32,18 @@ function initializeWebSocketBridge() {
       console.log('🔌 Connecting WebSocket bridge to:', wsUrl);
       ws = new NativeWebSocket(wsUrl)
       
+      // Expose globally for debugging
+      ;(window as any).ws = ws
+      
       ws.onopen = () => {
         console.log('🔗 Connected to WebSocket bridge')
+        
+        // Send identification message to distinguish from proxy connections
+        ws.send(JSON.stringify({
+          type: 'identify',
+          client: 'browser'
+        }))
+        
         // Clear any reconnection timeout
         if (reconnectTimeout) {
           clearTimeout(reconnectTimeout)
@@ -64,7 +74,7 @@ function initializeWebSocketBridge() {
             
             try {
               // Make the fetch request - this WILL be intercepted by MSW!
-              const response = await fetch(`http://localhost:5173${message.url}`, fetchOptions)
+              const response = await fetch(message.url, fetchOptions)
               
               // Get response data
               const responseText = await response.text()
