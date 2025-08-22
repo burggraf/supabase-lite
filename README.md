@@ -161,7 +161,12 @@ For external applications that need to connect to Supabase Lite from different o
 
 ### What is the Proxy?
 
-The Supabase Lite Proxy is an HTTP server that bridges external API requests to your browser-based Supabase Lite instance via WebSocket communication. This enables full cross-origin API access and 100% Supabase.js compatibility.
+The Supabase Lite Proxy is an HTTP server that bridges external API requests to your browser-based Supabase Lite instance. It supports two connection modes:
+
+- **PostMessage Mode** (Production): For connecting to deployed Supabase Lite at `https://supabase-lite.pages.dev`
+- **WebSocket Mode** (Development): For connecting to local development server
+
+This enables full cross-origin API access and 100% Supabase.js compatibility.
 
 ### Installation & Setup
 
@@ -170,18 +175,21 @@ The Supabase Lite Proxy is an HTTP server that bridges external API requests to 
    npm install -g supabase-lite-proxy
    ```
 
-2. **Start Supabase Lite in your browser**:
-   ```bash
-   npm run dev
-   # Open http://localhost:5173 in your browser
-   ```
-
-3. **Start the proxy server**:
+2. **For Production Use** (Recommended):
    ```bash
    supabase-lite-proxy start
    ```
    
-   The proxy will run on `http://localhost:54321` by default.
+   This connects to `https://supabase-lite.pages.dev` via PostMessage bridge. No local setup required!
+
+3. **For Development** (when developing Supabase Lite itself):
+   ```bash
+   # In one terminal, start Supabase Lite development server
+   npm run dev
+   
+   # In another terminal, start the proxy
+   supabase-lite-proxy start --target http://localhost:5173
+   ```
 
 ### Using with Supabase.js
 
@@ -191,7 +199,7 @@ Once the proxy is running, any external application can connect to Supabase Lite
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
-  'http://localhost:54321',  // Proxy URL
+  'http://localhost:54321',  // Proxy URL (default port)
   'any-key-works-locally'    // Any key (not validated in local development)
 )
 
@@ -209,9 +217,20 @@ const { data: insertData, error: insertError } = await supabase
 
 - **Start server**: `supabase-lite-proxy start [options]`
   - `-p, --port <port>`: Port to run on (default: 54321)
+  - `-t, --target <url>`: Target Supabase Lite URL (default: https://supabase-lite.pages.dev)
+  - `-m, --mode <mode>`: Connection mode: websocket, postmessage, or auto (default: auto)
   - `-q, --quiet`: Disable request logging
-- **Test connection**: `supabase-lite-proxy test`
+- **Test connection**: `supabase-lite-proxy test [options]`
+  - `-t, --target <url>`: Target URL to test
+  - `-m, --mode <mode>`: Test mode (auto-detects by default)
 - **Help**: `supabase-lite-proxy --help`
+
+### Connection Modes
+
+The proxy automatically detects the appropriate connection mode:
+
+- **Auto-detection** (default): localhost URLs use WebSocket, others use PostMessage
+- **Manual override**: Use `--mode websocket` or `--mode postmessage` to force a specific mode
 
 ### How It Works
 
