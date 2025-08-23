@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs"
 import { Card, CardContent } from "./components/ui/card"
 import { ApiTesting } from "./components/ApiTesting"
+import { AuthTesting } from "./components/AuthTesting"
 import { Settings } from "./components/Settings"
 
 function App() {
@@ -207,33 +208,8 @@ function App() {
 
           {/* Other tabs with consistent beautiful styling */}
           <TabsContent value="auth" className="mt-0">
-            <div className="max-w-7xl mx-auto px-6">
-              <Card className="shadow-2xl border-0 bg-gradient-to-br from-white to-emerald-50 overflow-hidden">
-              <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-8 text-white">
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-bold">Authentication Testing</h2>
-                    <p className="text-emerald-100 text-lg mt-1">Comprehensive user authentication and session management testing</p>
-                  </div>
-                </div>
-              </div>
-              <CardContent className="p-12 text-center">
-                <div className="max-w-md mx-auto">
-                  <div className="w-24 h-24 bg-emerald-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-12 h-12 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 mb-4">Authentication Module</h3>
-                  <p className="text-gray-600 leading-relaxed text-lg">Advanced authentication testing tools including user registration, login validation, JWT token management, and session persistence will be implemented in this section.</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white rounded-lg shadow-xl border mx-2">
+              <AuthTesting />
             </div>
           </TabsContent>
 

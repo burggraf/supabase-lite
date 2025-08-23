@@ -604,13 +604,95 @@ export class EnhancedSupabaseAPIBridge {
   }
 
   private async hashPassword(password: string): Promise<string> {
-    // Use bcrypt for Supabase compatibility
-    return await bcrypt.hash(password, 10)
+    // Use Web Crypto API in browser environment, bcrypt in Node.js
+    if (this.isBrowserEnvironment()) {
+      const encoder = new TextEncoder()
+      const data = encoder.encode(password)
+      const salt = crypto.getRandomValues(new Uint8Array(16))
+      
+      const key = await crypto.subtle.importKey(
+        'raw',
+        data,
+        'PBKDF2',
+        false,
+        ['deriveBits']
+      )
+      
+      const derivedBits = await crypto.subtle.deriveBits(
+        {
+          name: 'PBKDF2',
+          salt: salt,
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        key,
+        256
+      )
+      
+      const hashArray = Array.from(new Uint8Array(derivedBits))
+      const saltArray = Array.from(salt)
+      
+      // Format: $pbkdf2$salt$hash (simplified format for compatibility)
+      return `$pbkdf2$${btoa(String.fromCharCode(...saltArray))}$${btoa(String.fromCharCode(...hashArray))}`
+    } else {
+      // Use bcrypt in Node.js environment
+      return await bcrypt.hash(password, 10)
+    }
   }
 
   private async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-    // Use bcrypt for Supabase compatibility
-    return await bcrypt.compare(password, hashedPassword)
+    try {
+      if (this.isBrowserEnvironment()) {
+        // Handle PBKDF2 format: $pbkdf2$salt$hash
+        if (hashedPassword.startsWith('$pbkdf2$')) {
+          const parts = hashedPassword.split('$')
+          if (parts.length !== 4) return false
+          
+          const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0))
+          const expectedHash = parts[3]
+          
+          const encoder = new TextEncoder()
+          const data = encoder.encode(password)
+          
+          const key = await crypto.subtle.importKey(
+            'raw',
+            data,
+            'PBKDF2',
+            false,
+            ['deriveBits']
+          )
+          
+          const derivedBits = await crypto.subtle.deriveBits(
+            {
+              name: 'PBKDF2',
+              salt: salt,
+              iterations: 100000,
+              hash: 'SHA-256'
+            },
+            key,
+            256
+          )
+          
+          const hashArray = Array.from(new Uint8Array(derivedBits))
+          const actualHash = btoa(String.fromCharCode(...hashArray))
+          
+          return actualHash === expectedHash
+        }
+        
+        // Can't verify bcrypt hashes in browser
+        return false
+      } else {
+        // Use bcrypt in Node.js environment
+        return await bcrypt.compare(password, hashedPassword)
+      }
+    } catch (error) {
+      console.error('Password verification failed:', error)
+      return false
+    }
+  }
+
+  private isBrowserEnvironment(): boolean {
+    return typeof window !== 'undefined' && typeof document !== 'undefined'
   }
 
   private generateJWT(payload: any): string {
