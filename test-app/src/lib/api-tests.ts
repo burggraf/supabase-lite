@@ -24,8 +24,25 @@ export interface TestCategory {
   tests: ApiTest[];
 }
 
+// Storage key for persisting port setting (matches ApiSettings component)
+const PORT_STORAGE_KEY = 'supabase-lite-test-port';
+
+// Initialize base URL from localStorage or use default
+const getInitialBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    const savedPort = localStorage.getItem(PORT_STORAGE_KEY);
+    if (savedPort) {
+      const portNum = parseInt(savedPort);
+      if (!isNaN(portNum) && portNum >= 1000 && portNum <= 65535) {
+        return `http://localhost:${savedPort}`;
+      }
+    }
+  }
+  return 'http://localhost:5173'; // Default to Vite's default port
+};
+
 // Default base URL - can be overridden dynamically
-let BASE_URL = 'http://localhost:8080';
+let BASE_URL = getInitialBaseUrl();
 
 export function setBaseUrl(url: string) {
   BASE_URL = url;

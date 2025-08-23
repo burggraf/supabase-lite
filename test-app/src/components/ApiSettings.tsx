@@ -7,19 +7,30 @@ interface ApiSettingsProps {
   onSettingsChange: () => void;
 }
 
+// Storage key for persisting port setting
+const PORT_STORAGE_KEY = 'supabase-lite-test-port';
+
 export function ApiSettings({ onSettingsChange }: ApiSettingsProps) {
-  const [port, setPort] = useState('5175');
+  const [port, setPort] = useState('5173');
   const [isValid, setIsValid] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'error'>('unknown');
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    // Initialize with current base URL
-    const currentUrl = getBaseUrl();
-    const urlMatch = currentUrl.match(/localhost:(\d+)/);
-    if (urlMatch) {
-      setPort(urlMatch[1]);
+    // Load saved port from localStorage or use default
+    const savedPort = localStorage.getItem(PORT_STORAGE_KEY);
+    if (savedPort && validatePort(savedPort)) {
+      setPort(savedPort);
+      // Update the base URL with the saved port
+      setBaseUrl(`http://localhost:${savedPort}`);
+    } else {
+      // Initialize with current base URL as fallback
+      const currentUrl = getBaseUrl();
+      const urlMatch = currentUrl.match(/localhost:(\d+)/);
+      if (urlMatch) {
+        setPort(urlMatch[1]);
+      }
     }
   }, []);
 
@@ -57,6 +68,10 @@ export function ApiSettings({ onSettingsChange }: ApiSettingsProps) {
       if (response.ok) {
         setConnectionStatus('connected');
         setBaseUrl(testUrl);
+        
+        // Save successful port to localStorage
+        localStorage.setItem(PORT_STORAGE_KEY, port);
+        
         onSettingsChange();
         setErrorMessage('');
       } else {
@@ -87,6 +102,10 @@ export function ApiSettings({ onSettingsChange }: ApiSettingsProps) {
     
     const newBaseUrl = `http://localhost:${port}`;
     setBaseUrl(newBaseUrl);
+    
+    // Save port to localStorage
+    localStorage.setItem(PORT_STORAGE_KEY, port);
+    
     onSettingsChange();
   };
 
@@ -201,12 +220,18 @@ export function ApiSettings({ onSettingsChange }: ApiSettingsProps) {
         </div>
       </div>
 
-      {/* Usage Hint */}
-      <Alert className="mt-3">
-        <AlertDescription className="text-xs">
-          <strong>Common ports:</strong> 5173 (default Vite), 5175, 3000 (Next.js), 8000 (Python)
-        </AlertDescription>
-      </Alert>
+      {/* Usage Hints */}
+      <div className="space-y-2 mt-4">
+        <Alert className="">
+          <AlertDescription className="text-xs">
+            <strong>Common ports:</strong> 5173 (default Vite), 5175, 3000 (Next.js), 8000 (Python)
+          </AlertDescription>
+        </Alert>
+        
+        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+          <strong>Tip:</strong> Your port setting is automatically saved and will be remembered across sessions.
+        </div>
+      </div>
     </div>
   );
 }

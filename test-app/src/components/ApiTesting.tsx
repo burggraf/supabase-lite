@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { testCategories, executeApiTest, getBaseUrl } from '../lib/api-tests';
+import { testCategories, executeApiTest } from '../lib/api-tests';
 import { TestButton } from './TestButton';
 import { ResponseDisplay } from './ResponseDisplay';
 import { RequestDetails } from './RequestDetails';
-import { ApiSettings } from './ApiSettings';
-import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import type { ApiTest, ApiResponse } from '../lib/api-tests';
@@ -15,8 +13,6 @@ export function ApiTesting() {
   const [activeResponse, setActiveResponse] = useState<ApiResponse | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['basic-crud']));
   const [isRunningAll, setIsRunningAll] = useState(false);
-  const [currentBaseUrl, setCurrentBaseUrl] = useState(getBaseUrl());
-
   const handleTestResponse = (testId: string, response: ApiResponse) => {
     setResponses(prev => ({ ...prev, [testId]: response }));
     setActiveResponse(response);
@@ -78,43 +74,27 @@ export function ApiTesting() {
 
   const stats = getTestStats();
 
-  const handleSettingsChange = () => {
-    setCurrentBaseUrl(getBaseUrl());
-    // Clear existing responses when URL changes
-    setResponses({});
-    setActiveResponse(null);
-    setSelectedTest(null);
-  };
-
   return (
     <div className="flex flex-col">
-      {/* Instructions and Settings */}
-      <div className="p-4 border-b space-y-3">
-        {/* API Settings */}
-        <ApiSettings onSettingsChange={handleSettingsChange} />
-        
-        <Alert variant="warning">
-          <AlertDescription>
-            <strong>Prerequisites:</strong> 
-            <ol className="list-decimal list-inside mt-1 space-y-1">
-              <li>Configure the correct port above and test the connection</li>
-              <li>Open the main Supabase Lite app at <a href={currentBaseUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{currentBaseUrl}</a> to initialize the database connection</li>
-              <li>Load the Northwind database from the Database tab → Seed Data section</li>
-              <li>Return here to run comprehensive API tests on the Northwind data</li>
-            </ol>
-          </AlertDescription>
-        </Alert>
-        
-        <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-          <strong>About this test suite:</strong> This professional API testing interface demonstrates all PostgREST capabilities including CRUD operations, 
-          complex filtering, relationship queries, pagination, and error handling using realistic business scenarios from the Northwind database.
+      {/* Header */}
+      <div className="p-6 border-b bg-gradient-to-r from-cyan-50 to-cyan-100">
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 bg-cyan-500 rounded-2xl flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">API Testing</h2>
+            <p className="text-gray-600">Test all PostgREST endpoints with the Northwind database</p>
+          </div>
         </div>
       </div>
 
       {/* Main Layout */}
       <div className="flex-1 flex">
         {/* Left Panel - Test Categories */}
-        <div className="w-1/3 border-r bg-gray-50 overflow-auto">
+        <div className="w-1/3 border-r bg-gray-50 overflow-auto max-h-screen">
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">API Test Categories</h2>

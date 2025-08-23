@@ -1,8 +1,14 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs"
 import { Card, CardContent } from "./components/ui/card"
 import { ApiTesting } from "./components/ApiTesting"
+import { Settings } from "./components/Settings"
 
 function App() {
+  const handleSettingsChange = () => {
+    // This callback will be triggered when settings change in the Settings component
+    // It can be used to refresh other components if needed
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
       {/* Top Navigation Bar */}
@@ -80,6 +86,17 @@ function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                 </svg>
                 API Testing
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="settings"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-6 py-2.5 text-sm font-semibold ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-gray-50 data-[state=inactive]:text-gray-600"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Settings
               </TabsTrigger>
               
               <TabsTrigger 
@@ -256,6 +273,10 @@ function App() {
             <div className="bg-white rounded-lg shadow-xl border mx-2">
               <ApiTesting />
             </div>
+          </TabsContent>
+          
+          <TabsContent value="settings" className="mt-0">
+            <Settings onSettingsChange={handleSettingsChange} />
           </TabsContent>
 
           <TabsContent value="sample-app" className="mt-0">
