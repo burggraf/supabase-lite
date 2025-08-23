@@ -279,8 +279,24 @@ const createAuthSignupHandler = () => async ({ request }: any) => {
       )
     }
 
-    // Direct database approach - bypass AuthBridge temporarily to identify issue
-    console.log('🔐 Using direct database approach for signup')
+    // Determine if this is phone or email signup
+    const isPhoneSignup = !!body.phone
+    const isEmailSignup = !!body.email
+    
+    if (!isPhoneSignup && !isEmailSignup) {
+      return HttpResponse.json(
+        { error: 'invalid_request', error_description: 'Either email or phone is required' },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+
+    console.log(`🔐 Using direct database approach for ${isPhoneSignup ? 'phone' : 'email'} signup`)
     
     // Generate user data
     const userId = crypto.randomUUID()
@@ -316,65 +332,104 @@ const createAuthSignupHandler = () => async ({ request }: any) => {
     // Format: $pbkdf2$salt$hash 
     const hashedPassword = `$pbkdf2$${btoa(String.fromCharCode(...saltArray))}$${btoa(String.fromCharCode(...hashArray))}`
     
-    // Insert user directly into database
+    // Prepare database insert parameters based on signup type
     const dbManager = DatabaseManager.getInstance()
-    await dbManager.query(`
-      INSERT INTO auth.users (
-        id, email, encrypted_password, email_confirmed_at, 
-        created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
-        role, aud, is_anonymous
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-      )
-    `, [
-      userId,
-      body.email,
-      hashedPassword,
-      now, // email confirmed immediately for simplicity
-      now,
-      now,
-      JSON.stringify({ provider: 'email', providers: ['email'] }),
-      JSON.stringify(body.data || {}),
-      'authenticated',
-      'authenticated', 
-      false
-    ])
     
-    console.log('✅ User inserted directly into database:', userId)
+    if (isPhoneSignup) {
+      // Phone signup - store phone and set phone_confirmed_at
+      await dbManager.query(`
+        INSERT INTO auth.users (
+          id, phone, encrypted_password, phone_confirmed_at, 
+          created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
+          role, aud, is_anonymous
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+        )
+      `, [
+        userId,
+        body.phone,
+        hashedPassword,
+        now, // phone confirmed immediately for simplicity
+        now,
+        now,
+        JSON.stringify({ provider: 'phone', providers: ['phone'] }),
+        JSON.stringify(body.data || {}),
+        'authenticated',
+        'authenticated', 
+        false
+      ])
+    } else {
+      // Email signup - store email and set email_confirmed_at
+      await dbManager.query(`
+        INSERT INTO auth.users (
+          id, email, encrypted_password, email_confirmed_at, 
+          created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
+          role, aud, is_anonymous
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+        )
+      `, [
+        userId,
+        body.email,
+        hashedPassword,
+        now, // email confirmed immediately for simplicity
+        now,
+        now,
+        JSON.stringify({ provider: 'email', providers: ['email'] }),
+        JSON.stringify(body.data || {}),
+        'authenticated',
+        'authenticated', 
+        false
+      ])
+    }
     
-    // Create response
+    console.log(`✅ User inserted directly into database: ${userId} (${isPhoneSignup ? 'phone' : 'email'})`)
+    
+    // Create response based on signup type
+    const jwtPayload: any = {
+      sub: userId,
+      role: 'authenticated',
+      aud: 'authenticated',
+      exp: Math.floor(Date.now() / 1000) + 3600
+    }
+    
+    if (isPhoneSignup) {
+      jwtPayload.phone = body.phone
+    } else {
+      jwtPayload.email = body.email
+    }
+    
     const response = {
       data: {
         user: {
           id: userId,
-          email: body.email,
+          email: isEmailSignup ? body.email : null,
+          phone: isPhoneSignup ? body.phone : null,
           created_at: now,
           updated_at: now,
           aud: 'authenticated',
           role: 'authenticated',
-          email_confirmed_at: now,
-          phone_confirmed_at: null,
+          email_confirmed_at: isEmailSignup ? now : null,
+          phone_confirmed_at: isPhoneSignup ? now : null,
           last_sign_in_at: null,
-          app_metadata: { provider: 'email', providers: ['email'] },
+          app_metadata: { 
+            provider: isPhoneSignup ? 'phone' : 'email', 
+            providers: [isPhoneSignup ? 'phone' : 'email'] 
+          },
           user_metadata: body.data || {},
           identities: [],
           is_anonymous: false
         },
         session: {
-          access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
-            sub: userId,
-            email: body.email,
-            role: 'authenticated',
-            aud: 'authenticated',
-            exp: Math.floor(Date.now() / 1000) + 3600
-          }))}`,
+          access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(jwtPayload))}`,
           refresh_token: crypto.randomUUID(),
           token_type: 'bearer',
           expires_in: 3600,
           expires_at: Math.floor(Date.now() / 1000) + 3600,
           user: {
             id: userId,
-            email: body.email,
+            email: isEmailSignup ? body.email : null,
+            phone: isPhoneSignup ? body.phone : null,
             created_at: now,
             aud: 'authenticated',
             role: 'authenticated'
@@ -437,17 +492,44 @@ const createAuthSigninHandler = () => async ({ request }: any) => {
       )
     }
 
-    // Authenticate against real database
-    console.log('🔐 Authenticating against real database')
+    // Determine if this is phone or email signin
+    const isPhoneSignin = !!body.phone
+    const isEmailSignin = !!body.email
+    
+    if (!isPhoneSignin && !isEmailSignin) {
+      return HttpResponse.json(
+        { error: 'invalid_request', error_description: 'Either email or phone is required' },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+
+    console.log(`🔐 Authenticating ${isPhoneSignin ? 'phone' : 'email'} against real database`)
     
     // Find user in database
     const dbManager = DatabaseManager.getInstance()
-    const userResult = await dbManager.query(`
-      SELECT id, email, encrypted_password, created_at, updated_at, 
-             raw_app_meta_data, raw_user_meta_data, email_confirmed_at
-      FROM auth.users 
-      WHERE email = $1
-    `, [body.email])
+    let userResult;
+    
+    if (isPhoneSignin) {
+      userResult = await dbManager.query(`
+        SELECT id, phone, encrypted_password, created_at, updated_at, 
+               raw_app_meta_data, raw_user_meta_data, phone_confirmed_at
+        FROM auth.users 
+        WHERE phone = $1
+      `, [body.phone])
+    } else {
+      userResult = await dbManager.query(`
+        SELECT id, email, encrypted_password, created_at, updated_at, 
+               raw_app_meta_data, raw_user_meta_data, email_confirmed_at
+        FROM auth.users 
+        WHERE email = $1
+      `, [body.email])
+    }
     
     if (userResult.rows.length === 0) {
       return HttpResponse.json(
@@ -523,20 +605,35 @@ const createAuthSigninHandler = () => async ({ request }: any) => {
       WHERE id = $2
     `, [now, user.id])
     
-    console.log('✅ User authenticated successfully:', user.email)
+    console.log(`✅ User authenticated successfully: ${isPhoneSignin ? user.phone : user.email}`)
+    
+    // Create JWT payload based on signin type
+    const jwtPayload: any = {
+      sub: user.id,
+      role: 'authenticated',
+      aud: 'authenticated',
+      exp: Math.floor(Date.now() / 1000) + 3600
+    }
+    
+    if (isPhoneSignin) {
+      jwtPayload.phone = user.phone
+    } else {
+      jwtPayload.email = user.email
+    }
     
     // Create successful signin response
     const response = {
       data: {
         user: {
           id: user.id,
-          email: user.email,
+          email: isEmailSignin ? user.email : null,
+          phone: isPhoneSignin ? user.phone : null,
           created_at: user.created_at,
           updated_at: user.updated_at,
           aud: 'authenticated',
           role: 'authenticated',
-          email_confirmed_at: user.email_confirmed_at,
-          phone_confirmed_at: null,
+          email_confirmed_at: isEmailSignin ? user.email_confirmed_at : null,
+          phone_confirmed_at: isPhoneSignin ? user.phone_confirmed_at : null,
           last_sign_in_at: now,
           app_metadata: user.raw_app_meta_data,
           user_metadata: user.raw_user_meta_data,
@@ -544,20 +641,15 @@ const createAuthSigninHandler = () => async ({ request }: any) => {
           is_anonymous: false
         },
         session: {
-          access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
-            sub: user.id,
-            email: user.email,
-            role: 'authenticated',
-            aud: 'authenticated',
-            exp: Math.floor(Date.now() / 1000) + 3600
-          }))}`,
+          access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(jwtPayload))}`,
           refresh_token: crypto.randomUUID(),
           token_type: 'bearer',
           expires_in: 3600,
           expires_at: Math.floor(Date.now() / 1000) + 3600,
           user: {
             id: user.id,
-            email: user.email,
+            email: isEmailSignin ? user.email : null,
+            phone: isPhoneSignin ? user.phone : null,
             created_at: user.created_at,
             aud: 'authenticated',
             role: 'authenticated'
@@ -641,14 +733,42 @@ const createAuthTokenHandler = () => async ({ request }: any) => {
 
     // Handle password grant (signin) using real database
     if (mergedBody.grant_type === 'password') {
+      // Determine if this is phone or email signin
+      const isPhoneSignin = !!mergedBody.phone
+      const isEmailSignin = !!mergedBody.email
+      
+      if (!isPhoneSignin && !isEmailSignin) {
+        return HttpResponse.json(
+          { error: 'invalid_request', error_description: 'Either email or phone is required' },
+          { 
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
+        )
+      }
+
       // Find user in database
       const dbManager = DatabaseManager.getInstance()
-      const userResult = await dbManager.query(`
-        SELECT id, email, encrypted_password, created_at, updated_at, 
-               raw_app_meta_data, raw_user_meta_data, email_confirmed_at
-        FROM auth.users 
-        WHERE email = $1
-      `, [mergedBody.email])
+      let userResult;
+      
+      if (isPhoneSignin) {
+        userResult = await dbManager.query(`
+          SELECT id, phone, encrypted_password, created_at, updated_at, 
+                 raw_app_meta_data, raw_user_meta_data, phone_confirmed_at
+          FROM auth.users 
+          WHERE phone = $1
+        `, [mergedBody.phone])
+      } else {
+        userResult = await dbManager.query(`
+          SELECT id, email, encrypted_password, created_at, updated_at, 
+                 raw_app_meta_data, raw_user_meta_data, email_confirmed_at
+          FROM auth.users 
+          WHERE email = $1
+        `, [mergedBody.email])
+      }
       
       if (userResult.rows.length === 0) {
         return HttpResponse.json(
@@ -724,27 +844,36 @@ const createAuthTokenHandler = () => async ({ request }: any) => {
         WHERE id = $2
       `, [now, user.id])
       
+      // Create JWT payload based on signin type
+      const jwtPayload: any = {
+        sub: user.id,
+        role: 'authenticated',
+        aud: 'authenticated',
+        exp: Math.floor(Date.now() / 1000) + 3600
+      }
+      
+      if (isPhoneSignin) {
+        jwtPayload.phone = user.phone
+      } else {
+        jwtPayload.email = user.email
+      }
+      
       const response = {
-        access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
-          sub: user.id,
-          email: user.email,
-          role: 'authenticated',
-          aud: 'authenticated',
-          exp: Math.floor(Date.now() / 1000) + 3600
-        }))}`,
+        access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(jwtPayload))}`,
         refresh_token: crypto.randomUUID(),
         token_type: 'bearer',
         expires_in: 3600,
         expires_at: Math.floor(Date.now() / 1000) + 3600,
         user: {
           id: user.id,
-          email: user.email,
+          email: isEmailSignin ? user.email : null,
+          phone: isPhoneSignin ? user.phone : null,
           created_at: user.created_at,
           updated_at: user.updated_at,
           aud: 'authenticated',
           role: 'authenticated',
-          email_confirmed_at: user.email_confirmed_at,
-          phone_confirmed_at: null,
+          email_confirmed_at: isEmailSignin ? user.email_confirmed_at : null,
+          phone_confirmed_at: isPhoneSignin ? user.phone_confirmed_at : null,
           last_sign_in_at: now,
           app_metadata: user.raw_app_meta_data,
           user_metadata: user.raw_user_meta_data,
@@ -843,6 +972,320 @@ export const handlers = [
 
   http.post('/auth/v1/token', createAuthTokenHandler()),
   http.post('/:projectId/auth/v1/token', withProjectResolution(createAuthTokenHandler())),
+
+  // OTP endpoints for phone authentication
+  http.post('/auth/v1/otp', async ({ request }: any) => {
+    console.log('📱 MSW: Handling OTP request')
+    try {
+      const body = await request.json()
+      console.log('📝 MSW OTP body:', JSON.stringify(body))
+      
+      if (body.phone) {
+        // Mock SMS OTP request
+        return HttpResponse.json({
+          message: 'OTP sent successfully'
+        }, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        })
+      } else if (body.email) {
+        // Mock email OTP request
+        return HttpResponse.json({
+          message: 'OTP sent successfully'
+        }, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        })
+      }
+      
+      return HttpResponse.json({
+        error: 'invalid_request',
+        error_description: 'Either email or phone is required'
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    } catch (error) {
+      return HttpResponse.json({
+        error: 'invalid_request',
+        error_description: 'Invalid JSON in request body'
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+  }),
+  http.post('/:projectId/auth/v1/otp', withProjectResolution(async ({ request }: any) => {
+    console.log('📱 MSW: Handling OTP request')
+    try {
+      const body = await request.json()
+      console.log('📝 MSW OTP body:', JSON.stringify(body))
+      
+      if (body.phone) {
+        // Mock SMS OTP request
+        return HttpResponse.json({
+          message: 'OTP sent successfully'
+        }, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        })
+      } else if (body.email) {
+        // Mock email OTP request
+        return HttpResponse.json({
+          message: 'OTP sent successfully'
+        }, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        })
+      }
+      
+      return HttpResponse.json({
+        error: 'invalid_request',
+        error_description: 'Either email or phone is required'
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    } catch (error) {
+      return HttpResponse.json({
+        error: 'invalid_request',
+        error_description: 'Invalid JSON in request body'
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+  })),
+
+  // Verify endpoint for OTP verification
+  http.post('/auth/v1/verify', async ({ request }: any) => {
+    console.log('🔐 MSW: Handling verify request')
+    try {
+      const body = await request.json()
+      console.log('📝 MSW verify body:', JSON.stringify(body))
+      
+      // Mock OTP verification - accept any 6-digit code
+      if (body.type === 'sms' && body.phone && body.token) {
+        if (body.token.length === 6 && /^\d+$/.test(body.token)) {
+          // Generate mock user session for phone verification
+          const userId = crypto.randomUUID()
+          const now = new Date().toISOString()
+          
+          return HttpResponse.json({
+            access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
+              sub: userId,
+              phone: body.phone,
+              role: 'authenticated',
+              aud: 'authenticated',
+              exp: Math.floor(Date.now() / 1000) + 3600
+            }))}`,
+            refresh_token: crypto.randomUUID(),
+            token_type: 'bearer',
+            expires_in: 3600,
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+            user: {
+              id: userId,
+              phone: body.phone,
+              created_at: now,
+              updated_at: now,
+              aud: 'authenticated',
+              role: 'authenticated',
+              phone_confirmed_at: now
+            }
+          }, {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          })
+        }
+      } else if (body.type === 'email' && body.email && body.token) {
+        if (body.token.length === 6 && /^\d+$/.test(body.token)) {
+          // Generate mock user session for email verification
+          const userId = crypto.randomUUID()
+          const now = new Date().toISOString()
+          
+          return HttpResponse.json({
+            access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
+              sub: userId,
+              email: body.email,
+              role: 'authenticated',
+              aud: 'authenticated',
+              exp: Math.floor(Date.now() / 1000) + 3600
+            }))}`,
+            refresh_token: crypto.randomUUID(),
+            token_type: 'bearer',
+            expires_in: 3600,
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+            user: {
+              id: userId,
+              email: body.email,
+              created_at: now,
+              updated_at: now,
+              aud: 'authenticated',
+              role: 'authenticated',
+              email_confirmed_at: now
+            }
+          }, {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          })
+        }
+      }
+      
+      return HttpResponse.json({
+        error: 'invalid_credentials',
+        error_description: 'Invalid verification code'
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    } catch (error) {
+      return HttpResponse.json({
+        error: 'invalid_request',
+        error_description: 'Invalid JSON in request body'
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+  }),
+  http.post('/:projectId/auth/v1/verify', withProjectResolution(async ({ request }: any) => {
+    console.log('🔐 MSW: Handling verify request')
+    try {
+      const body = await request.json()
+      console.log('📝 MSW verify body:', JSON.stringify(body))
+      
+      // Mock OTP verification - accept any 6-digit code
+      if (body.type === 'sms' && body.phone && body.token) {
+        if (body.token.length === 6 && /^\d+$/.test(body.token)) {
+          // Generate mock user session for phone verification
+          const userId = crypto.randomUUID()
+          const now = new Date().toISOString()
+          
+          return HttpResponse.json({
+            access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
+              sub: userId,
+              phone: body.phone,
+              role: 'authenticated',
+              aud: 'authenticated',
+              exp: Math.floor(Date.now() / 1000) + 3600
+            }))}`,
+            refresh_token: crypto.randomUUID(),
+            token_type: 'bearer',
+            expires_in: 3600,
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+            user: {
+              id: userId,
+              phone: body.phone,
+              created_at: now,
+              updated_at: now,
+              aud: 'authenticated',
+              role: 'authenticated',
+              phone_confirmed_at: now
+            }
+          }, {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          })
+        }
+      } else if (body.type === 'email' && body.email && body.token) {
+        if (body.token.length === 6 && /^\d+$/.test(body.token)) {
+          // Generate mock user session for email verification
+          const userId = crypto.randomUUID()
+          const now = new Date().toISOString()
+          
+          return HttpResponse.json({
+            access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
+              sub: userId,
+              email: body.email,
+              role: 'authenticated',
+              aud: 'authenticated',
+              exp: Math.floor(Date.now() / 1000) + 3600
+            }))}`,
+            refresh_token: crypto.randomUUID(),
+            token_type: 'bearer',
+            expires_in: 3600,
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+            user: {
+              id: userId,
+              email: body.email,
+              created_at: now,
+              updated_at: now,
+              aud: 'authenticated',
+              role: 'authenticated',
+              email_confirmed_at: now
+            }
+          }, {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          })
+        }
+      }
+      
+      return HttpResponse.json({
+        error: 'invalid_credentials',
+        error_description: 'Invalid verification code'
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    } catch (error) {
+      return HttpResponse.json({
+        error: 'invalid_request',
+        error_description: 'Invalid JSON in request body'
+      }, {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+  })),
 
   // Logout endpoint
   http.post('/auth/v1/logout', withProjectResolution(async ({ request }: any) => {
