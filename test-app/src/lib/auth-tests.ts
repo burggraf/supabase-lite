@@ -7,6 +7,7 @@ export interface AuthTest {
   description: string;
   requiresAuth?: boolean;
   adminOnly?: boolean;
+  skipAutoAuth?: boolean;
 }
 
 export interface AuthResponse {
@@ -94,6 +95,97 @@ export function clearAuthData() {
         localStorage.removeItem(key);
       }
     });
+  }
+}
+
+// Check if current session is valid and not expired
+export function isSessionValid(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  const accessToken = localStorage.getItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN);
+  const sessionStr = localStorage.getItem(AUTH_STORAGE_KEYS.SESSION);
+  
+  if (!accessToken || !sessionStr) return false;
+  
+  try {
+    const session = JSON.parse(sessionStr);
+    const expiresAt = session.expires_at * 1000; // Convert to milliseconds
+    return Date.now() < expiresAt - 30000; // 30s buffer
+  } catch {
+    return false;
+  }
+}
+
+// Ensure user is authenticated by signing in with default test credentials
+export async function ensureAuthenticated(): Promise<{ success: boolean; response?: AuthResponse; error?: string }> {
+  // Check if already authenticated with valid session
+  if (isSessionValid()) {
+    console.log('🔐 Already authenticated with valid session');
+    return { success: true };
+  }
+
+  console.log('🔐 Authentication required, attempting sign-in...');
+  
+  // First try signing in (user might already exist)
+  const signinTest: AuthTest = {
+    id: 'auto-signin',
+    name: 'Auto Sign In',
+    method: 'POST',
+    endpoint: '/auth/v1/token?grant_type=password',
+    body: {
+      email: 'test@example.com',
+      password: 'password123'
+    },
+    description: 'Automatic sign-in for authentication',
+    skipAutoAuth: true
+  };
+
+  try {
+    const signinResponse = await executeAuthTest(signinTest);
+    
+    // If signin successful, we're done
+    if (signinResponse.status >= 200 && signinResponse.status < 300) {
+      console.log('✅ Auto sign-in successful');
+      return { success: true, response: signinResponse };
+    }
+    
+    // If signin failed, try signup
+    console.log('🔐 Sign-in failed, attempting sign-up...');
+    const signupTest: AuthTest = {
+      id: 'auto-signup',
+      name: 'Auto Sign Up',
+      method: 'POST',
+      endpoint: '/auth/v1/signup',
+      body: {
+        email: 'test@example.com',
+        password: 'password123',
+        data: {
+          full_name: 'Test User (Auto)'
+        }
+      },
+      description: 'Automatic sign-up for authentication',
+      skipAutoAuth: true
+    };
+
+    const signupResponse = await executeAuthTest(signupTest);
+    
+    if (signupResponse.status >= 200 && signupResponse.status < 300) {
+      console.log('✅ Auto sign-up successful');
+      return { success: true, response: signupResponse };
+    }
+    
+    // Both failed
+    return { 
+      success: false, 
+      error: `Authentication failed: Sign-in (${signinResponse.status}) and Sign-up (${signupResponse.status}) both failed`,
+      response: signupResponse
+    };
+    
+  } catch (error) {
+    return { 
+      success: false, 
+      error: `Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    };
   }
 }
 
@@ -779,12 +871,32 @@ export const authTestCategories: AuthTestCategory[] = [
   }
 ];
 
-export async function executeAuthTest(test: AuthTest): Promise<AuthResponse> {
+export async function executeAuthTest(test: AuthTest, options: { skipAutoAuth?: boolean } = {}): Promise<AuthResponse> {
   const startTime = Date.now();
   
   try {
+    // Auto-authenticate if test requires auth and we're not skipping auto-auth
+    if ((test.requiresAuth || test.adminOnly) && !options.skipAutoAuth && !test.skipAutoAuth) {
+      const authResult = await ensureAuthenticated();
+      if (!authResult.success) {
+        // Return authentication failure as test response
+        return {
+          status: 401,
+          statusText: 'Authentication Required',
+          data: { 
+            error: 'authentication_required', 
+            message: authResult.error || 'Could not authenticate for this test'
+          },
+          headers: {},
+          responseTime: Date.now() - startTime,
+          timestamp: new Date(),
+          error: authResult.error
+        };
+      }
+    }
+    
     const url = `${BASE_URL}${test.endpoint}`;
-    const options: RequestInit = {
+    const requestOptions: RequestInit = {
       method: test.method,
       headers: {
         'Content-Type': 'application/json',
@@ -796,8 +908,8 @@ export async function executeAuthTest(test: AuthTest): Promise<AuthResponse> {
     if (test.requiresAuth || test.adminOnly) {
       const token = getStoredAuthToken();
       if (token) {
-        options.headers = {
-          ...options.headers,
+        requestOptions.headers = {
+          ...requestOptions.headers,
           'Authorization': `Bearer ${token}`,
         };
       }
@@ -805,8 +917,8 @@ export async function executeAuthTest(test: AuthTest): Promise<AuthResponse> {
 
     // Add admin header for admin-only tests
     if (test.adminOnly) {
-      options.headers = {
-        ...options.headers,
+      requestOptions.headers = {
+        ...requestOptions.headers,
         'X-Admin-Request': 'true',
       };
     }
@@ -820,10 +932,10 @@ export async function executeAuthTest(test: AuthTest): Promise<AuthResponse> {
     }
 
     if (test.body && (test.method === 'POST' || test.method === 'PATCH' || test.method === 'PUT')) {
-      options.body = JSON.stringify(test.body);
+      requestOptions.body = JSON.stringify(test.body);
     }
 
-    const response = await fetch(url, options);
+    const response = await fetch(url, requestOptions);
     const responseTime = Date.now() - startTime;
     
     let data: any;
@@ -833,7 +945,8 @@ export async function executeAuthTest(test: AuthTest): Promise<AuthResponse> {
       data = await response.json();
       
       // Store auth data from successful responses
-      if (response.ok && (test.id.includes('signin') || test.id.includes('signup') || test.id.includes('refresh'))) {
+      if (response.ok && (test.id.includes('signin') || test.id.includes('signup') || test.id.includes('refresh') || 
+                          test.id.includes('auto-signin') || test.id.includes('auto-signup'))) {
         storeAuthData(data);
       }
       

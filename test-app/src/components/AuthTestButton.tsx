@@ -64,15 +64,15 @@ export function AuthTestButton({ test, onResponse, isLoading = false, existingRe
   const getAuthRequirementIndicator = () => {
     if (test.adminOnly) {
       return (
-        <Badge variant="destructive" className="text-xs">
-          Admin Only
+        <Badge variant="secondary" className="text-xs">
+          Admin + Auto-Auth
         </Badge>
       );
     }
     if (test.requiresAuth) {
       return (
-        <Badge variant="warning" className="text-xs">
-          Auth Required
+        <Badge variant="secondary" className="text-xs">
+          Auto-Auth
         </Badge>
       );
     }
@@ -80,28 +80,12 @@ export function AuthTestButton({ test, onResponse, isLoading = false, existingRe
   };
 
   const isTestDisabled = () => {
-    // Disable admin tests if not authenticated (we don't track admin status separately for now)
-    if (test.adminOnly && !authState.isAuthenticated) {
-      return true;
-    }
-    
-    // Disable auth-required tests if not authenticated (except signin/signup tests)
-    if (test.requiresAuth && !authState.isAuthenticated && 
-        !test.id.includes('signin') && !test.id.includes('signup')) {
-      return true;
-    }
-    
+    // No tests are disabled now - auto-auth handles authentication
     return false;
   };
 
   const getDisabledReason = () => {
-    if (test.adminOnly && !authState.isAuthenticated) {
-      return 'Admin privileges required';
-    }
-    if (test.requiresAuth && !authState.isAuthenticated && 
-        !test.id.includes('signin') && !test.id.includes('signup')) {
-      return 'Authentication required';
-    }
+    // No disabled reasons - auto-auth handles everything
     return null;
   };
 
@@ -111,7 +95,7 @@ export function AuthTestButton({ test, onResponse, isLoading = false, existingRe
   return (
     <div className={`flex flex-col gap-2 p-3 border rounded-lg transition-colors ${
       existingResponse ? 'bg-gray-25' : ''
-    } ${disabled && disabledReason ? 'opacity-60' : 'hover:bg-gray-50'}`}>
+    } hover:bg-gray-50`}>
       <div className="flex items-center gap-2">
         <Badge variant={buttonVariant}>
           {test.method}
@@ -133,11 +117,10 @@ export function AuthTestButton({ test, onResponse, isLoading = false, existingRe
         <Button
           size="sm"
           onClick={handleClick}
-          disabled={disabled}
+          disabled={isExecuting || isLoading}
           className="w-full"
-          title={disabledReason || undefined}
         >
-          {isExecuting ? 'Running...' : disabledReason ? disabledReason : 'Test'}
+          {isExecuting ? 'Running...' : 'Test'}
         </Button>
       </div>
       

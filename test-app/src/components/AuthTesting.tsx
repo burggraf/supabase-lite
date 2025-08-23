@@ -122,17 +122,12 @@ export function AuthTesting() {
     const allTests = authTestCategories.flatMap(cat => cat.tests);
     
     for (const test of allTests) {
-      // Skip admin tests if not authenticated or tests that require auth when not authenticated
-      if ((test.adminOnly && !authState.isAuthenticated) || 
-          (test.requiresAuth && !authState.isAuthenticated && !test.id.includes('signin') && !test.id.includes('signup'))) {
-        continue;
-      }
-      
       try {
         const response = await executeAuthTest(test);
         setResponses(prev => ({ ...prev, [test.id]: response }));
         // Update auth state after each auth-modifying test
-        if (test.id.includes('signin') || test.id.includes('signup') || test.id.includes('logout')) {
+        if (test.id.includes('signin') || test.id.includes('signup') || test.id.includes('logout') ||
+            test.id.includes('auto-signin') || test.id.includes('auto-signup')) {
           setTimeout(updateAuthState, 100);
         }
         // Small delay between tests to avoid overwhelming the server
@@ -189,11 +184,19 @@ export function AuthTesting() {
       <div className="p-4 bg-gray-50 border-b">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-gray-900">Authentication Status</h3>
-          {authState.isAuthenticated && (
-            <Button size="sm" variant="outline" onClick={handleClearAuthData}>
-              Clear Auth Data
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {authState.isAuthenticated && (
+              <Button size="sm" variant="outline" onClick={handleClearAuthData}>
+                Clear Auth Data
+              </Button>
+            )}
+            <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Auto-Auth Enabled
+            </div>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -211,6 +214,11 @@ export function AuthTesting() {
                 <div>ID: {authState.user.id}</div>
               </div>
             )}
+            {!authState.isAuthenticated && (
+              <div className="mt-1 text-xs text-blue-600">
+                Tests will auto-authenticate as needed
+              </div>
+            )}
           </Card>
           
           <Card className="p-3">
@@ -218,7 +226,7 @@ export function AuthTesting() {
             <div className="text-xs font-mono bg-gray-100 p-1 rounded">
               {authState.accessToken ? 
                 `${authState.accessToken.substring(0, 20)}...` : 
-                'None'
+                'Auto-generated when needed'
               }
             </div>
           </Card>
@@ -232,7 +240,7 @@ export function AuthTesting() {
                   <div>Role: {authState.session.user?.role || 'N/A'}</div>
                 </div>
               ) : (
-                'No active session'
+                'Will be created automatically'
               )}
             </div>
           </Card>
