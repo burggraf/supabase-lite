@@ -38,6 +38,8 @@ export class AuthManager {
   private sessionManager: SessionManager
   private passwordService: PasswordService
   private config: AuthManagerConfig
+  private isInitialized: boolean = false
+  private initializationPromise: Promise<void> | null = null
 
   constructor(config?: Partial<AuthManagerConfig>) {
     this.config = {
@@ -72,74 +74,121 @@ export class AuthManager {
    * Initialize auth manager
    */
   async initialize(): Promise<void> {
+    // Return immediately if already initialized
+    if (this.isInitialized) {
+      return;
+    }
+
+    // If initialization is in progress, wait for it to complete
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    // Start initialization
+    this.initializationPromise = this._doInitialize();
+    
+    try {
+      await this.initializationPromise;
+      this.isInitialized = true;
+    } catch (error) {
+      // Reset on failure so we can retry
+      this.initializationPromise = null;
+      throw error;
+    }
+  }
+
+  private async _doInitialize(): Promise<void> {
+    console.log('AuthManager: Starting initialization...')
+    
     if (!this.dbManager.isConnected()) {
+      console.log('AuthManager: Database not connected, initializing...')
       await this.dbManager.initialize()
+    } else {
+      console.log('AuthManager: Database already connected')
     }
 
     await this.jwtService.initialize()
     await this.sessionManager.initialize()
     await this.ensureAuthTables()
+    
+    console.log('AuthManager: Initialization completed')
   }
 
   /**
    * Sign up new user with email/password
    */
   async signUp(credentials: SignUpCredentials): Promise<{ user: User; session: Session | null }> {
+    console.log('🔐 AuthManager.signUp: Starting signup process for:', credentials.email)
+    
     if (!this.config.enableSignups) {
       throw this.createAuthError('Signups are disabled', 422, 'signups_disabled')
     }
 
-    // Validate credentials
-    Validators.validateSignUpCredentials(credentials)
+    try {
+      console.log('🔐 AuthManager.signUp: Validating credentials')
+      // Validate credentials
+      Validators.validateSignUpCredentials(credentials)
 
-    const { email, phone, password, data = {} } = credentials
+      const { email, phone, password, data = {} } = credentials
 
-    // Check if user already exists
-    if (email && await this.getUserByEmail(email)) {
-      throw this.createAuthError('User already registered', 422, 'email_already_exists')
+      console.log('🔐 AuthManager.signUp: Checking if user already exists')
+      // Check if user already exists
+      if (email && await this.getUserByEmail(email)) {
+        throw this.createAuthError('User already registered', 422, 'email_already_exists')
+      }
+
+      if (phone && await this.getUserByPhone(phone)) {
+        throw this.createAuthError('Phone number already registered', 422, 'phone_already_exists')
+      }
+
+      console.log('🔐 AuthManager.signUp: Hashing password')
+      // Hash password
+      const hashedPassword = await this.passwordService.hashPassword(password)
+      console.log('🔐 AuthManager.signUp: Password hashed successfully')
+
+      console.log('🔐 AuthManager.signUp: Generating UUID')
+      // Create user
+      const userId = CryptoUtils.generateUUID()
+      const now = new Date().toISOString()
+
+      const user: User = {
+        id: userId,
+        email: email || undefined,
+        phone: phone || undefined,
+        email_verified: !this.config.requireEmailVerification,
+        phone_verified: !this.config.requirePhoneVerification,
+        created_at: now,
+        updated_at: now,
+        role: 'authenticated',
+        app_metadata: {
+          provider: email ? 'email' : 'phone',
+          providers: [email ? 'email' : 'phone']
+        },
+        user_metadata: Validators.sanitizeUserMetadata(data),
+        is_anonymous: false
+      }
+
+      console.log('🔐 AuthManager.signUp: Storing user in database')
+      // Store user in database
+      await this.createUserInDB(user, hashedPassword)
+
+      console.log('🔐 AuthManager.signUp: Creating session')
+      // Create session if email verification not required
+      let session: Session | null = null
+      if (!this.config.requireEmailVerification && !this.config.requirePhoneVerification) {
+        session = await this.sessionManager.createSession(user)
+      }
+
+      console.log('🔐 AuthManager.signUp: Logging audit event')
+      // Log audit event
+      await this.logAuditEvent('user_signed_up', { user_id: userId, email, phone })
+
+      console.log('🔐 AuthManager.signUp: Signup completed successfully')
+      return { user, session }
+    } catch (error) {
+      console.error('🔐 AuthManager.signUp: Error during signup:', error)
+      throw error
     }
-
-    if (phone && await this.getUserByPhone(phone)) {
-      throw this.createAuthError('Phone number already registered', 422, 'phone_already_exists')
-    }
-
-    // Hash password
-    const hashedPassword = await this.passwordService.hashPassword(password)
-
-    // Create user
-    const userId = CryptoUtils.generateUUID()
-    const now = new Date().toISOString()
-
-    const user: User = {
-      id: userId,
-      email: email || undefined,
-      phone: phone || undefined,
-      email_verified: !this.config.requireEmailVerification,
-      phone_verified: !this.config.requirePhoneVerification,
-      created_at: now,
-      updated_at: now,
-      role: 'authenticated',
-      app_metadata: {
-        provider: email ? 'email' : 'phone',
-        providers: [email ? 'email' : 'phone']
-      },
-      user_metadata: Validators.sanitizeUserMetadata(data),
-      is_anonymous: false
-    }
-
-    // Store user in database
-    await this.createUserInDB(user, hashedPassword)
-
-    // Create session if email verification not required
-    let session: Session | null = null
-    if (!this.config.requireEmailVerification && !this.config.requirePhoneVerification) {
-      session = await this.sessionManager.createSession(user)
-    }
-
-    // Log audit event
-    await this.logAuditEvent('user_signed_up', { user_id: userId, email, phone })
-
-    return { user, session }
   }
 
   /**

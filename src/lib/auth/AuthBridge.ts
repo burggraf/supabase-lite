@@ -39,6 +39,8 @@ export class AuthBridge {
   private jwtService: JWTService  
   private sessionManager: SessionManager
   private mfaService: MFAService
+  private isInitialized: boolean = false
+  private initializationPromise: Promise<void> | null = null
 
   constructor() {
     this.authManager = AuthManager.getInstance()
@@ -58,6 +60,30 @@ export class AuthBridge {
    * Initialize auth bridge
    */
   async initialize(): Promise<void> {
+    // Return immediately if already initialized
+    if (this.isInitialized) {
+      return;
+    }
+
+    // If initialization is in progress, wait for it to complete
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    // Start initialization
+    this.initializationPromise = this._doInitialize();
+    
+    try {
+      await this.initializationPromise;
+      this.isInitialized = true;
+    } catch (error) {
+      // Reset on failure so we can retry
+      this.initializationPromise = null;
+      throw error;
+    }
+  }
+
+  private async _doInitialize(): Promise<void> {
     try {
       console.log('AuthBridge: Starting initialization...')
       await this.authManager.initialize()
@@ -78,11 +104,19 @@ export class AuthBridge {
    * Handle auth API requests
    */
   async handleAuthRequest(request: AuthAPIRequest): Promise<AuthAPIResponse> {
+    const requestId = Math.random().toString(36).substring(7);
     
     try {
+      console.log(`🔐 AuthBridge[${requestId}]: Handling ${request.method} ${request.endpoint}`)
+      console.log(`🔐 AuthBridge[${requestId}]: Request body:`, request.body)
+      
+      console.log(`🔐 AuthBridge[${requestId}]: About to initialize`)
       await this.initialize()
+      console.log(`🔐 AuthBridge[${requestId}]: Initialization complete`)
       
       const { endpoint, method, body, headers } = request
+      
+      console.log(`🔐 AuthBridge[${requestId}]: About to handle endpoint: ${method} ${endpoint}`)
       
       switch (`${method} ${endpoint}`) {
         // Authentication endpoints
@@ -141,6 +175,17 @@ export class AuthBridge {
       }
       
     } catch (error) {
+      console.error(`❌ AuthBridge[${requestId}]: Request failed:`, {
+        endpoint: request.endpoint,
+        method: request.method,
+        error: {
+          name: error?.name,
+          message: error?.message,
+          stack: error?.stack,
+          code: error?.code,
+          status: error?.status
+        }
+      })
       return this.handleError(error)
     }
   }

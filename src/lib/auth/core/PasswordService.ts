@@ -13,11 +13,13 @@ export type PasswordAlgorithm = 'bcrypt' | 'PBKDF2'
 
 export class PasswordService {
   private static instance: PasswordService
-  private readonly defaultAlgorithm: PasswordAlgorithm = 'bcrypt'
   private readonly pbkdf2Iterations = 100000
   private readonly hashFunction = 'SHA-256'
   private readonly keyLength = 256
   private readonly bcryptRounds = 10
+  
+  // Use Web Crypto API in browser environment, bcrypt in Node.js
+  private readonly defaultAlgorithm: PasswordAlgorithm = this.isBrowserEnvironment() ? 'PBKDF2' : 'bcrypt'
 
   static getInstance(): PasswordService {
     if (!PasswordService.instance) {
@@ -27,7 +29,14 @@ export class PasswordService {
   }
 
   /**
-   * Hash password using bcrypt (default) or PBKDF2
+   * Detect if we're running in browser environment
+   */
+  private isBrowserEnvironment(): boolean {
+    return typeof window !== 'undefined' && typeof document !== 'undefined'
+  }
+
+  /**
+   * Hash password using PBKDF2 (browser) or bcrypt (Node.js)
    */
   async hashPassword(password: string, algorithm: PasswordAlgorithm = this.defaultAlgorithm): Promise<HashedPassword> {
     // Validate password strength
@@ -36,14 +45,15 @@ export class PasswordService {
       throw new ValidationError(validation.errors[0], 'password')
     }
 
-    if (algorithm === 'bcrypt') {
+    if (algorithm === 'bcrypt' && !this.isBrowserEnvironment()) {
+      // Only use bcrypt in Node.js environment
       const hash = await bcrypt.hash(password, this.bcryptRounds)
       return {
         hash,
         algorithm: 'bcrypt'
       }
     } else {
-      // PBKDF2 for backward compatibility
+      // Use PBKDF2 in browser environment or when explicitly requested
       const { hash, salt } = await CryptoUtils.hashPassword(password)
       return {
         hash,
@@ -61,12 +71,22 @@ export class PasswordService {
     try {
       // Handle string hash (bcrypt format) - this is for Supabase compatibility
       if (typeof hashedPasswordOrHash === 'string') {
+        if (this.isBrowserEnvironment()) {
+          // In browser, we can't verify bcrypt hashes, so return false
+          console.warn('Cannot verify bcrypt hash in browser environment')
+          return false
+        }
         return await bcrypt.compare(password, hashedPasswordOrHash)
       }
 
       // Handle HashedPassword object
       const hashedPassword = hashedPasswordOrHash
       if (hashedPassword.algorithm === 'bcrypt') {
+        if (this.isBrowserEnvironment()) {
+          // In browser, we can't verify bcrypt hashes, so return false
+          console.warn('Cannot verify bcrypt hash in browser environment')
+          return false
+        }
         return await bcrypt.compare(password, hashedPassword.hash)
       } else if (hashedPassword.algorithm === 'PBKDF2') {
         if (!hashedPassword.salt) {

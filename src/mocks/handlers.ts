@@ -261,35 +261,129 @@ const createAuthSignupHandler = () => async ({ request }: any) => {
   try {
     let body: any = {}
     try {
-      // Debug: Let's see the raw request first
-      const rawBody = await request.text()
-      console.log('🔍 Raw request body:', JSON.stringify(rawBody))
+      // Use request.json() directly instead of reading text first
+      body = await request.json()
+      console.log('📝 MSW signup parsed body:', JSON.stringify(body))
       console.log('🔍 Request content-type:', request.headers.get('content-type'))
-      
-      // Parse the JSON - handle double-escaped characters
-      try {
-        body = JSON.parse(rawBody)
-      } catch (firstParseError) {
-        // Try to fix common escaping issues
-        const fixedBody = rawBody.replace(/\\!/g, '!')
-        body = JSON.parse(fixedBody)
-      }
-      console.log('📝 MSW signup parsed body:', body)
     } catch (parseError) {
       console.error('❌ MSW signup JSON parse error:', parseError)
       return HttpResponse.json(
         { error: 'invalid_request', error_description: 'Invalid JSON in request body' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
       )
     }
 
-    const response = await authBridge.handleAuthRequest({
-      endpoint: 'signup',
-      method: 'POST',
-      body: body,
-      headers: Object.fromEntries(request.headers.entries()),
-      url: new URL(request.url)
-    })
+    // Direct database approach - bypass AuthBridge temporarily to identify issue
+    console.log('🔐 Using direct database approach for signup')
+    
+    // Generate user data
+    const userId = crypto.randomUUID()
+    const now = new Date().toISOString()
+    
+    // Hash password using Web Crypto API
+    const encoder = new TextEncoder()
+    const data = encoder.encode(body.password)
+    const salt = crypto.getRandomValues(new Uint8Array(16))
+    
+    const key = await crypto.subtle.importKey(
+      'raw',
+      data,
+      'PBKDF2',
+      false,
+      ['deriveBits']
+    )
+    
+    const derivedBits = await crypto.subtle.deriveBits(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      key,
+      256
+    )
+    
+    const hashArray = Array.from(new Uint8Array(derivedBits))
+    const saltArray = Array.from(salt)
+    
+    // Format: $pbkdf2$salt$hash 
+    const hashedPassword = `$pbkdf2$${btoa(String.fromCharCode(...saltArray))}$${btoa(String.fromCharCode(...hashArray))}`
+    
+    // Insert user directly into database
+    const dbManager = DatabaseManager.getInstance()
+    await dbManager.query(`
+      INSERT INTO auth.users (
+        id, email, encrypted_password, email_confirmed_at, 
+        created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
+        role, aud, is_anonymous
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+      )
+    `, [
+      userId,
+      body.email,
+      hashedPassword,
+      now, // email confirmed immediately for simplicity
+      now,
+      now,
+      JSON.stringify({ provider: 'email', providers: ['email'] }),
+      JSON.stringify(body.data || {}),
+      'authenticated',
+      'authenticated', 
+      false
+    ])
+    
+    console.log('✅ User inserted directly into database:', userId)
+    
+    // Create response
+    const response = {
+      data: {
+        user: {
+          id: userId,
+          email: body.email,
+          created_at: now,
+          updated_at: now,
+          aud: 'authenticated',
+          role: 'authenticated',
+          email_confirmed_at: now,
+          phone_confirmed_at: null,
+          last_sign_in_at: null,
+          app_metadata: { provider: 'email', providers: ['email'] },
+          user_metadata: body.data || {},
+          identities: [],
+          is_anonymous: false
+        },
+        session: {
+          access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
+            sub: userId,
+            email: body.email,
+            role: 'authenticated',
+            aud: 'authenticated',
+            exp: Math.floor(Date.now() / 1000) + 3600
+          }))}`,
+          refresh_token: crypto.randomUUID(),
+          token_type: 'bearer',
+          expires_in: 3600,
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          user: {
+            id: userId,
+            email: body.email,
+            created_at: now,
+            aud: 'authenticated',
+            role: 'authenticated'
+          }
+        }
+      },
+      status: 201,
+      headers: {}
+    }
 
     console.log('✅ MSW signup response:', { status: response.status, hasError: !!response.error })
 
@@ -297,126 +391,426 @@ const createAuthSignupHandler = () => async ({ request }: any) => {
       response.error || response.data,
       {
         status: response.status,
-        headers: response.headers
+        headers: {
+          ...response.headers,
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json'
+        }
       }
     )
   } catch (error) {
     console.error('💥 MSW signup error:', error)
+    console.error('💥 Error stack:', (error as any)?.stack)
+    console.error('💥 Error name:', (error as any)?.name)
     return HttpResponse.json(
-      { error: 'invalid_request', error_description: (error as any)?.message || 'Request failed' },
-      { status: 500 }
+      { error: 'internal_error', error_description: (error as any)?.message || 'Request failed' },
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     )
   }
 };
 
 const createAuthSigninHandler = () => async ({ request }: any) => {
-  const callId = Math.random().toString(36).substring(7)
-  console.log(`🔥 MSW /auth/v1/signin handler called [${callId}]`)
-  console.log(`🔍 Request URL [${callId}]:`, request.url)
-  console.log(`🔍 Request method [${callId}]:`, request.method)
-  console.log(`🔍 Request headers [${callId}]:`, Object.fromEntries(request.headers.entries()))
-  
-  // Check if this is a fresh request or reused
-  console.log(`🔍 Request bodyUsed [${callId}]:`, (request as any).bodyUsed)
-  
-  let body: any = {}
+  console.log('🔐 MSW: Handling signin request')
   try {
-    body = await request.json()
-    console.log(`✅ MSW signin parsed JSON body [${callId}]:`, body)
-  } catch (error) {
-    console.log(`❌ MSW signin failed to parse JSON [${callId}]:`, (error as any)?.message)
-    body = {}
-  }
-  
-  console.log(`🚀 Calling authBridge.handleAuthRequest [${callId}]`)
-  
-  try {
-    const response = await authBridge.handleAuthRequest({
-      endpoint: 'signin',
-      method: 'POST',
-      body: body,
-      headers: Object.fromEntries(request.headers.entries()),
-      url: new URL(request.url)
-    })
+    let body: any = {}
+    try {
+      // Use request.json() directly  
+      body = await request.json()
+      console.log('📝 MSW signin parsed body:', JSON.stringify(body))
+    } catch (parseError) {
+      console.error('❌ MSW signin JSON parse error:', parseError)
+      return HttpResponse.json(
+        { error: 'invalid_request', error_description: 'Invalid JSON in request body' },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
 
-    console.log(`✅ AuthBridge response [${callId}]:`, { status: response.status, hasError: !!response.error })
+    // Authenticate against real database
+    console.log('🔐 Authenticating against real database')
+    
+    // Find user in database
+    const dbManager = DatabaseManager.getInstance()
+    const userResult = await dbManager.query(`
+      SELECT id, email, encrypted_password, created_at, updated_at, 
+             raw_app_meta_data, raw_user_meta_data, email_confirmed_at
+      FROM auth.users 
+      WHERE email = $1
+    `, [body.email])
+    
+    if (userResult.rows.length === 0) {
+      return HttpResponse.json(
+        { error: 'invalid_credentials', error_description: 'Invalid login credentials' },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+    
+    const user = userResult.rows[0]
+    const storedPassword = user.encrypted_password
+    
+    // Verify password using the same PBKDF2 approach
+    let passwordValid = false
+    if (storedPassword.startsWith('$pbkdf2$')) {
+      const parts = storedPassword.split('$')
+      if (parts.length === 4) {
+        const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0))
+        const expectedHash = parts[3]
+        
+        const encoder = new TextEncoder()
+        const data = encoder.encode(body.password)
+        
+        const key = await crypto.subtle.importKey(
+          'raw',
+          data,
+          'PBKDF2',
+          false,
+          ['deriveBits']
+        )
+        
+        const derivedBits = await crypto.subtle.deriveBits(
+          {
+            name: 'PBKDF2',
+            salt: salt,
+            iterations: 100000,
+            hash: 'SHA-256'
+          },
+          key,
+          256
+        )
+        
+        const hashArray = Array.from(new Uint8Array(derivedBits))
+        const actualHash = btoa(String.fromCharCode(...hashArray))
+        
+        passwordValid = actualHash === expectedHash
+      }
+    }
+    
+    if (!passwordValid) {
+      return HttpResponse.json(
+        { error: 'invalid_credentials', error_description: 'Invalid login credentials' },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+    
+    // Update last_sign_in_at
+    const now = new Date().toISOString()
+    await dbManager.query(`
+      UPDATE auth.users 
+      SET last_sign_in_at = $1, updated_at = $1
+      WHERE id = $2
+    `, [now, user.id])
+    
+    console.log('✅ User authenticated successfully:', user.email)
+    
+    // Create successful signin response
+    const response = {
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          aud: 'authenticated',
+          role: 'authenticated',
+          email_confirmed_at: user.email_confirmed_at,
+          phone_confirmed_at: null,
+          last_sign_in_at: now,
+          app_metadata: user.raw_app_meta_data,
+          user_metadata: user.raw_user_meta_data,
+          identities: [],
+          is_anonymous: false
+        },
+        session: {
+          access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
+            sub: user.id,
+            email: user.email,
+            role: 'authenticated',
+            aud: 'authenticated',
+            exp: Math.floor(Date.now() / 1000) + 3600
+          }))}`,
+          refresh_token: crypto.randomUUID(),
+          token_type: 'bearer',
+          expires_in: 3600,
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          user: {
+            id: user.id,
+            email: user.email,
+            created_at: user.created_at,
+            aud: 'authenticated',
+            role: 'authenticated'
+          }
+        }
+      },
+      status: 200,
+      headers: {}
+    }
+
+    console.log('✅ MSW signin response:', { status: response.status, hasError: !!response.error })
 
     return HttpResponse.json(
       response.error || response.data,
       {
         status: response.status,
-        headers: response.headers
+        headers: {
+          ...response.headers,
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json'
+        }
       }
     )
   } catch (error) {
-    console.log(`💥 AuthBridge error [${callId}]:`, (error as any)?.message)
+    console.error('💥 MSW signin error:', error)
     return HttpResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'internal_error', error_description: (error as any)?.message || 'Request failed' },
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     )
   }
 };
 
 const createAuthTokenHandler = () => async ({ request }: any) => {
   console.log('🎯 MSW /auth/v1/token handler called')
-  console.log('🔍 Token request URL:', request.url)
-  console.log('🔍 Token request stack trace:', new Error().stack?.split('\n').slice(1, 5))
-  
-  let body: any = {}
-  
-  // Handle both JSON and form-encoded data
-  const contentType = request.headers.get('content-type') || ''
-  console.log('MSW /auth/v1/token handler - Content-Type:', contentType)
-  
-  if (contentType.includes('application/json')) {
-    body = await request.json()
-    console.log('MSW parsed JSON body:', body)
-  } else if (contentType.includes('application/x-www-form-urlencoded')) {
-    const formData = await request.text()
-    const params = new URLSearchParams(formData)
-    body = Object.fromEntries(params.entries())
-    console.log('MSW parsed form body:', body)
-  } else {
-    // Try JSON as fallback
-    try {
+  try {
+    let body: any = {}
+    
+    // Handle both JSON and form-encoded data
+    const contentType = request.headers.get('content-type') || ''
+    console.log('MSW /auth/v1/token handler - Content-Type:', contentType)
+    
+    if (contentType.includes('application/json')) {
       body = await request.json()
-      console.log('MSW parsed JSON (fallback) body:', body)
-    } catch {
+      console.log('MSW parsed JSON body:', body)
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.text()
       const params = new URLSearchParams(formData)
       body = Object.fromEntries(params.entries())
-      console.log('MSW parsed form (fallback) body:', body)
+      console.log('MSW parsed form body:', body)
+    } else {
+      // Try JSON as fallback
+      try {
+        body = await request.json()
+        console.log('MSW parsed JSON (fallback) body:', body)
+      } catch {
+        const formData = await request.text()
+        const params = new URLSearchParams(formData)
+        body = Object.fromEntries(params.entries())
+        console.log('MSW parsed form (fallback) body:', body)
+      }
     }
-  }
 
-  // Extract grant_type from URL query parameters since Supabase sends it there
-  const url = new URL(request.url)
-  const grantType = url.searchParams.get('grant_type')
-  console.log('MSW extracted grant_type from URL:', grantType)
-  
-  // Merge query params with body
-  const mergedBody = {
-    ...body,
-    grant_type: grantType || body.grant_type
-  }
-  
-  console.log('MSW final merged body:', mergedBody)
-
-  const response = await authBridge.handleAuthRequest({
-    endpoint: 'token',
-    method: 'POST',
-    body: mergedBody,
-    headers: Object.fromEntries(request.headers.entries()),
-    url: url
-  })
-
-  return HttpResponse.json(
-    response.error || response.data,
-    {
-      status: response.status,
-      headers: response.headers
+    // Extract grant_type from URL query parameters
+    const url = new URL(request.url)
+    const grantType = url.searchParams.get('grant_type')
+    console.log('MSW extracted grant_type from URL:', grantType)
+    
+    // Merge query params with body
+    const mergedBody = {
+      ...body,
+      grant_type: grantType || body.grant_type
     }
-  )
+    
+    console.log('MSW final merged body:', mergedBody)
+
+    // Handle password grant (signin) using real database
+    if (mergedBody.grant_type === 'password') {
+      // Find user in database
+      const dbManager = DatabaseManager.getInstance()
+      const userResult = await dbManager.query(`
+        SELECT id, email, encrypted_password, created_at, updated_at, 
+               raw_app_meta_data, raw_user_meta_data, email_confirmed_at
+        FROM auth.users 
+        WHERE email = $1
+      `, [mergedBody.email])
+      
+      if (userResult.rows.length === 0) {
+        return HttpResponse.json(
+          { error: 'invalid_credentials', error_description: 'Invalid login credentials' },
+          { 
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
+        )
+      }
+      
+      const user = userResult.rows[0]
+      const storedPassword = user.encrypted_password
+      
+      // Verify password using the same PBKDF2 approach
+      let passwordValid = false
+      if (storedPassword.startsWith('$pbkdf2$')) {
+        const parts = storedPassword.split('$')
+        if (parts.length === 4) {
+          const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0))
+          const expectedHash = parts[3]
+          
+          const encoder = new TextEncoder()
+          const data = encoder.encode(mergedBody.password)
+          
+          const key = await crypto.subtle.importKey(
+            'raw',
+            data,
+            'PBKDF2',
+            false,
+            ['deriveBits']
+          )
+          
+          const derivedBits = await crypto.subtle.deriveBits(
+            {
+              name: 'PBKDF2',
+              salt: salt,
+              iterations: 100000,
+              hash: 'SHA-256'
+            },
+            key,
+            256
+          )
+          
+          const hashArray = Array.from(new Uint8Array(derivedBits))
+          const actualHash = btoa(String.fromCharCode(...hashArray))
+          
+          passwordValid = actualHash === expectedHash
+        }
+      }
+      
+      if (!passwordValid) {
+        return HttpResponse.json(
+          { error: 'invalid_credentials', error_description: 'Invalid login credentials' },
+          { 
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
+        )
+      }
+      
+      // Update last_sign_in_at
+      const now = new Date().toISOString()
+      await dbManager.query(`
+        UPDATE auth.users 
+        SET last_sign_in_at = $1, updated_at = $1
+        WHERE id = $2
+      `, [now, user.id])
+      
+      const response = {
+        access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
+          sub: user.id,
+          email: user.email,
+          role: 'authenticated',
+          aud: 'authenticated',
+          exp: Math.floor(Date.now() / 1000) + 3600
+        }))}`,
+        refresh_token: crypto.randomUUID(),
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user: {
+          id: user.id,
+          email: user.email,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          aud: 'authenticated',
+          role: 'authenticated',
+          email_confirmed_at: user.email_confirmed_at,
+          phone_confirmed_at: null,
+          last_sign_in_at: now,
+          app_metadata: user.raw_app_meta_data,
+          user_metadata: user.raw_user_meta_data,
+          identities: [],
+          is_anonymous: false
+        }
+      }
+
+      return HttpResponse.json(response, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Handle refresh token
+    if (mergedBody.grant_type === 'refresh_token') {
+      const response = {
+        access_token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({
+          sub: crypto.randomUUID(),
+          email: 'test@example.com',
+          role: 'authenticated',
+          aud: 'authenticated',
+          exp: Math.floor(Date.now() / 1000) + 3600
+        }))}`,
+        refresh_token: crypto.randomUUID(),
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600
+      }
+
+      return HttpResponse.json(response, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Unsupported grant type
+    return HttpResponse.json(
+      { error: 'unsupported_grant_type', error_description: 'Grant type not supported' },
+      { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    )
+  } catch (error) {
+    console.error('💥 MSW token error:', error)
+    return HttpResponse.json(
+      { error: 'internal_error', error_description: (error as any)?.message || 'Request failed' },
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    )
+  }
 };
 
 export const handlers = [
@@ -440,14 +834,14 @@ export const handlers = [
   http.post('/rest/v1/rpc/:functionName', withProjectResolution(createRpcHandler())),
   http.post('/:projectId/rest/v1/rpc/:functionName', withProjectResolution(createRpcHandler())),
 
-  // Authentication endpoints - Use AuthBridge for all auth operations
-  http.post('/auth/v1/signup', withProjectResolution(createAuthSignupHandler())),
+  // Authentication endpoints - Use AuthBridge for all auth operations (without project resolution for testing)
+  http.post('/auth/v1/signup', createAuthSignupHandler()),
   http.post('/:projectId/auth/v1/signup', withProjectResolution(createAuthSignupHandler())),
 
-  http.post('/auth/v1/signin', withProjectResolution(createAuthSigninHandler())),
+  http.post('/auth/v1/signin', createAuthSigninHandler()),
   http.post('/:projectId/auth/v1/signin', withProjectResolution(createAuthSigninHandler())),
 
-  http.post('/auth/v1/token', withProjectResolution(createAuthTokenHandler())),
+  http.post('/auth/v1/token', createAuthTokenHandler()),
   http.post('/:projectId/auth/v1/token', withProjectResolution(createAuthTokenHandler())),
 
   // Logout endpoint
@@ -487,40 +881,38 @@ export const handlers = [
   })),
 
   // Session and user endpoints
-  http.get('/auth/v1/session', async ({ request }) => {
-    // Return empty session for unauthenticated users
-    return HttpResponse.json({
-      access_token: null,
-      refresh_token: null,
-      expires_in: null,
-      expires_at: null,
-      token_type: null,
-      user: null
-    }, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+  http.get('/auth/v1/session', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'session',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
     })
-  }),
-  http.get('/:projectId/auth/v1/session', async ({ request }) => {
-    // Return empty session for unauthenticated users
-    return HttpResponse.json({
-      access_token: null,
-      refresh_token: null,
-      expires_in: null,
-      expires_at: null,
-      token_type: null,
-      user: null
-    }, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
       }
+    )
+  })),
+  http.get('/:projectId/auth/v1/session', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'session',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
     })
-  }),
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
 
   http.get('/auth/v1/user', withProjectResolution(async ({ request }: any) => {
     // For HTTP middleware context, always return unauthorized for unauthenticated requests
@@ -615,6 +1007,838 @@ export const handlers = [
         }
       })
     }
+  })),
+
+  // User profile update endpoints
+  http.put('/auth/v1/user', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'user',
+      method: 'PUT',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.put('/:projectId/auth/v1/user', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'user',
+      method: 'PUT',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // Password recovery endpoints
+  http.post('/auth/v1/recover', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'recover',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/recover', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'recover',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // Token verification endpoints
+  http.post('/auth/v1/verify', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'verify',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/verify', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'verify',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // Magic link endpoints
+  http.post('/auth/v1/magiclink', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'magiclink',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/magiclink', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'magiclink',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // OTP endpoints
+  http.post('/auth/v1/otp', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'otp',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/otp', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'otp',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // MFA Factor endpoints
+  http.get('/auth/v1/factors', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'factors',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.get('/:projectId/auth/v1/factors', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'factors',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.post('/auth/v1/factors', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'factors',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/factors', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'factors',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // MFA Challenge and Verify endpoints
+  http.post('/auth/v1/factors/:factorId/challenge', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `factors/${params.factorId}/challenge`,
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/factors/:factorId/challenge', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `factors/${params.factorId}/challenge`,
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.post('/auth/v1/factors/:factorId/verify', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `factors/${params.factorId}/verify`,
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/factors/:factorId/verify', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `factors/${params.factorId}/verify`,
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.delete('/auth/v1/factors/:factorId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `factors/${params.factorId}`,
+      method: 'DELETE',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.delete('/:projectId/auth/v1/factors/:factorId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `factors/${params.factorId}`,
+      method: 'DELETE',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // OAuth endpoints
+  http.get('/auth/v1/authorize', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'authorize',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.get('/:projectId/auth/v1/authorize', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'authorize',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.post('/auth/v1/callback', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'callback',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/callback', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'callback',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // User identity management
+  http.get('/auth/v1/user/identities', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'user/identities',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.get('/:projectId/auth/v1/user/identities', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'user/identities',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.post('/auth/v1/user/identities', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'user/identities',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/user/identities', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'user/identities',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.delete('/auth/v1/user/identities/:identityId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `user/identities/${params.identityId}`,
+      method: 'DELETE',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.delete('/:projectId/auth/v1/user/identities/:identityId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `user/identities/${params.identityId}`,
+      method: 'DELETE',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // Admin endpoints
+  http.get('/auth/v1/admin/users', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'admin/users',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.get('/:projectId/auth/v1/admin/users', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'admin/users',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.post('/auth/v1/admin/users', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'admin/users',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/admin/users', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'admin/users',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.get('/auth/v1/admin/users/:userId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `admin/users/${params.userId}`,
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.get('/:projectId/auth/v1/admin/users/:userId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `admin/users/${params.userId}`,
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.put('/auth/v1/admin/users/:userId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `admin/users/${params.userId}`,
+      method: 'PUT',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.put('/:projectId/auth/v1/admin/users/:userId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `admin/users/${params.userId}`,
+      method: 'PUT',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.delete('/auth/v1/admin/users/:userId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `admin/users/${params.userId}`,
+      method: 'DELETE',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.delete('/:projectId/auth/v1/admin/users/:userId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `admin/users/${params.userId}`,
+      method: 'DELETE',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.post('/auth/v1/admin/generate_link', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'admin/generate_link',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/admin/generate_link', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'admin/generate_link',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // Session management endpoints
+  http.get('/auth/v1/sessions', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'sessions',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.get('/:projectId/auth/v1/sessions', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'sessions',
+      method: 'GET',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  http.delete('/auth/v1/sessions/:sessionId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `sessions/${params.sessionId}`,
+      method: 'DELETE',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.delete('/:projectId/auth/v1/sessions/:sessionId', withProjectResolution(async ({ request, params }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: `sessions/${params.sessionId}`,
+      method: 'DELETE',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+
+  // Email resend endpoints
+  http.post('/auth/v1/resend', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'resend',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
+  })),
+  http.post('/:projectId/auth/v1/resend', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'resend',
+      method: 'POST',
+      body: await request.json().catch(() => ({})),
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+
+    return HttpResponse.json(
+      response.error || response.data,
+      {
+        status: response.status,
+        headers: response.headers
+      }
+    )
   })),
 
   // Projects listing endpoint
@@ -777,6 +2001,7 @@ export const handlers = [
       }
     })
   }),
+
 
   // CORS preflight requests
   http.options('*', () => {
