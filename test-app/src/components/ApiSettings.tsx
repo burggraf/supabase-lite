@@ -16,6 +16,7 @@ export function ApiSettings({ onSettingsChange }: ApiSettingsProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'error'>('unknown');
   const [errorMessage, setErrorMessage] = useState('');
+  const [appliedSuccessfully, setAppliedSuccessfully] = useState(false);
 
   useEffect(() => {
     // Load saved port from localStorage or use default
@@ -106,6 +107,14 @@ export function ApiSettings({ onSettingsChange }: ApiSettingsProps) {
     // Save port to localStorage
     localStorage.setItem(PORT_STORAGE_KEY, port);
     
+    // Show success feedback
+    setAppliedSuccessfully(true);
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setAppliedSuccessfully(false);
+    }, 3000);
+    
     onSettingsChange();
   };
 
@@ -182,14 +191,25 @@ export function ApiSettings({ onSettingsChange }: ApiSettingsProps) {
               {isConnecting ? 'Testing...' : 'Test'}
             </Button>
             
-            <Button
-              size="sm"
-              onClick={applySettings}
-              disabled={!isValid}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Apply
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={applySettings}
+                disabled={!isValid}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Apply
+              </Button>
+              
+              {appliedSuccessfully && (
+                <div className="flex items-center gap-1 text-green-600 text-sm animate-in fade-in duration-200">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-medium">Settings saved!</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
