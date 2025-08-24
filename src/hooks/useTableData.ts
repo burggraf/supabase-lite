@@ -26,10 +26,8 @@ export function useTableData() {
   // Load available tables
   const loadTables = useCallback(async () => {
     try {
-      console.log('🚀 loadTables: calling dbManager.getTableList()');
       setError(null);
       const tableList = await dbManager.getTableList();
-      console.log('🚀 loadTables: got table list from dbManager:', tableList);
       setTables(tableList);
       return tableList;
     } catch (err) {
@@ -110,7 +108,6 @@ export function useTableData() {
 
   // FIXED: Simplified connection handling - no complex transition checks
   useEffect(() => {
-    console.log('🚀 useTableData: connection changed', { isConnected, connectionId, lastConnectionId });
     
     // Only proceed if we have a valid connection
     if (!isConnected || !connectionId) {
@@ -122,7 +119,6 @@ export function useTableData() {
       return;
     }
     
-    console.log('🚀 useTableData: loading new connection');
     
     // Start transition with optimistic UI
     setIsTransitioning(true);
@@ -136,12 +132,10 @@ export function useTableData() {
     // Load tables for new connection without clearing current state
     const loadNewConnection = async () => {
       try {
-        console.log('🚀 useTableData: loading tables for new connection');
         
         // Load tables immediately after database connection
         
         const tableList = await dbManager.getTableList();
-        console.log('🚀 useTableData: new connection tables loaded:', tableList);
         
         // Only now update the state atomically
         setTables(tableList);
@@ -153,11 +147,9 @@ export function useTableData() {
         const hasPublicTables = publicTables.length > 0;
         
         if (hasPublicTables) {
-          console.log('🚀 useTableData: found public tables, selecting first one:', publicTables[0]);
           setSelectedTable(publicTables[0].name);
           setSelectedSchema('public');
         } else if (tableList.length > 0) {
-          console.log('🚀 useTableData: no public tables, selecting first available:', tableList[0]);
           setSelectedTable(tableList[0].name);
           setSelectedSchema(tableList[0].schema);
         } else {

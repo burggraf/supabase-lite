@@ -11,11 +11,9 @@ function initializeWebSocketBridge() {
   const isDevelopment = import.meta.env.DEV;
   
   if (isDevelopment) {
-    console.log('🛠️ Development mode: Enabling WebSocket bridge for external API access');
     // WebSocket bridge setup (development only)
     setupWebSocketBridge();
   } else {
-    console.log('🌐 Production mode: WebSocket bridge disabled (using PostMessage for proxy connections)');
   }
   
   function setupWebSocketBridge() {
@@ -30,14 +28,12 @@ function initializeWebSocketBridge() {
       // In development, always connect to localhost:5176
       const wsUrl = 'ws://localhost:5176';
       
-      console.log('🔌 Connecting WebSocket bridge to:', wsUrl);
       ws = new NativeWebSocket(wsUrl)
       
       // Expose globally for debugging
       ;(window as any).ws = ws
       
       ws.onopen = () => {
-        console.log('🔗 Connected to WebSocket bridge')
         
         // Send identification message to distinguish from proxy connections
         ws.send(JSON.stringify({
@@ -56,7 +52,6 @@ function initializeWebSocketBridge() {
           const message = JSON.parse(event.data)
           
           if (message.type === 'request') {
-            console.log(`📥 Received ${message.method} ${message.url} from bridge (ID: ${message.requestId})`)
             
             // Process the request using fetch (which will be intercepted by MSW)
             const fetchOptions: RequestInit = {
@@ -99,7 +94,6 @@ function initializeWebSocketBridge() {
               }
               
               ws.send(JSON.stringify(responseMessage))
-              console.log(`📤 Sent response for ${message.requestId} (status: ${response.status})`)
               
             } catch (fetchError: any) {
               console.error(`❌ Fetch error for ${message.requestId}:`, fetchError)
@@ -130,7 +124,6 @@ function initializeWebSocketBridge() {
       }
       
       ws.onclose = () => {
-        console.log('🔌 WebSocket bridge disconnected - attempting reconnection in 3s')
         // Attempt to reconnect after 3 seconds
         reconnectTimeout = window.setTimeout(connect, 3000)
       }
@@ -156,17 +149,14 @@ async function initializeApp() {
   try {
     // Initialize WebSocket bridge BEFORE MSW to avoid WebSocket override conflicts
     initializeWebSocketBridge()
-    console.log('WebSocket bridge client initialized')
     
     const { worker } = await import('./mocks/browser')
     await worker.start({
       onUnhandledRequest: 'bypass',
     })
-    console.log('MSW worker started successfully')
     
     // Initialize cross-origin API handler for test app communication
     new CrossOriginAPIHandler()
-    console.log('Cross-origin API handler initialized')
     
   } catch (error) {
     console.error('Failed to start MSW worker or cross-origin handler:', error)

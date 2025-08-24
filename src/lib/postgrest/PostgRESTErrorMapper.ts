@@ -22,7 +22,6 @@ export class PostgRESTErrorMapper {
    * Map a caught error to a PostgREST-compatible error response
    */
   static mapError(error: any): PostgRESTErrorResponse {
-    console.log('🚨 PostgRESTErrorMapper.mapError called with:', error)
     logger.debug('Mapping error to PostgREST format', { error })
 
     // Handle PostgreSQL errors (from PGlite)

@@ -348,7 +348,7 @@ export function DatabaseWorking() {
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => console.log(`View table: ${table.name}`)}
+                        onClick={() => {}}
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>

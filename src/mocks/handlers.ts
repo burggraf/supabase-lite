@@ -39,7 +39,6 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
     }
 
     const resolutionTime = performance.now() - startTime;
-    console.log(`🔄 MSW: Using project "${resolution.projectName}" (${resolution.projectId}) for ${url.pathname} (${resolutionTime.toFixed(1)}ms)`);
 
     // Normalize the URL to remove project identifier for the handler
     const normalizedUrl = normalizeApiPath(url);
@@ -55,7 +54,6 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
     
     const totalTime = performance.now() - startTime;
     const handleTime = performance.now() - handleStartTime;
-    console.log(`✅ MSW: Request completed in ${totalTime.toFixed(1)}ms (resolution: ${resolutionTime.toFixed(1)}ms, handler: ${handleTime.toFixed(1)}ms)`);
     
     return result;
   }) as T;
@@ -63,7 +61,6 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
 
 // Helper functions for common REST operations
 const createRestGetHandler = () => async ({ params, request }: any) => {
-  console.log(`🔍 MSW: GET /rest/v1/${params.table} called`)
   try {
     const response = await enhancedBridge.handleRestRequest({
       table: params.table as string,
@@ -72,7 +69,6 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
       url: new URL(request.url)
     })
     
-    console.log(`✅ MSW: GET response for ${params.table}:`, { status: response.status, dataLength: response.data?.length })
     
     return HttpResponse.json(response.data, {
       status: response.status,

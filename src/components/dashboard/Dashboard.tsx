@@ -20,12 +20,10 @@ export function Dashboard() {
   useEffect(() => {
     // Prevent multiple initializations (infinite loop protection)
     if (hasInitialized.current) {
-      console.log('🔍 Dashboard: Already initialized, skipping');
       return;
     }
 
     const initializeProjects = async () => {
-      console.log('🔍 Dashboard: Starting project initialization');
       hasInitialized.current = true;
       
       const allProjects = projectManager.getProjects();
@@ -34,11 +32,9 @@ export function Dashboard() {
       if (allProjects.length === 0) {
         try {
           setIsProjectsLoading(true);
-          console.log('🔍 Dashboard: No projects found, creating default project');
           const defaultProject = await projectManager.createProject('My First Project');
           
           // Switch to the new project's database
-          console.log('🔍 Dashboard: Switching to default project database:', defaultProject.databasePath);
           await switchToProject(defaultProject.databasePath);
           
           // Update state
@@ -52,14 +48,12 @@ export function Dashboard() {
       } else {
         // Load existing projects
         const active = projectManager.getActiveProject();
-        console.log('🔍 Dashboard: Found existing projects. Active project:', active?.name);
         setProjects(allProjects);
         setActiveProject(active);
         
         // Note: Database initialization is handled by useDatabase hook
         // We don't need to call switchToProject here as useDatabase hook
         // will automatically connect to the active project's database
-        console.log('🔍 Dashboard: Active project found, useDatabase hook will handle connection:', active?.name);
       }
     };
 
@@ -72,7 +66,6 @@ export function Dashboard() {
       if (isConnected && connectionId && getTableList) {
         try {
           const tables = await getTableList();
-          console.log('🔍 Dashboard: loaded tables for count:', tables);
           setTableCount(tables.length);
         } catch (error) {
           console.error('🔍 Dashboard: failed to get table count:', error);
@@ -92,7 +85,6 @@ export function Dashboard() {
       const newProject = await projectManager.createProject(name);
       
       // For NEW projects, initialize the database directly
-      console.log('🔍 Dashboard: Initializing new project database:', newProject.databasePath);
       await initialize(newProject.databasePath);
       
       // Validate the initialization was successful
@@ -101,7 +93,6 @@ export function Dashboard() {
         throw new Error('Failed to initialize new project database - connection mismatch');
       }
       
-      console.log('🔍 Dashboard: New project database initialized successfully');
       
       // Refresh projects list
       setProjects(projectManager.getProjects());
@@ -132,16 +123,12 @@ export function Dashboard() {
   };
 
   const handleSwitchProject = async (projectId: string) => {
-    console.log('🏗️ Dashboard.handleSwitchProject called:', { projectId });
     setIsProjectsLoading(true);
     try {
-      console.log('🏗️ Calling projectManager.switchToProject...');
       const project = await projectManager.switchToProject(projectId);
-      console.log('🏗️ ProjectManager.switchToProject completed:', { project: project.name, databasePath: project.databasePath });
       
       // Switch to the project's database with validation
       if (switchToProject) {
-        console.log('🏗️ Calling useDatabase.switchToProject...');
         await switchToProject(project.databasePath);
         
         // Validate the switch was successful
@@ -150,14 +137,11 @@ export function Dashboard() {
           throw new Error(`Failed to switch to project database - expected ${project.databasePath}, got ${connectionInfo?.id}`);
         }
         
-        console.log('🏗️ useDatabase.switchToProject completed and validated');
       }
       
       // Refresh projects list
-      console.log('🏗️ Refreshing projects list...');
       setProjects(projectManager.getProjects());
       setActiveProject(projectManager.getActiveProject());
-      console.log('🏗️ Projects refreshed, new active project:', projectManager.getActiveProject()?.name);
     } catch (error) {
       console.error('🏗️ Dashboard.handleSwitchProject failed:', error);
       throw error;

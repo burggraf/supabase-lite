@@ -54,17 +54,13 @@ export function ProjectsSection({
   };
 
   const handleSwitchProject = async (projectId: string) => {
-    console.log('🔄 handleSwitchProject called:', { projectId, activeProjectId: activeProject?.id });
     
     if (projectId === activeProject?.id) {
-      console.log('🔄 Project already active, skipping switch');
       return; // Already active
     }
     
     try {
-      console.log('🔄 Calling onSwitchProject...');
       await onSwitchProject(projectId);
-      console.log('🔄 onSwitchProject completed successfully');
     } catch (error) {
       console.error('🔄 Failed to switch project:', error);
     }

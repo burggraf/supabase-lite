@@ -46,13 +46,9 @@ export class EnhancedSupabaseAPIBridge {
   async handleRestRequest(request: SupabaseRequest): Promise<FormattedResponse> {
     await this.ensureInitialized()
 
-    console.log(`🚨 DEBUGGING: EnhancedBridge.handleRestRequest called for ${request.method} ${request.table}`)
-    console.log(`🔍 EnhancedBridge: handleRestRequest ${request.method} ${request.table}`)
-    console.log(`🔍 Database connected:`, this.dbManager.isConnected())
 
     // If database is not connected (HTTP middleware context), serve mock data
     if (!this.dbManager.isConnected()) {
-      console.log(`❌ Database not connected, serving mock data`)
       return this.serveMockData(request)
     }
 
