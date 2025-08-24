@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { SeedDataSection } from './SeedDataSection';
 import { TablesView } from './tables/TablesView';
+import { TestTablesView } from './tables/TestTablesView';
 
 const sidebarSections = [
   {
