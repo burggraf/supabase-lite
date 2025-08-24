@@ -213,18 +213,8 @@ export class EnhancedSupabaseAPIBridge {
    */
   private async handleSelect(table: string, query: ParsedQuery): Promise<FormattedResponse> {
     try {
-      // Check if table is known to not exist based on common patterns
-      // This is a workaround for cases where PostgreSQL errors are wrapped
-      if (this.isKnownNonExistentTable(table)) {
-        console.log(`🔍 DEBUGGING: Table ${table} is known to not exist, returning 404`)
-        const pgError = {
-          code: '42P01',
-          message: `relation "public.${table}" does not exist`,
-          detail: null,
-          hint: null
-        }
-        return ResponseFormatter.formatErrorResponse(pgError)
-      }
+      // Let the actual database query determine if the table exists
+      // Don't pre-filter based on hardcoded table names
 
       // Build the main query
       const sqlQuery = this.sqlBuilder.buildQuery(table, query)
@@ -366,21 +356,6 @@ export class EnhancedSupabaseAPIBridge {
     return this.currentUserId
   }
 
-  /**
-   * Check if a table is known to not exist
-   * This is a workaround for when PostgreSQL errors are wrapped in generic errors
-   */
-  private isKnownNonExistentTable(table: string): boolean {
-    // List of tables we know exist in the database
-    const knownTables = [
-      'products', 'categories', 'suppliers', 'orders', 'order_details',
-      'customers', 'employees', 'shippers', 'territories', 'region',
-      'customer_demographics', 'employee_territories', 'posts', 'users'
-    ]
-    
-    // If the table is not in our known tables list, assume it doesn't exist
-    return !knownTables.includes(table.toLowerCase())
-  }
 
   /**
    * Execute SQL query with parameters
