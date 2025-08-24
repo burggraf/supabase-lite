@@ -139,6 +139,10 @@ export class AuthBridge {
         case 'PUT user':
           return await this.handleUpdateUser(body as UpdateUserRequest, headers)
           
+        // Session management
+        case 'GET session':
+          return await this.handleGetSession(headers)
+          
         // Password recovery
         case 'POST recover':
           return await this.handleRecoverPassword(body as RecoverPasswordRequest)
@@ -353,6 +357,37 @@ export class AuthBridge {
     }
 
     return this.createSuccessResponse(response, 200)
+  }
+
+  private async handleGetSession(headers: Record<string, string>): Promise<AuthAPIResponse> {
+    console.log('AuthBridge handleGetSession called')
+    
+    try {
+      // Note: Session endpoint does NOT require authentication
+      // It's used to check current session status
+      const session = this.sessionManager.getSession()
+      
+      if (!session) {
+        // Return null for no session (this is expected behavior)
+        return this.createSuccessResponse(null, 200)
+      }
+
+      // Check if session is still valid
+      const sessionInfo = this.sessionManager.getSessionInfo()
+      if (!sessionInfo.isValid) {
+        console.log('Session found but expired, returning null')
+        return this.createSuccessResponse(null, 200)
+      }
+
+      console.log('Valid session found for user:', session.user?.email)
+      return this.createSuccessResponse(this.serializeSession(session), 200)
+      
+    } catch (error) {
+      console.error('Error in handleGetSession:', error)
+      // For session endpoint, return null on error rather than 401
+      // This allows clients to handle "no session" gracefully
+      return this.createSuccessResponse(null, 200)
+    }
   }
 
   private async handleRecoverPassword(request: RecoverPasswordRequest): Promise<AuthAPIResponse> {
