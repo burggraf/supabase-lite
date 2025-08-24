@@ -25,7 +25,7 @@ interface Product {
   units_in_stock: number
   units_on_order: number
   reorder_level: number
-  discontinued: boolean
+  discontinued: number
 }
 
 interface Order {
@@ -228,7 +228,7 @@ export function useNorthwindData(): UseNorthwindDataReturn {
       const [customersResult, ordersResult, productsResult, employeesResult] = await Promise.all([
         supabase.from('customers').select('customer_id', { count: 'exact' }),
         supabase.from('orders').select('order_id', { count: 'exact' }),
-        supabase.from('products').select('product_id', { count: 'exact' }).eq('discontinued', false),
+        supabase.from('products').select('product_id', { count: 'exact' }).eq('discontinued', 0),
         supabase.from('employees').select('employee_id', { count: 'exact' })
       ])
 
