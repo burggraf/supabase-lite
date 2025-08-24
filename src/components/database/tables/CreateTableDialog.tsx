@@ -6,6 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogPortal,
+  DialogOverlay,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -325,106 +327,123 @@ export function CreateTableDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create New Table</DialogTitle>
-          <DialogDescription>
-            Create a new table in the <code>{schema}</code> schema
-          </DialogDescription>
+      <DialogPortal>
+        <DialogOverlay className="bg-black/5" />
+        <DialogContent className="!fixed !left-auto !right-0 !top-0 !translate-x-0 !translate-y-0 h-screen w-[60vw] max-w-none m-0 p-0 rounded-none border-l border-r-0 border-t-0 border-b-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-right-full overflow-hidden flex flex-col shadow-2xl z-50">
+        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+          <DialogTitle className="text-lg">Create a new table under {schema}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="space-y-6">
           {/* Table Basic Info */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="tableName">Table Name *</Label>
+              <Label htmlFor="tableName" className="text-sm font-medium">Name</Label>
               <Input
                 id="tableName"
                 value={tableName}
                 onChange={(e) => setTableName(e.target.value)}
-                placeholder="users, products, orders..."
+                placeholder=""
                 autoFocus
+                className="h-9"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="text-sm font-medium">Description</Label>
               <Input
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief description of this table"
+                placeholder="Optional"
+                className="h-9"
               />
             </div>
           </div>
 
           {/* Security Options */}
           <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="enableRLS"
-                  checked={enableRLS}
-                  onCheckedChange={(checked: boolean) => setEnableRLS(checked)}
-                />
-                <Label htmlFor="enableRLS" className="text-sm font-medium">
-                  Enable Row Level Security (RLS)
-                </Label>
-                <Badge variant="secondary" className="text-xs">Recommended</Badge>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="enableRealtime"
-                  checked={enableRealtime}
-                  onCheckedChange={(checked: boolean) => setEnableRealtime(checked)}
-                />
-                <Label htmlFor="enableRealtime" className="text-sm font-medium">
-                  Enable Realtime
-                </Label>
-              </div>
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="enableRLS"
+                checked={enableRLS}
+                onCheckedChange={(checked: boolean) => setEnableRLS(checked)}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="enableRLS" className="text-sm">
+                Enable Row Level Security (RLS)
+              </Label>
+              <Badge variant="secondary" className="text-xs px-2 py-0.5">Recommended</Badge>
             </div>
+            
+            <p className="text-xs text-gray-600 ml-7">
+              Restrict access to your table by enabling RLS and writing Postgres policies.
+            </p>
 
             {enableRLS && (
-              <Alert className="bg-amber-50 border-amber-200">
-                <Info className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-800">
+              <div className="ml-7 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                <div className="flex items-start space-x-2">
+                  <Info className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Row Level Security is enabled</p>
-                    <p className="text-xs">
-                      Your table is protected by RLS. Only data your users are authorized to see will be returned from queries.
-                      You can configure access in Authentication {'>'} Policies after creating this table.
+                    <p className="text-sm font-medium text-gray-900">Policies are required to query data</p>
+                    <p className="text-xs text-gray-600">
+                      You need to create an access policy before you can query data from this table. Without 
+                      a policy, querying this table will return an <strong>empty array</strong> of results. You can create 
+                      policies after saving this table.
                     </p>
-                    <a 
-                      href="https://supabase.com/docs/guides/auth/row-level-security" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800 underline"
-                    >
+                    <button className="inline-flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-800 border border-gray-300 rounded px-2 py-1">
                       <BookOpen className="h-3 w-3" />
-                      <span>Learn more about RLS</span>
-                    </a>
+                      <span>Documentation</span>
+                    </button>
                   </div>
-                </AlertDescription>
-              </Alert>
+                </div>
+              </div>
             )}
+
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="enableRealtime"
+                checked={enableRealtime}
+                onCheckedChange={(checked: boolean) => setEnableRealtime(checked)}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="enableRealtime" className="text-sm">
+                Enable Realtime
+              </Label>
+            </div>
+            
+            <p className="text-xs text-gray-600 ml-7">
+              Broadcast changes on this table to authorized subscribers
+            </p>
           </div>
 
           {/* Columns Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">Columns</h3>
-              <Button onClick={addColumn} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Column
-              </Button>
+              <h3 className="text-base font-medium">Columns</h3>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" className="text-xs">
+                  <Info className="h-3 w-3 mr-1" />
+                  About data types
+                </Button>
+                <Button variant="outline" size="sm" className="text-xs">
+                  Import data from CSV
+                </Button>
+              </div>
             </div>
 
             {/* Column Headers */}
-            <div className="grid grid-cols-12 gap-3 items-center text-xs font-medium text-muted-foreground px-3 py-2 border-b">
+            <div className="grid grid-cols-12 gap-2 items-center text-xs text-gray-500 px-3 py-2 bg-gray-50 rounded-t border">
               <div className="col-span-1"></div>
-              <div className="col-span-3">Name</div>
+              <div className="col-span-3 flex items-center space-x-1">
+                <span>Name</span>
+                <Info className="h-3 w-3" />
+              </div>
               <div className="col-span-2">Type</div>
-              <div className="col-span-2">Default Value</div>
+              <div className="col-span-2 flex items-center space-x-1">
+                <span>Default Value</span>
+                <Info className="h-3 w-3" />
+              </div>
               <div className="col-span-1 text-center">Primary</div>
               <div className="col-span-1 text-center">Required</div>
               <div className="col-span-1 text-center">Unique</div>
@@ -432,62 +451,67 @@ export function CreateTableDialog({
             </div>
 
             {/* Column Rows */}
-            <div className="space-y-1">
-              {columns.map((column) => (
-                <ColumnEditor
-                  key={column.id}
-                  column={column}
-                  onUpdate={updateColumn}
-                  onRemove={removeColumn}
-                  canRemove={columns.length > 1}
-                />
+            <div className="border border-t-0 rounded-b">
+              {columns.map((column, index) => (
+                <div key={column.id} className={`${index !== columns.length - 1 ? 'border-b' : ''}`}>
+                  <ColumnEditor
+                    column={column}
+                    onUpdate={updateColumn}
+                    onRemove={removeColumn}
+                    canRemove={columns.length > 1}
+                  />
+                </div>
               ))}
             </div>
+
+            <Button onClick={addColumn} variant="outline" size="sm" className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Add column
+            </Button>
           </div>
 
           {/* SQL Preview */}
           <Collapsible open={showSQL} onOpenChange={setShowSQL}>
             <CollapsibleTrigger asChild>
-              <Button variant="outline" className="w-full">
-                {showSQL ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                {showSQL ? 'Hide' : 'Show'} SQL Preview
+              <Button variant="ghost" className="w-full justify-center text-sm text-gray-600">
+                <Eye className="h-4 w-4 mr-2" />
+                Show SQL Preview
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="mt-4">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Code className="h-4 w-4" />
-                  <Label>Generated SQL</Label>
-                </div>
-                <pre className="p-3 bg-muted rounded-lg text-sm font-mono overflow-x-auto">
+                <pre className="p-3 bg-gray-900 text-green-400 rounded text-xs font-mono overflow-x-auto">
                   {generateSQL() || 'Enter table name to see generated SQL...'}
                 </pre>
               </div>
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Error Display */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+            {/* Error Display */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
+        <DialogFooter className="px-6 py-4 border-t flex-shrink-0 flex justify-end gap-3">
+          <Button variant="outline" onClick={handleClose} disabled={loading} size="sm">
             Cancel
           </Button>
           <Button 
             onClick={handleCreate} 
             disabled={loading || !tableName.trim()}
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className="bg-green-600 hover:bg-green-700 text-white px-4"
+            size="sm"
           >
             {loading ? 'Creating...' : 'Save'}
           </Button>
         </DialogFooter>
-      </DialogContent>
+        </DialogContent>
+      </DialogPortal>
     </Dialog>
   );
 }
