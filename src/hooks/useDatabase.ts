@@ -153,12 +153,12 @@ export function useDatabase() {
     try {
       await dbManager.close();
       setIsConnected(false);
-      setConnectionId(null);
+      setConnectionId('');
       setError(null);
       console.log('🔴 Database connection closed successfully');
     } catch (err) {
       console.error('🔴 Failed to close database:', err);
-      setError(err as Error);
+      setError(err instanceof Error ? err.message : 'Failed to close database');
     } finally {
       setIsConnecting(false);
     }
@@ -178,36 +178,48 @@ export function useDatabase() {
       return;
     }
     
-    console.log('🔴🔴🔴 Proceeding with database switch...');
+    // Check if database is already transitioning
+    if (dbManager.isConnectionTransitioning()) {
+      console.log('🔴🔴🔴 Database is already transitioning, waiting...');
+      throw new Error('Database switch already in progress');
+    }
+    
+    console.log('🔴🔴🔴 Proceeding with atomic database switch...');
     setIsConnecting(true);
     setError(null);
     
     try {
       console.log('🔴🔴🔴 Calling dbManager.switchDatabase with:', databasePath);
       await dbManager.switchDatabase(databasePath);
-      console.log('🔴🔴🔴 dbManager.switchDatabase completed successfully');
+      console.log('🔴🔴🔴 Atomic database switch completed successfully');
       
-      // Verify the switch worked by checking connection info
+      // Validate the connection after switch
       const newConnectionInfo = dbManager.getConnectionInfo();
       console.log('🔴🔴🔴 New database connection info after switch:', newConnectionInfo);
       
-      // Verify we can query the database
-      try {
-        const tableList = await dbManager.getTableList();
-        console.log('🔴🔴🔴 Tables in switched database:', tableList);
-      } catch (tableError) {
-        console.error('🔴🔴🔴 Error querying tables after switch:', tableError);
+      if (!newConnectionInfo || newConnectionInfo.id !== databasePath) {
+        throw new Error('Database switch validation failed - connection mismatch');
       }
       
+      // Validate the connection immediately - no timing delays needed
+      try {
+        const tableList = await dbManager.getTableList();
+        console.log('🔴🔴🔴 Connection validated - tables found:', tableList.length);
+      } catch (tableError) {
+        console.error('🔴🔴🔴 Connection validation failed - cannot query tables:', tableError);
+        throw new Error('Database switch validation failed - cannot query tables');
+      }
+      
+      // Only update state after validation succeeds
       setIsConnected(true);
-      setConnectionId(databasePath); // Use database path as connection ID
-      console.log('🔴🔴🔴 Hook state updated - connectionId set to:', databasePath);
+      setConnectionId(databasePath);
+      console.log('🔴🔴🔴 Hook state updated - validated connectionId set to:', databasePath);
     } catch (err) {
-      console.error('🔴🔴🔴 Database switch failed:', err);
+      console.error('🔴🔴🔴 Atomic database switch failed:', err);
       const error = err instanceof Error ? err.message : 'Failed to switch database';
       setError(error);
       setIsConnected(false);
-      setConnectionId(''); // Clear connection ID on failure
+      setConnectionId('');
       throw err;
     } finally {
       console.log('🔴🔴🔴 Database switch cleanup, setting isConnecting to false');

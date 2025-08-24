@@ -91,16 +91,17 @@ export function Dashboard() {
     try {
       const newProject = await projectManager.createProject(name);
       
-      // For NEW projects, use initialize directly (don't switch/close existing DB)
-      console.log('🔍 Dashboard: Initializing new project database directly:', newProject.databasePath);
+      // For NEW projects, initialize the database directly
+      console.log('🔍 Dashboard: Initializing new project database:', newProject.databasePath);
       await initialize(newProject.databasePath);
       
-      // CRITICAL: Force a close/reconnect cycle to simulate page refresh behavior
-      // This is what makes persistence work - reconnecting to an existing database
-      console.log('🔍 Dashboard: Forcing close/reconnect cycle to establish proper persistence...');
-      await close(); // Close current connection
-      await initialize(newProject.databasePath); // Reconnect to the same database
-      console.log('🔍 Dashboard: Close/reconnect cycle completed - persistence should now work');
+      // Validate the initialization was successful
+      const connectionInfo = getConnectionInfo();
+      if (!connectionInfo || connectionInfo.id !== newProject.databasePath) {
+        throw new Error('Failed to initialize new project database - connection mismatch');
+      }
+      
+      console.log('🔍 Dashboard: New project database initialized successfully');
       
       // Refresh projects list
       setProjects(projectManager.getProjects());
@@ -131,18 +132,35 @@ export function Dashboard() {
   };
 
   const handleSwitchProject = async (projectId: string) => {
+    console.log('🏗️ Dashboard.handleSwitchProject called:', { projectId });
     setIsProjectsLoading(true);
     try {
+      console.log('🏗️ Calling projectManager.switchToProject...');
       const project = await projectManager.switchToProject(projectId);
+      console.log('🏗️ ProjectManager.switchToProject completed:', { project: project.name, databasePath: project.databasePath });
       
-      // Switch to the project's database
+      // Switch to the project's database with validation
       if (switchToProject) {
+        console.log('🏗️ Calling useDatabase.switchToProject...');
         await switchToProject(project.databasePath);
+        
+        // Validate the switch was successful
+        const connectionInfo = getConnectionInfo();
+        if (!connectionInfo || connectionInfo.id !== project.databasePath) {
+          throw new Error(`Failed to switch to project database - expected ${project.databasePath}, got ${connectionInfo?.id}`);
+        }
+        
+        console.log('🏗️ useDatabase.switchToProject completed and validated');
       }
       
       // Refresh projects list
+      console.log('🏗️ Refreshing projects list...');
       setProjects(projectManager.getProjects());
       setActiveProject(projectManager.getActiveProject());
+      console.log('🏗️ Projects refreshed, new active project:', projectManager.getActiveProject()?.name);
+    } catch (error) {
+      console.error('🏗️ Dashboard.handleSwitchProject failed:', error);
+      throw error;
     } finally {
       setIsProjectsLoading(false);
     }

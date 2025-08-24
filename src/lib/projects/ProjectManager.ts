@@ -57,9 +57,8 @@ export class ProjectManager {
       }
 
       const projectId = crypto.randomUUID();
-      // Use simpler database naming for better persistence
-      const projectIndex = this.projectsData.projects.length + 1;
-      const databasePath = `idb://project_${projectIndex}`;
+      // Use UUID-based database naming to ensure complete isolation between projects
+      const databasePath = `idb://project_${projectId}`;
       
       const newProject: Project = {
         id: projectId,

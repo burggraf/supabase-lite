@@ -7,13 +7,6 @@ import { logger, logQuery, logError, logPerformance } from '../infrastructure/Lo
 import { createDatabaseError } from '../infrastructure/ErrorHandler';
 import { configManager } from '../infrastructure/ConfigManager';
 
-interface ConnectionPoolEntry {
-  db: PGlite;
-  connectionInfo: DatabaseConnection;
-  lastUsed: number;
-  isInitializing: boolean;
-  initPromise?: Promise<void>;
-}
 
 export class DatabaseManager {
   private static instance: DatabaseManager;
@@ -26,10 +19,9 @@ export class DatabaseManager {
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private readonly MAX_METRICS = 1000;
   
-  // Connection pool for multiple database instances
-  private connectionPool = new Map<string, ConnectionPoolEntry>();
-  private readonly MAX_POOL_SIZE = 5;
-  private readonly CONNECTION_TTL = 10 * 60 * 1000; // 10 minutes
+  
+  // Transition state for atomic connection switching
+  private isTransitioning = false;
 
   private constructor() {}
 
@@ -40,177 +32,7 @@ export class DatabaseManager {
     return DatabaseManager.instance;
   }
 
-  /**
-   * Get or create a database connection from the pool
-   */
-  private async getPooledConnection(dataDir: string): Promise<ConnectionPoolEntry> {
-    const existing = this.connectionPool.get(dataDir);
-    
-    if (existing) {
-      // If connection is initializing, wait for it
-      if (existing.isInitializing && existing.initPromise) {
-        await existing.initPromise;
-      }
-      
-      existing.lastUsed = Date.now();
-      logger.debug('Reusing pooled database connection', { dataDir });
-      return existing;
-    }
 
-    // Clean up old connections if pool is full
-    if (this.connectionPool.size >= this.MAX_POOL_SIZE) {
-      await this.cleanupOldConnections();
-    }
-
-    // Create new connection
-    logger.info('Creating new pooled database connection', { dataDir });
-    
-    const entry: ConnectionPoolEntry = {
-      db: null as any, // Will be set during initialization
-      connectionInfo: null as any, // Will be set during initialization
-      lastUsed: Date.now(),
-      isInitializing: true
-    };
-
-    // Add to pool immediately to prevent duplicate creation
-    this.connectionPool.set(dataDir, entry);
-
-    try {
-      // Initialize the connection
-      entry.initPromise = this.initializePooledConnection(entry, dataDir);
-      await entry.initPromise;
-      entry.isInitializing = false;
-      
-      logger.info('Pooled database connection created successfully', { 
-        dataDir, 
-        poolSize: this.connectionPool.size 
-      });
-      
-      return entry;
-    } catch (error) {
-      // Remove failed connection from pool
-      this.connectionPool.delete(dataDir);
-      logger.error('Failed to create pooled database connection', error as Error, { dataDir });
-      throw error;
-    }
-  }
-
-  /**
-   * Initialize a pooled connection
-   */
-  private async initializePooledConnection(entry: ConnectionPoolEntry, dataDir: string): Promise<void> {
-    try {
-      logger.debug('Initializing pooled PGlite connection', { dataDir });
-      
-      const startTime = performance.now();
-      
-      // Create new PGlite instance
-      entry.db = new PGlite(dataDir);
-      
-      // Set connection info
-      entry.connectionInfo = {
-        id: dataDir,
-        host: 'localhost (PGlite)',
-        port: null,
-        database: dataDir,
-        status: 'connected',
-        connectedAt: new Date(),
-        version: 'PGlite',
-        ssl: false
-      };
-
-      const initTime = performance.now() - startTime;
-      
-      // Set up database schema and seeding
-      await this.setupDatabaseSchemas(entry.db, dataDir);
-      
-      const totalTime = performance.now() - startTime;
-      
-      logger.info('Pooled PGlite connection initialized successfully', {
-        dataDir,
-        initTime: `${initTime.toFixed(1)}ms`,
-        totalTime: `${totalTime.toFixed(1)}ms`
-      });
-      
-    } catch (error) {
-      logger.error('Failed to initialize pooled PGlite connection', error as Error, { dataDir });
-      throw createDatabaseError('Failed to initialize pooled database connection', error as Error);
-    }
-  }
-
-  /**
-   * Clean up old connections from the pool
-   */
-  private async cleanupOldConnections(): Promise<void> {
-    const now = Date.now();
-    const connectionsToRemove: string[] = [];
-
-    // Find connections to remove (oldest first, excluding active connection)
-    for (const [dataDir, entry] of this.connectionPool.entries()) {
-      if (dataDir !== this.connectionInfo?.id && 
-          (now - entry.lastUsed) > this.CONNECTION_TTL) {
-        connectionsToRemove.push(dataDir);
-      }
-    }
-
-    // If still too many, remove oldest non-active connections
-    if (this.connectionPool.size - connectionsToRemove.length >= this.MAX_POOL_SIZE) {
-      const sortedConnections = Array.from(this.connectionPool.entries())
-        .filter(([dataDir]) => dataDir !== this.connectionInfo?.id)
-        .sort(([,a], [,b]) => a.lastUsed - b.lastUsed);
-      
-      const additionalToRemove = (this.connectionPool.size - connectionsToRemove.length) - this.MAX_POOL_SIZE + 1;
-      for (let i = 0; i < additionalToRemove && i < sortedConnections.length; i++) {
-        connectionsToRemove.push(sortedConnections[i][0]);
-      }
-    }
-
-    // Remove connections
-    for (const dataDir of connectionsToRemove) {
-      const entry = this.connectionPool.get(dataDir);
-      if (entry) {
-        try {
-          await entry.db.close();
-          logger.debug('Closed old pooled database connection', { dataDir });
-        } catch (error) {
-          logger.warn('Error closing old pooled connection', error as Error, { dataDir });
-        }
-        this.connectionPool.delete(dataDir);
-      }
-    }
-
-    if (connectionsToRemove.length > 0) {
-      logger.info('Cleaned up old database connections', { 
-        removed: connectionsToRemove.length,
-        poolSize: this.connectionPool.size
-      });
-    }
-  }
-
-  /**
-   * Set up database schemas for a pooled connection
-   */
-  private async setupDatabaseSchemas(db: PGlite, dataDir: string): Promise<void> {
-    try {
-      // Temporarily set this.db to the pooled connection for schema initialization
-      const originalDb = this.db;
-      const originalInitialized = this.isInitialized;
-      
-      this.db = db;
-      this.isInitialized = true;
-      
-      // Use existing schema initialization logic
-      await this.initializeSchemas();
-      
-      // Restore original state
-      this.db = originalDb;
-      this.isInitialized = originalInitialized;
-      
-    } catch (error) {
-      logger.error('Failed to set up database schemas for pooled connection', error as Error, { dataDir });
-      throw error;
-    }
-  }
 
   public async initialize(customDataDir?: string): Promise<void> {
     const dbConfig = configManager.getDatabaseConfig();
@@ -266,6 +88,11 @@ export class DatabaseManager {
     const currentDataDir = this.connectionInfo?.id || 'none';
     const startTime = performance.now();
     
+    // Prevent concurrent switches
+    if (this.isTransitioning) {
+      throw createDatabaseError('Database switch already in progress');
+    }
+    
     try {
       console.log('🟠🟠🟠 DatabaseManager.switchDatabase called:', {
         fromDataDir: currentDataDir, 
@@ -274,42 +101,47 @@ export class DatabaseManager {
         hasDb: !!this.db
       });
       
-      logger.info('Switching database using connection pool', { 
+      logger.info('Starting database switch (no pooling)', { 
         fromDataDir: currentDataDir, 
         toDataDir: dataDir 
       });
       
       // Skip if we're already connected to this database
-      if (this.isInitialized && this.connectionInfo?.id === dataDir) {
+      if (this.isInitialized && this.connectionInfo?.id === dataDir && !this.isTransitioning) {
         console.log('🟠🟠🟠 Already connected to target database, skipping switch');
         logger.debug('Already connected to target database, skipping switch', { dataDir });
         return;
       }
       
-      console.log('🟠🟠🟠 Proceeding with database switch using connection pool...');
+      // Start atomic transition
+      this.isTransitioning = true;
+      console.log('🟠🟠🟠 Starting database switch - closing old connection...');
       
-      // Get or create pooled connection
-      const pooledConnection = await this.getPooledConnection(dataDir);
+      // Close the current connection
+      if (this.db) {
+        await this.db.close();
+      }
       
-      // Update active connection references
-      this.db = pooledConnection.db;
-      this.connectionInfo = pooledConnection.connectionInfo;
-      this.isInitialized = true;
-      
-      // Clear query metrics and cache for the new connection
-      // (Keep pool-wide but reset for this active connection)
+      // Reset state
+      this.db = null;
+      this.isInitialized = false;
+      this.connectionInfo = null;
       this.queryMetrics = [];
       this.queryCache.clear();
       this.initializationPromise = null;
       
+      console.log('🟠🟠🟠 Old connection closed, initializing new connection...');
+      
+      // Initialize with the new database
+      await this.initialize(dataDir);
+      
       const switchTime = performance.now() - startTime;
       
-      console.log(`🟠🟠🟠 Database switch completed in ${switchTime.toFixed(1)}ms using pooled connection`);
-      logger.info('Database switch completed using pooled connection', {
+      console.log(`🟠🟠🟠 Database switch completed in ${switchTime.toFixed(1)}ms`);
+      logger.info('Database switch completed successfully', {
         fromDataDir: currentDataDir,
         toDataDir: dataDir,
-        switchTime: `${switchTime.toFixed(1)}ms`,
-        poolSize: this.connectionPool.size
+        switchTime: `${switchTime.toFixed(1)}ms`
       });
       
     } catch (error) {
@@ -319,17 +151,29 @@ export class DatabaseManager {
         toDataDir: dataDir 
       });
       throw createDatabaseError('Failed to switch database', error as Error);
+    } finally {
+      // Always clear transition state
+      this.isTransitioning = false;
     }
   }
   
-  // Add a method to get pool status for debugging
-  public getPoolStatus(): { size: number; connections: Array<{ dataDir: string; lastUsed: Date }> } {
+  /**
+   * Validate that a connection is working properly
+   */
+  private async validateConnection(db: PGlite): Promise<void> {
+    try {
+      await db.query('SELECT 1');
+    } catch (error) {
+      throw createDatabaseError('Connection validation failed', error as Error);
+    }
+  }
+  
+  // Method for debugging current connection status
+  public getConnectionStatus(): { dataDir: string | null; isConnected: boolean; isInitialized: boolean } {
     return {
-      size: this.connectionPool.size,
-      connections: Array.from(this.connectionPool.entries()).map(([dataDir, entry]) => ({
-        dataDir,
-        lastUsed: new Date(entry.lastUsed)
-      }))
+      dataDir: this.connectionInfo?.id || null,
+      isConnected: !!this.db,
+      isInitialized: this.isInitialized
     };
   }
 
@@ -428,9 +272,7 @@ export class DatabaseManager {
       // Initialize with some basic schemas
       await this.initializeSchemas();
       
-      // Give IndexedDB time to fully establish persistence after schema creation
-      console.log('🚀 doInitialization: allowing IndexedDB to settle...');
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Schema initialization complete - IndexedDB persistence is automatic
       
       this.isInitialized = true;
       logger.info('PGlite initialized successfully', {
@@ -512,18 +354,14 @@ export class DatabaseManager {
       console.log('🟡🟡🟡 initializeSchemas: Seed schema initialization completed');
       logger.info('Supabase database schema initialized successfully');
       
-      // CRITICAL: Force IndexedDB flush after seeding to ensure persistence
-      console.log('🟡🟡🟡 initializeSchemas: Forcing IndexedDB flush after seeding...');
+      // Verify schema initialization with simple query
+      console.log('🟡🟡🟡 initializeSchemas: Validating schema initialization...');
       try {
-        // Execute a simple query to trigger the flush mechanism
         await this.db.query('SELECT 1');
-        
-        // Wait a moment for the flush to complete
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        console.log('🟡🟡🟡 initializeSchemas: IndexedDB flush completed');
+        console.log('🟡🟡🟡 initializeSchemas: Schema validation completed');
       } catch (error) {
-        console.error('🟡🟡🟡 initializeSchemas: IndexedDB flush failed:', error);
+        console.error('🟡🟡🟡 initializeSchemas: Schema validation failed:', error);
+        throw error;
       }
     } catch (error) {
       console.error('🟡🟡🟡 initializeSchemas: Error during schema initialization:', error);
@@ -717,6 +555,10 @@ export class DatabaseManager {
     return this.isInitialized && this.db !== null;
   }
 
+  public isConnectionTransitioning(): boolean {
+    return this.isTransitioning;
+  }
+
   public async getDatabaseSize(): Promise<string> {
     if (!this.db || !this.isInitialized) {
       return '0 B';
@@ -742,7 +584,28 @@ export class DatabaseManager {
 
     try {
       const connectionInfo = this.getConnectionInfo();
-      console.log('🚀 getTableList: querying database with connection:', connectionInfo);
+      console.log('🚀🚀🚀 getTableList: STARTING with connection:', connectionInfo?.id);
+      console.log('🚀🚀🚀 Connection status:', this.getConnectionStatus());
+      
+      // DEBUG: First query the current database name to verify we're connected to the right one
+      const dbNameResult = await this.db.query('SELECT current_database() as db_name');
+      console.log('🔍🔍🔍 CRITICAL: current_database() =', dbNameResult.rows[0]);
+      
+      // DEBUG: Also check if we can find any public schema tables directly
+      const publicCheck = await this.db.query(`
+        SELECT table_name FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        ORDER BY table_name;
+      `);
+      console.log('🔍🔍🔍 CRITICAL: public tables found =', publicCheck.rows);
+      
+      // DEBUG: Check all schemas
+      const allSchemas = await this.db.query(`
+        SELECT schema_name FROM information_schema.schemata 
+        WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+        ORDER BY schema_name;
+      `);
+      console.log('🔍🔍🔍 CRITICAL: all schemas =', allSchemas.rows);
       
       const result = await this.db.query(`
         SELECT 
@@ -757,6 +620,7 @@ export class DatabaseManager {
       `);
       
       console.log('🚀 getTableList: query result:', result.rows);
+      console.log('🔍 DEBUG: Connection status:', this.getConnectionStatus());
       return result.rows as Array<{ name: string; schema: string; rows: number }>;
     } catch (error) {
       console.error('🚀 getTableList: Failed to get table list:', error);
