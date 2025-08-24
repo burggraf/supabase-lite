@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,82 +97,60 @@ export function DatabaseWorking() {
   const [activeSection, setActiveSection] = useState('tables');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  useEffect(() => {
+  const loadTables = useCallback(async () => {
     if (!isConnected) {
       setTables([]);
       setLoading(false);
       return;
     }
 
-    const loadTables = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const query = `
-          SELECT 
-            table_name as name,
-            'Table description' as description,
-            0 as estimated_rows,
-            0 as size_bytes,
-            (
-              SELECT COUNT(*) 
-              FROM information_schema.columns 
-              WHERE table_name = t.table_name 
-              AND table_schema = '${selectedSchema}'
-            ) as column_count
-          FROM information_schema.tables t
-          WHERE t.table_schema = '${selectedSchema}'
-          AND t.table_type = 'BASE TABLE'
-          ORDER BY t.table_name;
-        `;
-        
-        const result = await executeQuery(query);
-        
-        const tableInfos: TableInfo[] = result.rows.map((row: any) => ({
-          name: String(row.name),
-          description: String(row.description) || 'No description',
-          rows: parseInt(String(row.estimated_rows)) || 0,
-          size: formatBytes(parseInt(String(row.size_bytes)) || 0),
-          columns: parseInt(String(row.column_count)) || 0,
-          realtime_enabled: false,
-        }));
-        
-        // Add mock tables if no real tables exist (for testing)
-        if (tableInfos.length === 0) {
-          const mockTables: TableInfo[] = [
-            {
-              name: 'users',
-              description: 'User accounts and profiles',
-              rows: 247,
-              size: '18.5 KB',
-              columns: 8,
-              realtime_enabled: true
-            },
-            {
-              name: 'products',
-              description: 'Product catalog and inventory',
-              rows: 156,
-              size: '12.3 KB',
-              columns: 6,
-              realtime_enabled: false
-            }
-          ];
-          setTables(mockTables);
-        } else {
-          setTables(tableInfos);
-        }
-      } catch (err) {
-        console.error('Error loading tables:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load tables');
-        setTables([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const query = `
+        SELECT 
+          table_name as name,
+          'Table description' as description,
+          0 as estimated_rows,
+          0 as size_bytes,
+          (
+            SELECT COUNT(*) 
+            FROM information_schema.columns 
+            WHERE table_name = t.table_name 
+            AND table_schema = '${selectedSchema}'
+          ) as column_count
+        FROM information_schema.tables t
+        WHERE t.table_schema = '${selectedSchema}'
+        AND t.table_type = 'BASE TABLE'
+        ORDER BY t.table_name;
+      `;
+      
+      const result = await executeQuery(query);
+      
+      const tableInfos: TableInfo[] = result.rows.map((row: any) => ({
+        name: String(row.name),
+        description: String(row.description) || 'No description',
+        rows: parseInt(String(row.estimated_rows)) || 0,
+        size: formatBytes(parseInt(String(row.size_bytes)) || 0),
+        columns: parseInt(String(row.column_count)) || 0,
+        realtime_enabled: false,
+      }));
+      
+      // Don't show mock tables anymore - show real tables or empty list
+      setTables(tableInfos);
+    } catch (err) {
+      console.error('Error loading tables:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load tables');
+      setTables([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isConnected, selectedSchema, executeQuery]);
 
+  useEffect(() => {
     loadTables();
-  }, [isConnected, selectedSchema]);
+  }, [loadTables]);
 
   const filteredTables = tables.filter(table =>
     table.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -446,10 +424,15 @@ export function DatabaseWorking() {
         onOpenChange={setShowCreateDialog}
         schema={selectedSchema}
         onTableCreated={() => {
-          console.log('Table created successfully');
+          console.log('🔄 onTableCreated callback triggered');
+          console.log('🔍 isConnected:', isConnected);
+          console.log('📊 current selectedSchema:', selectedSchema);
           // Refresh tables after creation
           if (isConnected) {
-            window.location.reload(); // Simple refresh for now
+            console.log('🔄 Calling loadTables() to refresh table list');
+            loadTables();
+          } else {
+            console.log('❌ Not connected, skipping table refresh');
           }
         }}
       />

@@ -15,15 +15,22 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Plus, 
-  Trash2, 
-  Key, 
   AlertCircle,
-  Code,
+  BookOpen,
+  Info,
+  Key,
+  Trash2,
   Eye,
-  EyeOff
+  EyeOff,
+  Code
 } from 'lucide-react';
 import { useDatabase } from '@/hooks/useDatabase';
+import { ColumnEditor } from './ColumnEditor';
+import { CompactTypeSelector } from '../shared/CompactTypeSelector';
 import { DataTypeSelector } from '../shared/DataTypeSelector';
+import {
+  TooltipProvider
+} from '@/components/ui/tooltip';
 import {
   Collapsible,
   CollapsibleContent,
@@ -61,20 +68,30 @@ export function CreateTableDialog({
   const [tableName, setTableName] = useState('');
   const [description, setDescription] = useState('');
   const [enableRLS, setEnableRLS] = useState(true);
+  const [enableRealtime, setEnableRealtime] = useState(false);
+  const [showSQL, setShowSQL] = useState(false);
   const [columns, setColumns] = useState<Column[]>([
     {
       id: '1',
       name: 'id',
-      type: 'bigserial',
+      type: 'int8',
       nullable: false,
       primaryKey: true,
       unique: false,
       defaultValue: ''
+    },
+    {
+      id: '2',
+      name: 'created_at',
+      type: 'timestamptz',
+      nullable: false,
+      primaryKey: false,
+      unique: false,
+      defaultValue: 'now()'
     }
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showSQL, setShowSQL] = useState(false);
 
   const generateSQL = () => {
     if (!tableName.trim()) return '';
@@ -128,7 +145,76 @@ export function CreateTableDialog({
       sql += `\n\nALTER TABLE "${schema}"."${tableName}" ENABLE ROW LEVEL SECURITY;`;
     }
     
+    // Add Realtime
+    if (enableRealtime) {
+      sql += `\n\nALTER PUBLICATION supabase_realtime ADD TABLE "${schema}"."${tableName}";`;
+    }
+    
     return sql;
+  };
+
+  const generateSQLStatements = () => {
+    if (!tableName.trim()) return [];
+
+    const statements = [];
+
+    // 1. CREATE TABLE statement
+    let createTableSQL = `CREATE TABLE "${schema}"."${tableName}" (\n`;
+    
+    // Add columns
+    const columnDefinitions = columns.map(col => {
+      let def = `  "${col.name}" ${col.type}`;
+      
+      // Add length/precision/scale
+      if (col.length && (col.type === 'varchar' || col.type === 'char')) {
+        def += `(${col.length})`;
+      } else if (col.precision && col.type === 'decimal') {
+        def += `(${col.precision}${col.scale ? `, ${col.scale}` : ''})`;
+      }
+      
+      // Add constraints
+      if (!col.nullable) {
+        def += ' NOT NULL';
+      }
+      
+      if (col.unique && !col.primaryKey) {
+        def += ' UNIQUE';
+      }
+      
+      if (col.defaultValue.trim()) {
+        def += ` DEFAULT ${col.defaultValue}`;
+      }
+      
+      return def;
+    });
+    
+    createTableSQL += columnDefinitions.join(',\n');
+    
+    // Add primary key constraint
+    const primaryKeyColumns = columns.filter(col => col.primaryKey);
+    if (primaryKeyColumns.length > 0) {
+      createTableSQL += `,\n  PRIMARY KEY (${primaryKeyColumns.map(col => `"${col.name}"`).join(', ')})`;
+    }
+    
+    createTableSQL += '\n);';
+    statements.push(createTableSQL);
+    
+    // 2. Add table comment if provided
+    if (description.trim()) {
+      statements.push(`COMMENT ON TABLE "${schema}"."${tableName}" IS '${description.replace(/'/g, "''")}';`);
+    }
+    
+    // 3. Add RLS if enabled
+    if (enableRLS) {
+      statements.push(`ALTER TABLE "${schema}"."${tableName}" ENABLE ROW LEVEL SECURITY;`);
+    }
+    
+    // 4. Add Realtime if enabled
+    if (enableRealtime) {
+      statements.push(`ALTER PUBLICATION supabase_realtime ADD TABLE "${schema}"."${tableName}";`);
+    }
+    
+    return statements;
   };
 
   const addColumn = () => {
@@ -179,14 +265,24 @@ export function CreateTableDialog({
     setLoading(true);
     
     try {
-      const sql = generateSQL();
-      await executeQuery(sql);
+      // Execute statements separately to avoid prepared statement issues
+      const statements = generateSQLStatements();
+      console.log('🚀 Executing table creation statements:', statements);
       
+      for (let i = 0; i < statements.length; i++) {
+        const statement = statements[i];
+        console.log(`⚡ Executing statement ${i + 1}:`, statement);
+        const result = await executeQuery(statement);
+        console.log(`✅ Statement ${i + 1} result:`, result);
+      }
+      
+      console.log('🎉 All statements executed successfully');
       // Success
       onTableCreated?.();
       onOpenChange(false);
       resetForm();
     } catch (err) {
+      console.error('❌ Error creating table:', err);
       setError(err instanceof Error ? err.message : 'Failed to create table');
     } finally {
       setLoading(false);
@@ -197,15 +293,25 @@ export function CreateTableDialog({
     setTableName('');
     setDescription('');
     setEnableRLS(true);
+    setEnableRealtime(false);
     setColumns([
       {
         id: '1',
         name: 'id',
-        type: 'bigserial',
+        type: 'int8',
         nullable: false,
         primaryKey: true,
         unique: false,
         defaultValue: ''
+      },
+      {
+        id: '2',
+        name: 'created_at',
+        type: 'timestamptz',
+        nullable: false,
+        primaryKey: false,
+        unique: false,
+        defaultValue: 'now()'
       }
     ]);
     setError(null);
@@ -252,21 +358,55 @@ export function CreateTableDialog({
           </div>
 
           {/* Security Options */}
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="enableRLS"
-                checked={enableRLS}
-                onCheckedChange={(checked: boolean) => setEnableRLS(checked)}
-              />
-              <Label htmlFor="enableRLS" className="text-sm font-medium">
-                Enable Row Level Security (RLS)
-              </Label>
-              <Badge variant="secondary" className="text-xs">Recommended</Badge>
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="enableRLS"
+                  checked={enableRLS}
+                  onCheckedChange={(checked: boolean) => setEnableRLS(checked)}
+                />
+                <Label htmlFor="enableRLS" className="text-sm font-medium">
+                  Enable Row Level Security (RLS)
+                </Label>
+                <Badge variant="secondary" className="text-xs">Recommended</Badge>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="enableRealtime"
+                  checked={enableRealtime}
+                  onCheckedChange={(checked: boolean) => setEnableRealtime(checked)}
+                />
+                <Label htmlFor="enableRealtime" className="text-sm font-medium">
+                  Enable Realtime
+                </Label>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              RLS ensures that users can only access rows they're authorized to see
-            </p>
+
+            {enableRLS && (
+              <Alert className="bg-amber-50 border-amber-200">
+                <Info className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Row Level Security is enabled</p>
+                    <p className="text-xs">
+                      Your table is protected by RLS. Only data your users are authorized to see will be returned from queries.
+                      You can configure access in Authentication {'>'} Policies after creating this table.
+                    </p>
+                    <a 
+                      href="https://supabase.com/docs/guides/auth/row-level-security" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      <BookOpen className="h-3 w-3" />
+                      <span>Learn more about RLS</span>
+                    </a>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* Columns Section */}
@@ -279,95 +419,28 @@ export function CreateTableDialog({
               </Button>
             </div>
 
-            <div className="space-y-3">
-              {columns.map((column, index) => (
-                <div key={column.id} className="p-4 border rounded-lg space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium">Column {index + 1}</span>
-                      {column.primaryKey && (
-                        <Badge variant="default" className="text-xs">
-                          <Key className="h-3 w-3 mr-1" />
-                          Primary Key
-                        </Badge>
-                      )}
-                    </div>
-                    {columns.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeColumn(column.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+            {/* Column Headers */}
+            <div className="grid grid-cols-12 gap-3 items-center text-xs font-medium text-muted-foreground px-3 py-2 border-b">
+              <div className="col-span-1"></div>
+              <div className="col-span-3">Name</div>
+              <div className="col-span-2">Type</div>
+              <div className="col-span-2">Default Value</div>
+              <div className="col-span-1 text-center">Primary</div>
+              <div className="col-span-1 text-center">Required</div>
+              <div className="col-span-1 text-center">Unique</div>
+              <div className="col-span-1"></div>
+            </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Column Name *</Label>
-                      <Input
-                        value={column.name}
-                        onChange={(e) => updateColumn(column.id, { name: e.target.value })}
-                        placeholder="column_name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Default Value</Label>
-                      <Input
-                        value={column.defaultValue}
-                        onChange={(e) => updateColumn(column.id, { defaultValue: e.target.value })}
-                        placeholder="NULL, '', now(), etc."
-                      />
-                    </div>
-                  </div>
-
-                  <DataTypeSelector
-                    value={column.type}
-                    onChange={(type) => updateColumn(column.id, { type })}
-                    length={column.length}
-                    onLengthChange={(length) => updateColumn(column.id, { length })}
-                    precision={column.precision}
-                    onPrecisionChange={(precision) => updateColumn(column.id, { precision })}
-                    scale={column.scale}
-                    onScaleChange={(scale) => updateColumn(column.id, { scale })}
-                    showCommonOnly={true}
-                  />
-
-                  <div className="flex items-center space-x-6">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`nullable-${column.id}`}
-                        checked={!column.nullable}
-                        onCheckedChange={(checked: boolean) => updateColumn(column.id, { nullable: !checked })}
-                      />
-                      <Label htmlFor={`nullable-${column.id}`} className="text-sm">
-                        Not NULL
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`primaryKey-${column.id}`}
-                        checked={column.primaryKey}
-                        onCheckedChange={(checked: boolean) => updateColumn(column.id, { primaryKey: checked })}
-                      />
-                      <Label htmlFor={`primaryKey-${column.id}`} className="text-sm">
-                        Primary Key
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`unique-${column.id}`}
-                        checked={column.unique}
-                        onCheckedChange={(checked: boolean) => updateColumn(column.id, { unique: checked })}
-                      />
-                      <Label htmlFor={`unique-${column.id}`} className="text-sm">
-                        Unique
-                      </Label>
-                    </div>
-                  </div>
-                </div>
+            {/* Column Rows */}
+            <div className="space-y-1">
+              {columns.map((column) => (
+                <ColumnEditor
+                  key={column.id}
+                  column={column}
+                  onUpdate={updateColumn}
+                  onRemove={removeColumn}
+                  canRemove={columns.length > 1}
+                />
               ))}
             </div>
           </div>
@@ -402,12 +475,16 @@ export function CreateTableDialog({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={loading || !tableName.trim()}>
-            {loading ? 'Creating...' : 'Create Table'}
+          <Button 
+            onClick={handleCreate} 
+            disabled={loading || !tableName.trim()}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            {loading ? 'Creating...' : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>
