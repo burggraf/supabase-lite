@@ -56,6 +56,7 @@ export function CreateTableDialog({
   schema,
   onTableCreated
 }: CreateTableDialogProps) {
+  console.log('CreateTableDialog rendered, open:', open);
   const { executeQuery } = useDatabase();
   const [tableName, setTableName] = useState('');
   const [description, setDescription] = useState('');

@@ -3,6 +3,12 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   Plus, 
   Search, 
@@ -18,11 +24,16 @@ import {
   BarChart3,
   Key,
   Link,
-  List
+  List,
+  Eye,
+  Edit,
+  Trash2,
+  Copy
 } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
 import { SeedDataSection } from './SeedDataSection';
 import { BackupsSection } from './BackupsSection';
+import { CreateTableDialog } from './tables/CreateTableDialog';
 
 interface TableInfo {
   name: string;
@@ -84,6 +95,7 @@ export function DatabaseWorking() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSchema, setSelectedSchema] = useState('public');
   const [activeSection, setActiveSection] = useState('tables');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   useEffect(() => {
     if (!isConnected) {
@@ -126,7 +138,30 @@ export function DatabaseWorking() {
           realtime_enabled: false,
         }));
         
-        setTables(tableInfos);
+        // Add mock tables if no real tables exist (for testing)
+        if (tableInfos.length === 0) {
+          const mockTables: TableInfo[] = [
+            {
+              name: 'users',
+              description: 'User accounts and profiles',
+              rows: 247,
+              size: '18.5 KB',
+              columns: 8,
+              realtime_enabled: true
+            },
+            {
+              name: 'products',
+              description: 'Product catalog and inventory',
+              rows: 156,
+              size: '12.3 KB',
+              columns: 6,
+              realtime_enabled: false
+            }
+          ];
+          setTables(mockTables);
+        } else {
+          setTables(tableInfos);
+        }
       } catch (err) {
         console.error('Error loading tables:', err);
         setError(err instanceof Error ? err.message : 'Failed to load tables');
@@ -241,7 +276,10 @@ export function DatabaseWorking() {
             <div className="p-6 border-b">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Database Tables</h1>
-            <Button>
+            <Button onClick={() => {
+              console.log('NEW TABLE BUTTON CLICKED!');
+              setShowCreateDialog(true);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               New table
             </Button>
@@ -348,13 +386,49 @@ export function DatabaseWorking() {
                       <Badge variant="outline" className="text-xs">
                         {table.columns} columns
                       </Badge>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {}}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => {
+                            console.log('View table:', table.name);
+                            alert(`👀 View table: ${table.name}`);
+                          }}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View table
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            console.log('Edit table:', table.name);
+                            alert(`✏️ Edit table: ${table.name}`);
+                          }}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit table
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            console.log('Duplicate table:', table.name);
+                            alert(`📋 Duplicate table: ${table.name}`);
+                          }}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicate table
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => {
+                              console.log('Delete table:', table.name);
+                              alert(`🗑️ Delete table: ${table.name}`);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete table
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 ))}
@@ -365,6 +439,20 @@ export function DatabaseWorking() {
           </>
         )}
       </div>
+
+      {/* Create Table Dialog */}
+      <CreateTableDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        schema={selectedSchema}
+        onTableCreated={() => {
+          console.log('Table created successfully');
+          // Refresh tables after creation
+          if (isConnected) {
+            window.location.reload(); // Simple refresh for now
+          }
+        }}
+      />
     </div>
   );
 }
