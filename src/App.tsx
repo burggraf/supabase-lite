@@ -164,7 +164,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar currentPage={currentPage} onPageChange={navigate} currentProjectName={currentProjectName} />
+      <Sidebar currentPage={currentPage} onPageChange={navigate} currentProjectName={currentProjectName || undefined} />
       <div className="flex-1 flex flex-col overflow-hidden">
         {renderCurrentPage()}
       </div>
