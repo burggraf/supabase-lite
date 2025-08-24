@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
 import { SeedDataSection } from './SeedDataSection';
+import { BackupsSection } from './BackupsSection';
 
 interface TableInfo {
   name: string;
@@ -232,6 +233,8 @@ export function DatabaseWorking() {
       <div className="flex-1 flex flex-col">
         {activeSection === 'seed-data' ? (
           <SeedDataSection />
+        ) : activeSection === 'backups' ? (
+          <BackupsSection />
         ) : (
           <>
             {/* Header */}

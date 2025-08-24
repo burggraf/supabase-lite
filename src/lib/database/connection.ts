@@ -960,6 +960,91 @@ export class DatabaseManager {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
+  /**
+   * Create a backup of the current database
+   * @param compression Compression option for the backup ('gzip', 'none', or 'auto')
+   * @returns Promise that resolves to a Blob containing the backup
+   */
+  public async backupDatabase(compression: 'gzip' | 'none' | 'auto' = 'gzip'): Promise<Blob> {
+    if (!this.db || !this.isInitialized) {
+      throw createDatabaseError('Database not initialized. Cannot create backup.');
+    }
+
+    try {
+      logger.info('Starting database backup', { compression });
+      const startTime = performance.now();
+
+      // Use PGlite's dumpDataDir method to create backup
+      const backup = await this.db.dumpDataDir(compression);
+      
+      const duration = performance.now() - startTime;
+      logger.info('Database backup completed successfully', {
+        compression,
+        duration: `${duration.toFixed(1)}ms`,
+        size: backup.size
+      });
+
+      return backup instanceof File ? backup : backup;
+    } catch (error) {
+      logger.error('Database backup failed', error as Error, { compression });
+      throw createDatabaseError('Failed to create database backup', error as Error);
+    }
+  }
+
+  /**
+   * Restore a database from a backup file
+   * This is a static method that creates a new PGlite instance with the backup data
+   * @param backupBlob The backup file to restore from
+   * @param dataDir The data directory path for the restored database
+   * @returns Promise that resolves to a new DatabaseManager instance
+   */
+  public static async restoreDatabase(backupBlob: Blob | File, dataDir: string): Promise<void> {
+    try {
+      logger.info('Starting database restore', { 
+        dataDir,
+        backupSize: backupBlob.size 
+      });
+      
+      const startTime = performance.now();
+
+      // Import PGlite dynamically to avoid circular dependencies
+      const { PGlite } = await import('@electric-sql/pglite');
+      
+      // Ensure proper idb:// prefix for IndexedDB persistence
+      const fullDataDir = dataDir.startsWith('idb://') ? dataDir : `idb://${dataDir}`;
+      
+      // Create new PGlite instance with the backup data
+      const restoredDb = new PGlite({
+        dataDir: fullDataDir,
+        database: 'postgres',
+        relaxedDurability: true,
+        loadDataDir: backupBlob
+      });
+
+      // Wait for the restored database to be ready
+      await restoredDb.waitReady;
+
+      // Test the connection
+      await restoredDb.query('SELECT 1');
+      
+      // Close the temporary instance (the actual instance will be created by initialize)
+      await restoredDb.close();
+      
+      const duration = performance.now() - startTime;
+      logger.info('Database restore completed successfully', {
+        dataDir: fullDataDir,
+        duration: `${duration.toFixed(1)}ms`,
+        backupSize: backupBlob.size
+      });
+    } catch (error) {
+      logger.error('Database restore failed', error as Error, { 
+        dataDir,
+        backupSize: backupBlob.size 
+      });
+      throw createDatabaseError('Failed to restore database from backup', error as Error);
+    }
+  }
+
   public async close(): Promise<void> {
     if (this.db) {
       try {
