@@ -1,30 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Database as DatabaseIcon, 
   Table, 
   Plus,
   Search,
   MoreHorizontal,
-  Edit3,
-  Trash2,
-  Eye,
-  Settings,
-  ExternalLink
 } from 'lucide-react';
-import { useDatabase } from '@/hooks/useDatabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { formatBytes } from '@/lib/utils';
 import { CreateTableDialog } from './CreateTableDialog';
-import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 
 interface TableInfo {
   name: string;
@@ -36,137 +21,67 @@ interface TableInfo {
 }
 
 export function TablesView() {
-  const { executeQuery, isConnected } = useDatabase();
-  const [tables, setTables] = useState<TableInfo[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSchema, setSelectedSchema] = useState('public');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [tableToDelete, setTableToDelete] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isConnected) {
-      setTables([]);
-      setLoading(false);
-      return;
+  
+  // Mock data for now
+  const tables: TableInfo[] = [
+    {
+      name: 'users',
+      description: 'User accounts table',
+      rows: 150,
+      size: '2.5 KB',
+      columns: 8,
+      realtime_enabled: true
+    },
+    {
+      name: 'products',
+      description: 'Product catalog',
+      rows: 45,
+      size: '1.2 KB',
+      columns: 6,
+      realtime_enabled: false
     }
-    
-    let isMounted = true;
-    
-    const loadTables = async () => {
-      try {
-        if (isMounted) {
-          setLoading(true);
-        }
-        
-        const query = `
-          SELECT 
-            table_name as name,
-            'Table description' as description,
-            0 as estimated_rows,
-            0 as size_bytes,
-            (
-              SELECT COUNT(*) 
-              FROM information_schema.columns 
-              WHERE table_name = t.table_name 
-              AND table_schema = '${selectedSchema}'
-            ) as column_count
-          FROM information_schema.tables t
-          WHERE t.table_schema = '${selectedSchema}'
-          AND t.table_type = 'BASE TABLE'
-          ORDER BY t.table_name;
-        `;
-        
-        const result = await executeQuery(query);
-        
-        if (isMounted) {
-          const tableInfos: TableInfo[] = result.rows.map((row: Record<string, unknown>) => ({
-            name: String(row.name),
-            description: String(row.description) || 'No description',
-            rows: parseInt(String(row.estimated_rows)) || 0,
-            size: formatBytes(parseInt(String(row.size_bytes)) || 0),
-            columns: parseInt(String(row.column_count)) || 0,
-            realtime_enabled: false,
-          }));
-          
-          setTables(tableInfos);
-        }
-      } catch (error) {
-        console.error('Error loading tables:', error);
-        if (isMounted) {
-          setTables([]);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
+  ];
 
-    loadTables();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [isConnected, selectedSchema, executeQuery]);
+  // Simple test handlers
+  const handleNewTable = () => {
+    console.log('NEW TABLE BUTTON CLICKED!');
+    setShowCreateDialog(true);
+  };
+
+  const handleTest = () => {
+    console.log('TEST BUTTON CLICKED!');
+    alert('Test button works! 🎉');
+  };
+
 
   const filteredTables = tables.filter(table =>
     table.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleViewTable = (tableName: string) => {
-    // Navigate to table editor
-    window.dispatchEvent(new CustomEvent('navigate-to-table', { 
-      detail: { schema: selectedSchema, table: tableName } 
-    }));
-  };
-
-  const handleEditTable = (tableName: string) => {
-    console.log('Edit table:', tableName);
-    // TODO: Implement table editing
-  };
-
-  const handleDeleteTable = (tableName: string) => {
-    setTableToDelete(tableName);
-    setShowDeleteDialog(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!tableToDelete) return;
-
-    try {
-      await executeQuery(`DROP TABLE IF EXISTS "${selectedSchema}"."${tableToDelete}" CASCADE;`);
-      // Refresh tables list
-      const refreshEvent = new CustomEvent('refresh-tables');
-      window.dispatchEvent(refreshEvent);
-      setTables(prev => prev.filter(t => t.name !== tableToDelete));
-    } catch (error) {
-      console.error('Error deleting table:', error);
-    } finally {
-      setShowDeleteDialog(false);
-      setTableToDelete(null);
-    }
-  };
-
-  const handleTableCreated = () => {
-    // Refresh tables list after creation
-    const refreshEvent = new CustomEvent('refresh-tables');
-    window.dispatchEvent(refreshEvent);
-    // Re-load tables
-    window.location.reload();
-  };
+  console.log('TablesView rendering', { 
+    tables: tables.length, 
+    filteredTables: filteredTables.length,
+    selectedSchema 
+  });
 
   return (
     <>
       {/* Header */}
       <div className="p-6 border-b">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Database Tables</h1>
-          <Button onClick={() => setShowCreateDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New table
-          </Button>
+          <h1 className="text-2xl font-bold">Database Tables (Simplified)</h1>
+          <div className="flex items-center space-x-2">
+            <Button onClick={handleTest} variant="outline">
+              TEST
+            </Button>
+            <Button onClick={handleNewTable}>
+              <Plus className="h-4 w-4 mr-2" />
+              New table
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -177,7 +92,10 @@ export function TablesView() {
             <span className="text-sm font-medium">schema</span>
             <select 
               value={selectedSchema}
-              onChange={(e) => setSelectedSchema(e.target.value)}
+              onChange={(e) => {
+                console.log('Schema changed to:', e.target.value);
+                setSelectedSchema(e.target.value);
+              }}
               className="border rounded px-3 py-1 text-sm bg-background"
             >
               <option value="public">public</option>
@@ -192,7 +110,10 @@ export function TablesView() {
               <Input
                 placeholder="Search for a table"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  console.log('Search term:', e.target.value);
+                  setSearchTerm(e.target.value);
+                }}
                 className="pl-10"
               />
             </div>
@@ -202,14 +123,7 @@ export function TablesView() {
 
       {/* Table List */}
       <div className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-              <p className="text-sm text-muted-foreground">Loading tables...</p>
-            </div>
-          </div>
-        ) : filteredTables.length === 0 ? (
+        {filteredTables.length === 0 ? (
           <div className="flex items-center justify-center h-32">
             <div className="text-center">
               <DatabaseIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
@@ -220,7 +134,7 @@ export function TablesView() {
               {!searchTerm && (
                 <Button 
                   className="mt-4" 
-                  onClick={() => setShowCreateDialog(true)}
+                  onClick={handleNewTable}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create Table
@@ -269,40 +183,16 @@ export function TablesView() {
                     <Badge variant="outline" className="text-xs">
                       {table.columns} columns
                     </Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleViewTable(table.name)}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Data
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleViewTable(table.name)}>
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open in Table Editor
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleEditTable(table.name)}>
-                          <Edit3 className="h-4 w-4 mr-2" />
-                          Edit Table
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEditTable(table.name)}>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Manage Columns
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => handleDeleteTable(table.name)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Table
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => {
+                        console.log('Table actions clicked:', table.name);
+                        alert(`Actions for table: ${table.name}`);
+                      }}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -311,19 +201,15 @@ export function TablesView() {
         )}
       </div>
 
-      {/* Dialogs */}
+      {/* Create Table Dialog */}
       <CreateTableDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         schema={selectedSchema}
-        onTableCreated={handleTableCreated}
-      />
-
-      <DeleteConfirmDialog
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        tableName={tableToDelete}
-        onConfirm={handleConfirmDelete}
+        onTableCreated={() => {
+          console.log('Table created successfully');
+          // Refresh tables would go here
+        }}
       />
     </>
   );
