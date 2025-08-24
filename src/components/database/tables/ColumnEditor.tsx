@@ -45,8 +45,8 @@ export function ColumnEditor({ column, onUpdate, onRemove, canRemove }: ColumnEd
   return (
     <TooltipProvider>
       <div 
-        className={`grid grid-cols-12 gap-3 items-center py-2 px-3 rounded border transition-colors ${
-          isHovered ? 'bg-accent/5 border-accent' : 'border-border'
+        className={`grid grid-cols-12 gap-2 items-center py-2 px-3 transition-colors ${
+          isHovered ? 'bg-gray-50' : 'bg-white'
         }`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
