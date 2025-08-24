@@ -38,24 +38,15 @@ export class DatabaseManager {
     const dbConfig = configManager.getDatabaseConfig();
     const targetDataDir = customDataDir || dbConfig.dataDir;
     
-    console.log('🔥🔥🔥 DatabaseManager.initialize called with:', {
-      customDataDir,
-      targetDataDir,
-      currentConnectionId: this.connectionInfo?.id,
-      isInitialized: this.isInitialized,
-      hasDb: !!this.db
-    });
     
     // If already initialized with the CORRECT database, return immediately
     if (this.isInitialized && this.db && this.connectionInfo?.id === targetDataDir) {
-      console.log('🔥🔥🔥 Already initialized with target database, returning early');
       logger.debug('Already initialized with target database', { targetDataDir });
       return;
     }
 
     // If already initialized but with WRONG database, switch instead
     if (this.isInitialized && this.db && this.connectionInfo?.id !== targetDataDir) {
-      console.log('🔥🔥🔥 Wrong database detected, switching from', this.connectionInfo?.id, 'to', targetDataDir);
       logger.info('Database initialized with different path, switching', { 
         current: this.connectionInfo?.id, 
         target: targetDataDir 
@@ -64,11 +55,9 @@ export class DatabaseManager {
       return;
     }
 
-    console.log('🔥🔥🔥 Proceeding with fresh initialization');
 
     // If initialization is already in progress, wait for it
     if (this.initializationPromise) {
-      console.log('🔥🔥🔥 Initialization already in progress, waiting');
       return this.initializationPromise;
     }
 
@@ -77,7 +66,6 @@ export class DatabaseManager {
     
     try {
       await this.initializationPromise;
-      console.log('🔥🔥🔥 Initialization completed successfully');
     } finally {
       // Clear the promise once done (success or failure)
       this.initializationPromise = null;
@@ -108,14 +96,12 @@ export class DatabaseManager {
       
       // Skip if we're already connected to this database
       if (this.isInitialized && this.connectionInfo?.id === dataDir && !this.isTransitioning) {
-        console.log('🟠🟠🟠 Already connected to target database, skipping switch');
         logger.debug('Already connected to target database, skipping switch', { dataDir });
         return;
       }
       
       // Start atomic transition
       this.isTransitioning = true;
-      console.log('🟠🟠🟠 Starting database switch - closing old connection...');
       
       // Close the current connection
       if (this.db) {
@@ -130,14 +116,12 @@ export class DatabaseManager {
       this.queryCache.clear();
       this.initializationPromise = null;
       
-      console.log('🟠🟠🟠 Old connection closed, initializing new connection...');
       
       // Initialize with the new database
       await this.initialize(dataDir);
       
       const switchTime = performance.now() - startTime;
       
-      console.log(`🟠🟠🟠 Database switch completed in ${switchTime.toFixed(1)}ms`);
       logger.info('Database switch completed successfully', {
         fromDataDir: currentDataDir,
         toDataDir: dataDir,
@@ -145,7 +129,7 @@ export class DatabaseManager {
       });
       
     } catch (error) {
-      console.error('🟠🟠🟠 Database switch failed:', error);
+      console.error('Database switch failed:', error);
       logger.error('Database switch failed', error as Error, { 
         fromDataDir: currentDataDir,
         toDataDir: dataDir 
@@ -228,12 +212,6 @@ export class DatabaseManager {
       // Ensure proper idb:// prefix for IndexedDB persistence
       const dataDir = rawDataDir.startsWith('idb://') ? rawDataDir : `idb://${rawDataDir}`;
       
-      console.log('🚀 doInitialization: setting up IndexedDB with dataDir:', { 
-        customDataDir, 
-        defaultDataDir: dbConfig.dataDir, 
-        rawDataDir, 
-        finalDataDir: dataDir 
-      });
       
       // Use documented dataDir approach for IndexedDB persistence
       this.db = new PGlite({
@@ -244,19 +222,8 @@ export class DatabaseManager {
       
       logger.debug(`Using IndexedDB PGlite database for browser: ${dataDir}`);
 
-      console.log('🚀 doInitialization: Created PGlite instance, waiting for ready...');
       await this.db.waitReady;
-      console.log('🚀 doInitialization: PGlite ready, checking IndexedDB...');
       
-      // Debug: Check what's actually in IndexedDB
-      if (typeof indexedDB !== 'undefined') {
-        try {
-          const databases = await indexedDB.databases();
-          console.log('🔍 DEBUG: IndexedDB databases found:', databases.map(db => db.name));
-        } catch (error) {
-          console.log('🔍 DEBUG: Could not list IndexedDB databases:', error);
-        }
-      }
       
       // Set connection ID
       const actualConnectionId = customDataDir || dbConfig.dataDir;
@@ -267,7 +234,6 @@ export class DatabaseManager {
         lastAccessed: new Date(),
       };
       
-      console.log('🚀 doInitialization: created connection info:', this.connectionInfo);
 
       // Initialize with some basic schemas
       await this.initializeSchemas();
@@ -290,7 +256,6 @@ export class DatabaseManager {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      console.log('🟡🟡🟡 initializeSchemas: Checking if database is already seeded');
       
       // First, check if any user schemas exist (more comprehensive check)
       const schemasResult = await this.db.query(`
@@ -300,7 +265,6 @@ export class DatabaseManager {
         ORDER BY schema_name;
       `);
       
-      console.log('🟡🟡🟡 initializeSchemas: Found schemas:', schemasResult.rows);
       
       // Check if database has been seeded by looking for any of our core schemas
       // Don't rely only on auth.users since user might only use public schema
@@ -311,14 +275,7 @@ export class DatabaseManager {
       const foundCoreSchemas = coreSchemas.filter(schema => existingSchemas.includes(schema));
       const isSeeded = foundCoreSchemas.length >= 2;
       
-      console.log('🟡🟡🟡 initializeSchemas: Database seeded check result:', { 
-        isSeeded, 
-        existingSchemas, 
-        foundCoreSchemas 
-      });
-      
       if (isSeeded) {
-        console.log('🟡🟡🟡 initializeSchemas: Database already seeded, checking for user tables');
         
         // Check what tables exist in public schema
         const publicTablesResult = await this.db.query(`
@@ -327,7 +284,6 @@ export class DatabaseManager {
           WHERE table_schema = 'public' 
           ORDER BY table_name;
         `);
-        console.log('🟡🟡🟡 initializeSchemas: Public schema tables found:', publicTablesResult.rows);
         
         // Also check all tables to see what we have
         const allTablesResult = await this.db.query(`
@@ -336,13 +292,11 @@ export class DatabaseManager {
           WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
           ORDER BY table_schema, table_name;
         `);
-        console.log('🟡🟡🟡 initializeSchemas: All user tables found:', allTablesResult.rows);
         
         logger.info('Database already seeded with Supabase schema');
         return;
       }
 
-      console.log('🟡🟡🟡 initializeSchemas: Database not seeded, initializing with seed schema');
       logger.info('Initializing database with Supabase seed schema');
       
       // Load the seed.sql file
@@ -351,20 +305,17 @@ export class DatabaseManager {
       // Execute the seed script
       await this.db.exec(seedSql);
 
-      console.log('🟡🟡🟡 initializeSchemas: Seed schema initialization completed');
       logger.info('Supabase database schema initialized successfully');
       
       // Verify schema initialization with simple query
-      console.log('🟡🟡🟡 initializeSchemas: Validating schema initialization...');
       try {
         await this.db.query('SELECT 1');
-        console.log('🟡🟡🟡 initializeSchemas: Schema validation completed');
       } catch (error) {
-        console.error('🟡🟡🟡 initializeSchemas: Schema validation failed:', error);
+        console.error('Schema validation failed:', error);
         throw error;
       }
     } catch (error) {
-      console.error('🟡🟡🟡 initializeSchemas: Error during schema initialization:', error);
+      console.error('Error during schema initialization:', error);
       logError('Schema initialization', error as Error);
       throw createDatabaseError('Failed to initialize database schemas', error as Error);
     }
@@ -578,34 +529,14 @@ export class DatabaseManager {
 
   public async getTableList(): Promise<Array<{ name: string; schema: string; rows: number }>> {
     if (!this.db || !this.isInitialized) {
-      console.log('🚀 getTableList: database not initialized');
       return [];
     }
 
     try {
       const connectionInfo = this.getConnectionInfo();
-      console.log('🚀🚀🚀 getTableList: STARTING with connection:', connectionInfo?.id);
-      console.log('🚀🚀🚀 Connection status:', this.getConnectionStatus());
       
-      // DEBUG: First query the current database name to verify we're connected to the right one
-      const dbNameResult = await this.db.query('SELECT current_database() as db_name');
-      console.log('🔍🔍🔍 CRITICAL: current_database() =', dbNameResult.rows[0]);
       
-      // DEBUG: Also check if we can find any public schema tables directly
-      const publicCheck = await this.db.query(`
-        SELECT table_name FROM information_schema.tables 
-        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-        ORDER BY table_name;
-      `);
-      console.log('🔍🔍🔍 CRITICAL: public tables found =', publicCheck.rows);
       
-      // DEBUG: Check all schemas
-      const allSchemas = await this.db.query(`
-        SELECT schema_name FROM information_schema.schemata 
-        WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-        ORDER BY schema_name;
-      `);
-      console.log('🔍🔍🔍 CRITICAL: all schemas =', allSchemas.rows);
       
       const result = await this.db.query(`
         SELECT 
@@ -619,11 +550,9 @@ export class DatabaseManager {
         ORDER BY t.table_schema, t.table_name;
       `);
       
-      console.log('🚀 getTableList: query result:', result.rows);
-      console.log('🔍 DEBUG: Connection status:', this.getConnectionStatus());
       return result.rows as Array<{ name: string; schema: string; rows: number }>;
     } catch (error) {
-      console.error('🚀 getTableList: Failed to get table list:', error);
+      console.error('Failed to get table list:', error);
       return [];
     }
   }

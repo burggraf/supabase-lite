@@ -76,7 +76,6 @@ const sidebarSections = [
 ];
 
 export function Database() {
-  console.log('🔥 Database component render start');
   
   const { executeQuery, isConnected } = useDatabase();
   const [tables, setTables] = useState<TableInfo[]>([]);
@@ -85,19 +84,11 @@ export function Database() {
   const [selectedSchema, setSelectedSchema] = useState('public');
   const [activeSection, setActiveSection] = useState('tables');
   
-  console.log('🔥 Database component state:', { 
-    isConnected, 
-    tablesCount: tables.length, 
-    loading, 
-    selectedSchema 
-  });
 
   useEffect(() => {
-    console.log('🔥 Database useEffect triggered:', { isConnected, selectedSchema });
     
     // Only proceed if database is actually connected
     if (!isConnected) {
-      console.log('🔥 Database not connected, setting empty state');
       setTables([]);
       setLoading(false);
       return;
@@ -106,10 +97,8 @@ export function Database() {
     let isMounted = true;
     
     const loadTables = async () => {
-      console.log('🔥 loadTables called for connected database');
       
       try {
-        console.log('🔥 Starting table load for schema:', selectedSchema);
         if (isMounted) {
           setLoading(true);
         }
@@ -133,12 +122,9 @@ export function Database() {
           ORDER BY t.table_name;
         `;
         
-        console.log('🔥 Executing query:', query);
         const result = await executeQuery(query);
-        console.log('🔥 Query result:', { rowCount: result.rows.length, rows: result.rows });
         
         if (isMounted) {
-          console.log('🔥 Processing query results');
           const tableInfos: TableInfo[] = result.rows.map((row: Record<string, unknown>) => ({
             name: String(row.name),
             description: String(row.description) || 'No description',
@@ -148,7 +134,6 @@ export function Database() {
             realtime_enabled: false, // TODO: Check realtime status
           }));
           
-          console.log('🔥 Setting tables:', tableInfos);
           setTables(tableInfos);
         }
       } catch (error) {
@@ -157,7 +142,6 @@ export function Database() {
           setTables([]);
         }
       } finally {
-        console.log('🔥 loadTables finally block');
         if (isMounted) {
           setLoading(false);
         }
@@ -167,12 +151,10 @@ export function Database() {
     loadTables();
     
     return () => {
-      console.log('🔥 Database useEffect cleanup');
       isMounted = false;
     };
   }, [isConnected, selectedSchema]);
   
-  console.log('🔥 Database component about to render UI');
 
   const filteredTables = tables.filter(table =>
     table.name.toLowerCase().includes(searchTerm.toLowerCase())

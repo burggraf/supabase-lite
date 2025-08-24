@@ -50,7 +50,6 @@ export class CrossOriginAPIHandler {
     window.addEventListener('message', (event) => {
       this.handleMessage(event);
     });
-    console.log('Cross-origin API handler listening for postMessage');
   }
 
   private setupBroadcastChannel() {
@@ -59,7 +58,6 @@ export class CrossOriginAPIHandler {
       this.broadcastChannel.addEventListener('message', (event) => {
         this.handleBroadcastMessage(event);
       });
-      console.log('Cross-origin API handler listening for BroadcastChannel messages');
     } catch (error) {
       console.warn('BroadcastChannel not available:', error);
     }
@@ -82,7 +80,6 @@ export class CrossOriginAPIHandler {
           }
         });
         
-        console.log(`✅ Cross-origin API (BC): ${request.method} ${request.path} -> ${response.status}`);
       } catch (error: any) {
         // Send error response
         this.broadcastChannel?.postMessage({
@@ -122,7 +119,6 @@ export class CrossOriginAPIHandler {
           }
         }, { targetOrigin: event.origin });
         
-        console.log(`✅ Cross-origin API: ${request.method} ${request.path} -> ${response.status}`);
       } catch (error: any) {
         // Send error response
         event.source?.postMessage({
