@@ -17,6 +17,11 @@ export function useTableData() {
     pageSize: 100,
   });
   const [filters, setFilters] = useState<FilterRule[]>([]);
+  
+  // Transition states for optimistic UI
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [previousTables, setPreviousTables] = useState<TableInfo[]>([]);
+  const [lastConnectionId, setLastConnectionId] = useState<string | null>(null);
 
   // Load available tables
   const loadTables = useCallback(async () => {
@@ -103,43 +108,80 @@ export function useTableData() {
     return columns.find(col => col.is_primary_key)?.column_name || columns[0]?.column_name || 'id';
   }, [columns]);
 
-  // Load initial data and reload when database connection changes
+  // FIXED: Simplified connection handling - no complex transition checks
   useEffect(() => {
-    console.log('🚀 useTableData: connection changed', { isConnected, connectionId });
-    if (isConnected && connectionId) {
-      console.log('🚀 useTableData: resetting state and loading tables');
-      // Reset state when database changes
-      setSelectedTable('');
-      setSelectedSchema('public');
-      setColumns([]);
-      setTableData({ rows: [], totalCount: 0 });
-      setFilters([]);
-      setPagination({ pageIndex: 0, pageSize: 100 });
-      
-      // Load tables for new database and auto-select first one
-      const loadAndSelect = async () => {
-        try {
-          console.log('🚀 useTableData: calling dbManager.getTableList() directly');
-          setError(null);
-          const tableList = await dbManager.getTableList();
-          console.log('🚀 useTableData: loaded tables:', tableList);
-          setTables(tableList);
-          
-          // Auto-select first table if available
-          if (tableList.length > 0) {
-            console.log('🚀 useTableData: auto-selecting first table:', tableList[0]);
-            setSelectedTable(tableList[0].name);
-            setSelectedSchema(tableList[0].schema);
-          }
-        } catch (err) {
-          console.error('🚀 useTableData: error loading tables:', err);
-          setError(err instanceof Error ? err.message : 'Failed to load tables');
-        }
-      };
-      
-      loadAndSelect();
+    console.log('🚀 useTableData: connection changed', { isConnected, connectionId, lastConnectionId });
+    
+    // Only proceed if we have a valid connection
+    if (!isConnected || !connectionId) {
+      return;
     }
-  }, [connectionId, isConnected]); // Remove loadTables from dependencies to prevent infinite loop
+    
+    // Skip if this is the same connection (no actual change)
+    if (connectionId === lastConnectionId) {
+      return;
+    }
+    
+    console.log('🚀 useTableData: loading new connection');
+    
+    // Start transition with optimistic UI
+    setIsTransitioning(true);
+    setError(null);
+    
+    // Store current tables as previous (keep UI stable)
+    if (tables.length > 0) {
+      setPreviousTables(tables);
+    }
+    
+    // Load tables for new connection without clearing current state
+    const loadNewConnection = async () => {
+      try {
+        console.log('🚀 useTableData: loading tables for new connection');
+        
+        // Load tables immediately after database connection
+        
+        const tableList = await dbManager.getTableList();
+        console.log('🚀 useTableData: new connection tables loaded:', tableList);
+        
+        // Only now update the state atomically
+        setTables(tableList);
+        setLastConnectionId(connectionId);
+        
+        // FIXED: Don't clear selection if we're returning to a project that has tables
+        // Instead, try to restore a sensible selection
+        const publicTables = tableList.filter(t => t.schema === 'public');
+        const hasPublicTables = publicTables.length > 0;
+        
+        if (hasPublicTables) {
+          console.log('🚀 useTableData: found public tables, selecting first one:', publicTables[0]);
+          setSelectedTable(publicTables[0].name);
+          setSelectedSchema('public');
+        } else if (tableList.length > 0) {
+          console.log('🚀 useTableData: no public tables, selecting first available:', tableList[0]);
+          setSelectedTable(tableList[0].name);
+          setSelectedSchema(tableList[0].schema);
+        } else {
+          // Only clear selection if there are truly no tables
+          setSelectedTable('');
+          setSelectedSchema('public');
+        }
+        
+        // Always reset table data and pagination for new selection
+        setColumns([]);
+        setTableData({ rows: [], totalCount: 0 });
+        setFilters([]);
+        setPagination({ pageIndex: 0, pageSize: 100 });
+        
+        setIsTransitioning(false);
+      } catch (err) {
+        console.error('🚀 useTableData: error loading new connection tables:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load tables');
+        setIsTransitioning(false);
+      }
+    };
+    
+    loadNewConnection();
+  }, [connectionId, isConnected, lastConnectionId, tables]);
 
   // Load schema when table changes
   useEffect(() => {
@@ -157,7 +199,7 @@ export function useTableData() {
 
   return {
     // Data
-    tables,
+    tables: isTransitioning && previousTables.length > 0 ? previousTables : tables,
     selectedTable,
     selectedSchema,
     columns,
@@ -168,6 +210,7 @@ export function useTableData() {
     // State
     loading,
     error,
+    isTransitioning,
     
     // Actions
     selectTable,

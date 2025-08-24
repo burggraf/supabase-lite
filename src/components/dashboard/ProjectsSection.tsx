@@ -54,14 +54,19 @@ export function ProjectsSection({
   };
 
   const handleSwitchProject = async (projectId: string) => {
+    console.log('🔄 handleSwitchProject called:', { projectId, activeProjectId: activeProject?.id });
+    
     if (projectId === activeProject?.id) {
+      console.log('🔄 Project already active, skipping switch');
       return; // Already active
     }
     
     try {
+      console.log('🔄 Calling onSwitchProject...');
       await onSwitchProject(projectId);
+      console.log('🔄 onSwitchProject completed successfully');
     } catch (error) {
-      console.error('Failed to switch project:', error);
+      console.error('🔄 Failed to switch project:', error);
     }
   };
 
@@ -142,7 +147,7 @@ export function ProjectsSection({
                       ? 'bg-primary/10 border-primary/30'
                       : 'hover:bg-muted/50 cursor-pointer'
                   }`}
-                  onClick={() => !project.isActive && handleSwitchProject(project.id)}
+                  onClick={() => handleSwitchProject(project.id)}
                 >
                   <div className="flex items-center gap-3">
                     <Database className={`h-4 w-4 ${project.isActive ? 'text-primary' : 'text-muted-foreground'}`} />
