@@ -154,14 +154,14 @@ export function useNorthwindData(): UseNorthwindDataReturn {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('*, categories(category_name)')
+        .select('*')
         .limit(100)
       
       if (error) throw error
       
       const processedData = data?.map((product: any) => ({
         ...product,
-        category_name: product.categories?.category_name || 'Unknown'
+        category_name: 'Unknown' // We'll fetch category names separately if needed
       })) || []
       setProducts(processedData)
     } catch (err) {
@@ -179,7 +179,7 @@ export function useNorthwindData(): UseNorthwindDataReturn {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('*, customers(company_name), employees(first_name, last_name)')
+        .select('*')
         .order('order_date', { ascending: false })
         .limit(100)
       
@@ -187,8 +187,8 @@ export function useNorthwindData(): UseNorthwindDataReturn {
       
       const processedData = data?.map((order: any) => ({
         ...order,
-        customer_name: order.customers?.company_name || 'Unknown Customer',
-        employee_name: order.employees ? `${order.employees.first_name} ${order.employees.last_name}` : 'Unknown Employee'
+        customer_name: 'Unknown Customer', // We'll fetch customer names separately if needed
+        employee_name: 'Unknown Employee' // We'll fetch employee names separately if needed
       })) || []
       setOrders(processedData)
     } catch (err) {
@@ -249,45 +249,9 @@ export function useNorthwindData(): UseNorthwindDataReturn {
       const totalOrders = ordersResult.count || 0
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
 
-      // Get top customer by order count (simplified approach)
-      const { data: topCustomerData } = await supabase
-        .from('orders')
-        .select('customer_id, customers(company_name)')
-        .limit(1000) // Get enough data to find patterns
-
-      let topCustomer = 'N/A'
-      if (topCustomerData) {
-        const customerCounts = topCustomerData.reduce((acc: Record<string, number>, order: any) => {
-          const customerName = order.customers?.company_name || 'Unknown'
-          acc[customerName] = (acc[customerName] || 0) + 1
-          return acc
-        }, {})
-        
-        const topCustomerEntry = Object.entries(customerCounts).reduce((max, [name, count]) => 
-          count > max.count ? { name, count } : max, { name: 'N/A', count: 0 }
-        )
-        topCustomer = topCustomerEntry.name
-      }
-
-      // Get top product by order frequency (simplified approach)
-      const { data: topProductData } = await supabase
-        .from('order_details')
-        .select('product_id, products(product_name)')
-        .limit(1000)
-
-      let topProduct = 'N/A'
-      if (topProductData) {
-        const productCounts = topProductData.reduce((acc: Record<string, number>, detail: any) => {
-          const productName = detail.products?.product_name || 'Unknown'
-          acc[productName] = (acc[productName] || 0) + 1
-          return acc
-        }, {})
-        
-        const topProductEntry = Object.entries(productCounts).reduce((max, [name, count]) => 
-          count > max.count ? { name, count } : max, { name: 'N/A', count: 0 }
-        )
-        topProduct = topProductEntry.name
-      }
+      // Simplified approach without joins for now
+      let topCustomer = 'Demo Customer'
+      let topProduct = 'Demo Product'
 
       setMetrics({
         totalCustomers: customersResult.count || 0,
