@@ -3,6 +3,7 @@ import { Card, CardContent } from "./components/ui/card"
 import { ApiTesting } from "./components/ApiTesting"
 import { AuthTesting } from "./components/AuthTesting"
 import { Settings } from "./components/Settings"
+import SampleApp from "./components/sample-app/SampleApp"
 
 function App() {
   const handleSettingsChange = () => {
@@ -255,34 +256,9 @@ function App() {
             <Settings onSettingsChange={handleSettingsChange} />
           </TabsContent>
 
-          <TabsContent value="sample-app" className="mt-0">
-            <div className="max-w-7xl mx-auto px-6">
-              <Card className="shadow-2xl border-0 bg-gradient-to-br from-white to-rose-50 overflow-hidden">
-                <div className="bg-gradient-to-r from-rose-500 to-rose-600 p-8 text-white">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h2 className="text-3xl font-bold">Sample Application</h2>
-                      <p className="text-rose-100 text-lg mt-1">Real-world example application showcasing Supabase Lite features</p>
-                    </div>
-                  </div>
-                </div>
-                <CardContent className="p-12 text-center">
-                  <div className="max-w-md mx-auto">
-                    <div className="w-24 h-24 bg-rose-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                      <svg className="w-12 h-12 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                      </svg>
-                    </div>
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-4">Sample App Module</h3>
-                    <p className="text-gray-600 leading-relaxed text-lg">Interactive demo application featuring task management, user profiles, and real-time collaboration to demonstrate practical Supabase Lite implementation patterns.</p>
-                  </div>
-                </CardContent>
-              </Card>
+          <TabsContent value="sample-app" className="mt-0 h-full">
+            <div className="h-screen overflow-hidden">
+              <SampleApp />
             </div>
           </TabsContent>
         </Tabs>
