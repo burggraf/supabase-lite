@@ -224,12 +224,12 @@ export function useNorthwindData(): UseNorthwindDataReturn {
     setError(null)
     
     try {
-      // Use multiple Supabase queries to calculate metrics
+      // Use multiple Supabase queries to calculate metrics - avoid HEAD requests
       const [customersResult, ordersResult, productsResult, employeesResult] = await Promise.all([
-        supabase.from('customers').select('*', { count: 'exact', head: true }),
-        supabase.from('orders').select('*', { count: 'exact', head: true }),
-        supabase.from('products').select('*', { count: 'exact', head: true }).eq('discontinued', false),
-        supabase.from('employees').select('*', { count: 'exact', head: true })
+        supabase.from('customers').select('customer_id', { count: 'exact' }),
+        supabase.from('orders').select('order_id', { count: 'exact' }),
+        supabase.from('products').select('product_id', { count: 'exact' }).eq('discontinued', false),
+        supabase.from('employees').select('employee_id', { count: 'exact' })
       ])
 
       // Calculate revenue from order_details

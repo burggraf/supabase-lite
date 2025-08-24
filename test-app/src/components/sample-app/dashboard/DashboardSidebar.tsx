@@ -63,7 +63,7 @@ export default function DashboardSidebar({
   className = '' 
 }: DashboardSidebarProps) {
   return (
-    <div className={`flex flex-col h-full bg-gray-50 border-r ${className}`}>
+    <div className={`flex flex-col h-full bg-gray-50 border-r w-72 ${className}`}>
       {/* Header */}
       <div className="p-6">
         <div className="flex items-center space-x-2">
@@ -96,9 +96,9 @@ export default function DashboardSidebar({
                 <Icon className={`mr-3 h-4 w-4 ${
                   isActive ? 'text-blue-600' : 'text-gray-500'
                 }`} />
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-medium">{item.label}</span>
-                  <span className={`text-xs ${
+                <div className="flex flex-col items-start text-left min-w-0 flex-1">
+                  <span className="text-sm font-medium text-left">{item.label}</span>
+                  <span className={`text-xs leading-tight break-words whitespace-normal text-left ${
                     isActive ? 'text-blue-600' : 'text-gray-500'
                   }`}>
                     {item.description}
