@@ -14,7 +14,6 @@ import type { SignInData } from '../../../types/auth'
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
-  rememberMe: z.boolean().default(false),
 })
 
 interface LoginFormProps {
@@ -31,7 +30,6 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword }
     defaultValues: {
       email: '',
       password: '',
-      rememberMe: false,
     },
   })
 
@@ -104,19 +102,7 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword }
                 )}
               />
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="rememberMe"
-                    {...form.register('rememberMe')}
-                    className="rounded border-gray-300"
-                    disabled={isSubmitting || isLoading}
-                  />
-                  <Label htmlFor="rememberMe" className="text-sm">
-                    Remember me
-                  </Label>
-                </div>
+              <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={onSwitchToForgotPassword}
@@ -149,11 +135,6 @@ export default function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword }
             </button>
           </div>
 
-          <div className="mt-6 pt-4 border-t">
-            <p className="text-xs text-gray-500 text-center">
-              Demo credentials: Use any email/password from the Authentication tab
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>
