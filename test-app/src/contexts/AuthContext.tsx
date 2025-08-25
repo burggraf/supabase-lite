@@ -77,58 +77,85 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
-  // Storage keys that match the main app
-  const AUTH_TOKEN_KEY = 'supabase-auth-token'
-  const REFRESH_TOKEN_KEY = 'supabase-refresh-token'
-  const AUTH_SESSION_KEY = 'supabase-auth-session'
-  const AUTH_USER_KEY = 'supabase-auth-user'
-
-  // Initialize auth state from localStorage
+  // Initialize auth state using Supabase's session management
   useEffect(() => {
-    const initializeAuth = () => {
-      try {
-        const storedSession = localStorage.getItem(AUTH_SESSION_KEY)
-        const storedUser = localStorage.getItem(AUTH_USER_KEY)
-        const storedToken = localStorage.getItem(AUTH_TOKEN_KEY)
+    let mounted = true
 
-        if (storedSession && storedUser && storedToken) {
-          const session: AuthSession = JSON.parse(storedSession)
-          const user: User = JSON.parse(storedUser)
-          
-          // Check if token is expired
-          if (session.expires_at && session.expires_at > Date.now() / 1000) {
-            dispatch({ type: 'SET_SESSION', payload: { ...session, user } })
-          } else {
-            // Token expired, clear auth state
-            clearAuthState()
+    const initializeAuth = async () => {
+      try {
+        // Get the current session from Supabase
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Error getting session:', error)
+          if (mounted) {
             dispatch({ type: 'SET_LOADING', payload: false })
           }
-        } else {
-          dispatch({ type: 'SET_LOADING', payload: false })
+          return
+        }
+
+        if (mounted) {
+          if (session?.user) {
+            const authSession: AuthSession = {
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              expires_in: session.expires_in,
+              expires_at: session.expires_at,
+              token_type: session.token_type,
+              user: session.user as User
+            }
+            dispatch({ type: 'SET_SESSION', payload: authSession })
+          } else {
+            dispatch({ type: 'SET_LOADING', payload: false })
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
-        clearAuthState()
-        dispatch({ type: 'SET_LOADING', payload: false })
+        if (mounted) {
+          dispatch({ type: 'SET_LOADING', payload: false })
+        }
       }
     }
 
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return
+
+        if (event === 'SIGNED_IN' && session?.user) {
+          const authSession: AuthSession = {
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+            expires_in: session.expires_in,
+            expires_at: session.expires_at,
+            token_type: session.token_type,
+            user: session.user as User
+          }
+          dispatch({ type: 'SET_SESSION', payload: authSession })
+        } else if (event === 'SIGNED_OUT' || !session) {
+          dispatch({ type: 'SIGN_OUT' })
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          const authSession: AuthSession = {
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+            expires_in: session.expires_in,
+            expires_at: session.expires_at,
+            token_type: session.token_type,
+            user: session.user as User
+          }
+          dispatch({ type: 'SET_SESSION', payload: authSession })
+        }
+      }
+    )
+
     initializeAuth()
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
-  const clearAuthState = () => {
-    localStorage.removeItem(AUTH_TOKEN_KEY)
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
-    localStorage.removeItem(AUTH_SESSION_KEY)
-    localStorage.removeItem(AUTH_USER_KEY)
-  }
-
-  const saveAuthState = (session: AuthSession) => {
-    localStorage.setItem(AUTH_TOKEN_KEY, session.access_token)
-    localStorage.setItem(REFRESH_TOKEN_KEY, session.refresh_token)
-    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session))
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(session.user))
-  }
 
   const signUp = useCallback(async (email: string, password: string) => {
     dispatch({ type: 'SET_LOADING', payload: true })
@@ -146,16 +173,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       if (data.user && data.session) {
-        const session: AuthSession = {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expires_in: data.session.expires_in,
-          expires_at: data.session.expires_at,
-          token_type: data.session.token_type,
-          user: data.user as User
-        }
-        saveAuthState(session)
-        dispatch({ type: 'SET_SESSION', payload: session })
+        // Supabase will automatically trigger onAuthStateChange
+        // No need to manually dispatch or save state here
         return { success: true }
       }
 
@@ -184,17 +203,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       if (data.session && data.user) {
-        const session: AuthSession = {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expires_in: data.session.expires_in,
-          expires_at: data.session.expires_at,
-          token_type: data.session.token_type,
-          user: data.user as User
-        }
-        
-        saveAuthState(session)
-        dispatch({ type: 'SET_SESSION', payload: session })
+        // Supabase will automatically trigger onAuthStateChange
+        // No need to manually dispatch or save state here
         return { success: true }
       }
 
@@ -211,10 +221,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       // Use Supabase.js signOut method
       await supabase.auth.signOut()
+      // onAuthStateChange listener will handle state update automatically
     } catch (error) {
       console.error('Error during logout:', error)
-    } finally {
-      clearAuthState()
+      // Fallback: manually sign out if Supabase call fails
       dispatch({ type: 'SIGN_OUT' })
     }
   }, [])
