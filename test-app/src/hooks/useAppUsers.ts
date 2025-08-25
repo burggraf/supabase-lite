@@ -12,11 +12,12 @@ export function useAppUsers(): UseAppUsersReturn {
       setLoading(true)
       setError(null)
 
-      // Get all profiles - this is the only user data we should have access to
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
+      // Query the userview which combines auth.users.email with profiles data
+      const { data: userviewData, error: userviewError } = await supabase
+        .from('userview')
         .select(`
           id,
+          email,
           first_name,
           last_name,
           created_at,
@@ -24,19 +25,19 @@ export function useAppUsers(): UseAppUsersReturn {
         `)
         .order('created_at', { ascending: false })
 
-      if (profilesError) {
-        throw new Error(profilesError.message)
+      if (userviewError) {
+        throw new Error(userviewError.message)
       }
 
-      // Map profiles to AppUser format (without email and auth data since we can't access that)
-      const usersData: AppUser[] = (profilesData || []).map(profile => ({
-        id: profile.id,
-        email: '', // We don't have access to auth.users email data in a real app
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        email_confirmed_at: null, // We don't have access to auth data
-        created_at: profile.created_at,
-        updated_at: profile.updated_at
+      // Map userview data to AppUser format
+      const usersData: AppUser[] = (userviewData || []).map(user => ({
+        id: user.id,
+        email: user.email || '',
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email_confirmed_at: null, // Still don't have access to email_confirmed_at from auth
+        created_at: user.created_at,
+        updated_at: user.updated_at
       }))
 
       setUsers(usersData)

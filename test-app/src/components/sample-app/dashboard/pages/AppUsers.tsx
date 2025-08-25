@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '../../../ui/table'
 import { useAppUsers } from '../../../../hooks/useAppUsers'
-import { UserCog, RefreshCw, Calendar } from 'lucide-react'
+import { UserCog, RefreshCw, Calendar, Mail } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 export default function AppUsers() {
@@ -98,21 +98,28 @@ export default function AppUsers() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User ID</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>User ID</TableHead>
                   <TableHead>Profile Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium font-mono text-sm">
-                      {user.id}
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
+                        {user.email || 'No email'}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">
                         {formatFullName(user.first_name, user.last_name)}
                       </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">
+                      {user.id}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">
