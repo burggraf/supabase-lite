@@ -417,7 +417,7 @@ CREATE TABLE realtime.schema_migrations (
 -- Auth indexes
 CREATE INDEX IF NOT EXISTS users_instance_id_idx ON auth.users(instance_id);
 CREATE INDEX IF NOT EXISTS users_instance_id_email_idx ON auth.users(instance_id, lower(email));
-CREATE INDEX IF NOT EXISTS users_email_partial_key ON auth.users(email) WHERE is_sso_user = false;
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_partial_key ON auth.users(email) WHERE is_sso_user = false;
 CREATE INDEX IF NOT EXISTS identities_email_idx ON auth.identities(email);
 CREATE INDEX IF NOT EXISTS identities_user_id_idx ON auth.identities(user_id);
 CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON auth.sessions(user_id);

@@ -185,8 +185,19 @@ export class AuthManager {
 
       console.log('🔐 AuthManager.signUp: Signup completed successfully')
       return { user, session }
-    } catch (error) {
+    } catch (error: any) {
       console.error('🔐 AuthManager.signUp: Error during signup:', error)
+      
+      // Check for various forms of duplicate email constraint violations
+      if (error?.message && (
+        error.message.includes('users_email_partial_key') ||
+        error.message.includes('duplicate key value violates unique constraint') ||
+        (error.message.includes('duplicate') && error.message.includes('email')) ||
+        error.message.includes('UNIQUE constraint failed')
+      )) {
+        throw this.createAuthError('User already registered', 422, 'email_already_exists')
+      }
+      
       throw error
     }
   }
@@ -471,33 +482,45 @@ export class AuthManager {
 
 
   private async createUserInDB(user: User, hashedPassword: any): Promise<void> {
-    // Convert boolean verified fields to timestamp format for Supabase schema
-    const emailConfirmedAt = user.email_verified ? user.created_at : null
-    const phoneConfirmedAt = user.phone_verified ? user.created_at : null
-    
-    // For bcrypt, we store the hash directly. For PBKDF2, we still store just the hash part
-    const passwordHash = hashedPassword.hash
-    
-    // Create user record with password hash in standard Supabase location
-    await this.dbManager.query(`
-      INSERT INTO auth.users (
-        id, email, phone, encrypted_password, email_confirmed_at, phone_confirmed_at, 
-        created_at, updated_at, role, raw_app_meta_data, raw_user_meta_data, is_anonymous
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-    `, [
-      user.id,
-      user.email,
-      user.phone,
-      passwordHash,
-      emailConfirmedAt,
-      phoneConfirmedAt,
-      user.created_at,
-      user.updated_at,
-      user.role,
-      JSON.stringify(user.app_metadata),
-      JSON.stringify(user.user_metadata),
-      user.is_anonymous
-    ])
+    try {
+      // Convert boolean verified fields to timestamp format for Supabase schema
+      const emailConfirmedAt = user.email_verified ? user.created_at : null
+      const phoneConfirmedAt = user.phone_verified ? user.created_at : null
+      
+      // For bcrypt, we store the hash directly. For PBKDF2, we still store just the hash part
+      const passwordHash = hashedPassword.hash
+      
+      // Create user record with password hash in standard Supabase location
+      await this.dbManager.query(`
+        INSERT INTO auth.users (
+          id, email, phone, encrypted_password, email_confirmed_at, phone_confirmed_at, 
+          created_at, updated_at, role, raw_app_meta_data, raw_user_meta_data, is_anonymous
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      `, [
+        user.id,
+        user.email,
+        user.phone,
+        passwordHash,
+        emailConfirmedAt,
+        phoneConfirmedAt,
+        user.created_at,
+        user.updated_at,
+        user.role,
+        JSON.stringify(user.app_metadata),
+        JSON.stringify(user.user_metadata),
+        user.is_anonymous
+      ])
+    } catch (error: any) {
+      // Transform database constraint violations into user-friendly errors
+      if (error?.message && (
+        error.message.includes('users_email_partial_key') ||
+        error.message.includes('duplicate key value violates unique constraint') ||
+        (error.message.includes('duplicate') && error.message.includes('email'))
+      )) {
+        throw this.createAuthError('User already registered', 422, 'email_already_exists')
+      }
+      throw error
+    }
   }
 
   private async updateUserInDB(userId: string, updates: Partial<User>): Promise<void> {

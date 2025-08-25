@@ -453,8 +453,26 @@ const createAuthSignupHandler = () => async ({ request }: any) => {
     console.error('💥 MSW signup error:', error)
     console.error('💥 Error stack:', (error as any)?.stack)
     console.error('💥 Error name:', (error as any)?.name)
+    
+    // Handle duplicate email constraint violation
+    const errorMessage = (error as any)?.message || ''
+    if (errorMessage.includes('users_email_partial_key') || 
+        errorMessage.includes('duplicate key value violates unique constraint') ||
+        (errorMessage.includes('duplicate') && errorMessage.includes('email'))) {
+      return HttpResponse.json(
+        { error: 'email_already_exists', error_description: 'User already registered' },
+        { 
+          status: 422,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+    
     return HttpResponse.json(
-      { error: 'internal_error', error_description: (error as any)?.message || 'Request failed' },
+      { error: 'internal_error', error_description: errorMessage || 'Request failed' },
       { 
         status: 500,
         headers: {
