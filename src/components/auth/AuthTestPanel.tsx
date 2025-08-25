@@ -5,7 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { AuthManager, SessionManager, MFAService } from '@/lib/auth'
+import { apiKeyGenerator } from '@/lib/auth/api-keys'
 import type { User, Session } from '@/lib/auth/types'
+import type { ApiKeys } from '@/lib/auth/api-keys'
+import { Copy, Eye, EyeOff, Check } from 'lucide-react'
 
 interface AuthTestResult {
   success: boolean
@@ -22,6 +25,10 @@ export function AuthTestPanel() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [currentSession, setCurrentSession] = useState<Session | null>(null)
   const [testResults, setTestResults] = useState<Record<string, AuthTestResult>>({})
+  const [apiKeys, setApiKeys] = useState<ApiKeys | null>(null)
+  const [showAnonKey, setShowAnonKey] = useState(false)
+  const [showServiceKey, setShowServiceKey] = useState(false)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
   
   // Form states
   const [signupEmail, setSignupEmail] = useState('test@example.com')
@@ -53,9 +60,36 @@ export function AuthTestPanel() {
     // Initial state
     setCurrentUser(sessionManager.getUser())
     setCurrentSession(sessionManager.getSession())
+    
+    // Generate API keys on component mount
+    generateAPIKeys()
 
     return unsubscribe
   }, [authManager, sessionManager])
+
+  const generateAPIKeys = async () => {
+    try {
+      const keys = await apiKeyGenerator.generateApiKeys('default')
+      setApiKeys(keys)
+    } catch (error) {
+      console.error('Failed to generate API keys:', error)
+    }
+  }
+
+  const copyToClipboard = async (text: string, keyType: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedKey(keyType)
+      setTimeout(() => setCopiedKey(null), 2000)
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error)
+    }
+  }
+
+  const maskKey = (key: string) => {
+    if (key.length <= 20) return key
+    return key.slice(0, 10) + '...' + key.slice(-10)
+  }
 
   const runTest = async (testName: string, testFn: () => Promise<any>) => {
     const startTime = performance.now()
@@ -216,12 +250,170 @@ export function AuthTestPanel() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="auth" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="keys" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="keys">API Keys</TabsTrigger>
           <TabsTrigger value="auth">Authentication</TabsTrigger>
           <TabsTrigger value="user">User Management</TabsTrigger>
           <TabsTrigger value="mfa">Multi-Factor Auth</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="keys" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>API Keys</CardTitle>
+              <CardDescription>
+                Use these keys to connect your applications to Supabase Lite. The anon key respects RLS policies, while the service_role key bypasses them.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {apiKeys ? (
+                <>
+                  {/* Anon Key */}
+                  <div className="space-y-3 p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium flex items-center gap-2">
+                          Anonymous Key
+                          <Badge variant="secondary">anon</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Respects Row Level Security (RLS) policies. Safe to use in client-side code.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowAnonKey(!showAnonKey)}
+                        >
+                          {showAnonKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyToClipboard(apiKeys.anon, 'anon')}
+                        >
+                          {copiedKey === 'anon' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="bg-muted p-3 rounded font-mono text-sm">
+                      {showAnonKey ? apiKeys.anon : maskKey(apiKeys.anon)}
+                    </div>
+                  </div>
+
+                  {/* Service Role Key */}
+                  <div className="space-y-3 p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium flex items-center gap-2">
+                          Service Role Key
+                          <Badge variant="destructive">service_role</Badge>
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Bypasses all RLS policies. Keep this secret and only use server-side.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowServiceKey(!showServiceKey)}
+                        >
+                          {showServiceKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyToClipboard(apiKeys.service_role, 'service_role')}
+                        >
+                          {copiedKey === 'service_role' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="bg-muted p-3 rounded font-mono text-sm">
+                      {showServiceKey ? apiKeys.service_role : maskKey(apiKeys.service_role)}
+                    </div>
+                  </div>
+
+                  {/* Usage Examples */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Usage Examples</h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <h5 className="text-sm font-medium mb-2">Supabase.js Client</h5>
+                        <pre className="bg-muted p-3 rounded text-sm overflow-auto">
+{`import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  'http://localhost:5173',
+  '${maskKey(apiKeys.anon)}' // Use anon key for client-side
+)`}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <h5 className="text-sm font-medium mb-2">cURL Examples</h5>
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">With anon key (respects RLS):</p>
+                            <pre className="bg-muted p-3 rounded text-xs overflow-auto">
+{`curl -X GET "http://localhost:5173/rest/v1/your_table" \\
+  -H "Content-Type: application/json" \\
+  -H "Accept: application/json" \\
+  -H "apikey: ${maskKey(apiKeys.anon)}" \\
+  -H "Authorization: Bearer ${maskKey(apiKeys.anon)}"`}
+                            </pre>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">With service_role key (bypasses RLS):</p>
+                            <pre className="bg-muted p-3 rounded text-xs overflow-auto">
+{`curl -X GET "http://localhost:5173/rest/v1/your_table" \\
+  -H "Content-Type: application/json" \\
+  -H "Accept: application/json" \\
+  -H "apikey: ${maskKey(apiKeys.service_role)}" \\
+  -H "Authorization: Bearer ${maskKey(apiKeys.service_role)}"`}
+                            </pre>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h5 className="text-sm font-medium mb-2">JavaScript Fetch</h5>
+                        <pre className="bg-muted p-3 rounded text-sm overflow-auto">
+{`fetch('http://localhost:5173/rest/v1/your_table', {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'apikey': '${maskKey(apiKeys.anon)}',
+    'Authorization': 'Bearer ${maskKey(apiKeys.anon)}'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))`}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <Button onClick={generateAPIKeys} variant="outline">
+                      Regenerate Keys
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">Generating API keys...</p>
+                  <Button onClick={generateAPIKeys}>Try Again</Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="auth" className="space-y-4">
           <Card>

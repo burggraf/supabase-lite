@@ -69,7 +69,7 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
       id: 'auth',
       label: 'Authentication',
       icon: 'Shield' as keyof typeof iconMap,
-      badge: 'Coming Soon',
+      badge: null,
     },
     {
       id: 'storage',

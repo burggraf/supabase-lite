@@ -1,6 +1,8 @@
-import { DatabaseManager } from '../lib/database/connection'
+import { DatabaseManager, type SessionContext } from '../lib/database/connection'
 import { logger, logError } from '../lib/infrastructure/Logger'
 import { errorHandler, createAPIError } from '../lib/infrastructure/ErrorHandler'
+import { apiKeyGenerator } from '../lib/auth/api-keys'
+import { RLSEnforcer } from '../lib/auth/rls-enforcer'
 import bcrypt from 'bcryptjs'
 import {
   QueryParser,
@@ -21,7 +23,6 @@ interface SupabaseRequest {
 export class EnhancedSupabaseAPIBridge {
   private dbManager: DatabaseManager
   private sqlBuilder: SQLBuilder
-  private currentUserId: string | null = null // Store current user context
 
   constructor() {
     this.dbManager = DatabaseManager.getInstance()
@@ -60,26 +61,23 @@ export class EnhancedSupabaseAPIBridge {
     })
 
     try {
-      // Extract and set user context for RLS
-      await this.setUserContext(request.headers)
-
       // Parse the request into structured query
       const query = QueryParser.parseQuery(request.url, request.headers)
 
       // Apply RLS filtering for user-scoped tables
-      const enhancedQuery = this.applyRLSFiltering(request.table, query, request.headers)
+      const { query: enhancedQuery, context } = await this.applyRLSFiltering(request.table, query, request.headers)
 
-      logger.debug('Parsed query with RLS', { query: enhancedQuery })
+      logger.debug('Parsed query with RLS', { query: enhancedQuery, context: context.role })
 
       switch (request.method) {
         case 'GET':
-          return await this.handleSelect(request.table, enhancedQuery)
+          return await this.handleSelect(request.table, enhancedQuery, context)
         case 'POST':
-          return await this.handleInsert(request.table, enhancedQuery, request.body)
+          return await this.handleInsert(request.table, enhancedQuery, request.body, context)
         case 'PATCH':
-          return await this.handleUpdate(request.table, enhancedQuery, request.body)
+          return await this.handleUpdate(request.table, enhancedQuery, request.body, context)
         case 'DELETE':
-          return await this.handleDelete(request.table, enhancedQuery)
+          return await this.handleDelete(request.table, enhancedQuery, context)
         default:
           throw createAPIError(`Unsupported method: ${request.method}`)
       }
@@ -113,37 +111,6 @@ export class EnhancedSupabaseAPIBridge {
     }
   }
 
-  /**
-   * Extract JWT token and set user context for RLS
-   */
-  private async setUserContext(headers: Record<string, string>): Promise<void> {
-    try {
-      const authHeader = headers.authorization || headers.Authorization
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        // No auth header, set anonymous context
-        this.currentUserId = null
-        // Skip JWT claims setting for PGlite compatibility
-        return
-      }
-
-      // Extract JWT token
-      const token = authHeader.replace('Bearer ', '')
-      const userId = this.extractUserIdFromJWT(token)
-      
-      if (userId) {
-        // Store user ID for RLS operations
-        this.currentUserId = userId
-        // Skip JWT claims setting for PGlite compatibility - use currentUserId instead
-        logger.debug('Set user context for RLS', { userId })
-      } else {
-        this.currentUserId = null
-      }
-    } catch (error) {
-      logger.warn('Failed to set user context', { error })
-      // Continue without user context
-      this.currentUserId = null
-    }
-  }
 
   /**
    * Extract user ID from JWT token
@@ -163,51 +130,98 @@ export class EnhancedSupabaseAPIBridge {
   }
 
   /**
-   * Apply RLS filtering for user-scoped tables
+   * Create session context for RLS enforcement based on request headers
+   * Handles both API keys and user JWTs
    */
-  private applyRLSFiltering(table: string, query: ParsedQuery, headers: Record<string, string>): ParsedQuery {
-    // Tables that require RLS filtering
-    const rlsTables = ['profiles', 'user_data']
-    
-    if (!rlsTables.includes(table)) {
-      return query // No RLS filtering needed
-    }
+  private async createSessionContext(headers: Record<string, string>): Promise<SessionContext> {
+    const apiKey = headers.apikey || headers['x-api-key'];
+    const authHeader = headers.authorization || headers.Authorization;
 
-    // Extract user ID from headers
-    const authHeader = headers.authorization || headers.Authorization
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      // No authentication, return empty results for RLS tables
-      return {
-        ...query,
-        filters: [
-          ...query.filters,
-          { column: 'id', operator: 'eq', value: 'NULL', negated: false }
-        ]
+    // Extract role from API key
+    let apiKeyRole: 'anon' | 'service_role' = 'anon';
+    if (apiKey) {
+      const extractedRole = apiKeyGenerator.extractRole(apiKey);
+      if (extractedRole) {
+        apiKeyRole = extractedRole;
       }
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const userId = this.extractUserIdFromJWT(token)
-    
-    if (!userId) {
-      // Invalid token, return empty results
+    // If service_role API key, create service context (bypasses RLS)
+    if (apiKeyRole === 'service_role') {
       return {
-        ...query,
-        filters: [
-          ...query.filters,
-          { column: 'id', operator: 'eq', value: 'NULL', negated: false }
-        ]
+        role: 'service_role',
+        claims: {
+          role: 'service_role',
+          iss: 'supabase-lite'
+        }
+      };
+    }
+
+    // Extract user context from Bearer token if present
+    let userClaims = null;
+    let userId = null;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      try {
+        // Try to extract user ID from JWT (existing method)
+        userId = this.extractUserIdFromJWT(token);
+        
+        // For now, create basic user claims
+        if (userId) {
+          userClaims = {
+            sub: userId,
+            role: 'authenticated',
+            iss: 'supabase-lite'
+          };
+        }
+      } catch (error) {
+        logger.debug('Failed to parse user JWT', { error });
       }
     }
 
+    // Return appropriate context
+    if (userClaims && userId) {
+      // Authenticated user
+      return {
+        role: 'authenticated',
+        userId: userId,
+        claims: userClaims
+      };
+    } else {
+      // Anonymous user (with anon API key)
+      return {
+        role: 'anon',
+        claims: {
+          role: 'anon',
+          iss: 'supabase-lite'
+        }
+      };
+    }
+  }
 
-    return query
+  /**
+   * Apply RLS by setting session context instead of query filtering
+   * RLS is now enforced at the database level via PostgreSQL policies
+   */
+  private async applyRLSFiltering(table: string, query: ParsedQuery, headers: Record<string, string>): Promise<{ query: ParsedQuery; context: SessionContext }> {
+    // Create session context based on headers
+    const context = await this.createSessionContext(headers);
+    
+    logger.debug('Created session context for RLS', { 
+      table, 
+      role: context.role, 
+      userId: context.userId 
+    });
+
+    // Return query unchanged - RLS enforcement happens at database level
+    return { query, context };
   }
 
   /**
    * Handle SELECT queries with full PostgREST features
    */
-  private async handleSelect(table: string, query: ParsedQuery): Promise<FormattedResponse> {
+  private async handleSelect(table: string, query: ParsedQuery, context: SessionContext): Promise<FormattedResponse> {
     try {
       // Let the actual database query determine if the table exists
       // Don't pre-filter based on hardcoded table names
@@ -216,8 +230,8 @@ export class EnhancedSupabaseAPIBridge {
       const sqlQuery = this.sqlBuilder.buildQuery(table, query)
       logger.debug('Built SELECT SQL', sqlQuery)
 
-      // Execute the query
-      const result = await this.executeQuery(sqlQuery.sql, sqlQuery.parameters)
+      // Execute the query with RLS context
+      const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
 
       // Calculate count if requested
       let totalCount
@@ -228,7 +242,7 @@ export class EnhancedSupabaseAPIBridge {
         totalCount = await ResponseFormatter.calculateCount(
           query,
           countSql,
-          (sql) => this.executeQuery(sql, [])
+          (sql) => this.executeQueryWithContext(sql, [], context)
         )
       }
 
@@ -245,7 +259,8 @@ export class EnhancedSupabaseAPIBridge {
   private async handleInsert(
     table: string,
     query: ParsedQuery,
-    body: any
+    body: any,
+    context: SessionContext
   ): Promise<FormattedResponse> {
     if (!body || typeof body !== 'object') {
       throw new Error('Request body is required for INSERT')
@@ -254,14 +269,11 @@ export class EnhancedSupabaseAPIBridge {
     try {
       let data = Array.isArray(body) ? body : [body]
       
-      // Apply RLS data injection for user-scoped tables
-      data = this.applyRLSDataInjection(table, data, query)
-      
       const sqlQuery = this.sqlBuilder.buildInsertQuery(table, data)
       
       logger.debug('Built INSERT SQL', sqlQuery)
 
-      const result = await this.executeQuery(sqlQuery.sql, sqlQuery.parameters)
+      const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
       return ResponseFormatter.formatInsertResponse(result.rows, query)
     } catch (error) {
       logError('INSERT query failed', error as Error, { table, body })
@@ -275,7 +287,8 @@ export class EnhancedSupabaseAPIBridge {
   private async handleUpdate(
     table: string,
     query: ParsedQuery,
-    body: any
+    body: any,
+    context: SessionContext
   ): Promise<FormattedResponse> {
     if (!body || typeof body !== 'object') {
       throw new Error('Request body is required for UPDATE')
@@ -289,7 +302,7 @@ export class EnhancedSupabaseAPIBridge {
       const sqlQuery = this.sqlBuilder.buildUpdateQuery(table, body, query.filters)
       logger.debug('Built UPDATE SQL', sqlQuery)
 
-      const result = await this.executeQuery(sqlQuery.sql, sqlQuery.parameters)
+      const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
       return ResponseFormatter.formatUpdateResponse(result.rows, query)
     } catch (error) {
       logError('UPDATE query failed', error as Error, { table, body, filters: query.filters })
@@ -300,7 +313,7 @@ export class EnhancedSupabaseAPIBridge {
   /**
    * Handle DELETE queries
    */
-  private async handleDelete(table: string, query: ParsedQuery): Promise<FormattedResponse> {
+  private async handleDelete(table: string, query: ParsedQuery, context: SessionContext): Promise<FormattedResponse> {
     if (query.filters.length === 0) {
       throw new Error('DELETE requires WHERE conditions')
     }
@@ -309,7 +322,7 @@ export class EnhancedSupabaseAPIBridge {
       const sqlQuery = this.sqlBuilder.buildDeleteQuery(table, query.filters)
       logger.debug('Built DELETE SQL', sqlQuery)
 
-      const result = await this.executeQuery(sqlQuery.sql, sqlQuery.parameters)
+      const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
       return ResponseFormatter.formatDeleteResponse(result.rows, query)
     } catch (error) {
       logError('DELETE query failed', error as Error, { table, filters: query.filters })
@@ -317,40 +330,7 @@ export class EnhancedSupabaseAPIBridge {
     }
   }
 
-  /**
-   * Apply RLS data injection for INSERT/UPDATE operations
-   */
-  private applyRLSDataInjection(table: string, data: any[], query: ParsedQuery): any[] {
-    // Tables that require RLS data injection
-    const rlsTables = ['profiles', 'user_data']
-    
-    if (!rlsTables.includes(table)) {
-      return data // No RLS injection needed
-    }
 
-    // Extract user ID from current session context
-    const userId = this.getCurrentUserId()
-    if (!userId) {
-      throw new Error('Authentication required for this operation')
-    }
-
-    // For orders table, ensure user_id is set to current user
-    if (table === 'orders') {
-      return data.map(item => ({
-        ...item,
-        user_id: userId // Override any provided user_id with current user
-      }))
-    }
-
-    return data
-  }
-
-  /**
-   * Get current user ID from session context (set by setUserContext)
-   */
-  private getCurrentUserId(): string | null {
-    return this.currentUserId
-  }
 
 
   /**
@@ -372,6 +352,40 @@ export class EnhancedSupabaseAPIBridge {
       return result
     } catch (error) {
       logError('SQL execution failed', error as Error, { sql: formattedSql })
+      throw error
+    }
+  }
+
+  /**
+   * Execute query with session context for RLS enforcement
+   */
+  private async executeQueryWithContext(sql: string, parameters: any[] = [], context: SessionContext): Promise<{ rows: any[] }> {
+    // Format SQL with parameters for PGlite (which doesn't support parameterized queries)
+    let formattedSql = sql
+    parameters.forEach((param, index) => {
+      const placeholder = `$${index + 1}`
+      const formattedValue = this.formatParameterValue(param)
+      formattedSql = formattedSql.replace(placeholder, formattedValue)
+    })
+
+    // Apply application-level RLS enforcement for PGlite compatibility
+    const { modifiedSql, shouldEnforceRLS } = RLSEnforcer.applyApplicationRLS(formattedSql, context)
+    
+    if (shouldEnforceRLS) {
+      logger.debug('Applied application-level RLS enforcement', { 
+        originalSql: formattedSql.substring(0, 100), 
+        modifiedSql: modifiedSql.substring(0, 100),
+        role: context.role 
+      });
+    }
+    
+    logger.debug('Executing SQL with context', { sql: modifiedSql.substring(0, 100), role: context.role })
+    
+    try {
+      const result = await this.dbManager.queryWithContext(modifiedSql, context)
+      return result
+    } catch (error) {
+      logError('SQL execution with context failed', error as Error, { sql: formattedSql, context: context.role })
       throw error
     }
   }
