@@ -11,7 +11,11 @@ import { Button } from '../../ui/button'
 import { useAuth } from '../../../contexts/AuthContext'
 import { LogOut, Settings, User } from 'lucide-react'
 
-export default function UserProfileDropdown() {
+interface UserProfileDropdownProps {
+  onPageChange?: (pageId: string) => void
+}
+
+export default function UserProfileDropdown({ onPageChange }: UserProfileDropdownProps = {}) {
   const { user, signOut } = useAuth()
 
   if (!user) return null
@@ -62,7 +66,10 @@ export default function UserProfileDropdown() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer">
+        <DropdownMenuItem 
+          className="cursor-pointer"
+          onClick={() => onPageChange?.('profile')}
+        >
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>

@@ -114,7 +114,7 @@ export default function DashboardSidebar({
 
       {/* User Profile */}
       <div className="p-4">
-        <UserProfileDropdown />
+        <UserProfileDropdown onPageChange={onPageChange} />
       </div>
     </div>
   )
