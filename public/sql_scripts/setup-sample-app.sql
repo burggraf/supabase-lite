@@ -69,11 +69,11 @@ END $$;
 -- Create profiles table
 -- ================================================
 
--- Drop existing table if it exists (for development)
-DROP TABLE IF EXISTS public.profiles CASCADE;
+-- Create the profiles table (skip if already exists to preserve data)
+-- Note: Comment out the DROP TABLE for idempotent runs
+-- DROP TABLE IF EXISTS public.profiles CASCADE;
 
--- Create the profiles table
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     first_name TEXT,
     last_name TEXT,
@@ -83,7 +83,7 @@ CREATE TABLE public.profiles (
 );
 
 -- Create an index on the id for faster lookups
-CREATE INDEX profiles_id_idx ON public.profiles(id);
+CREATE INDEX IF NOT EXISTS profiles_id_idx ON public.profiles(id);
 
 -- ================================================
 -- Enable Row Level Security (RLS)
@@ -95,6 +95,12 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 -- ================================================
 -- Create RLS Policies
 -- ================================================
+
+-- Drop existing policies if they exist (for idempotent runs)
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can delete own profile" ON public.profiles;
 
 -- Policy: Everyone can view all profiles (SELECT)
 CREATE POLICY "Public profiles are viewable by everyone" 
@@ -130,7 +136,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger to automatically update updated_at column
+-- Create trigger to automatically update updated_at column (drop if exists first)
+DROP TRIGGER IF EXISTS on_profile_updated ON public.profiles;
 CREATE TRIGGER on_profile_updated
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW
@@ -158,6 +165,41 @@ BEGIN
     
     -- Grant to public as fallback for PGlite
     GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO PUBLIC;
+END $$;
+
+-- ================================================
+-- Create userview - combines auth.users with profiles
+-- ================================================
+
+-- Drop the view if it exists first (for idempotent runs)
+DROP VIEW IF EXISTS public.userview CASCADE;
+
+-- Create the view joining auth.users with profiles
+CREATE VIEW public.userview AS 
+SELECT 
+    auth.users.email AS email,
+    public.profiles.* 
+FROM auth.users 
+LEFT OUTER JOIN public.profiles ON public.profiles.id = auth.users.id;
+
+-- Grant permissions on the view (with error handling for PGlite)
+DO $$
+BEGIN
+    -- Try to grant permissions, but don't fail if roles don't exist (PGlite compatibility)
+    BEGIN
+        GRANT SELECT ON public.userview TO authenticated;
+    EXCEPTION WHEN undefined_object THEN
+        RAISE NOTICE 'Role authenticated does not exist, skipping view grant';
+    END;
+    
+    BEGIN
+        GRANT SELECT ON public.userview TO anon;
+    EXCEPTION WHEN undefined_object THEN
+        RAISE NOTICE 'Role anon does not exist, skipping view grant';
+    END;
+    
+    -- Grant to public as fallback for PGlite
+    GRANT SELECT ON public.userview TO PUBLIC;
 END $$;
 
 -- ================================================
@@ -196,6 +238,16 @@ FROM pg_policies
 WHERE schemaname = 'public' 
 AND tablename = 'profiles';
 
+-- Verify userview exists
+SELECT 
+    schemaname,
+    viewname,
+    viewowner,
+    definition
+FROM pg_views 
+WHERE schemaname = 'public' 
+AND viewname = 'userview';
+
 -- ================================================
 -- Success message
 -- ================================================
@@ -211,11 +263,19 @@ BEGIN
     RAISE NOTICE '  ✓ Row Level Security (RLS) enabled';
     RAISE NOTICE '  ✓ RLS policies for secure access';
     RAISE NOTICE '  ✓ Automatic updated_at timestamp trigger';
+    RAISE NOTICE '  ✓ userview combining auth.users and profiles';
     RAISE NOTICE '============================================';
     RAISE NOTICE 'RLS Policies Summary:';
     RAISE NOTICE '  → SELECT: Public read access for all profiles';
     RAISE NOTICE '  → INSERT: Users can create their own profile';
     RAISE NOTICE '  → UPDATE: Users can update their own profile';
     RAISE NOTICE '  → DELETE: Users can delete their own profile';
+    RAISE NOTICE '============================================';
+    RAISE NOTICE 'Views Created:';
+    RAISE NOTICE '  → userview: Joins auth.users.email with profiles';
+    RAISE NOTICE '  → Use: SELECT * FROM public.userview;';
+    RAISE NOTICE '============================================';
+    RAISE NOTICE 'Note: This script is now idempotent and can be';
+    RAISE NOTICE 'run multiple times without data loss.';
     RAISE NOTICE '============================================';
 END $$;
