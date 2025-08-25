@@ -26,6 +26,13 @@ const seedOptions: SeedDataOption[] = [
     description: 'Digital media store database with artists, albums, tracks, customers, and invoices',
     filename: 'chinook.sql',
     tables: ['Artist', 'Album', 'Track', 'MediaType', 'Genre', 'Customer', 'Employee', 'Invoice', 'InvoiceLine', 'Playlist', 'PlaylistTrack']
+  },
+  {
+    id: 'sample-app',
+    name: 'Sample App Setup',
+    description: 'Complete setup for the Sample App including Northwind data and user profiles table with RLS',
+    filename: 'setup-sample-app.sql',
+    tables: ['profiles', 'plus all Northwind tables']
   }
 ];
 

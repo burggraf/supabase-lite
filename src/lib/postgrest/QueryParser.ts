@@ -33,6 +33,7 @@ export interface ParsedQuery {
   count?: 'exact' | 'planned' | 'estimated'
   preferReturn?: 'representation' | 'minimal' | 'headers-only'
   preferResolution?: 'merge-duplicates' | 'ignore-duplicates'
+  returnSingle?: boolean  // For .single() method support
 }
 
 export class QueryParser {
@@ -97,6 +98,12 @@ export class QueryParser {
     const range = headers['range'] || headers['Range']
     if (range && !query.limit && !query.offset) {
       this.parseRangeHeader(range, query)
+    }
+
+    // Parse Accept header for single object response
+    const accept = headers['accept'] || headers['Accept']
+    if (accept && accept.includes('application/vnd.pgrst.object+json')) {
+      query.returnSingle = true
     }
 
     return query
