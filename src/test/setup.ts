@@ -30,6 +30,36 @@ Object.defineProperty(global, 'crypto', {
           0x88, 0x1f, 0x38, 0x3d, 0x44, 0x73, 0xe9, 0x4f
         ])
         return hashForPassword123.buffer
+      }),
+      importKey: vi.fn().mockImplementation(async (format, keyData, algorithm, extractable, keyUsages) => {
+        // Return a mock key object
+        return {
+          algorithm,
+          extractable,
+          type: 'secret',
+          usages: keyUsages
+        }
+      }),
+      sign: vi.fn().mockImplementation(async (algorithm, key, data) => {
+        // Mock signature that varies based on key and data
+        const encoder = new TextEncoder()
+        const keyStr = JSON.stringify(key)
+        const dataStr = new TextDecoder().decode(data)
+        
+        // Create a simple hash-like signature based on key and data
+        let hash = 0
+        const combined = keyStr + dataStr
+        for (let i = 0; i < combined.length; i++) {
+          hash = ((hash << 5) - hash + combined.charCodeAt(i)) & 0xffffffff
+        }
+        
+        // Generate 32-byte signature based on hash
+        const signature = new Uint8Array(32)
+        for (let i = 0; i < 32; i++) {
+          signature[i] = (hash + i) & 0xff
+        }
+        
+        return signature.buffer
       })
     }
   }

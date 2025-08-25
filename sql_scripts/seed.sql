@@ -12,7 +12,7 @@ SET standard_conforming_strings = on;
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
-SET row_security = off;
+SET row_security = on;
 
 -- =============================================================================
 -- ROLES (Simulated for PGlite - actual role management not fully supported)
@@ -464,14 +464,14 @@ INSERT INTO realtime.schema_migrations (version, inserted_at) VALUES
 -- SECURITY (Basic RLS setup - commented as PGlite doesn't support full RLS)
 -- =============================================================================
 
--- Enable RLS on auth tables (may not work in PGlite)
--- ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE auth.sessions ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE auth.refresh_tokens ENABLE ROW LEVEL SECURITY;
+-- Enable RLS on auth tables
+ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auth.sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auth.refresh_tokens ENABLE ROW LEVEL SECURITY;
 
 -- Storage RLS
--- ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- =============================================================================
 -- FUNCTIONS AND TRIGGERS (Simplified for PGlite)

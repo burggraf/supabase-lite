@@ -7,6 +7,12 @@ import { logger, logQuery, logError, logPerformance } from '../infrastructure/Lo
 import { createDatabaseError } from '../infrastructure/ErrorHandler';
 import { configManager } from '../infrastructure/ConfigManager';
 
+export interface SessionContext {
+  role: 'anon' | 'authenticated' | 'service_role';
+  userId?: string;
+  claims?: any;
+}
+
 
 export class DatabaseManager {
   private static instance: DatabaseManager;
@@ -22,6 +28,9 @@ export class DatabaseManager {
   
   // Transition state for atomic connection switching
   private isTransitioning = false;
+  
+  // Session context for RLS
+  private currentSessionContext: SessionContext | null = null;
 
   private constructor() {}
 
@@ -299,13 +308,19 @@ export class DatabaseManager {
 
       logger.info('Initializing database with Supabase seed schema');
       
-      // Load the seed.sql file
+      // Load and execute the seed.sql file
       const seedSql = await this.loadSeedSql();
-      
-      // Execute the seed script
       await this.db.exec(seedSql);
+      
+      // Load and execute roles
+      const rolesSql = await this.loadRolesSql();
+      await this.db.exec(rolesSql);
+      
+      // Load and execute default RLS policies
+      const policiesSql = await this.loadPoliciesSql();
+      await this.db.exec(policiesSql);
 
-      logger.info('Supabase database schema initialized successfully');
+      logger.info('Supabase database schema with RLS initialized successfully');
       
       // Verify schema initialization with simple query
       try {
@@ -342,6 +357,197 @@ export class DatabaseManager {
         CREATE SCHEMA IF NOT EXISTS extensions;
       `;
     }
+  }
+
+  private async loadRolesSql(): Promise<string> {
+    try {
+      // Browser-only: fetch from static assets
+      const response = await fetch('/sql_scripts/roles.sql');
+      if (!response.ok) {
+        throw new Error(`Failed to load roles.sql: ${response.statusText}`);
+      }
+      const rolesSql = await response.text();
+      logger.debug('Loaded roles.sql from static assets');
+      return rolesSql;
+    } catch (error) {
+      logger.warn('Could not load roles.sql file, using basic roles', error as Error);
+      // Fallback roles creation
+      return `
+        -- Basic roles fallback
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN
+            CREATE ROLE anon NOLOGIN NOINHERIT NOBYPASSRLS;
+          END IF;
+          IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+            CREATE ROLE authenticated NOLOGIN NOINHERIT NOBYPASSRLS;
+          END IF;
+          IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN
+            CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
+          END IF;
+        END $$;
+      `;
+    }
+  }
+
+  private async loadPoliciesSql(): Promise<string> {
+    try {
+      // Browser-only: fetch from static assets
+      const response = await fetch('/sql_scripts/default_policies.sql');
+      if (!response.ok) {
+        throw new Error(`Failed to load default_policies.sql: ${response.statusText}`);
+      }
+      const policiesSql = await response.text();
+      logger.debug('Loaded default_policies.sql from static assets');
+      return policiesSql;
+    } catch (error) {
+      logger.warn('Could not load default_policies.sql file, skipping policies', error as Error);
+      // Return empty string if policies can't be loaded
+      return `-- No default policies loaded`;
+    }
+  }
+
+  /**
+   * Set session context for RLS enforcement
+   * This sets PostgreSQL session variables that RLS policies can access
+   */
+  public async setSessionContext(context: SessionContext): Promise<void> {
+    if (!this.db || !this.isInitialized) {
+      throw createDatabaseError('Database not initialized. Call initialize() first.');
+    }
+
+    this.currentSessionContext = context;
+
+    try {
+      // For PGlite compatibility, we'll set session variables but skip role changes
+      // if they fail (since PGlite might not support role switching the same way)
+      
+      // Try to set the role, but don't fail if it doesn't work
+      try {
+        await this.db.query(`SET LOCAL role = '${context.role}';`);
+        logger.debug('Role set successfully', { role: context.role });
+      } catch (roleError) {
+        logger.warn('Role setting not supported, continuing with session variables only', { 
+          role: context.role, 
+          error: roleError 
+        });
+        // Continue with session variable setting even if role setting fails
+      }
+
+      // Set JWT claims as session variables for RLS policies to access
+      if (context.claims) {
+        const claimsJson = JSON.stringify(context.claims);
+        try {
+          await this.db.query(`SET LOCAL request.jwt.claims = '${claimsJson.replace(/'/g, "''")}';`);
+        } catch (claimError) {
+          logger.warn('Could not set JWT claims variable', { error: claimError });
+        }
+      }
+
+      // Set specific claim variables for convenience
+      if (context.userId) {
+        try {
+          await this.db.query(`SET LOCAL request.jwt.claim.sub = '${context.userId}';`);
+        } catch (subError) {
+          logger.warn('Could not set sub claim variable', { error: subError });
+        }
+      }
+      
+      try {
+        await this.db.query(`SET LOCAL request.jwt.claim.role = '${context.role}';`);
+      } catch (roleClaimError) {
+        logger.warn('Could not set role claim variable', { error: roleClaimError });
+      }
+
+      logger.debug('Session context set (with possible limitations)', { 
+        role: context.role, 
+        userId: context.userId 
+      });
+    } catch (error) {
+      logger.error('Failed to set session context', error as Error);
+      // Don't throw error - log it but continue, since we want to degrade gracefully
+      logger.warn('Continuing without full session context support');
+    }
+  }
+
+  /**
+   * Clear session context and reset to default role
+   */
+  public async clearSessionContext(): Promise<void> {
+    if (!this.db || !this.isInitialized) {
+      return;
+    }
+
+    try {
+      // Reset to default role (anon) - handle gracefully if not supported
+      try {
+        await this.db.query(`SET LOCAL role = 'anon';`);
+      } catch (roleError) {
+        logger.warn('Could not reset role', { error: roleError });
+      }
+      
+      // Clear session variables - handle each one gracefully
+      try {
+        await this.db.query(`SET LOCAL request.jwt.claims = '';`);
+      } catch (claimError) {
+        logger.warn('Could not clear JWT claims', { error: claimError });
+      }
+      
+      try {
+        await this.db.query(`SET LOCAL request.jwt.claim.sub = '';`);
+      } catch (subError) {
+        logger.warn('Could not clear sub claim', { error: subError });
+      }
+      
+      try {
+        await this.db.query(`SET LOCAL request.jwt.claim.role = 'anon';`);
+      } catch (roleClaimError) {
+        logger.warn('Could not clear role claim', { error: roleClaimError });
+      }
+      
+      this.currentSessionContext = null;
+      
+      logger.debug('Session context cleared (with possible limitations)');
+    } catch (error) {
+      logger.error('Failed to clear session context', error as Error);
+      // Don't throw here, as clearing context is best-effort
+      this.currentSessionContext = null;
+    }
+  }
+
+  /**
+   * Execute a query with specific session context
+   * Automatically sets and clears context around the query
+   */
+  public async queryWithContext(
+    sql: string, 
+    context: SessionContext,
+    optionsOrParams?: QueryOptions | any[]
+  ): Promise<QueryResult> {
+    const previousContext = this.currentSessionContext;
+    
+    try {
+      // Set context for this query
+      await this.setSessionContext(context);
+      
+      // Execute the query with the context
+      const result = await this.query(sql, optionsOrParams);
+      
+      return result;
+    } finally {
+      // Always restore previous context
+      if (previousContext) {
+        await this.setSessionContext(previousContext);
+      } else {
+        await this.clearSessionContext();
+      }
+    }
+  }
+
+  /**
+   * Get current session context
+   */
+  public getCurrentSessionContext(): SessionContext | null {
+    return this.currentSessionContext;
   }
 
   public async query(sql: string, options?: QueryOptions): Promise<QueryResult>
