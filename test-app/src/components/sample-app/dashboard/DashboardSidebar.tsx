@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Package,
   UserCheck,
+  UserCog,
   Home
 } from 'lucide-react'
 
@@ -48,6 +49,12 @@ const navigationItems: NavigationItem[] = [
     label: 'Employees',
     icon: UserCheck,
     description: 'Employee information and performance'
+  },
+  {
+    id: 'appusers',
+    label: 'App Users',
+    icon: UserCog,
+    description: 'Application users and profile data'
   }
 ]
 

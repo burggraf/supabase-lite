@@ -5,6 +5,7 @@ import Customers from './pages/Customers'
 import Orders from './pages/Orders'
 import Products from './pages/Products'
 import Employees from './pages/Employees'
+import AppUsers from './pages/AppUsers'
 import Profile from './pages/Profile'
 import { Button } from '../../ui/button'
 import { Menu, X } from 'lucide-react'
@@ -15,6 +16,7 @@ const pages = {
   orders: Orders,
   products: Products,
   employees: Employees,
+  appusers: AppUsers,
   profile: Profile,
 } as const
 
