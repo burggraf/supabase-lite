@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Storage UI</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { border-color: #4CAF50; background-color: #f1f8e9; }
+        .info { border-color: #2196F3; background-color: #e3f2fd; }
+        button { padding: 10px 20px; margin: 10px 5px 0 0; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #1976D2; }
+        .url { font-family: monospace; background: #f5f5f5; padding: 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Storage UI Test - Manual Verification</h1>
+    
+    <div class="test-step info">
+        <h3>✅ Step 1: Access the Application</h3>
+        <p>Navigate to: <span class="url">http://localhost:5174</span></p>
+        <button onclick="window.open('http://localhost:5174', '_blank')">Open Application</button>
+    </div>
+
+    <div class="test-step info">
+        <h3>✅ Step 2: Check Storage Navigation</h3>
+        <p><strong>Expected:</strong> Storage item should be clickable (not grayed out) in the left sidebar</p>
+        <p><strong>Action:</strong> Click on "Storage" in the sidebar</p>
+        <ul>
+            <li>Should see FolderOpen icon</li>
+            <li>Should NOT see "Coming Soon" badge</li>
+            <li>Should be clickable and not disabled</li>
+        </ul>
+    </div>
+
+    <div class="test-step info">
+        <h3>✅ Step 3: Verify Storage Interface</h3>
+        <p><strong>Expected:</strong> Storage page loads with proper layout</p>
+        <p><strong>Components to verify:</strong></p>
+        <ul>
+            <li>Left sidebar with "Storage" header and "New bucket" button</li>
+            <li>Search box with "Search buckets..." placeholder</li>
+            <li>"ALL BUCKETS" section</li>
+            <li>"CONFIGURATION" section with Policies/Settings</li>
+            <li>Main content area (empty state or bucket browser)</li>
+        </ul>
+    </div>
+
+    <div class="test-step info">
+        <h3>✅ Step 4: Test Bucket Creation</h3>
+        <p><strong>Action:</strong> Click "New bucket" button</p>
+        <p><strong>Expected:</strong> Dialog opens with:</p>
+        <ul>
+            <li>Title: "Create a new bucket"</li>
+            <li>Bucket name input field</li>
+            <li>"Make bucket public" toggle</li>
+            <li>"Maximum file size" dropdown</li>
+            <li>"Allowed file types" options</li>
+            <li>"Cancel" and "Create bucket" buttons</li>
+        </ul>
+        <p><strong>Try:</strong> Create a bucket named "test-bucket"</p>
+    </div>
+
+    <div class="test-step info">
+        <h3>✅ Step 5: Test File Browser</h3>
+        <p><strong>After creating a bucket:</strong></p>
+        <ul>
+            <li>Bucket should appear in left sidebar</li>
+            <li>Click on the bucket to select it</li>
+            <li>Main area should show breadcrumbs with Home icon + bucket name</li>
+            <li>Should see "Upload" button</li>
+            <li>Should see grid/list view toggle buttons</li>
+            <li>Should see search box for files</li>
+        </ul>
+    </div>
+
+    <div class="test-step info">
+        <h3>✅ Step 6: Test File Upload</h3>
+        <p><strong>Action:</strong> Click "Upload" button</p>
+        <p><strong>Expected:</strong> Upload dialog opens with:</p>
+        <ul>
+            <li>Drag & drop zone</li>
+            <li>"Select Files" button</li>
+            <li>File list area</li>
+            <li>"Cancel" and upload button</li>
+        </ul>
+        <p><strong>Try:</strong> Upload a small image or text file</p>
+    </div>
+
+    <div class="test-step success">
+        <h3>🎉 Success Criteria</h3>
+        <p>If all the above steps work correctly, the Storage UI implementation is successful!</p>
+        <p><strong>Key indicators of success:</strong></p>
+        <ul>
+            <li>✅ Storage navigation is enabled and clickable</li>
+            <li>✅ Storage interface loads without errors</li>
+            <li>✅ Bucket creation dialog works</li>
+            <li>✅ File browser displays correctly</li>
+            <li>✅ Upload functionality is accessible</li>
+        </ul>
+    </div>
+
+    <script>
+        // Auto-refresh page status
+        function checkServerStatus() {
+            fetch('http://localhost:5174')
+                .then(response => {
+                    if (response.ok) {
+                        document.body.style.borderTop = '5px solid #4CAF50';
+                        console.log('✅ Server is running');
+                    }
+                })
+                .catch(error => {
+                    document.body.style.borderTop = '5px solid #F44336';
+                    console.log('❌ Server is not accessible');
+                });
+        }
+
+        checkServerStatus();
+        setInterval(checkServerStatus, 30000); // Check every 30 seconds
+    </script>
+</body>
+</html>

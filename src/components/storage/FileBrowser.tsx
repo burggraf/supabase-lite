@@ -27,6 +27,8 @@ import { FileUpload } from './FileUpload';
 import { vfsManager } from '@/lib/vfs/VFSManager';
 import { logger } from '@/lib/infrastructure/Logger';
 import { cn } from '@/lib/utils';
+import { StorageClient } from '@/lib/storage/StorageClient';
+import { toast } from 'sonner';
 import type { VFSBucket, VFSFile } from '@/types/vfs';
 
 interface FileBrowserProps {
@@ -55,6 +57,13 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
+
+  // Initialize Storage Client
+  const storageClient = new StorageClient({
+    apiUrl: 'http://localhost:5173',
+    apiKey: 'dummy-key'
+  });
+  const storageBucket = storageClient.from(bucket.name);
 
   useEffect(() => {
     loadFiles();
@@ -211,6 +220,113 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
         return acc;
       }, [])
     : [];
+
+  // File action handlers
+  const handleDownload = async (file: VFSFile) => {
+    try {
+      const filePath = getRelativePathInBucket(file);
+      const { data, error } = await storageBucket.download(filePath);
+      
+      if (error) {
+        toast.error(`Failed to download ${file.name}: ${error.message}`);
+        return;
+      }
+
+      if (data) {
+        const url = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success(`Downloaded ${file.name}`);
+      }
+    } catch (error) {
+      logger.error('Download failed', error as Error);
+      toast.error(`Failed to download ${file.name}`);
+    }
+  };
+
+  const handleCopyUrl = async (file: VFSFile) => {
+    try {
+      const filePath = getRelativePathInBucket(file);
+      
+      if (bucket.isPublic) {
+        const { data } = storageBucket.getPublicUrl(filePath);
+        await navigator.clipboard.writeText(data.publicUrl);
+        toast.success('Public URL copied to clipboard');
+      } else {
+        const { data, error } = await storageBucket.createSignedUrl(filePath, 3600);
+        if (error) {
+          toast.error(`Failed to generate URL: ${error.message}`);
+          return;
+        }
+        if (data?.signedUrl) {
+          await navigator.clipboard.writeText(data.signedUrl);
+          toast.success('Signed URL copied to clipboard');
+        }
+      }
+    } catch (error) {
+      logger.error('Copy URL failed', error as Error);
+      toast.error('Failed to copy URL');
+    }
+  };
+
+  const handleGetSignedUrl = async (file: VFSFile) => {
+    try {
+      const filePath = getRelativePathInBucket(file);
+      const { data, error } = await storageBucket.createSignedUrl(filePath, 3600);
+      
+      if (error) {
+        toast.error(`Failed to generate signed URL: ${error.message}`);
+        return;
+      }
+
+      if (data?.signedUrl) {
+        await navigator.clipboard.writeText(data.signedUrl);
+        toast.success('Signed URL copied to clipboard (expires in 1 hour)');
+      }
+    } catch (error) {
+      logger.error('Get signed URL failed', error as Error);
+      toast.error('Failed to generate signed URL');
+    }
+  };
+
+  const handleDelete = async (file: VFSFile) => {
+    if (!confirm(`Are you sure you want to delete ${file.name}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const filePath = getRelativePathInBucket(file);
+      const { error } = await storageBucket.remove([filePath]);
+      
+      if (error) {
+        toast.error(`Failed to delete ${file.name}: ${error.message}`);
+        return;
+      }
+
+      toast.success(`Deleted ${file.name}`);
+      loadFiles(); // Refresh the file list
+    } catch (error) {
+      logger.error('Delete failed', error as Error);
+      toast.error(`Failed to delete ${file.name}`);
+    }
+  };
+
+  // Helper to get file path relative to bucket
+  const getRelativePathInBucket = (file: VFSFile): string => {
+    let relativePath = file.path;
+    
+    // Remove bucket name from path if present
+    if (relativePath.startsWith(bucket.name + '/')) {
+      relativePath = relativePath.substring(bucket.name.length + 1);
+    }
+    
+    return relativePath;
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -397,20 +513,23 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload(item as VFSFile)}>
                           <Download className="h-4 w-4 mr-2" />
                           Download
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleCopyUrl(item as VFSFile)}>
                           <Copy className="h-4 w-4 mr-2" />
                           Copy URL
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleGetSignedUrl(item as VFSFile)}>
                           <Link className="h-4 w-4 mr-2" />
                           Get signed URL
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
+                        <DropdownMenuItem 
+                          onClick={() => handleDelete(item as VFSFile)}
+                          className="text-red-600"
+                        >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </DropdownMenuItem>

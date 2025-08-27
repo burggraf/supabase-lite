@@ -11,6 +11,7 @@ import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
 import { initializeInfrastructure, logger } from '@/lib/infrastructure';
 import { projectManager } from '@/lib/projects/ProjectManager';
+import { Toaster } from 'sonner';
 
 function App() {
   const { currentPage, navigate } = useRouter();
@@ -175,6 +176,7 @@ function App() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {renderCurrentPage()}
       </div>
+      <Toaster richColors position="top-right" />
     </div>
   );
 }

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Storage Functionality</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { border-color: #4CAF50; background-color: #f1f8e9; }
+        .error { border-color: #f44336; background-color: #ffebee; }
+        button { padding: 8px 16px; margin: 5px; background: #2196F3; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #1976D2; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .results { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Storage Functionality Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Test VFS Manager Direct Access</h3>
+        <p>This will test if we can directly access the VFS manager from browser console.</p>
+        <button onclick="testVFSManager()">Test VFS Manager</button>
+        <div id="vfs-results" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test Bucket Operations</h3>
+        <button onclick="testBucketList()">List Buckets</button>
+        <button onclick="testCreateBucket()">Create Test Bucket</button>
+        <button onclick="testBucketFiles()">List Files in test-bucket</button>
+        <div id="bucket-results" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Debug SQL Access</h3>
+        <p>Check database state via debug endpoint</p>
+        <button onclick="checkStorageSchema()">Check Storage Schema</button>
+        <button onclick="checkUploadedFiles()">Check Uploaded Files</button>
+        <div id="sql-results" class="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. File Upload Test</h3>
+        <p>Test file operations</p>
+        <input type="file" id="test-file" />
+        <button onclick="uploadTestFile()">Upload to test-bucket</button>
+        <div id="upload-results" class="results"></div>
+    </div>
+
+    <script>
+        async function testVFSManager() {
+            const results = document.getElementById('vfs-results');
+            try {
+                // Access the global VFS manager if exposed
+                const response = await fetch('http://localhost:5173/debug/sql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sql: 'SELECT 1 as test' })
+                });
+                const result = await response.json();
+                results.innerHTML = '<pre>✅ VFS/Database accessible: ' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                results.innerHTML = '<pre class="error">❌ Error: ' + error.message + '</pre>';
+            }
+        }
+
+        async function testBucketList() {
+            const results = document.getElementById('bucket-results');
+            try {
+                const response = await fetch('http://localhost:5173/debug/sql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sql: "SELECT * FROM vfs_buckets ORDER BY created_at DESC" })
+                });
+                const result = await response.json();
+                results.innerHTML = '<pre>📦 Buckets in database:<br>' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                results.innerHTML = '<pre class="error">❌ Error listing buckets: ' + error.message + '</pre>';
+            }
+        }
+
+        async function testCreateBucket() {
+            const results = document.getElementById('bucket-results');
+            try {
+                const response = await fetch('http://localhost:5173/debug/sql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        sql: `INSERT INTO vfs_buckets (id, name, project_id, is_public, created_at, updated_at) 
+                              VALUES ('test-123', 'debug-bucket', 'default', true, NOW(), NOW()) 
+                              ON CONFLICT (name, project_id) DO NOTHING`
+                    })
+                });
+                const result = await response.json();
+                results.innerHTML = '<pre>✅ Debug bucket created:<br>' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                results.innerHTML = '<pre class="error">❌ Error creating bucket: ' + error.message + '</pre>';
+            }
+        }
+
+        async function testBucketFiles() {
+            const results = document.getElementById('bucket-results');
+            try {
+                const response = await fetch('http://localhost:5173/debug/sql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        sql: "SELECT * FROM vfs_files WHERE path LIKE 'test-bucket%' ORDER BY created_at DESC LIMIT 10"
+                    })
+                });
+                const result = await response.json();
+                results.innerHTML = '<pre>📁 Files in test-bucket:<br>' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                results.innerHTML = '<pre class="error">❌ Error: ' + error.message + '</pre>';
+            }
+        }
+
+        async function checkStorageSchema() {
+            const results = document.getElementById('sql-results');
+            try {
+                const response = await fetch('http://localhost:5173/debug/sql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        sql: "SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'vfs_%'"
+                    })
+                });
+                const result = await response.json();
+                results.innerHTML = '<pre>🗄️ VFS Tables:<br>' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                results.innerHTML = '<pre class="error">❌ Error: ' + error.message + '</pre>';
+            }
+        }
+
+        async function checkUploadedFiles() {
+            const results = document.getElementById('sql-results');
+            try {
+                const response = await fetch('http://localhost:5173/debug/sql', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        sql: "SELECT id, path, name, size, created_at FROM vfs_files ORDER BY created_at DESC LIMIT 20"
+                    })
+                });
+                const result = await response.json();
+                results.innerHTML = '<pre>📄 All uploaded files:<br>' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                results.innerHTML = '<pre class="error">❌ Error: ' + error.message + '</pre>';
+            }
+        }
+
+        async function uploadTestFile() {
+            const results = document.getElementById('upload-results');
+            const fileInput = document.getElementById('test-file');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                results.innerHTML = '<pre class="error">❌ Please select a file first</pre>';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                // Try to upload via the storage API endpoint
+                const response = await fetch(`http://localhost:5173/storage/v1/object/test-bucket/${file.name}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    results.innerHTML = '<pre>✅ File uploaded successfully:<br>' + JSON.stringify(result, null, 2) + '</pre>';
+                } else {
+                    const error = await response.text();
+                    results.innerHTML = '<pre class="error">❌ Upload failed: ' + error + '</pre>';
+                }
+            } catch (error) {
+                results.innerHTML = '<pre class="error">❌ Upload error: ' + error.message + '</pre>';
+            }
+        }
+
+        // Auto-check server status
+        function checkServerStatus() {
+            fetch('http://localhost:5173')
+                .then(response => {
+                    if (response.ok) {
+                        document.body.style.borderTop = '3px solid #4CAF50';
+                    }
+                })
+                .catch(() => {
+                    document.body.style.borderTop = '3px solid #f44336';
+                });
+        }
+
+        checkServerStatus();
+        setInterval(checkServerStatus, 30000);
+
+        // Log to help debugging
+        console.log('🧪 Storage functionality test loaded');
+        console.log('📋 Available test functions:', {
+            testVFSManager,
+            testBucketList,
+            testCreateBucket,
+            testBucketFiles,
+            checkStorageSchema,
+            checkUploadedFiles,
+            uploadTestFile
+        });
+    </script>
+</body>
+</html>

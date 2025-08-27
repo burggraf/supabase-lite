@@ -1069,6 +1069,144 @@ const createVFSFileDeleteHandler = () => async ({ params, request, projectInfo }
   }
 };
 
+// Signed URL Handler Functions
+const createSignedUrlHandler = () => async ({ params, request, projectInfo }: any) => {
+  try {
+    // Initialize VFS for the current project
+    if (projectInfo?.projectId) {
+      await vfsBridge.initializeForProject(projectInfo.projectId);
+    }
+
+    const { bucket } = params;
+    const path = (params as any)['*'] || '';
+    
+    const body = await request.json();
+    const { expiresIn = 3600, transform, download } = body;
+
+    console.log('🔗 MSW: Creating signed URL', { bucket, path, expiresIn, projectId: projectInfo?.projectId });
+
+    return await vfsBridge.handleCreateSignedUrlRequest({
+      bucket,
+      path,
+      signedUrlOptions: { expiresIn, transform, download },
+      projectId: projectInfo?.projectId || 'default',
+    });
+  } catch (error) {
+    console.error('Signed URL handler error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'signed_url_handler_error',
+        message: 'Internal server error in signed URL handler',
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+};
+
+const createSignedUploadUrlHandler = () => async ({ params, request, projectInfo }: any) => {
+  try {
+    // Initialize VFS for the current project
+    if (projectInfo?.projectId) {
+      await vfsBridge.initializeForProject(projectInfo.projectId);
+    }
+
+    const { bucket } = params;
+    const path = (params as any)['*'] || '';
+    
+    const body = await request.json();
+    const { expiresIn, upsert } = body;
+
+    console.log('⬆️ MSW: Creating signed upload URL', { bucket, path, expiresIn, upsert, projectId: projectInfo?.projectId });
+
+    return await vfsBridge.handleCreateSignedUploadUrlRequest({
+      bucket,
+      path,
+      signedUploadUrlOptions: { expiresIn, upsert },
+      projectId: projectInfo?.projectId || 'default',
+    });
+  } catch (error) {
+    console.error('Signed upload URL handler error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'signed_upload_url_handler_error',
+        message: 'Internal server error in signed upload URL handler',
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+};
+
+const createPublicUrlHandler = () => async ({ params, request, projectInfo }: any) => {
+  try {
+    // Initialize VFS for the current project
+    if (projectInfo?.projectId) {
+      await vfsBridge.initializeForProject(projectInfo.projectId);
+    }
+
+    const { bucket } = params;
+    const path = (params as any)['*'] || '';
+
+    console.log('🌐 MSW: Public URL request', { bucket, path, projectId: projectInfo?.projectId });
+
+    return await vfsBridge.handlePublicUrlRequest({
+      bucket,
+      path,
+    });
+  } catch (error) {
+    console.error('Public URL handler error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'public_url_handler_error',
+        message: 'Internal server error in public URL handler',
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+};
+
+const createAuthenticatedFileHandler = () => async ({ params, request, projectInfo }: any) => {
+  try {
+    // Initialize VFS for the current project
+    if (projectInfo?.projectId) {
+      await vfsBridge.initializeForProject(projectInfo.projectId);
+    }
+
+    const { bucket } = params;
+    const path = (params as any)['*'] || '';
+    const url = new URL(request.url);
+    const token = url.searchParams.get('token');
+
+    console.log('🔐 MSW: Authenticated file request', { bucket, path, hasToken: !!token, projectId: projectInfo?.projectId });
+
+    return await vfsBridge.handleAuthenticatedFileRequest({
+      bucket,
+      path,
+      token: token || undefined,
+    });
+  } catch (error) {
+    console.error('Authenticated file handler error:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'authenticated_file_handler_error',
+        message: 'Internal server error in authenticated file handler',
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+};
+
 const createVFSListHandler = () => async ({ params, request, projectInfo }: any) => {
   try {
     const bucket = params.bucket as string;
@@ -2641,6 +2779,396 @@ export const handlers = [
     })
   }),
 
+  // ==== BUCKET MANAGEMENT ENDPOINTS ====
+
+  // Create bucket
+  http.post('/storage/v1/bucket', withProjectResolution(async ({ request, projectInfo }: any) => {
+    try {
+      const body = await request.json();
+      const { id, name, public: isPublic = false, file_size_limit, allowed_mime_types, avif_autodetection = false } = body;
+      
+      if (!id) {
+        return HttpResponse.json(
+          { error: 'Bucket id is required', message: 'Bucket id must be provided' },
+          { 
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
+        );
+      }
+
+      console.log('🪣 MSW: Creating bucket:', { id, name: name || id, public: isPublic, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleCreateBucketRequest({
+        id,
+        name: name || id,
+        public: isPublic,
+        file_size_limit,
+        allowed_mime_types,
+        avif_autodetection
+      });
+
+      console.log('✅ MSW: Bucket created:', { id, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket creation error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_creation_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.post('/:projectId/storage/v1/bucket', withProjectResolution(async ({ request, projectInfo }: any) => {
+    try {
+      const body = await request.json();
+      const { id, name, public: isPublic = false, file_size_limit, allowed_mime_types, avif_autodetection = false } = body;
+      
+      if (!id) {
+        return HttpResponse.json(
+          { error: 'Bucket id is required', message: 'Bucket id must be provided' },
+          { 
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
+        );
+      }
+
+      console.log('🪣 MSW: Creating bucket (with project):', { id, name: name || id, public: isPublic, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleCreateBucketRequest({
+        id,
+        name: name || id,
+        public: isPublic,
+        file_size_limit,
+        allowed_mime_types,
+        avif_autodetection
+      });
+
+      console.log('✅ MSW: Bucket created:', { id, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket creation error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_creation_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  // List buckets
+  http.get('/storage/v1/bucket', withProjectResolution(async ({ projectInfo }: any) => {
+    try {
+      console.log('🪣 MSW: Listing buckets for project:', projectInfo?.projectId);
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleListBucketsRequest();
+      console.log('✅ MSW: Buckets listed:', { status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket listing error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_listing_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.get('/:projectId/storage/v1/bucket', withProjectResolution(async ({ projectInfo }: any) => {
+    try {
+      console.log('🪣 MSW: Listing buckets for project:', projectInfo?.projectId);
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleListBucketsRequest();
+      console.log('✅ MSW: Buckets listed:', { status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket listing error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_listing_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  // Get bucket details
+  http.get('/storage/v1/bucket/:bucketId', withProjectResolution(async ({ params, projectInfo }: any) => {
+    try {
+      const bucketId = params.bucketId as string;
+      console.log('🪣 MSW: Getting bucket details:', { bucketId, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleGetBucketRequest({ bucketId });
+      console.log('✅ MSW: Bucket details retrieved:', { bucketId, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket get error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_get_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.get('/:projectId/storage/v1/bucket/:bucketId', withProjectResolution(async ({ params, projectInfo }: any) => {
+    try {
+      const bucketId = params.bucketId as string;
+      console.log('🪣 MSW: Getting bucket details:', { bucketId, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleGetBucketRequest({ bucketId });
+      console.log('✅ MSW: Bucket details retrieved:', { bucketId, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket get error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_get_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  // Update bucket
+  http.put('/storage/v1/bucket/:bucketId', withProjectResolution(async ({ params, request, projectInfo }: any) => {
+    try {
+      const bucketId = params.bucketId as string;
+      const updates = await request.json();
+      console.log('🪣 MSW: Updating bucket:', { bucketId, updates, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleUpdateBucketRequest({ bucketId, updates });
+      console.log('✅ MSW: Bucket updated:', { bucketId, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket update error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_update_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.put('/:projectId/storage/v1/bucket/:bucketId', withProjectResolution(async ({ params, request, projectInfo }: any) => {
+    try {
+      const bucketId = params.bucketId as string;
+      const updates = await request.json();
+      console.log('🪣 MSW: Updating bucket:', { bucketId, updates, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleUpdateBucketRequest({ bucketId, updates });
+      console.log('✅ MSW: Bucket updated:', { bucketId, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket update error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_update_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  // Delete bucket
+  http.delete('/storage/v1/bucket/:bucketId', withProjectResolution(async ({ params, projectInfo }: any) => {
+    try {
+      const bucketId = params.bucketId as string;
+      console.log('🪣 MSW: Deleting bucket:', { bucketId, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleDeleteBucketRequest({ bucketId });
+      console.log('✅ MSW: Bucket deleted:', { bucketId, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket deletion error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_deletion_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.delete('/:projectId/storage/v1/bucket/:bucketId', withProjectResolution(async ({ params, projectInfo }: any) => {
+    try {
+      const bucketId = params.bucketId as string;
+      console.log('🪣 MSW: Deleting bucket:', { bucketId, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleDeleteBucketRequest({ bucketId });
+      console.log('✅ MSW: Bucket deleted:', { bucketId, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket deletion error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_deletion_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  // Empty bucket
+  http.post('/storage/v1/bucket/:bucketId/empty', withProjectResolution(async ({ params, projectInfo }: any) => {
+    try {
+      const bucketId = params.bucketId as string;
+      console.log('🪣 MSW: Emptying bucket:', { bucketId, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleEmptyBucketRequest({ bucketId });
+      console.log('✅ MSW: Bucket emptied:', { bucketId, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket empty error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_empty_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.post('/:projectId/storage/v1/bucket/:bucketId/empty', withProjectResolution(async ({ params, projectInfo }: any) => {
+    try {
+      const bucketId = params.bucketId as string;
+      console.log('🪣 MSW: Emptying bucket:', { bucketId, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleEmptyBucketRequest({ bucketId });
+      console.log('✅ MSW: Bucket emptied:', { bucketId, status: response.status });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Bucket empty error:', error);
+      return HttpResponse.json(
+        { error: 'bucket_empty_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
   // ==== VFS (Virtual File System) ENDPOINTS ====
   
   // Directory listing endpoints (more specific patterns first)
@@ -2648,6 +3176,20 @@ export const handlers = [
   http.get('/:projectId/storage/v1/object/list/:bucket', withProjectResolution(createVFSListHandler())),
   http.get('/storage/v1/object/list/:bucket/*', withProjectResolution(createVFSListHandler())),
   http.get('/:projectId/storage/v1/object/list/:bucket/*', withProjectResolution(createVFSListHandler())),
+  
+  // Signed URL endpoints (more specific patterns first)
+  http.post('/storage/v1/object/sign/:bucket/*', withProjectResolution(createSignedUrlHandler())),
+  http.post('/:projectId/storage/v1/object/sign/:bucket/*', withProjectResolution(createSignedUrlHandler())),
+  http.post('/storage/v1/object/upload/sign/:bucket/*', withProjectResolution(createSignedUploadUrlHandler())),
+  http.post('/:projectId/storage/v1/object/upload/sign/:bucket/*', withProjectResolution(createSignedUploadUrlHandler())),
+  
+  // Public file access
+  http.get('/storage/v1/object/public/:bucket/*', withProjectResolution(createPublicUrlHandler())),
+  http.get('/:projectId/storage/v1/object/public/:bucket/*', withProjectResolution(createPublicUrlHandler())),
+  
+  // Authenticated file access (with signed URLs)
+  http.get('/storage/v1/object/authenticated/:bucket/*', withProjectResolution(createAuthenticatedFileHandler())),
+  http.get('/:projectId/storage/v1/object/authenticated/:bucket/*', withProjectResolution(createAuthenticatedFileHandler())),
   
   // File serving endpoints (Supabase Storage API compatible)
   http.get('/storage/v1/object/:bucket/*', withProjectResolution(createVFSFileGetHandler())),
@@ -2660,6 +3202,218 @@ export const handlers = [
   // File deletion endpoints
   http.delete('/storage/v1/object/:bucket/*', withProjectResolution(createVFSFileDeleteHandler())),
   http.delete('/:projectId/storage/v1/object/:bucket/*', withProjectResolution(createVFSFileDeleteHandler())),
+  
+  // Advanced file operations
+  http.post('/storage/v1/object/move', withProjectResolution(async ({ request, projectInfo }: any) => {
+    try {
+      const body = await request.json();
+      const { bucketId, sourceKey, destinationKey } = body;
+      
+      console.log('📂 MSW: Moving file:', { bucketId, sourceKey, destinationKey, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleMoveFileRequest({
+        bucket: bucketId,
+        sourceKey,
+        destinationKey
+      });
+
+      console.log('✅ MSW: File moved:', { bucketId, sourceKey, destinationKey });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: File move error:', error);
+      return HttpResponse.json(
+        { error: 'file_move_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.post('/:projectId/storage/v1/object/move', withProjectResolution(async ({ request, projectInfo }: any) => {
+    try {
+      const body = await request.json();
+      const { bucketId, sourceKey, destinationKey } = body;
+      
+      console.log('📂 MSW: Moving file:', { bucketId, sourceKey, destinationKey, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleMoveFileRequest({
+        bucket: bucketId,
+        sourceKey,
+        destinationKey
+      });
+
+      console.log('✅ MSW: File moved:', { bucketId, sourceKey, destinationKey });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: File move error:', error);
+      return HttpResponse.json(
+        { error: 'file_move_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.post('/storage/v1/object/copy', withProjectResolution(async ({ request, projectInfo }: any) => {
+    try {
+      const body = await request.json();
+      const { bucketId, sourceKey, destinationKey } = body;
+      
+      console.log('📂 MSW: Copying file:', { bucketId, sourceKey, destinationKey, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleCopyFileRequest({
+        bucket: bucketId,
+        sourceKey,
+        destinationKey
+      });
+
+      console.log('✅ MSW: File copied:', { bucketId, sourceKey, destinationKey });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: File copy error:', error);
+      return HttpResponse.json(
+        { error: 'file_copy_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.post('/:projectId/storage/v1/object/copy', withProjectResolution(async ({ request, projectInfo }: any) => {
+    try {
+      const body = await request.json();
+      const { bucketId, sourceKey, destinationKey } = body;
+      
+      console.log('📂 MSW: Copying file:', { bucketId, sourceKey, destinationKey, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleCopyFileRequest({
+        bucket: bucketId,
+        sourceKey,
+        destinationKey
+      });
+
+      console.log('✅ MSW: File copied:', { bucketId, sourceKey, destinationKey });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: File copy error:', error);
+      return HttpResponse.json(
+        { error: 'file_copy_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  // Batch delete files
+  http.delete('/storage/v1/object/:bucket', withProjectResolution(async ({ params, request, projectInfo }: any) => {
+    try {
+      const bucket = params.bucket as string;
+      const body = await request.json();
+      const { prefixes } = body;
+      
+      console.log('📂 MSW: Batch deleting files:', { bucket, prefixes, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleBatchDeleteRequest({
+        bucket,
+        prefixes
+      });
+
+      console.log('✅ MSW: Files batch deleted:', { bucket, count: prefixes.length });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Batch delete error:', error);
+      return HttpResponse.json(
+        { error: 'batch_delete_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
+
+  http.delete('/:projectId/storage/v1/object/:bucket', withProjectResolution(async ({ params, request, projectInfo }: any) => {
+    try {
+      const bucket = params.bucket as string;
+      const body = await request.json();
+      const { prefixes } = body;
+      
+      console.log('📂 MSW: Batch deleting files:', { bucket, prefixes, projectId: projectInfo?.projectId });
+
+      // Initialize VFS for the current project
+      if (projectInfo?.projectId) {
+        await vfsBridge.initializeForProject(projectInfo.projectId);
+      }
+
+      const response = await vfsBridge.handleBatchDeleteRequest({
+        bucket,
+        prefixes
+      });
+
+      console.log('✅ MSW: Files batch deleted:', { bucket, count: prefixes.length });
+      return response;
+    } catch (error) {
+      console.error('❌ MSW: Batch delete error:', error);
+      return HttpResponse.json(
+        { error: 'batch_delete_failed', message: (error as Error).message },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  })),
   
   // Direct file access (public files)
   http.get('/files/:bucket/*', withProjectResolution(createVFSFileGetHandler())),

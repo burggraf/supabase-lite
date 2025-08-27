@@ -147,6 +147,14 @@ export function FileUpload({
         const binaryString = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
         content = btoa(binaryString);
         encoding = 'base64';
+        
+        console.log('🔍 FileUpload binary debug:', {
+          fileName: file.name,
+          originalSize: file.size,
+          arrayBufferSize: arrayBuffer.byteLength,
+          base64ContentLength: content.length,
+          encoding
+        });
       }
 
       // Upload file
@@ -154,6 +162,7 @@ export function FileUpload({
         content,
         mimeType: file.type,
         encoding,
+        originalSize: file.size, // Pass the original file size
         metadata: {
           originalName: file.name,
           size: file.size,
