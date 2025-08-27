@@ -99,15 +99,16 @@ export class VFSBridge {
           const expectedPngHeader = [137, 80, 78, 71, 13, 10, 26, 10];
           const headerMatch = actualBytes.slice(0, 8).join(',') === expectedPngHeader.join(',');
           
-          console.log('🔍 Base64 decode result:', {
+          console.log('🔍 Base64 decode result:');
+          console.log('  📏 Lengths:', {
             originalBase64Length: file.content.length,
             binaryLength: binaryString.length,
-            bufferLength: bytes.buffer.byteLength,
-            firstTenBytes: actualBytes,
-            expectedPngHeader: expectedPngHeader,
-            headerMatch: headerMatch,
-            base64Sample: file.content.substring(0, 20)
+            bufferLength: bytes.buffer.byteLength
           });
+          console.log('  🔢 First 10 bytes:', actualBytes.join(', '));
+          console.log('  ✅ Expected PNG header:', expectedPngHeader.join(', '));
+          console.log('  🎯 Header match:', headerMatch);
+          console.log('  📝 Base64 sample:', file.content.substring(0, 30));
         } else {
           // Convert text content to ArrayBuffer for utf-8 files
           console.log('🔍 Converting text content to buffer');
