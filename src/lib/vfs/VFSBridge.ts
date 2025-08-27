@@ -99,7 +99,9 @@ export class VFSBridge {
             originalBase64Length: file.content.length,
             binaryLength: binaryString.length,
             bufferLength: bytes.buffer.byteLength,
-            firstFewBytes: Array.from(bytes.slice(0, 10))
+            firstFewBytes: Array.from(bytes.slice(0, 10)),
+            pngHeader: [137, 80, 78, 71, 13, 10, 26, 10],
+            headerMatch: Array.from(bytes.slice(0, 8)).join(',') === '137,80,78,71,13,10,26,10'
           });
         } else {
           // Convert text content to ArrayBuffer for utf-8 files
@@ -121,12 +123,19 @@ export class VFSBridge {
         sizeMismatch: file.size !== content.byteLength
       });
 
+      // Create a blob URL for testing (temporary)
+      const blob = new Blob([content], { type: file.mimeType });
+      const blobUrl = URL.createObjectURL(blob);
+      console.log('🔍 Test blob URL created:', blobUrl);
+      console.log('🔍 You can test this URL directly in browser:', blobUrl);
+
       return new Response(content, {
         status: 200,
         headers: {
           'Content-Type': file.mimeType,
-          'Content-Length': String(content.byteLength), // Use actual content size
+          'Content-Length': String(content.byteLength),
           'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache', // Prevent caching during debugging
           ...cacheHeaders,
         }
       });
