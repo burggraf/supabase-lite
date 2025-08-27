@@ -1143,10 +1143,14 @@ const createSignedUploadUrlHandler = () => async ({ params, request, projectInfo
 };
 
 const createPublicUrlHandler = () => async ({ params, request, projectInfo }: any) => {
+  console.log('🌐 MSW: Public URL handler started');
   try {
+    console.log('🌐 MSW: About to initialize VFS');
     // Initialize VFS for the current project
     if (projectInfo?.projectId) {
+      console.log('🌐 MSW: Initializing for project:', projectInfo.projectId);
       await vfsBridge.initializeForProject(projectInfo.projectId);
+      console.log('🌐 MSW: VFS initialized successfully');
     }
 
     const { bucket } = params;
@@ -1154,16 +1158,20 @@ const createPublicUrlHandler = () => async ({ params, request, projectInfo }: an
 
     console.log('🌐 MSW: Public URL request', { bucket, path, projectId: projectInfo?.projectId });
 
-    return await vfsBridge.handlePublicUrlRequest({
+    console.log('🌐 MSW: About to call handlePublicUrlRequest');
+    const response = await vfsBridge.handlePublicUrlRequest({
       bucket,
       path,
     });
+    console.log('🌐 MSW: handlePublicUrlRequest completed, returning response');
+    return response;
   } catch (error) {
     console.error('Public URL handler error:', error);
     return new Response(
       JSON.stringify({
         error: 'public_url_handler_error',
         message: 'Internal server error in public URL handler',
+        details: error instanceof Error ? error.message : String(error)
       }),
       {
         status: 500,

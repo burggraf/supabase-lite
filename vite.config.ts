@@ -213,11 +213,12 @@ function websocketBridge(): Plugin {
           // Standard API routes
           req.url.startsWith('/rest/') || 
           req.url.startsWith('/auth/') || 
+          req.url.startsWith('/storage/') ||
           req.url.startsWith('/health') ||
           req.url.startsWith('/projects') ||
           req.url.startsWith('/debug/sql') ||
-          // Project-prefixed API routes (pattern: /:projectId/rest|auth|debug)
-          /^\/[^\/]+\/(rest|auth|debug)\//.test(req.url)
+          // Project-prefixed API routes (pattern: /:projectId/rest|auth|debug|storage)
+          /^\/[^\/]+\/(rest|auth|debug|storage)\//.test(req.url)
         );
         
         if (isApiRoute) {
@@ -255,7 +256,7 @@ function websocketBridge(): Plugin {
             
             // Extract project context from URL for better logging
             const urlPath = req.url || '';
-            const projectMatch = urlPath.match(/^\/([^\/]+)\/(rest|auth|debug)\//);
+            const projectMatch = urlPath.match(/^\/([^\/]+)\/(rest|auth|debug|storage)\//);
             const projectContext = projectMatch ? {
               projectId: projectMatch[1],
               apiType: projectMatch[2]
