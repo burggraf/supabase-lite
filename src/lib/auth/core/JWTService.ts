@@ -371,6 +371,26 @@ export class JWTService {
   }
 
   /**
+   * Generate custom JWT token with provided payload
+   */
+  async generateCustomToken(payload: Record<string, any>): Promise<string> {
+    await this.initialize()
+
+    if (!this.keyPair) {
+      throw new Error('Key pair not initialized')
+    }
+
+    const jwt = new SignJWT(payload)
+      .setProtectedHeader({
+        alg: 'ES256',
+        typ: 'JWT',
+        kid: this.kid
+      })
+
+    return await jwt.sign(this.keyPair.privateKey)
+  }
+
+  /**
    * Rotate signing key (for security purposes)
    */
   async rotateSigningKey(): Promise<void> {

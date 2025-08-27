@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storage UI Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Lite Storage UI Test</h1>
+    <p>Testing Storage functionality at <a href="http://localhost:5173" target="_blank">http://localhost:5173</a></p>
+    
+    <div id="results"></div>
+    
+    <h2>Manual Tests</h2>
+    <button onclick="testStorageAccess()">Test Storage Page Access</button>
+    <button onclick="testBucketCreation()">Test Bucket Creation</button>
+    <button onclick="testFileUpload()">Test File Upload</button>
+    <button onclick="testVFSManager()">Test VFS Manager</button>
+    
+    <h2>Expected Features</h2>
+    <ul>
+        <li>✅ Storage navigation enabled in sidebar</li>
+        <li>✅ Bucket list with search functionality</li>
+        <li>✅ Create bucket dialog with options</li>
+        <li>✅ File browser with breadcrumbs</li>
+        <li>✅ Drag & drop file upload</li>
+        <li>✅ Grid/list view toggle</li>
+        <li>✅ File type icons and metadata</li>
+        <li>✅ Storage policies placeholder</li>
+        <li>✅ Storage settings dashboard</li>
+    </ul>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function testStorageAccess() {
+            try {
+                addResult('Testing Storage page access...', 'info');
+                const response = await fetch('http://localhost:5173');
+                if (response.ok) {
+                    addResult('✅ Main application accessible', 'success');
+                    addResult('📝 Manual check: Navigate to Storage in sidebar', 'info');
+                } else {
+                    addResult('❌ Application not accessible', 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Error accessing application: ${error.message}`, 'error');
+            }
+        }
+
+        async function testBucketCreation() {
+            addResult('📝 Manual test: Try creating a bucket named "test-bucket"', 'info');
+            addResult('Expected: Dialog opens with bucket name, public/private toggle, file size limits', 'info');
+        }
+
+        async function testFileUpload() {
+            addResult('📝 Manual test: Try uploading files via drag & drop', 'info');
+            addResult('Expected: Upload dialog, progress bars, file validation', 'info');
+        }
+
+        async function testVFSManager() {
+            addResult('📝 Manual test: Check browser console for VFS initialization', 'info');
+            addResult('Expected: No errors, default buckets created (public, private, app)', 'info');
+        }
+
+        // Run initial test
+        testStorageAccess();
+    </script>
+</body>
+</html>

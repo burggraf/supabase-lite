@@ -127,7 +127,7 @@ export class VFSManager {
     }
 
     const normalizedPath = this.normalizePath(path);
-    const { content = '', mimeType: providedMimeType, compress } = options;
+    const { content = '', mimeType: providedMimeType, compress, originalSize, encoding, metadata } = options;
 
     // Validate file size
     if (content.length > VFS_CONFIG.MAX_FILE_SIZE) {
@@ -163,10 +163,11 @@ export class VFSManager {
       name,
       directory,
       mimeType,
-      size: content.length,
+      size: originalSize || content.length, // Use original size for binary files
       content,
       chunked: content.length > VFS_CONFIG.CHUNK_THRESHOLD,
       compression: compress && this.isTextFile(mimeType) ? 'gzip' : undefined,
+      encoding: encoding, // Preserve the encoding
       createdAt: new Date(),
       updatedAt: new Date(),
       hash: this.calculateChecksum(content),

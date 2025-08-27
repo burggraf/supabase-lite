@@ -162,10 +162,14 @@ export interface VFSCreateFileOptions {
   mimeType?: string;
   /** File encoding */
   encoding?: 'utf-8' | 'base64';
+  /** Original file size (for base64 files, this should be the decoded size) */
+  originalSize?: number;
   /** Override compression setting */
   compress?: boolean;
   /** Create parent directories if they don't exist */
   createDirectories?: boolean;
+  /** Additional file metadata */
+  metadata?: Record<string, any>;
 }
 
 export interface VFSUpdateFileOptions {
@@ -288,4 +292,55 @@ export interface VFSOperations {
   switchProject: (projectId: string) => Promise<void>;
   /** Cleanup orphaned data */
   cleanup: () => Promise<void>;
+}
+
+// Storage Bucket Types
+export interface VFSBucket {
+  /** Bucket identifier */
+  id: string;
+  /** Bucket name */
+  name: string;
+  /** Project ID this bucket belongs to */
+  projectId: string;
+  /** Whether bucket is public (allows anonymous access) */
+  isPublic: boolean;
+  /** Maximum file size allowed in this bucket (bytes) */
+  maxFileSize?: number;
+  /** Allowed MIME types (empty array = all allowed) */
+  allowedMimeTypes: string[];
+  /** File count in bucket */
+  fileCount: number;
+  /** Total size of files in bucket (bytes) */
+  totalSize: number;
+  /** Bucket creation timestamp */
+  createdAt: Date;
+  /** Bucket last modification timestamp */
+  updatedAt: Date;
+  /** Additional bucket metadata */
+  metadata?: Record<string, any>;
+}
+
+export interface VFSBucketOptions {
+  /** Whether bucket should be public */
+  isPublic?: boolean;
+  /** Maximum file size for this bucket */
+  maxFileSize?: number;
+  /** Allowed MIME types */
+  allowedMimeTypes?: string[];
+  /** Additional metadata */
+  metadata?: Record<string, any>;
+}
+
+// Extend VFS operations to include bucket management
+export interface VFSBucketOperations {
+  /** Create a new bucket */
+  createBucket: (name: string, options?: VFSBucketOptions) => Promise<VFSBucket>;
+  /** Get bucket information */
+  getBucket: (name: string) => Promise<VFSBucket | null>;
+  /** List all buckets */
+  listBuckets: () => Promise<VFSBucket[]>;
+  /** Update bucket configuration */
+  updateBucket: (name: string, options: Partial<VFSBucketOptions>) => Promise<VFSBucket>;
+  /** Delete a bucket */
+  deleteBucket: (name: string, force?: boolean) => Promise<boolean>;
 }
