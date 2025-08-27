@@ -250,8 +250,8 @@ export function useNorthwindData(): UseNorthwindDataReturn {
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
 
       // Simplified approach without joins for now
-      let topCustomer = 'Demo Customer'
-      let topProduct = 'Demo Product'
+      const topCustomer = 'Demo Customer'
+      const topProduct = 'Demo Product'
 
       setMetrics({
         totalCustomers: customersResult.count || 0,

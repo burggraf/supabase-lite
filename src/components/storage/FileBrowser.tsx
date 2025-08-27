@@ -24,6 +24,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Toggle } from '@/components/ui/toggle';
 import { FileUpload } from './FileUpload';
+import { MultiSelectActionBar } from './MultiSelectActionBar';
 import { vfsManager } from '@/lib/vfs/VFSManager';
 import { logger } from '@/lib/infrastructure/Logger';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,7 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
 
   // Initialize Storage Client
@@ -172,6 +174,21 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
       newSelected.add(itemName);
     }
     setSelectedItems(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    const fileNames = filteredItems.filter(item => item.type === 'file').map(item => item.name);
+    setSelectedItems(new Set(fileNames));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedItems(new Set());
+  };
+
+  const getSelectedFiles = (): VFSFile[] => {
+    return filteredItems.filter(item => 
+      item.type === 'file' && selectedItems.has(item.name)
+    ) as VFSFile[];
   };
 
   const handleBreadcrumbClick = (path: string) => {
@@ -328,6 +345,99 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
     return relativePath;
   };
 
+  // Bulk action handlers
+  const handleBulkDownload = async () => {
+    const selectedFiles = getSelectedFiles();
+    if (selectedFiles.length === 0) return;
+
+    setIsBulkActionLoading(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const file of selectedFiles) {
+        try {
+          const filePath = getRelativePathInBucket(file);
+          const { data, error } = await storageBucket.download(filePath);
+          
+          if (error) {
+            logger.error(`Failed to download ${file.name}`, error);
+            errorCount++;
+            continue;
+          }
+
+          if (data) {
+            const url = URL.createObjectURL(data);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            successCount++;
+            
+            // Small delay between downloads to avoid overwhelming the browser
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        } catch (error) {
+          logger.error(`Download failed for ${file.name}`, error as Error);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Downloaded ${successCount} file${successCount !== 1 ? 's' : ''}`);
+      }
+      if (errorCount > 0) {
+        toast.error(`Failed to download ${errorCount} file${errorCount !== 1 ? 's' : ''}`);
+      }
+      
+      // Clear selection after successful downloads
+      if (successCount > 0) {
+        handleClearSelection();
+      }
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const selectedFiles = getSelectedFiles();
+    if (selectedFiles.length === 0) return;
+
+    const confirmMessage = `Are you sure you want to delete ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''}? This action cannot be undone.`;
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsBulkActionLoading(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      const filePaths = selectedFiles.map(file => getRelativePathInBucket(file));
+      const { error } = await storageBucket.remove(filePaths);
+      
+      if (error) {
+        logger.error('Bulk delete failed', error);
+        toast.error(`Failed to delete files: ${error.message}`);
+        errorCount = selectedFiles.length;
+      } else {
+        successCount = selectedFiles.length;
+        toast.success(`Deleted ${successCount} file${successCount !== 1 ? 's' : ''}`);
+        handleClearSelection();
+        loadFiles(); // Refresh the file list
+      }
+    } catch (error) {
+      logger.error('Bulk delete failed', error as Error);
+      toast.error('Failed to delete files');
+      errorCount = selectedFiles.length;
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -407,6 +517,21 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
         </div>
       </div>
 
+      {/* Multi-Select Action Bar */}
+      {selectedItems.size > 0 && (
+        <div className="px-6 py-2">
+          <MultiSelectActionBar
+            selectedCount={selectedItems.size}
+            totalCount={filteredItems.filter(item => item.type === 'file').length}
+            onClearSelection={handleClearSelection}
+            onSelectAll={handleSelectAll}
+            onDownload={handleBulkDownload}
+            onDelete={handleBulkDelete}
+            isLoading={isBulkActionLoading}
+          />
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {isLoading ? (
@@ -451,7 +576,18 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
                 onClick={() => handleItemClick(item)}
               >
                 {viewMode === 'grid' ? (
-                  <div className="text-center">
+                  <div className="text-center relative">
+                    {item.type === 'file' && (
+                      <div className="absolute top-0 left-0 z-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.has(item.name)}
+                          onChange={() => handleItemSelect(item.name)}
+                          className="rounded"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
                     <div className="mb-2 flex justify-center">
                       {item.type === 'folder' ? (
                         <Folder className="h-8 w-8 text-blue-600" />
@@ -476,13 +612,17 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
                   </div>
                 ) : (
                   <>
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.has(item.name)}
-                      onChange={() => handleItemSelect(item.name)}
-                      className="rounded"
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    {item.type === 'file' ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.has(item.name)}
+                        onChange={() => handleItemSelect(item.name)}
+                        className="rounded"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <div className="w-4" />
+                    )}
                     
                     <div className="flex-shrink-0">
                       {item.type === 'folder' ? (
@@ -506,35 +646,37 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
                       )}
                     </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleDownload(item as VFSFile)}>
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleCopyUrl(item as VFSFile)}>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy URL
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleGetSignedUrl(item as VFSFile)}>
-                          <Link className="h-4 w-4 mr-2" />
-                          Get signed URL
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => handleDelete(item as VFSFile)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {item.type === 'file' && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleDownload(item as VFSFile)}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopyUrl(item as VFSFile)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy URL
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleGetSignedUrl(item as VFSFile)}>
+                            <Link className="h-4 w-4 mr-2" />
+                            Get signed URL
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(item as VFSFile)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </>
                 )}
               </div>

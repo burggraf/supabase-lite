@@ -267,7 +267,7 @@ export class EnhancedSupabaseAPIBridge {
     }
 
     try {
-      let data = Array.isArray(body) ? body : [body]
+      const data = Array.isArray(body) ? body : [body]
       
       const sqlQuery = this.sqlBuilder.buildInsertQuery(table, data)
       

@@ -39,7 +39,7 @@ export class SQLBuilder {
     const joins: JoinInfo[] = []
     
     // Build SELECT clause
-    let selectClause = this.buildSelectClause(table, query, joins)
+    const selectClause = this.buildSelectClause(table, query, joins)
     
     // Build FROM clause with JOINs
     let fromClause = `FROM ${table}`
