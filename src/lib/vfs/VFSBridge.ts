@@ -95,13 +95,18 @@ export class VFSBridge {
           }
           content = bytes.buffer;
           
+          const actualBytes = Array.from(bytes.slice(0, 10));
+          const expectedPngHeader = [137, 80, 78, 71, 13, 10, 26, 10];
+          const headerMatch = actualBytes.slice(0, 8).join(',') === expectedPngHeader.join(',');
+          
           console.log('🔍 Base64 decode result:', {
             originalBase64Length: file.content.length,
             binaryLength: binaryString.length,
             bufferLength: bytes.buffer.byteLength,
-            firstFewBytes: Array.from(bytes.slice(0, 10)),
-            pngHeader: [137, 80, 78, 71, 13, 10, 26, 10],
-            headerMatch: Array.from(bytes.slice(0, 8)).join(',') === '137,80,78,71,13,10,26,10'
+            firstTenBytes: actualBytes,
+            expectedPngHeader: expectedPngHeader,
+            headerMatch: headerMatch,
+            base64Sample: file.content.substring(0, 20)
           });
         } else {
           // Convert text content to ArrayBuffer for utf-8 files
