@@ -7,7 +7,7 @@ import type { VFSProjectConfig, VFSErrorCode } from '../../types/vfs.js';
 export const VFS_CONFIG = {
   // Database and Storage
   STORAGE_PREFIX: 'vfs_project_',
-  DB_VERSION: 1,
+  DB_VERSION: 2,
   
   // File Size Limits (in bytes)
   MAX_FILE_SIZE: 10 * 1024 * 1024,        // 10MB per file
@@ -200,11 +200,11 @@ export const BINARY_EXTENSIONS = new Set([
 
 // Path Validation Patterns
 export const PATH_PATTERNS = {
-  // Valid file/directory name (no special chars except . - _)
-  VALID_NAME: /^[a-zA-Z0-9._-]+$/,
+  // Valid file/directory name (allow spaces and common safe characters)
+  VALID_NAME: /^[a-zA-Z0-9._\- ]+$/,
   
-  // Valid file path (forward slashes, no double slashes, no leading/trailing slashes)
-  VALID_PATH: /^[a-zA-Z0-9._/-]+$/,
+  // Valid file path (forward slashes, allow spaces in names)
+  VALID_PATH: /^[a-zA-Z0-9._\-/ ]+$/,
   
   // Reserved names that cannot be used
   RESERVED_NAMES: new Set([
@@ -224,6 +224,7 @@ export const OBJECT_STORES = {
   FILES: 'files',
   CHUNKS: 'chunks', 
   METADATA: 'metadata',
+  BUCKETS: 'buckets',
 } as const;
 
 // IndexedDB Indexes
@@ -238,6 +239,10 @@ export const INDEXES = {
   CHUNKS: {
     BY_FILE_ID: 'fileId',
     BY_SEQUENCE: 'sequence',
+  },
+  BUCKETS: {
+    BY_PROJECT_ID: 'projectId',
+    BY_CREATED_AT: 'createdAt',
   },
 } as const;
 

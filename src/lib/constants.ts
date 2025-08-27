@@ -47,7 +47,7 @@ export const NAVIGATION_ITEMS = [
     label: 'Storage',
     icon: 'FolderOpen',
     path: '/storage',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'realtime',

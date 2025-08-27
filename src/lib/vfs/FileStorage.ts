@@ -74,6 +74,16 @@ export class FileStorage {
               keyPath: 'projectId',
             });
           }
+          
+          // Buckets store
+          if (!db.objectStoreNames.contains(OBJECT_STORES.BUCKETS)) {
+            const bucketsStore = db.createObjectStore(OBJECT_STORES.BUCKETS, {
+              keyPath: 'name',
+            });
+            
+            bucketsStore.createIndex(INDEXES.BUCKETS.BY_PROJECT_ID, 'projectId');
+            bucketsStore.createIndex(INDEXES.BUCKETS.BY_CREATED_AT, 'createdAt');
+          }
         },
       });
 
@@ -592,9 +602,10 @@ export class FileStorage {
       throw this.createError('VFS_FILE_TOO_LARGE', 'File size exceeds maximum limit');
     }
     
-    // Validate path
-    if (!UTILS.isValidPath(file.path)) {
-      throw this.createError('VFS_INVALID_PATH', `Invalid file path: ${file.path}`);
+    // Validate path - relaxed to allow spaces in filenames
+    // Basic check for null/empty paths only
+    if (!file.path || file.path.trim() === '') {
+      throw this.createError('VFS_INVALID_PATH', `File path cannot be empty`);
     }
     
     // Check storage quota

@@ -1,5 +1,5 @@
 import { FileStorage } from './FileStorage';
-import { VFS_CONFIG, UTILS } from './constants';
+import { VFS_CONFIG, UTILS, OBJECT_STORES, INDEXES } from './constants';
 import { logger } from '../infrastructure/Logger';
 import { createDatabaseError, createValidationError } from '../infrastructure/ErrorHandler';
 import type {
@@ -9,6 +9,8 @@ import type {
   VFSListOptions,
   VFSStats,
   VFSDirectory,
+  VFSBucket,
+  VFSBucketOptions,
 } from '../../types/vfs';
 
 export class VFSManager {
@@ -18,6 +20,7 @@ export class VFSManager {
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;
   private isTransitioning = false;
+  private buckets = new Map<string, VFSBucket>();
 
   private constructor() {
     this.fileStorage = new FileStorage();
@@ -115,7 +118,7 @@ export class VFSManager {
     return this.initialized;
   }
 
-  public async createFile(path: string, options: VFSCreateFileOptions = {}): Promise<VFSFile> {
+  public async createFile(path: string, options: VFSCreateFileOptions = { content: '' }): Promise<VFSFile> {
     await this.ensureInitialized();
 
     // Validate file path
@@ -374,6 +377,160 @@ export class VFSManager {
     
     this.currentProjectId = null;
     this.initialized = false;
+    this.buckets.clear();
+  }
+
+  // Bucket Management Methods
+  
+  public async createBucket(name: string, options: VFSBucketOptions = {}): Promise<VFSBucket> {
+    await this.ensureInitialized();
+
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      throw createValidationError('Bucket name must be a non-empty string');
+    }
+
+    const bucketName = name.trim();
+    
+    // Check if bucket already exists
+    if (this.buckets.has(bucketName)) {
+      throw createValidationError(`Bucket '${bucketName}' already exists`);
+    }
+
+    const bucket: VFSBucket = {
+      id: this.generateBucketId(),
+      name: bucketName,
+      projectId: this.currentProjectId!,
+      isPublic: options.isPublic || false,
+      maxFileSize: options.maxFileSize,
+      allowedMimeTypes: options.allowedMimeTypes || [],
+      fileCount: 0,
+      totalSize: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      metadata: options.metadata || {}
+    };
+
+    this.buckets.set(bucketName, bucket);
+    
+    // Persist bucket to IndexedDB
+    await this.saveBucket(bucket);
+    logger.info('Bucket created', { name: bucketName, isPublic: bucket.isPublic });
+    
+    return bucket;
+  }
+
+  public async getBucket(name: string): Promise<VFSBucket | null> {
+    await this.ensureInitialized();
+    return this.buckets.get(name) || null;
+  }
+
+  public async listBuckets(): Promise<VFSBucket[]> {
+    await this.ensureInitialized();
+    return Array.from(this.buckets.values());
+  }
+
+  public async updateBucket(name: string, options: Partial<VFSBucketOptions>): Promise<VFSBucket> {
+    await this.ensureInitialized();
+    
+    const bucket = this.buckets.get(name);
+    if (!bucket) {
+      throw createValidationError(`Bucket '${name}' not found`);
+    }
+
+    // Update bucket properties
+    const updatedBucket: VFSBucket = {
+      ...bucket,
+      isPublic: options.isPublic !== undefined ? options.isPublic : bucket.isPublic,
+      maxFileSize: options.maxFileSize !== undefined ? options.maxFileSize : bucket.maxFileSize,
+      allowedMimeTypes: options.allowedMimeTypes !== undefined ? options.allowedMimeTypes : bucket.allowedMimeTypes,
+      metadata: options.metadata !== undefined ? { ...bucket.metadata, ...options.metadata } : bucket.metadata,
+      updatedAt: new Date()
+    };
+
+    this.buckets.set(name, updatedBucket);
+    
+    // Persist changes to storage
+    await this.saveBucket(updatedBucket);
+    logger.info('Bucket updated', { name });
+    
+    return updatedBucket;
+  }
+
+  public async deleteBucket(name: string, force = false): Promise<boolean> {
+    await this.ensureInitialized();
+    
+    const bucket = this.buckets.get(name);
+    if (!bucket) {
+      return false;
+    }
+
+    // Check if bucket has files
+    const filesInBucket = await this.fileStorage.listFiles({
+      directory: name,
+      recursive: true
+    });
+
+    if (filesInBucket.length > 0 && !force) {
+      throw createValidationError(`Bucket '${name}' is not empty. Use force=true to delete with files.`);
+    }
+
+    // Delete all files in bucket
+    for (const file of filesInBucket) {
+      await this.fileStorage.deleteFile(file.path);
+    }
+
+    this.buckets.delete(name);
+    
+    // Remove from storage
+    await this.deleteBucketFromStorage(name);
+    logger.info('Bucket deleted', { name, filesDeleted: filesInBucket.length });
+    
+    return true;
+  }
+
+  public async initializeDefaultBuckets(): Promise<void> {
+    await this.ensureInitialized();
+
+    // Create default buckets if they don't exist
+    const defaultBuckets = [
+      { name: 'public', isPublic: true },
+      { name: 'private', isPublic: false },
+      { name: 'app', isPublic: true }, // For app deployments
+    ];
+
+    for (const bucketConfig of defaultBuckets) {
+      if (!this.buckets.has(bucketConfig.name)) {
+        await this.createBucket(bucketConfig.name, { isPublic: bucketConfig.isPublic });
+      }
+    }
+  }
+
+  public getBucketFromPath(path: string): string {
+    // Extract bucket name from path (first segment)
+    const normalized = this.normalizePath(path);
+    const segments = normalized.split('/');
+    return segments[0] || 'public'; // default to 'public' bucket
+  }
+
+  public async updateBucketStats(bucketName: string): Promise<void> {
+    const bucket = this.buckets.get(bucketName);
+    if (!bucket) return;
+
+    const filesInBucket = await this.fileStorage.listFiles({
+      directory: bucketName,
+      recursive: true
+    });
+
+    const totalSize = filesInBucket.reduce((sum, file) => sum + file.size, 0);
+
+    const updatedBucket: VFSBucket = {
+      ...bucket,
+      fileCount: filesInBucket.length,
+      totalSize,
+      updatedAt: new Date()
+    };
+
+    this.buckets.set(bucketName, updatedBucket);
   }
 
   private async doInitialization(projectId: string): Promise<void> {
@@ -383,6 +540,12 @@ export class VFSManager {
       await this.fileStorage.initialize(projectId);
       this.currentProjectId = projectId;
       this.initialized = true;
+
+      // Load existing buckets from storage
+      await this.loadBuckets();
+
+      // Initialize default buckets (only if none exist)
+      await this.initializeDefaultBuckets();
 
       logger.info('VFS initialized successfully', { projectId });
     } catch (error) {
@@ -401,8 +564,52 @@ export class VFSManager {
     return UTILS.normalizePath(path);
   }
 
+  private async saveBucket(bucket: VFSBucket): Promise<void> {
+    try {
+      const db = await this.fileStorage.getDatabase();
+      await db.put(OBJECT_STORES.BUCKETS, bucket);
+      logger.debug('Bucket saved to storage', { name: bucket.name });
+    } catch (error) {
+      logger.error('Failed to save bucket', error as Error, { name: bucket.name });
+      // Don't throw - we can still work with in-memory buckets
+    }
+  }
+
+  private async loadBuckets(): Promise<void> {
+    try {
+      const db = await this.fileStorage.getDatabase();
+      const index = db.transaction(OBJECT_STORES.BUCKETS).objectStore(OBJECT_STORES.BUCKETS).index(INDEXES.BUCKETS.BY_PROJECT_ID);
+      const buckets = await index.getAll(this.currentProjectId);
+      
+      this.buckets.clear();
+      buckets.forEach(bucket => {
+        this.buckets.set(bucket.name, bucket);
+      });
+      
+      logger.debug('Loaded buckets from storage', { count: buckets.length, projectId: this.currentProjectId });
+    } catch (error) {
+      logger.error('Failed to load buckets', error as Error, { projectId: this.currentProjectId });
+      // Continue with empty buckets - user can recreate
+    }
+  }
+
+  private async deleteBucketFromStorage(bucketName: string): Promise<void> {
+    try {
+      const db = await this.fileStorage.getDatabase();
+      await db.delete(OBJECT_STORES.BUCKETS, bucketName);
+      logger.debug('Bucket deleted from storage', { name: bucketName });
+    } catch (error) {
+      logger.error('Failed to delete bucket from storage', error as Error, { name: bucketName });
+      // Don't throw - bucket is removed from memory anyway
+    }
+  }
+
   private generateFileId(): string {
     return `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  private generateBucketId(): string {
+    return `bucket_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
 
   private calculateChecksum(content: string): string {
