@@ -1078,7 +1078,7 @@ const createSignedUrlHandler = () => async ({ params, request, projectInfo }: an
     }
 
     const { bucket } = params;
-    const path = (params as any)['*'] || '';
+    const path = params[0] || '';
     
     const body = await request.json();
     const { expiresIn = 3600, transform, download } = body;
@@ -1114,7 +1114,7 @@ const createSignedUploadUrlHandler = () => async ({ params, request, projectInfo
     }
 
     const { bucket } = params;
-    const path = (params as any)['*'] || '';
+    const path = params[0] || '';
     
     const body = await request.json();
     const { expiresIn, upsert } = body;
@@ -1154,7 +1154,7 @@ const createPublicUrlHandler = () => async ({ params, request, projectInfo }: an
     }
 
     const { bucket } = params;
-    const path = (params as any)['*'] || '';
+    const path = params[0] || '';
 
     console.log('🌐 MSW: Public URL request', { bucket, path, projectId: projectInfo?.projectId });
     console.log('🌐 MSW: Full params object:', params);
@@ -1191,7 +1191,7 @@ const createAuthenticatedFileHandler = () => async ({ params, request, projectIn
     }
 
     const { bucket } = params;
-    const path = (params as any)['*'] || '';
+    const path = params[0] || '';
     const url = new URL(request.url);
     const token = url.searchParams.get('token');
 
