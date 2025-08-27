@@ -75,7 +75,7 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
       id: 'storage',
       label: 'Storage',
       icon: 'FolderOpen' as keyof typeof iconMap,
-      badge: 'Coming Soon',
+      badge: null,
     },
     {
       id: 'realtime',

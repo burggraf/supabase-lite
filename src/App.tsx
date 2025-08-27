@@ -5,6 +5,7 @@ import { TableEditor } from '@/components/table-editor/TableEditor';
 import { DatabaseWorking as Database } from '@/components/database/DatabaseWorking';
 import { APITester } from '@/components/api-test/APITester';
 import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
+import { Storage } from '@/components/storage/Storage';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
@@ -139,6 +140,12 @@ function App() {
                 <AuthTestPanel />
               </div>
             </div>
+          </ErrorBoundary>
+        );
+      case 'storage':
+        return (
+          <ErrorBoundary>
+            <Storage />
           </ErrorBoundary>
         );
       case 'api-test':
