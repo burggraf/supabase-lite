@@ -1157,6 +1157,8 @@ const createPublicUrlHandler = () => async ({ params, request, projectInfo }: an
     const path = (params as any)['*'] || '';
 
     console.log('🌐 MSW: Public URL request', { bucket, path, projectId: projectInfo?.projectId });
+    console.log('🌐 MSW: Full params object:', params);
+    console.log('🌐 MSW: Request URL:', request.url);
 
     console.log('🌐 MSW: About to call handlePublicUrlRequest');
     const response = await vfsBridge.handlePublicUrlRequest({
