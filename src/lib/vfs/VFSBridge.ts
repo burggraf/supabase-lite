@@ -138,13 +138,18 @@ export class VFSBridge {
       // Try using Blob for Response body instead of ArrayBuffer
       const responseBlob = new Blob([content], { type: file.mimeType });
       
+      console.log('🔍 Creating Response with blob size:', responseBlob.size);
+      
       return new Response(responseBlob, {
         status: 200,
         headers: {
           'Content-Type': file.mimeType,
-          'Content-Length': String(content.byteLength),
+          // Remove Content-Length - let browser handle it
           'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache', // Prevent caching during debugging
+          'Cache-Control': 'no-cache',
+          // Add some additional headers that might help
+          'Content-Disposition': 'inline',
+          'Accept-Ranges': 'bytes',
           ...cacheHeaders,
         }
       });
