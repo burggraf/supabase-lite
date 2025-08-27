@@ -82,6 +82,11 @@ export class VFSBridge {
       } else if (file.content) {
         // Handle content based on encoding
         if (file.encoding === 'base64') {
+          console.log('🔍 Non-chunked base64 decoding:', {
+            contentLength: file.content.length,
+            contentPreview: file.content.substring(0, 50)
+          });
+          
           // Decode base64 content for binary files
           const binaryString = atob(file.content);
           const bytes = new Uint8Array(binaryString.length);
@@ -89,8 +94,16 @@ export class VFSBridge {
             bytes[i] = binaryString.charCodeAt(i);
           }
           content = bytes.buffer;
+          
+          console.log('🔍 Base64 decode result:', {
+            originalBase64Length: file.content.length,
+            binaryLength: binaryString.length,
+            bufferLength: bytes.buffer.byteLength,
+            firstFewBytes: Array.from(bytes.slice(0, 10))
+          });
         } else {
           // Convert text content to ArrayBuffer for utf-8 files
+          console.log('🔍 Converting text content to buffer');
           const encoder = new TextEncoder();
           content = encoder.encode(file.content).buffer;
         }
