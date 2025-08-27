@@ -129,28 +129,20 @@ export class VFSBridge {
         sizeMismatch: file.size !== content.byteLength
       });
 
-      // Create a blob URL for testing (temporary)
-      const blob = new Blob([content], { type: file.mimeType });
-      const blobUrl = URL.createObjectURL(blob);
-      console.log('🔍 Test blob URL created:', blobUrl);
-      console.log('🔍 You can test this URL directly in browser:', blobUrl);
-
-      // Try using Blob for Response body instead of ArrayBuffer
-      const responseBlob = new Blob([content], { type: file.mimeType });
+      // Try creating a Uint8Array response - sometimes this works better with MSW
+      const uint8Array = new Uint8Array(content);
+      console.log('🔍 Creating Uint8Array Response');
+      console.log('🔍 Uint8Array details:', {
+        length: uint8Array.length,
+        firstBytes: Array.from(uint8Array.slice(0, 8)).join(',')
+      });
       
-      console.log('🔍 Creating Response with blob size:', responseBlob.size);
-      
-      return new Response(responseBlob, {
+      return new Response(uint8Array, {
         status: 200,
         headers: {
           'Content-Type': file.mimeType,
-          // Remove Content-Length - let browser handle it
+          'Content-Length': String(uint8Array.length),
           'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache',
-          // Add some additional headers that might help
-          'Content-Disposition': 'inline',
-          'Accept-Ranges': 'bytes',
-          ...cacheHeaders,
         }
       });
 
