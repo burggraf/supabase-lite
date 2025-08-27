@@ -129,22 +129,31 @@ export class VFSBridge {
         sizeMismatch: file.size !== content.byteLength
       });
 
-      // Try creating a Uint8Array response - sometimes this works better with MSW
-      const uint8Array = new Uint8Array(content);
-      console.log('🔍 Creating Uint8Array Response');
-      console.log('🔍 Uint8Array details:', {
-        length: uint8Array.length,
-        firstBytes: Array.from(uint8Array.slice(0, 8)).join(',')
-      });
+      // MSW has issues with binary responses. Try redirecting to a data URL instead.
+      console.log('🔍 Creating data URL redirect');
       
-      return new Response(uint8Array, {
-        status: 200,
-        headers: {
-          'Content-Type': file.mimeType,
-          'Content-Length': String(uint8Array.length),
-          'Access-Control-Allow-Origin': '*',
-        }
-      });
+      if (file.encoding === 'base64') {
+        // For base64 files, create data URL directly from base64 content
+        const dataUrl = `data:${file.mimeType};base64,${file.content}`;
+        console.log('🔍 Redirecting to data URL (length:', dataUrl.length, ')');
+        
+        return new Response(null, {
+          status: 302,
+          headers: {
+            'Location': dataUrl,
+            'Access-Control-Allow-Origin': '*',
+          }
+        });
+      } else {
+        // For other files, fall back to regular response
+        return new Response(content, {
+          status: 200,
+          headers: {
+            'Content-Type': file.mimeType,
+            'Access-Control-Allow-Origin': '*',
+          }
+        });
+      }
 
     } catch (error) {
       logger.error('VFS file request failed', error as Error, { path: options.path });
