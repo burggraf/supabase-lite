@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { SupabaseAPIBridge } from './supabase-bridge'
 import { EnhancedSupabaseAPIBridge } from './enhanced-bridge'
 import { AuthBridge } from '../lib/auth/AuthBridge'
+import { VFSBridge } from '../lib/vfs/VFSBridge'
 import { resolveAndSwitchToProject, normalizeApiPath } from './project-resolver'
 import { projectManager } from '../lib/projects/ProjectManager'
 import { DatabaseManager } from '../lib/database/connection'
@@ -9,6 +10,7 @@ import { DatabaseManager } from '../lib/database/connection'
 const bridge = new SupabaseAPIBridge()
 const enhancedBridge = new EnhancedSupabaseAPIBridge()
 const authBridge = AuthBridge.getInstance()
+const vfsBridge = new VFSBridge()
 
 /**
  * Higher-order function that wraps handlers with project resolution
@@ -44,11 +46,15 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
     const normalizedUrl = normalizeApiPath(url);
     const normalizedRequest = new Request(normalizedUrl, request);
 
-    // Call the original handler with normalized parameters
+    // Call the original handler with normalized parameters and project info
     const handleStartTime = performance.now();
     const result = await handler({ 
       params, 
       request: normalizedRequest, 
+      projectInfo: {
+        projectId: resolution.projectId,
+        projectName: resolution.projectName
+      },
       ...rest 
     } as any);
     
@@ -953,6 +959,182 @@ const createAuthTokenHandler = () => async ({ request }: any) => {
         }
       }
     )
+  }
+};
+
+// VFS Handler Functions
+const createVFSFileGetHandler = () => async ({ params, request, projectInfo }: any) => {
+  try {
+    const bucket = params.bucket as string;
+    const path = params[0] as string; // Catch-all path parameter
+    const rangeHeader = request.headers.get('range');
+    
+    console.log('📁 MSW: VFS file GET request', { bucket, path, range: rangeHeader, projectId: projectInfo?.projectId });
+    
+    // Initialize VFS for the current project
+    if (projectInfo?.projectId) {
+      await vfsBridge.initializeForProject(projectInfo.projectId);
+    }
+    
+    const response = await vfsBridge.handleFileRequest({
+      bucket,
+      path,
+      range: rangeHeader || undefined,
+    });
+    
+    console.log('✅ MSW: VFS file served', { bucket, path, status: response.status });
+    return response;
+  } catch (error) {
+    console.error('❌ MSW: VFS file GET error:', error);
+    return new HttpResponse(
+      JSON.stringify({ error: 'file_request_failed', message: 'Failed to serve file' }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    );
+  }
+};
+
+const createVFSFilePostHandler = () => async ({ params, request, projectInfo }: any) => {
+  try {
+    const bucket = params.bucket as string;
+    const path = params[0] as string;
+    const formData = await request.formData();
+    
+    console.log('📁 MSW: VFS file POST request', { bucket, path, projectId: projectInfo?.projectId });
+    
+    // Initialize VFS for the current project
+    if (projectInfo?.projectId) {
+      await vfsBridge.initializeForProject(projectInfo.projectId);
+    }
+    
+    const response = await vfsBridge.handleUploadRequest({
+      bucket,
+      path,
+      formData,
+    });
+    
+    console.log('✅ MSW: VFS file uploaded', { bucket, path, status: response.status });
+    return response;
+  } catch (error) {
+    console.error('❌ MSW: VFS file POST error:', error);
+    return new HttpResponse(
+      JSON.stringify({ error: 'upload_failed', message: 'Failed to upload file' }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    );
+  }
+};
+
+const createVFSFileDeleteHandler = () => async ({ params, request, projectInfo }: any) => {
+  try {
+    const bucket = params.bucket as string;
+    const path = params[0] as string;
+    
+    console.log('📁 MSW: VFS file DELETE request', { bucket, path, projectId: projectInfo?.projectId });
+    
+    // Initialize VFS for the current project
+    if (projectInfo?.projectId) {
+      await vfsBridge.initializeForProject(projectInfo.projectId);
+    }
+    
+    const response = await vfsBridge.handleDeleteRequest({
+      bucket,
+      path,
+    });
+    
+    console.log('✅ MSW: VFS file deleted', { bucket, path, status: response.status });
+    return response;
+  } catch (error) {
+    console.error('❌ MSW: VFS file DELETE error:', error);
+    return new HttpResponse(
+      JSON.stringify({ error: 'delete_failed', message: 'Failed to delete file' }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    );
+  }
+};
+
+const createVFSListHandler = () => async ({ params, request, projectInfo }: any) => {
+  try {
+    const bucket = params.bucket as string;
+    const url = new URL(request.url);
+    const prefix = url.searchParams.get('prefix') || '';
+    const limit = parseInt(url.searchParams.get('limit') || '100', 10);
+    const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+    
+    console.log('📁 MSW: VFS list request', { bucket, prefix, limit, offset, projectId: projectInfo?.projectId });
+    
+    // Initialize VFS for the current project
+    if (projectInfo?.projectId) {
+      await vfsBridge.initializeForProject(projectInfo.projectId);
+    }
+    
+    const response = await vfsBridge.handleListRequest({
+      bucket,
+      prefix,
+      limit,
+      offset,
+    });
+    
+    console.log('✅ MSW: VFS list completed', { bucket, status: response.status });
+    return response;
+  } catch (error) {
+    console.error('❌ MSW: VFS list error:', error);
+    return new HttpResponse(
+      JSON.stringify({ error: 'list_failed', message: 'Failed to list files' }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    );
+  }
+};
+
+const createSPAHandler = () => async ({ params, request, projectInfo }: any) => {
+  try {
+    const path = new URL(request.url).pathname;
+    
+    console.log('🌐 MSW: SPA request', { path, projectId: projectInfo?.projectId });
+    
+    // Initialize VFS for the current project
+    if (projectInfo?.projectId) {
+      await vfsBridge.initializeForProject(projectInfo.projectId);
+    }
+    
+    const response = await vfsBridge.handleSPARequest({ path });
+    
+    console.log('✅ MSW: SPA served', { path, status: response.status });
+    return response;
+  } catch (error) {
+    console.error('❌ MSW: SPA error:', error);
+    return new HttpResponse(
+      '<html><body><h1>Application Error</h1></body></html>',
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'text/html',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    );
   }
 };
 
@@ -2459,6 +2641,33 @@ export const handlers = [
     })
   }),
 
+  // ==== VFS (Virtual File System) ENDPOINTS ====
+  
+  // Directory listing endpoints (more specific patterns first)
+  http.get('/storage/v1/object/list/:bucket', withProjectResolution(createVFSListHandler())),
+  http.get('/:projectId/storage/v1/object/list/:bucket', withProjectResolution(createVFSListHandler())),
+  http.get('/storage/v1/object/list/:bucket/*', withProjectResolution(createVFSListHandler())),
+  http.get('/:projectId/storage/v1/object/list/:bucket/*', withProjectResolution(createVFSListHandler())),
+  
+  // File serving endpoints (Supabase Storage API compatible)
+  http.get('/storage/v1/object/:bucket/*', withProjectResolution(createVFSFileGetHandler())),
+  http.get('/:projectId/storage/v1/object/:bucket/*', withProjectResolution(createVFSFileGetHandler())),
+  
+  // File upload endpoints
+  http.post('/storage/v1/object/:bucket/*', withProjectResolution(createVFSFilePostHandler())),
+  http.post('/:projectId/storage/v1/object/:bucket/*', withProjectResolution(createVFSFilePostHandler())),
+  
+  // File deletion endpoints
+  http.delete('/storage/v1/object/:bucket/*', withProjectResolution(createVFSFileDeleteHandler())),
+  http.delete('/:projectId/storage/v1/object/:bucket/*', withProjectResolution(createVFSFileDeleteHandler())),
+  
+  // Direct file access (public files)
+  http.get('/files/:bucket/*', withProjectResolution(createVFSFileGetHandler())),
+  http.get('/:projectId/files/:bucket/*', withProjectResolution(createVFSFileGetHandler())),
+  
+  // SPA (Single Page Application) hosting - lowest priority
+  http.get('/app/*', withProjectResolution(createSPAHandler())),
+  http.get('/:projectId/app/*', withProjectResolution(createSPAHandler())),
 
   // CORS preflight requests
   http.options('*', () => {
