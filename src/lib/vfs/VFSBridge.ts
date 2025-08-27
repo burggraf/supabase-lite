@@ -129,7 +129,10 @@ export class VFSBridge {
       console.log('🔍 Test blob URL created:', blobUrl);
       console.log('🔍 You can test this URL directly in browser:', blobUrl);
 
-      return new Response(content, {
+      // Try using Blob for Response body instead of ArrayBuffer
+      const responseBlob = new Blob([content], { type: file.mimeType });
+      
+      return new Response(responseBlob, {
         status: 200,
         headers: {
           'Content-Type': file.mimeType,
