@@ -129,30 +129,36 @@ export class VFSBridge {
         sizeMismatch: file.size !== content.byteLength
       });
 
-      // MSW has issues with binary responses. Try redirecting to a data URL instead.
-      console.log('🔍 Creating data URL redirect');
+      // Last resort: Let's try the most basic approach possible
+      console.log('🔍 Creating basic binary Response with minimal headers');
       
-      if (file.encoding === 'base64') {
-        // For base64 files, create data URL directly from base64 content
-        const dataUrl = `data:${file.mimeType};base64,${file.content}`;
-        console.log('🔍 Redirecting to data URL (length:', dataUrl.length, ')');
-        
-        return new Response(null, {
-          status: 302,
-          headers: {
-            'Location': dataUrl,
-            'Access-Control-Allow-Origin': '*',
-          }
-        });
-      } else {
-        // For other files, fall back to regular response
-        return new Response(content, {
+      try {
+        // Create the simplest possible Response with binary data
+        const response = new Response(new Uint8Array(content), {
           status: 200,
-          headers: {
+          headers: new Headers({
             'Content-Type': file.mimeType,
-            'Access-Control-Allow-Origin': '*',
-          }
+          })
         });
+        
+        console.log('🔍 Response created successfully');
+        return response;
+        
+      } catch (responseError) {
+        console.error('🔍 Response creation failed:', responseError);
+        
+        // If that fails, return an error
+        return new Response(
+          JSON.stringify({
+            error: 'binary_response_failed',
+            message: 'Could not create binary response',
+            details: responseError instanceof Error ? responseError.message : String(responseError)
+          }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
       }
 
     } catch (error) {
