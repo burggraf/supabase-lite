@@ -16,7 +16,7 @@ interface PendingRequest {
 function websocketBridge(): Plugin {
   let wss: WebSocketServer | null = null
   let browserSocket: any = null
-  let proxyConnections = new Set<any>()
+  const proxyConnections = new Set<any>()
   const pendingRequests = new Map<string, PendingRequest>()
   
   // Helper to get request body
