@@ -101,11 +101,18 @@ export class VFSBridge {
       // Determine cache headers
       const cacheHeaders = this.getCacheHeaders(file);
 
+      console.log('🔍 Final response debug:', {
+        mimeType: file.mimeType,
+        fileSize: file.size,
+        contentSize: content.byteLength,
+        sizeMismatch: file.size !== content.byteLength
+      });
+
       return new Response(content, {
         status: 200,
         headers: {
           'Content-Type': file.mimeType,
-          'Content-Length': String(file.size),
+          'Content-Length': String(content.byteLength), // Use actual content size
           'Access-Control-Allow-Origin': '*',
           ...cacheHeaders,
         }
@@ -505,19 +512,31 @@ export class VFSBridge {
       // Use FileStorage to assemble chunks - this handles the chunk reading and assembly
       const content = await this.vfsManager.fileStorage.loadFileContent(file.path);
       
+      console.log('🔍 Chunked content debug:', {
+        path: file.path,
+        encoding: file.encoding,
+        contentLength: content.length,
+        contentPreview: content.substring(0, 100)
+      });
+      
       // Handle content based on encoding
       if (file.encoding === 'base64') {
         // Decode base64 content for binary files
+        console.log('🔍 Decoding base64 content...');
         const binaryString = atob(content);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
         }
+        console.log('🔍 Base64 decoded:', { originalLength: content.length, binaryLength: binaryString.length, arrayBufferLength: bytes.buffer.byteLength });
         return bytes.buffer;
       } else {
         // Convert text content to ArrayBuffer for utf-8 files
+        console.log('🔍 Converting text content to ArrayBuffer');
         const encoder = new TextEncoder();
-        return encoder.encode(content).buffer;
+        const buffer = encoder.encode(content).buffer;
+        console.log('🔍 Text conversion:', { contentLength: content.length, bufferLength: buffer.byteLength });
+        return buffer;
       }
     } catch (error) {
       logger.error('Failed to assemble chunked content', error as Error, { path: file.path });
