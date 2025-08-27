@@ -124,7 +124,7 @@ export class VFSManager {
     }
 
     const normalizedPath = this.normalizePath(path);
-    const { content = '', mimeType: providedMimeType, compress, createDirectories } = options;
+    const { content = '', mimeType: providedMimeType, compress } = options;
 
     // Validate file size
     if (content.length > VFS_CONFIG.MAX_FILE_SIZE) {

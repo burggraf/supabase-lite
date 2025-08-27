@@ -50,7 +50,7 @@ export async function resolveAndSwitchToProject(url: URL): Promise<ProjectResolu
     const dbManager = DatabaseManager.getInstance();
     
     // If no project identifier in path, use the active project
-    if (pathSegments.length === 0 || !pathSegments[0] || pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || pathSegments[0] === 'debug') {
+    if (pathSegments.length === 0 || !pathSegments[0] || pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || pathSegments[0] === 'storage' || pathSegments[0] === 'app' || pathSegments[0] === 'debug') {
       // Check cache for active project
       const cacheKey = '__active__';
       const cached = projectResolutionCache.get(cacheKey);
@@ -198,7 +198,7 @@ export function normalizeApiPath(url: URL): URL {
   const pathSegments = url.pathname.split('/').filter(segment => segment.length > 0);
   
   // If no segments or starts with API paths, return as-is
-  if (pathSegments.length === 0 || pathSegments[0] === 'rest' || pathSegments[0] === 'auth') {
+  if (pathSegments.length === 0 || pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || pathSegments[0] === 'storage' || pathSegments[0] === 'app') {
     return url;
   }
 
@@ -217,7 +217,7 @@ export function hasProjectInPath(url: URL): boolean {
   const pathSegments = url.pathname.split('/').filter(segment => segment.length > 0);
   
   // If no segments or starts with API paths, no project identifier
-  if (pathSegments.length === 0 || pathSegments[0] === 'rest' || pathSegments[0] === 'auth') {
+  if (pathSegments.length === 0 || pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || pathSegments[0] === 'storage' || pathSegments[0] === 'app') {
     return false;
   }
 
