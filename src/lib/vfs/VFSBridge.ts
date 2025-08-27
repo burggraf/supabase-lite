@@ -501,13 +501,28 @@ export class VFSBridge {
       throw new Error('No chunks available for chunked file');
     }
 
-    // This would need to be implemented to read chunks from FileStorage
-    // For now, return the content as is
-    if (file.content) {
-      return new TextEncoder().encode(file.content).buffer;
+    try {
+      // Use FileStorage to assemble chunks - this handles the chunk reading and assembly
+      const content = await this.vfsManager.fileStorage.loadFileContent(file.path);
+      
+      // Handle content based on encoding
+      if (file.encoding === 'base64') {
+        // Decode base64 content for binary files
+        const binaryString = atob(content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+      } else {
+        // Convert text content to ArrayBuffer for utf-8 files
+        const encoder = new TextEncoder();
+        return encoder.encode(content).buffer;
+      }
+    } catch (error) {
+      logger.error('Failed to assemble chunked content', error as Error, { path: file.path });
+      throw new Error(`Failed to assemble chunked content: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    throw new Error('Chunked content assembly not implemented');
   }
 
   /**
