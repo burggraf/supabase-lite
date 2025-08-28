@@ -21,9 +21,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Toggle } from '@/components/ui/toggle';
 import { FileUpload } from './FileUpload';
 import { MultiSelectActionBar } from './MultiSelectActionBar';
@@ -63,6 +64,18 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
   const [showUpload, setShowUpload] = useState(false);
   const [previewFile, setPreviewFile] = useState<VFSFile | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  
+  // Rename dialog state
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [fileToRename, setFileToRename] = useState<VFSFile | null>(null);
+  const [newFileName, setNewFileName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  
+  // Move dialog state
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [fileToMove, setFileToMove] = useState<VFSFile | null>(null);
+  const [newFilePath, setNewFilePath] = useState('');
+  const [isMoving, setIsMoving] = useState(false);
 
   // Initialize Storage Client
   const storageClient = new StorageClient({
@@ -337,6 +350,93 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
     } catch (error) {
       logger.error('Delete failed', error as Error);
       toast.error(`Failed to delete ${file.name}`);
+    }
+  };
+
+  const handleRename = (file: VFSFile) => {
+    setFileToRename(file);
+    setNewFileName(file.name);
+    setShowRenameDialog(true);
+  };
+
+  const handleMove = (file: VFSFile) => {
+    setFileToMove(file);
+    // Set current path as default, user can edit it
+    setNewFilePath(getRelativePathInBucket(file));
+    setShowMoveDialog(true);
+  };
+
+  const executeRename = async () => {
+    if (!fileToRename || !newFileName.trim()) {
+      toast.error('Please enter a valid file name');
+      return;
+    }
+
+    if (newFileName === fileToRename.name) {
+      setShowRenameDialog(false);
+      return;
+    }
+
+    // Validate filename - no path separators allowed
+    if (newFileName.includes('/') || newFileName.includes('\\')) {
+      toast.error('File name cannot contain path separators');
+      return;
+    }
+
+    setIsRenaming(true);
+    try {
+      const currentPath = getRelativePathInBucket(fileToRename);
+      const pathParts = currentPath.split('/');
+      pathParts[pathParts.length - 1] = newFileName; // Replace filename
+      const newPath = pathParts.join('/');
+
+      const { error } = await storageBucket.move(currentPath, newPath);
+      
+      if (error) {
+        toast.error(`Failed to rename ${fileToRename.name}: ${error.message}`);
+        return;
+      }
+
+      toast.success(`Renamed ${fileToRename.name} to ${newFileName}`);
+      setShowRenameDialog(false);
+      loadFiles(); // Refresh the file list
+    } catch (error) {
+      logger.error('Rename failed', error as Error);
+      toast.error(`Failed to rename ${fileToRename.name}`);
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const executeMove = async () => {
+    if (!fileToMove || !newFilePath.trim()) {
+      toast.error('Please enter a valid file path');
+      return;
+    }
+
+    const currentPath = getRelativePathInBucket(fileToMove);
+    if (newFilePath === currentPath) {
+      setShowMoveDialog(false);
+      return;
+    }
+
+    setIsMoving(true);
+    try {
+      const { error } = await storageBucket.move(currentPath, newFilePath);
+      
+      if (error) {
+        toast.error(`Failed to move ${fileToMove.name}: ${error.message}`);
+        return;
+      }
+
+      toast.success(`Moved ${fileToMove.name} to ${newFilePath}`);
+      setShowMoveDialog(false);
+      loadFiles(); // Refresh the file list
+    } catch (error) {
+      logger.error('Move failed', error as Error);
+      toast.error(`Failed to move ${fileToMove.name}`);
+    } finally {
+      setIsMoving(false);
     }
   };
 
@@ -681,10 +781,10 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
                               </DropdownMenuItem>
                             </DropdownMenuSubContent>
                           </DropdownMenuSub>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleRename(item as VFSFile)}>
                             Rename
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleMove(item as VFSFile)}>
                             Move
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDownload(item as VFSFile)}>
@@ -813,6 +913,95 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Dialog */}
+      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename File</DialogTitle>
+            <DialogDescription>
+              Enter a new name for "{fileToRename?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newFileName">New file name</Label>
+              <Input
+                id="newFileName"
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                placeholder="Enter new file name"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    executeRename();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRenameDialog(false)}
+              disabled={isRenaming}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={executeRename}
+              disabled={isRenaming || !newFileName.trim()}
+            >
+              {isRenaming ? 'Renaming...' : 'Rename'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move Dialog */}
+      <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move File</DialogTitle>
+            <DialogDescription>
+              Enter a new path for "{fileToMove?.name}". You can move it to a different folder or rename it in the process.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newFilePath">New file path</Label>
+              <Input
+                id="newFilePath"
+                value={newFilePath}
+                onChange={(e) => setNewFilePath(e.target.value)}
+                placeholder="Enter new file path (e.g., folder/filename.ext)"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    executeMove();
+                  }
+                }}
+              />
+              <div className="text-sm text-muted-foreground">
+                Examples: "images/photo.jpg", "documents/readme.txt", or just change the filename
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowMoveDialog(false)}
+              disabled={isMoving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={executeMove}
+              disabled={isMoving || !newFilePath.trim()}
+            >
+              {isMoving ? 'Moving...' : 'Move'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
