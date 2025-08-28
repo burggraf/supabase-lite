@@ -141,14 +141,31 @@ export class VFSBridge {
       console.log('🔍 Creating basic binary Response with minimal headers');
       
       try {
-        // Try alternative approach for base64 files
-        if (file.encoding === 'base64') {
+        // Handle chunked vs non-chunked files differently
+        if (file.chunked && file.chunkIds) {
+          console.log('✅ Chunked file - using pre-processed ArrayBuffer content');
+          // For chunked files, content is already processed and ready to serve
+          const response = new Response(content, {
+            status: 200,
+            headers: new Headers({
+              'Content-Type': file.mimeType,
+              'Content-Length': content.byteLength.toString(),
+              'Accept-Ranges': 'bytes',
+              'Access-Control-Allow-Origin': '*'
+            })
+          });
+          
+          return response;
+        }
+        
+        // Try alternative approach for base64 non-chunked files
+        else if (file.encoding === 'base64' && file.content) {
           console.log('🔍 Testing base64 data validity before serving');
           
           // Test if the base64 data is actually valid
           let isValidBase64 = false;
           try {
-            // Quick base64 validation - try to decode a small sample
+            // Quick base64 validation - try to decode a small sample for non-chunked files
             const sample = file.content.substring(0, 100);
             atob(sample);
             isValidBase64 = true;
