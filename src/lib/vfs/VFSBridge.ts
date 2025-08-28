@@ -378,6 +378,7 @@ export class VFSBridge {
         content,
         mimeType,
         encoding,
+        originalSize: file.size, // Preserve actual file size for proper display
       };
 
       const vfsFile = await this.vfsManager.createFile(fullPath, createOptions);
@@ -1458,7 +1459,8 @@ export class VFSBridge {
       await this.vfsManager.createFile(destinationPath, {
         content: rawContent,
         mimeType: sourceFile.mimeType,
-        encoding: sourceFile.encoding // Preserve original encoding to prevent double-encoding
+        encoding: sourceFile.encoding, // Preserve original encoding to prevent double-encoding
+        originalSize: sourceFile.size // Preserve actual file size for proper display
       });
 
       // Update bucket stats
@@ -1544,7 +1546,8 @@ export class VFSBridge {
       await this.vfsManager.createFile(destinationPath, {
         content: rawContent,
         mimeType: sourceFile.mimeType,
-        encoding: sourceFile.encoding // Preserve original encoding to prevent double-encoding
+        encoding: sourceFile.encoding, // Preserve original encoding to prevent double-encoding
+        originalSize: sourceFile.size // Preserve actual file size for proper display
       });
 
       // Update bucket stats
