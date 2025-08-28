@@ -127,8 +127,7 @@ export class VFSBridge {
         throw new Error('File content not available');
       }
 
-      // Determine cache headers
-      const cacheHeaders = this.getCacheHeaders(file);
+      // Note: Cache headers would be applied here in a more complete implementation
 
       console.log('🔍 Final response debug:', {
         mimeType: file.mimeType,
@@ -550,7 +549,7 @@ export class VFSBridge {
 
   /**
    * Handle SPA (Single Page Application) routing
-   * Serves index.html for unmatched routes
+   * Serves index.html for unmatched routes with multi-app support
    */
   async handleSPARequest(options: {
     path: string;
@@ -559,21 +558,123 @@ export class VFSBridge {
     try {
       const { path } = options;
 
+      // Parse the path to extract app name
+      // Expected paths: /app/my-app/some/route or /app/my-app
+      const pathParts = path.split('/').filter(part => part !== '');
+      
+      let appName = '';
+      let appPath = '';
+      
+      if (pathParts.length >= 2 && pathParts[0] === 'app') {
+        appName = pathParts[1];
+        appPath = pathParts.slice(2).join('/'); // remaining path after /app/appname/
+      } else if (pathParts.length === 1 && pathParts[0] === 'app') {
+        // Just /app - show app listing or default
+        return this.handleAppRootRequest();
+      } else {
+        // Invalid path format
+        return new Response(
+          '<html><body><h1>Invalid app path</h1><p>Use /app/[app-name] format</p></body></html>',
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'text/html',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
+        );
+      }
+
+      // Construct the full VFS path
+      let vfsPath = `app/${appName}${appPath ? '/' + appPath : ''}`;
+      
+      // If no specific file is requested (just /app/appName), look for index.html
+      if (!appPath || appPath === '') {
+        vfsPath = `app/${appName}/index.html`;
+      }
+      
+      console.log('🔍 VFS SPA Debug:', {
+        originalPath: path,
+        appName,
+        appPath,
+        vfsPath,
+        isAssetFile: appPath && /\.[a-zA-Z0-9]+$/.test(appPath)
+      });
+      
+      // Check if this is a request for a specific asset (has file extension)
+      const hasFileExtension = appPath && /\.[a-zA-Z0-9]+$/.test(appPath);
+      
       // Try to serve the exact file first
-      const file = await this.vfsManager.readFile(path);
+      const file = await this.vfsManager.readFile(vfsPath);
+      console.log('🔍 File lookup result:', {
+        vfsPath,
+        fileFound: !!file,
+        fileMimeType: file?.mimeType,
+        hasFileExtension,
+        isAssetRequest: hasFileExtension
+      });
+      
       if (file) {
+        console.log('🔍 Serving file via handleFileRequest:', {
+          bucket: 'app',
+          requestPath: `${appName}${appPath ? '/' + appPath : '/index.html'}`,
+          actualFilePath: file.path
+        });
+        
+        // If this is an HTML file, we need to rewrite asset paths
+        if (file.mimeType === 'text/html' && file.content) {
+          let htmlContent = file.content;
+          
+          // Add base tag to ensure relative paths resolve correctly
+          const baseTag = `<base href="/app/${appName}/">`;
+          if (!htmlContent.includes('<base')) {
+            htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`);
+          }
+          
+          // Convert absolute paths to relative (they'll resolve against the base tag)
+          htmlContent = htmlContent
+            .replace(/href="\/assets\//g, `href="assets/`)
+            .replace(/src="\/assets\//g, `src="assets/`)
+            .replace(/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g, `href="$1"`)
+            .replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`);
+          
+          console.log('🔧 Added base tag and rewrote HTML asset paths for direct file serve:', { appName, baseTag, originalLength: file.content.length, newLength: htmlContent.length });
+          
+          return new Response(htmlContent, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
         return this.handleFileRequest({
           bucket: 'app',
-          path: path.replace('app/', ''),
+          path: `${appName}${appPath ? '/' + appPath : '/index.html'}`,
           userContext: options.userContext,
         });
       }
 
-      // Fallback to index.html for SPA routing
-      const indexFile = await this.vfsManager.readFile('app/index.html');
+      // If this is a request for a specific asset file and it doesn't exist, return 404
+      if (hasFileExtension) {
+        console.log('🔍 Asset not found, returning 404:', { appPath, vfsPath });
+        return new Response(null, {
+          status: 404,
+          headers: {
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+
+      // For SPA routes (no file extension), try to serve index.html
+      const indexPath = `app/${appName}/index.html`;
+      const indexFile = await this.vfsManager.readFile(indexPath);
+      
       if (!indexFile) {
+        // App doesn't exist or no index.html
         return new Response(
-          '<html><body><h1>No application deployed</h1></body></html>',
+          `<html><body><h1>App "${appName}" not found</h1><p>The requested application could not be found or is not deployed.</p></body></html>`,
           {
             status: 404,
             headers: {
@@ -584,7 +685,28 @@ export class VFSBridge {
         );
       }
 
-      return new Response(indexFile.content, {
+      // Rewrite asset paths in HTML to be relative to the app
+      let htmlContent = indexFile.content;
+      if (indexFile.mimeType === 'text/html') {
+        // Add base tag to ensure relative paths resolve correctly
+        const baseTag = `<base href="/app/${appName}/">`;
+        if (!htmlContent.includes('<base')) {
+          htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`);
+        }
+        
+        // Convert absolute paths to relative (they'll resolve against the base tag)
+        htmlContent = htmlContent
+          .replace(/href="\/assets\//g, `href="assets/`)
+          .replace(/src="\/assets\//g, `src="assets/`)
+          .replace(/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g, `href="$1"`)
+          .replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`);
+        
+        console.log('🔧 Added base tag and rewrote HTML asset paths for SPA route:', { appName, baseTag, originalLength: indexFile.content.length, newLength: htmlContent.length });
+      }
+
+      // Serve the app's index.html for SPA routing
+      console.log('🔍 Serving index.html for SPA route:', { originalPath: path, appName, appPath });
+      return new Response(htmlContent, {
         status: 200,
         headers: {
           'Content-Type': 'text/html',
@@ -597,6 +719,85 @@ export class VFSBridge {
       logger.error('VFS SPA request failed', error as Error, { path: options.path });
       return new Response(
         '<html><body><h1>Application Error</h1></body></html>',
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'text/html',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    }
+  }
+
+  /**
+   * Handle requests to /app root - show list of deployed apps
+   */
+  private async handleAppRootRequest(): Promise<Response> {
+    try {
+      // List all files in the app bucket to find deployed apps
+      const files = await this.vfsManager.listFiles({ directory: 'app', recursive: false });
+      
+      // Find unique app names (directories in app/)
+      const appNames = new Set<string>();
+      files.forEach(file => {
+        const pathParts = file.path.split('/');
+        if (pathParts.length >= 2 && pathParts[0] === 'app') {
+          appNames.add(pathParts[1]);
+        }
+      });
+
+      const apps = Array.from(appNames);
+
+      if (apps.length === 0) {
+        return new Response(
+          `<html>
+            <head><title>Supabase Lite - App Hosting</title></head>
+            <body style="font-family: system-ui; padding: 2rem; max-width: 600px; margin: 0 auto;">
+              <h1>📱 App Hosting</h1>
+              <p>No applications are currently deployed.</p>
+              <p>Deploy your static web applications through the Supabase Lite dashboard.</p>
+              <a href="/" style="color: #3b82f6;">← Back to Dashboard</a>
+            </body>
+          </html>`,
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
+        );
+      }
+
+      const appList = apps.map(name => 
+        `<li><a href="/app/${name}" style="color: #3b82f6;">📱 ${name}</a></li>`
+      ).join('\n');
+
+      return new Response(
+        `<html>
+          <head><title>Supabase Lite - Deployed Apps</title></head>
+          <body style="font-family: system-ui; padding: 2rem; max-width: 600px; margin: 0 auto;">
+            <h1>📱 Deployed Applications</h1>
+            <p>Select an application to launch:</p>
+            <ul style="line-height: 2;">
+              ${appList}
+            </ul>
+            <p><a href="/" style="color: #3b82f6;">← Back to Dashboard</a></p>
+          </body>
+        </html>`,
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/html',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      );
+    } catch (error) {
+      logger.error('Failed to handle app root request', error as Error);
+      return new Response(
+        '<html><body><h1>Error loading applications</h1></body></html>',
         {
           status: 500,
           headers: {
@@ -677,8 +878,12 @@ export class VFSBridge {
     }
 
     try {
-      // Use FileStorage to assemble chunks - this handles the chunk reading and assembly
-      const content = await this.vfsManager.fileStorage.loadFileContent(file.path);
+      // Use VFSManager to assemble chunks - this handles the chunk reading and assembly
+      const content = await this.vfsManager.readFileContent(file.path);
+      
+      if (!content) {
+        throw new Error('Cannot load chunked file content');
+      }
       
       console.log('🔍 Chunked content debug:', {
         path: file.path,
@@ -1359,7 +1564,7 @@ export class VFSBridge {
       }
 
       // List all files in the bucket and delete them
-      const files = await this.vfsManager.listFiles(bucketId);
+      const files = await this.vfsManager.listFiles({ directory: bucketId });
       const deletePromises = files.map(file => 
         this.vfsManager.deleteFile(file.path)
       );

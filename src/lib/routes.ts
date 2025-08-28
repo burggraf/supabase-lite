@@ -6,7 +6,7 @@ export const ROUTES = {
   AUTH: '/auth',
   STORAGE: '/storage',
   REALTIME: '/realtime',
-  EDGE_FUNCTIONS: '/edge-functions',
+  APP_HOSTING: '/app-hosting',
   API: '/api',
 } as const;
 
@@ -18,7 +18,7 @@ export const ROUTE_TO_PAGE: Record<string, string> = {
   [ROUTES.AUTH]: 'auth',
   [ROUTES.STORAGE]: 'storage',
   [ROUTES.REALTIME]: 'realtime',
-  [ROUTES.EDGE_FUNCTIONS]: 'edge-functions',
+  [ROUTES.APP_HOSTING]: 'app-hosting',
   [ROUTES.API]: 'api',
 };
 
@@ -30,7 +30,7 @@ export const PAGE_TO_ROUTE: Record<string, string> = {
   'auth': ROUTES.AUTH,
   'storage': ROUTES.STORAGE,
   'realtime': ROUTES.REALTIME,
-  'edge-functions': ROUTES.EDGE_FUNCTIONS,
+  'app-hosting': ROUTES.APP_HOSTING,
   'api': ROUTES.API,
 };
 

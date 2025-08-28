@@ -52,6 +52,13 @@ function initializeWebSocketBridge() {
         try {
           const message = JSON.parse(event.data)
           
+          console.log('🔄 Browser WebSocket received message:', { 
+            type: message.type, 
+            url: message.url, 
+            method: message.method,
+            requestId: message.requestId 
+          })
+          
           if (message.type === 'request') {
             
             // Handle VFS-direct requests directly (bypass MSW)
@@ -117,28 +124,39 @@ function initializeWebSocketBridge() {
             const fetchOptions: RequestInit = {
               method: message.method,
               headers: {
-                ...message.headers,
-                // Ensure we have the right content type for JSON requests
-                'Content-Type': message.headers?.['content-type'] || 'application/json'
+                ...message.headers
+                // Don't force content-type - let MSW handle it based on the request
               }
             }
             
-            // Add body for non-GET requests
+            // Only set content-type to JSON for requests that actually need it
             if (message.body && (message.method === 'POST' || message.method === 'PATCH' || message.method === 'PUT')) {
               fetchOptions.body = message.body
+              // Only set JSON content-type if not already specified
+              if (!fetchOptions.headers?.['content-type'] && !fetchOptions.headers?.['Content-Type']) {
+                (fetchOptions.headers as any)['Content-Type'] = 'application/json'
+              }
             }
             
             try {
               // Make the fetch request - this WILL be intercepted by MSW!
               const response = await fetch(message.url, fetchOptions)
               
-              // Get response data
-              const responseText = await response.text()
+              // Get response data - handle different content types properly
+              const contentType = response.headers.get('content-type') || ''
               let responseData
-              try {
-                responseData = JSON.parse(responseText)
-              } catch {
-                responseData = responseText
+              
+              if (contentType.includes('application/json')) {
+                // JSON response
+                const responseText = await response.text()
+                try {
+                  responseData = JSON.parse(responseText)
+                } catch {
+                  responseData = responseText
+                }
+              } else {
+                // Non-JSON response (JavaScript, CSS, HTML, etc.) - keep as text
+                responseData = await response.text()
               }
               
               // Send response back via WebSocket

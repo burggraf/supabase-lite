@@ -6,7 +6,7 @@ import {
   Shield, 
   FolderOpen, 
   Zap, 
-  Code, 
+  Globe, 
   BookOpen,
   Database,
   Settings,
@@ -22,7 +22,7 @@ const iconMap = {
   Shield,
   FolderOpen,
   Zap,
-  Code,
+  Globe,
   BookOpen,
   Database,
   Settings,
@@ -84,10 +84,10 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
       badge: 'Coming Soon',
     },
     {
-      id: 'edge-functions',
-      label: 'Edge Functions',
-      icon: 'Code' as keyof typeof iconMap,
-      badge: 'Coming Soon',
+      id: 'app-hosting',
+      label: 'App Hosting',
+      icon: 'Globe' as keyof typeof iconMap,
+      badge: null,
     },
     {
       section: 'Tools'

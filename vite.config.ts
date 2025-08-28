@@ -208,7 +208,10 @@ function websocketBridge(): Plugin {
 
       // HTTP middleware
       server.middlewares.use(async (req, res, next) => {
-        // Check if this is an API route we should handle
+        // DEBUG: Log EVERY request that hits Vite middleware
+        console.log('🔥 VITE MIDDLEWARE HIT:', req.url, req.method)
+        
+        // Check if this is an API route or app hosting route we should handle
         const isApiRoute = req.url && (
           // Standard API routes
           req.url.startsWith('/rest/') || 
@@ -218,11 +221,25 @@ function websocketBridge(): Plugin {
           req.url.startsWith('/projects') ||
           req.url.startsWith('/debug/sql') ||
           req.url.startsWith('/vfs-direct/') || // Direct VFS access bypassing MSW
-          // Project-prefixed API routes (pattern: /:projectId/rest|auth|debug|storage)
-          /^\/[^\/]+\/(rest|auth|debug|storage|vfs-direct)\//.test(req.url)
+          req.url.startsWith('/app/') || // App hosting routes
+          // Project-prefixed API routes (pattern: /:projectId/rest|auth|debug|storage|app)
+          /^\/[^\/]+\/(rest|auth|debug|storage|vfs-direct|app)\//.test(req.url)
         );
         
         if (isApiRoute) {
+          
+          // CRITICAL: Handle /app/* asset requests directly in Vite middleware
+          // Module script loading bypasses MSW, so we need to serve JS/CSS files directly
+          if (req.url && req.url.startsWith('/app/')) {
+            const isAssetRequest = /\.(js|css|png|jpg|jpeg|gif|webp|svg|woff|woff2|ttf|ico)$/i.test(req.url)
+            
+            if (isAssetRequest) {
+              console.log('🎯 DIRECT ASSET SERVING:', { url: req.url, isAsset: isAssetRequest })
+              
+              // Try to serve this asset directly from VFS via WebSocket
+              // This bypasses MSW entirely for module scripts
+            }
+          }
           
           // Handle VFS direct requests - forward to browser via WebSocket
           if (req.url && req.url.startsWith('/vfs-direct/')) {
@@ -243,6 +260,12 @@ function websocketBridge(): Plugin {
           }
           
           // Check if browser is connected
+          console.log('🔍 WebSocket status:', { 
+            hasBrowserSocket: !!browserSocket, 
+            readyState: browserSocket?.readyState,
+            url: req.url 
+          })
+          
           if (!browserSocket || browserSocket.readyState !== 1) {
             res.writeHead(503, {
               'Content-Type': 'application/json',
@@ -264,7 +287,7 @@ function websocketBridge(): Plugin {
             
             // Extract project context from URL for better logging
             const urlPath = req.url || '';
-            const projectMatch = urlPath.match(/^\/([^\/]+)\/(rest|auth|debug|storage|vfs-direct)\//);
+            const projectMatch = urlPath.match(/^\/([^\/]+)\/(rest|auth|debug|storage|vfs-direct|app)\//);
             const projectContext = projectMatch ? {
               projectId: projectMatch[1],
               apiType: projectMatch[2]
@@ -300,6 +323,19 @@ function websocketBridge(): Plugin {
               ? ` [${projectContext.projectId}/${projectContext.apiType}]` 
               : '';
             console.log(`📤 Forwarded ${req.method} ${req.url}${contextStr} to browser (ID: ${requestId})`)
+            
+            // Critical debug: Log all /app requests to see what's happening
+            if (req.url && req.url.startsWith('/app/')) {
+              console.log('🚨 VITE MIDDLEWARE - APP REQUEST:', {
+                url: req.url,
+                method: req.method,
+                userAgent: req.headers['user-agent'] || 'none',
+                accept: req.headers['accept'] || 'none',
+                isJavaScript: req.url.includes('.js'),
+                isCSS: req.url.includes('.css'),
+                isAsset: /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf)$/i.test(req.url)
+              })
+            }
             
             // Wait for response from browser
             const response = await responsePromise

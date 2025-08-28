@@ -20,7 +20,7 @@ describe('routes', () => {
       expect(getPageFromPath('/auth')).toBe('auth');
       expect(getPageFromPath('/storage')).toBe('storage');
       expect(getPageFromPath('/realtime')).toBe('realtime');
-      expect(getPageFromPath('/edge-functions')).toBe('edge-functions');
+      expect(getPageFromPath('/app-hosting')).toBe('app-hosting');
       expect(getPageFromPath('/api')).toBe('api');
     });
   });
@@ -43,7 +43,7 @@ describe('routes', () => {
       expect(getPathFromPage('auth')).toBe('/auth');
       expect(getPathFromPage('storage')).toBe('/storage');
       expect(getPathFromPage('realtime')).toBe('/realtime');
-      expect(getPathFromPage('edge-functions')).toBe('/edge-functions');
+      expect(getPathFromPage('app-hosting')).toBe('/app-hosting');
       expect(getPathFromPage('api')).toBe('/api');
     });
   });
@@ -57,7 +57,7 @@ describe('routes', () => {
       expect(ROUTES.AUTH).toBe('/auth');
       expect(ROUTES.STORAGE).toBe('/storage');
       expect(ROUTES.REALTIME).toBe('/realtime');
-      expect(ROUTES.EDGE_FUNCTIONS).toBe('/edge-functions');
+      expect(ROUTES.APP_HOSTING).toBe('/app-hosting');
       expect(ROUTES.API).toBe('/api');
     });
   });
