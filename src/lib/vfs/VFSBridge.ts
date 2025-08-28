@@ -1422,14 +1422,44 @@ export class VFSBridge {
         });
       }
 
-      // Create the file at destination
-      await this.vfsManager.createFile(destinationPath, {
-        content: sourceFile.content || '',
-        mimeType: sourceFile.mimeType
+      // For move operations, duplicate the file record exactly and copy chunks
+      console.log('🔍 Moving file - cloning file record exactly:', {
+        originalSize: sourceFile.size,
+        isChunked: sourceFile.chunked,
+        encoding: sourceFile.encoding
       });
 
-      // Delete the source file
+      // For move operations, get the raw content and recreate the file
+      console.log('🔍 Moving file - preserving exact content without re-encoding:', {
+        originalSize: sourceFile.size,
+        encoding: sourceFile.encoding,
+        chunked: sourceFile.chunked
+      });
+
+      let rawContent: string;
+      
+      if (sourceFile.chunked && sourceFile.chunkIds) {
+        // For chunked files, load the full content using VFSManager
+        console.log('🔍 Loading chunked file content using VFSManager');
+        const content = await this.vfsManager.readFileContent(sourcePath);
+        if (!content) {
+          throw new Error('Cannot load chunked file content');
+        }
+        rawContent = content;
+      } else {
+        // For regular files, use the existing content
+        rawContent = sourceFile.content || '';
+      }
+
+      // Delete source first
       await this.vfsManager.deleteFile(sourcePath);
+      
+      // Create destination file with exact same content and encoding
+      await this.vfsManager.createFile(destinationPath, {
+        content: rawContent,
+        mimeType: sourceFile.mimeType,
+        encoding: sourceFile.encoding // Preserve original encoding to prevent double-encoding
+      });
 
       // Update bucket stats
       await this.vfsManager.updateBucketStats(bucket);
@@ -1488,10 +1518,33 @@ export class VFSBridge {
         });
       }
 
-      // Create the file at destination
+      // For copy operations, use VFS methods to preserve exact content
+      console.log('🔍 Copying file - preserving exact content:', {
+        originalSize: sourceFile.size,
+        isChunked: sourceFile.chunked,
+        encoding: sourceFile.encoding
+      });
+
+      let rawContent: string;
+      
+      if (sourceFile.chunked && sourceFile.chunkIds) {
+        // For chunked files, load the full content using VFSManager
+        console.log('🔍 Loading chunked file content for copy using VFSManager');
+        const content = await this.vfsManager.readFileContent(sourcePath);
+        if (!content) {
+          throw new Error('Cannot load chunked file content');
+        }
+        rawContent = content;
+      } else {
+        // For regular files, use the existing content
+        rawContent = sourceFile.content || '';
+      }
+
+      // Create destination file with exact same content and encoding
       await this.vfsManager.createFile(destinationPath, {
-        content: sourceFile.content || '',
-        mimeType: sourceFile.mimeType
+        content: rawContent,
+        mimeType: sourceFile.mimeType,
+        encoding: sourceFile.encoding // Preserve original encoding to prevent double-encoding
       });
 
       // Update bucket stats

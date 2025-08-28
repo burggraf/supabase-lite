@@ -213,6 +213,26 @@ export class VFSManager {
     return file;
   }
 
+  /**
+   * Get the full content of a file (including chunked files)
+   */
+  public async readFileContent(path: string): Promise<string | null> {
+    await this.ensureInitialized();
+    
+    if (!path || typeof path !== 'string') {
+      return null;
+    }
+
+    const normalizedPath = this.normalizePath(path);
+    
+    try {
+      return await this.fileStorage.loadFileContent(normalizedPath);
+    } catch (error) {
+      logger.error('Failed to read file content', error as Error, { path: normalizedPath });
+      return null;
+    }
+  }
+
   public async updateFile(path: string, contentOrOptions: string | VFSUpdateFileOptions): Promise<VFSFile> {
     await this.ensureInitialized();
 
