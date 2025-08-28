@@ -217,11 +217,19 @@ function websocketBridge(): Plugin {
           req.url.startsWith('/health') ||
           req.url.startsWith('/projects') ||
           req.url.startsWith('/debug/sql') ||
+          req.url.startsWith('/vfs-direct/') || // Direct VFS access bypassing MSW
           // Project-prefixed API routes (pattern: /:projectId/rest|auth|debug|storage)
-          /^\/[^\/]+\/(rest|auth|debug|storage)\//.test(req.url)
+          /^\/[^\/]+\/(rest|auth|debug|storage|vfs-direct)\//.test(req.url)
         );
         
         if (isApiRoute) {
+          
+          // Handle VFS direct requests - forward to browser via WebSocket
+          if (req.url && req.url.startsWith('/vfs-direct/')) {
+            console.log('🚀 Forwarding VFS-direct request to browser:', req.url)
+            // This will be handled by the normal WebSocket forwarding logic below
+            // The browser will process the VFS-direct request using VFSDirectHandler
+          }
           
           // Handle CORS preflight
           if (req.method === 'OPTIONS') {
@@ -256,7 +264,7 @@ function websocketBridge(): Plugin {
             
             // Extract project context from URL for better logging
             const urlPath = req.url || '';
-            const projectMatch = urlPath.match(/^\/([^\/]+)\/(rest|auth|debug|storage)\//);
+            const projectMatch = urlPath.match(/^\/([^\/]+)\/(rest|auth|debug|storage|vfs-direct)\//);
             const projectContext = projectMatch ? {
               projectId: projectMatch[1],
               apiType: projectMatch[2]
@@ -298,7 +306,34 @@ function websocketBridge(): Plugin {
             
             console.log(`📥 Received response for ${requestId}${contextStr} (status: ${response.status})`)
             
-            // Send response back to client
+            // Handle VFS-direct responses specially (binary data)
+            if (req.url && req.url.startsWith('/vfs-direct/')) {
+              // Check if this is a base64-encoded binary response
+              if (response.headers && response.headers['X-Content-Encoding'] === 'base64') {
+                console.log('🔄 Converting base64 response back to binary for HTTP')
+                
+                // Decode base64 back to binary
+                const binaryString = atob(response.body as string)
+                const bytes = new Uint8Array(binaryString.length)
+                for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i)
+                }
+                
+                // Send binary response
+                const headers = { ...response.headers }
+                delete headers['X-Content-Encoding'] // Remove our internal header
+                
+                res.writeHead(response.status || 200, {
+                  'Access-Control-Allow-Origin': '*',
+                  ...headers
+                })
+                res.end(Buffer.from(bytes))
+                console.log('✅ Sent binary response via HTTP')
+                return
+              }
+            }
+            
+            // Send response back to client (normal JSON)
             res.writeHead(response.status || 200, {
               'Content-Type': 'application/json',
               'Access-Control-Allow-Origin': '*',
