@@ -8,6 +8,7 @@ import {
   Trash2,
   Copy,
   Link,
+  Eye,
   File,
   Folder,
   Image,
@@ -22,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Toggle } from '@/components/ui/toggle';
 import { FileUpload } from './FileUpload';
 import { MultiSelectActionBar } from './MultiSelectActionBar';
@@ -59,6 +61,8 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
   const [isLoading, setIsLoading] = useState(true);
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [previewFile, setPreviewFile] = useState<VFSFile | null>(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
 
   // Initialize Storage Client
   const storageClient = new StorageClient({
@@ -271,9 +275,18 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
       const filePath = getRelativePathInBucket(file);
       
       if (bucket.isPublic) {
-        const { data } = storageBucket.getPublicUrl(filePath);
-        await navigator.clipboard.writeText(data.publicUrl);
-        toast.success('Public URL copied to clipboard');
+        // Use direct blob URL for public files to bypass MSW binary response issues
+        const { data: blobData, error: blobError } = await storageBucket.getDirectBlobUrl(filePath);
+        if (blobError || !blobData) {
+          // Fallback to standard public URL if direct access fails
+          const { data } = storageBucket.getPublicUrl(filePath);
+          await navigator.clipboard.writeText(data.publicUrl);
+          toast.success('Public URL copied to clipboard');
+        } else {
+          await navigator.clipboard.writeText(blobData.blobUrl);
+          toast.success(`Direct blob URL copied to clipboard`);
+          toast.info(`Note: Blob URLs don't preserve filenames when downloaded. This file is: ${file.name}`, { duration: 5000 });
+        }
       } else {
         const { data, error } = await storageBucket.createSignedUrl(filePath, 3600);
         if (error) {
@@ -309,6 +322,46 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
       logger.error('Get signed URL failed', error as Error);
       toast.error('Failed to generate signed URL');
     }
+  };
+
+  const handlePreviewFile = async (file: VFSFile) => {
+    try {
+      const filePath = getRelativePathInBucket(file);
+      
+      if (bucket.isPublic) {
+        // Use direct blob URL for preview
+        const { data: blobData, error: blobError } = await storageBucket.getDirectBlobUrl(filePath);
+        if (blobError || !blobData) {
+          toast.error('Failed to preview file');
+          return;
+        }
+        
+        // Set preview state to show modal
+        setPreviewFile(file);
+        setPreviewBlobUrl(blobData.blobUrl);
+      } else {
+        const { data, error } = await storageBucket.createSignedUrl(filePath, 3600);
+        if (error) {
+          toast.error(`Failed to preview file: ${error.message}`);
+          return;
+        }
+        if (data?.signedUrl) {
+          setPreviewFile(file);
+          setPreviewBlobUrl(data.signedUrl);
+        }
+      }
+    } catch (error) {
+      logger.error('Preview file failed', error as Error);
+      toast.error('Failed to preview file');
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewFile(null);
+    if (previewBlobUrl && previewBlobUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewBlobUrl);
+    }
+    setPreviewBlobUrl(null);
   };
 
   const handleDelete = async (file: VFSFile) => {
@@ -654,6 +707,10 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handlePreviewFile(item as VFSFile)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Preview
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDownload(item as VFSFile)}>
                             <Download className="h-4 w-4 mr-2" />
                             Download
@@ -692,6 +749,104 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
         currentPath={currentPath}
         onUploadComplete={loadFiles}
       />
+
+      {/* File Preview Modal */}
+      <Dialog open={!!previewFile} onOpenChange={(open) => !open && closePreview()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>{previewFile?.name}</DialogTitle>
+            <DialogDescription>
+              {previewFile && formatFileSize(previewFile.size)} • {previewFile && formatDate(previewFile.updatedAt)}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-hidden flex items-center justify-center min-h-[400px] bg-muted/10 rounded-lg">
+            {previewFile && previewBlobUrl && (
+              <div className="max-w-full max-h-full overflow-auto">
+                {/* Image Preview */}
+                {['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(
+                  previewFile.name.split('.').pop()?.toLowerCase() || ''
+                ) && (
+                  <img
+                    src={previewBlobUrl}
+                    alt={previewFile.name}
+                    className="max-w-full max-h-full object-contain"
+                    style={{ maxHeight: '70vh' }}
+                  />
+                )}
+                
+                {/* Video Preview */}
+                {['mp4', 'avi', 'mov', 'wmv', 'mkv', 'webm'].includes(
+                  previewFile.name.split('.').pop()?.toLowerCase() || ''
+                ) && (
+                  <video
+                    src={previewBlobUrl}
+                    controls
+                    className="max-w-full max-h-full"
+                    style={{ maxHeight: '70vh' }}
+                  />
+                )}
+                
+                {/* Audio Preview */}
+                {['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(
+                  previewFile.name.split('.').pop()?.toLowerCase() || ''
+                ) && (
+                  <div className="p-8">
+                    <div className="text-center mb-4">
+                      <Music className="h-16 w-16 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">Audio File</p>
+                    </div>
+                    <audio
+                      src={previewBlobUrl}
+                      controls
+                      className="w-full"
+                    />
+                  </div>
+                )}
+                
+                {/* Text Preview */}
+                {['txt', 'md', 'json', 'xml', 'csv', 'js', 'ts', 'html', 'css'].includes(
+                  previewFile.name.split('.').pop()?.toLowerCase() || ''
+                ) && (
+                  <div className="p-4 max-h-96 overflow-auto">
+                    <iframe
+                      src={previewBlobUrl}
+                      className="w-full h-96 border rounded"
+                      title={previewFile.name}
+                    />
+                  </div>
+                )}
+                
+                {/* PDF Preview */}
+                {previewFile.name.split('.').pop()?.toLowerCase() === 'pdf' && (
+                  <iframe
+                    src={previewBlobUrl}
+                    className="w-full h-96 border rounded"
+                    title={previewFile.name}
+                  />
+                )}
+                
+                {/* Generic File Preview */}
+                {!['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'avi', 'mov', 'wmv', 'mkv', 'webm', 'mp3', 'wav', 'flac', 'aac', 'ogg', 'txt', 'md', 'json', 'xml', 'csv', 'js', 'ts', 'html', 'css', 'pdf'].includes(
+                  previewFile.name.split('.').pop()?.toLowerCase() || ''
+                ) && (
+                  <div className="p-8 text-center">
+                    <File className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-lg font-medium mb-2">{previewFile.name}</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      This file type cannot be previewed
+                    </p>
+                    <Button onClick={() => handleDownload(previewFile)}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download File
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
