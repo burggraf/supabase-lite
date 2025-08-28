@@ -252,8 +252,12 @@ export function CodeEditor({ selectedFile, onFileChange }: CodeEditorProps) {
       tabSize: 2,
       wordWrap: 'on',
       automaticLayout: true,
-      scrollBeyondLastLine: false,
-      renderWhitespace: 'selection'
+      scrollBeyondLastLine: true,
+      renderWhitespace: 'selection',
+      scrollbar: {
+        vertical: 'visible',
+        horizontal: 'visible'
+      }
     });
 
     // Add keyboard shortcuts
@@ -363,7 +367,7 @@ export function CodeEditor({ selectedFile, onFileChange }: CodeEditorProps) {
       </div>
 
       {/* Editor Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -411,7 +415,7 @@ Deno.serve(async (req: Request) => {
             </div>
           </div>
         ) : (
-          <div className="h-full relative">
+          <div className="h-full relative overflow-auto">
             <Editor
               height="100%"
               language={activeFile.language}
@@ -426,7 +430,7 @@ Deno.serve(async (req: Request) => {
                 tabSize: 2,
                 wordWrap: 'on',
                 automaticLayout: true,
-                scrollBeyondLastLine: false,
+                scrollBeyondLastLine: true,
                 renderWhitespace: 'selection',
                 bracketPairColorization: { enabled: true },
                 suggest: {

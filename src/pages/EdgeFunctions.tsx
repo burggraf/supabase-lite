@@ -260,7 +260,7 @@ Deno.serve(async (req: Request) => {
               </TabsList>
             </div>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1">
               <TabsContent value="editor" className="h-full m-0">
                 <CodeEditor
                   selectedFile={selectedFile}
