@@ -4,6 +4,7 @@
  */
 
 import { StorageError } from './StorageError'
+import { vfsManager } from '../vfs/VFSManager'
 import type {
   UploadOptions,
   UploadResponse,
@@ -98,6 +99,13 @@ export class StorageBucket {
    */
   async download(path: string): Promise<DownloadResponse> {
     try {
+      // Try direct VFS access first for better performance
+      const directBlob = await this.downloadDirect(path)
+      if (directBlob) {
+        return { data: directBlob, error: null }
+      }
+
+      // Fallback to HTTP request
       const response = await fetch(`${this.apiUrl}/storage/v1/object/${this.bucketId}/${path}`, {
         method: 'GET',
         headers: this.headers
@@ -108,8 +116,8 @@ export class StorageBucket {
         return { data: null, error }
       }
 
-      const blob = await response.blob()
-      return { data: blob, error: null }
+      const responseBlob = await response.blob()
+      return { data: responseBlob, error: null }
     } catch (error) {
       return { 
         data: null, 
@@ -305,6 +313,77 @@ export class StorageBucket {
 
     return {
       data: { publicUrl: url }
+    }
+  }
+
+  /**
+   * Gets a direct blob URL for a file bypassing HTTP requests
+   * This creates an object URL that can be used directly in the browser
+   */
+  async getDirectBlobUrl(path: string): Promise<{ data: { blobUrl: string } | null; error: StorageError | null }> {
+    try {
+      const blob = await this.downloadDirect(path)
+      if (!blob) {
+        return {
+          data: null,
+          error: new StorageError('File not found in VFS', 404)
+        }
+      }
+
+      const blobUrl = URL.createObjectURL(blob)
+      return {
+        data: { blobUrl },
+        error: null
+      }
+    } catch (error) {
+      return {
+        data: null,
+        error: StorageError.fromError(error instanceof Error ? error : new Error(String(error)))
+      }
+    }
+  }
+
+  /**
+   * Downloads a file directly from VFS without HTTP
+   */
+  private async downloadDirect(path: string): Promise<Blob | null> {
+    try {
+      // Construct full VFS path
+      const fullPath = `${this.bucketId}/${path}`
+      
+      // Get file metadata
+      const files = await vfsManager.listFiles({
+        directory: this.bucketId,
+        recursive: true
+      })
+      
+      const file = files.find(f => f.path === fullPath)
+      if (!file) {
+        return null
+      }
+
+      // Get file content directly from VFS
+      const content = await vfsManager.fileStorage.loadFileContent(fullPath)
+      if (!content) {
+        return null
+      }
+
+      // Convert to blob based on encoding
+      if (file.encoding === 'base64') {
+        // Decode base64 to binary
+        const binaryString = atob(content)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i)
+        }
+        return new Blob([bytes], { type: file.mimetype || 'application/octet-stream' })
+      } else {
+        // Handle text content
+        return new Blob([content], { type: file.mimetype || 'text/plain' })
+      }
+    } catch (error) {
+      console.error('Direct download error:', error)
+      return null
     }
   }
 
