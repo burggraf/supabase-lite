@@ -1274,8 +1274,16 @@ const createVFSListHandler = () => async ({ params, request, projectInfo }: any)
 const createSPAHandler = () => async ({ params, request, projectInfo }: any) => {
   try {
     const path = new URL(request.url).pathname;
+    const method = request.method;
+    const userAgent = request.headers.get('user-agent');
     
-    console.log('🌐 MSW: SPA request', { path, projectId: projectInfo?.projectId });
+    console.log('🌐 MSW: SPA request', { 
+      path, 
+      method, 
+      projectId: projectInfo?.projectId,
+      isAssetRequest: path.includes('.'),
+      userAgent: userAgent ? userAgent.substring(0, 50) + '...' : 'none'
+    });
     
     // Initialize VFS for the current project
     if (projectInfo?.projectId) {
@@ -3444,7 +3452,8 @@ export const handlers = [
   http.get('/files/:bucket/*', withProjectResolution(createVFSFileGetHandler())),
   http.get('/:projectId/files/:bucket/*', withProjectResolution(createVFSFileGetHandler())),
   
-  // SPA (Single Page Application) hosting - lowest priority
+  // SPA (Single Page Application) hosting 
+  // These only handle requests forwarded from Vite middleware via WebSocket
   http.get('/app/*', withProjectResolution(createSPAHandler())),
   http.get('/:projectId/app/*', withProjectResolution(createSPAHandler())),
 

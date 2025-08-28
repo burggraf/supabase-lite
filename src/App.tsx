@@ -6,6 +6,7 @@ import { DatabaseWorking as Database } from '@/components/database/DatabaseWorki
 import { APITester } from '@/components/api-test/APITester';
 import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
 import { Storage } from '@/components/storage/Storage';
+import { AppHosting } from '@/components/app-hosting/AppHosting';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
@@ -147,6 +148,12 @@ function App() {
         return (
           <ErrorBoundary>
             <Storage />
+          </ErrorBoundary>
+        );
+      case 'app-hosting':
+        return (
+          <ErrorBoundary>
+            <AppHosting />
           </ErrorBoundary>
         );
       case 'api-test':

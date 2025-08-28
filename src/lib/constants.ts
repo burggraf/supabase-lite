@@ -57,11 +57,11 @@ export const NAVIGATION_ITEMS = [
     disabled: true,
   },
   {
-    id: 'edge-functions',
-    label: 'Edge Functions',
-    icon: 'Code',
-    path: '/edge-functions',
-    disabled: true,
+    id: 'app-hosting',
+    label: 'App Hosting',
+    icon: 'Globe',
+    path: '/app-hosting',
+    disabled: false,
   },
   {
     id: 'api',
