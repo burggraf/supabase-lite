@@ -7,6 +7,7 @@ import { APITester } from '@/components/api-test/APITester';
 import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
 import { Storage } from '@/components/storage/Storage';
 import { AppHosting } from '@/components/app-hosting/AppHosting';
+import { EdgeFunctions } from '@/pages/EdgeFunctions';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
@@ -154,6 +155,12 @@ function App() {
         return (
           <ErrorBoundary>
             <AppHosting />
+          </ErrorBoundary>
+        );
+      case 'edge-functions':
+        return (
+          <ErrorBoundary>
+            <EdgeFunctions />
           </ErrorBoundary>
         );
       case 'api-test':

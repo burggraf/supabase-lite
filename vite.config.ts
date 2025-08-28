@@ -217,6 +217,7 @@ function websocketBridge(): Plugin {
           req.url.startsWith('/rest/') || 
           req.url.startsWith('/auth/') || 
           req.url.startsWith('/storage/') ||
+          req.url.startsWith('/functions/') ||
           req.url.startsWith('/health') ||
           req.url.startsWith('/projects') ||
           req.url.startsWith('/debug/sql') ||

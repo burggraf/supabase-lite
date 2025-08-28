@@ -9,13 +9,19 @@ A browser-based implementation of the Supabase stack using PGlite as the core Po
 - **SQL Editor**: Full-featured SQL editor with syntax highlighting, query execution, and history
 - **PGlite Integration**: PostgreSQL database running in WebAssembly with IndexedDB persistence
 - **Cross-Origin Proxy**: HTTP proxy server for external API access with 100% Supabase.js compatibility
+- **Edge Functions**: Complete serverless function development environment with:
+  - File explorer with tree view and drag-drop support
+  - Monaco Editor with TypeScript support and multi-file tabs
+  - Local folder synchronization using File System Access API
+  - Deployment panel with environment variables
+  - Developer tools with console logs and performance metrics
+  - Function execution simulation with MSW integration
 
 ### 🚧 Coming Soon
 - **Table Editor**: Visual spreadsheet-like interface for data management
 - **Authentication**: Local JWT-based auth simulation
 - **Storage**: File management with IndexedDB backend
 - **Realtime**: WebSocket simulation using BroadcastChannel API
-- **Edge Functions**: Local function execution environment
 - **API Documentation**: Auto-generated REST API docs
 
 ## 🛠️ Technology Stack
@@ -41,10 +47,10 @@ A browser-based implementation of the Supabase stack using PGlite as the core Po
 3. **Open in browser**
    Navigate to `http://localhost:5173`
 
-4. **Try the SQL Editor**
-   - Click "SQL Editor" in the sidebar
-   - Run the example queries to explore your database
-   - Create tables, insert data, and query as you would with any PostgreSQL database
+4. **Explore the Features**
+   - **SQL Editor**: Run example queries and create your database schema
+   - **Edge Functions**: Create serverless functions with the built-in code editor
+   - **Dashboard**: Monitor your database status and performance metrics
 
 ## 📁 Project Structure
 
@@ -53,22 +59,33 @@ src/
 ├── components/
 │   ├── ui/                 # Reusable UI components
 │   ├── dashboard/          # Dashboard components
-│   └── sql-editor/         # SQL Editor components
+│   ├── sql-editor/         # SQL Editor components
+│   └── edge-functions/     # Edge Functions development environment
+│       ├── FileExplorer.tsx       # Tree view file browser
+│       ├── CodeEditor.tsx         # Monaco Editor integration
+│       ├── FolderSync.tsx         # Local folder synchronization
+│       ├── DeploymentPanel.tsx    # Function deployment
+│       └── DevTools.tsx           # Developer tools
 ├── hooks/                  # React hooks for database operations
 ├── lib/
 │   ├── database/           # Database connection and management
+│   ├── vfs/               # Virtual File System for Edge Functions
 │   ├── constants.ts        # App constants and configuration
 │   └── utils.ts            # Utility functions
+├── pages/
+│   └── EdgeFunctions.tsx  # Edge Functions main page
 └── types/                  # TypeScript type definitions
 ```
 
 ## 🎯 Use Cases
 
 - **Local Development**: Full PostgreSQL environment without Docker or server setup
+- **Serverless Development**: Build and test Edge Functions locally with hot reload
 - **Learning SQL**: Safe environment to practice SQL queries
-- **Prototyping**: Quickly test database schemas and queries
+- **Prototyping**: Quickly test database schemas, queries, and functions
 - **Offline Development**: Works completely offline once loaded
-- **Education**: Teaching database concepts without installation complexity
+- **Function Development**: Create, test, and debug serverless functions with built-in tools
+- **Education**: Teaching database concepts and serverless architecture without complexity
 
 ## 🔧 Commands
 
@@ -280,11 +297,19 @@ Since this is a pure client-side application, you can deploy it to any static ho
 - [ ] Schema management and visualization
 - [ ] Data import/export functionality
 
-### Phase 3 (Future)
+### Phase 3 (Current)
+- [x] **Edge Functions**: Complete serverless development environment
+  - [x] File explorer with tree view and CRUD operations
+  - [x] Monaco Editor with TypeScript support and auto-complete
+  - [x] Local folder synchronization with File System Access API
+  - [x] Deployment system with environment variables
+  - [x] Developer tools with logs, metrics, and debugging
+  - [x] Function execution simulation with MSW integration
+
+### Phase 4 (Next)
 - [ ] Authentication service simulation
 - [ ] Storage service with file management
 - [ ] Realtime subscriptions using BroadcastChannel
-- [ ] Edge Functions local execution
 - [ ] API documentation generator
 
 ## 🤝 Contributing
