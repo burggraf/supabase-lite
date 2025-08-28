@@ -87,7 +87,9 @@ export class VFSDirectHandler {
         name: file.name,
         size: file.size,
         mimeType: file.mimeType,
-        encoding: file.encoding
+        encoding: file.encoding,
+        hasContent: !!file.content,
+        contentLength: file.content?.length || 0
       });
 
       // Handle base64 encoded files
@@ -116,6 +118,7 @@ export class VFSDirectHandler {
 
       // Handle text files
       if (file.content) {
+        console.log('📝 Handling text file');
         const encoder = new TextEncoder();
         const bytes = encoder.encode(file.content);
 
@@ -130,10 +133,99 @@ export class VFSDirectHandler {
         };
       }
 
+      // Handle chunked files (large files split into chunks)
+      if (file.chunked && file.chunkIds && file.chunkIds.length > 0) {
+        console.log('🧩 Handling chunked file with', file.chunkIds.length, 'chunks');
+        
+        try {
+          // Use VFS manager to load the complete content from chunks
+          const content = await vfsManager.fileStorage.loadFileContent(fullPath);
+          console.log('✅ Chunked content loaded:', { contentLength: content.length });
+          
+          // Handle content based on encoding
+          if (file.encoding === 'base64') {
+            console.log('🔍 Decoding base64 chunked content');
+            const binaryString = atob(content);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            console.log('✅ Chunked base64 decoded, returning ArrayBuffer response');
+            
+            return {
+              status: 200,
+              headers: {
+                'Content-Type': file.mimeType,
+                'Content-Length': bytes.length.toString(),
+                'Accept-Ranges': 'bytes',
+                'Access-Control-Allow-Origin': '*'
+              },
+              body: bytes.buffer
+            };
+          } else {
+            // Handle text content
+            console.log('📝 Handling chunked text content');
+            const encoder = new TextEncoder();
+            const bytes = encoder.encode(content);
+            
+            return {
+              status: 200,
+              headers: {
+                'Content-Type': file.mimeType || 'text/plain',
+                'Content-Length': bytes.length.toString(),
+                'Access-Control-Allow-Origin': '*'
+              },
+              body: bytes.buffer
+            };
+          }
+        } catch (chunkError) {
+          console.error('❌ Failed to load chunked content:', chunkError);
+          return {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              error: 'Failed to load chunked file content',
+              message: chunkError instanceof Error ? chunkError.message : String(chunkError)
+            })
+          };
+        }
+      }
+
+      // Handle files without content but with size (might be stored differently)
+      if (file.size > 0) {
+        console.log('⚠️  File has size but no content - might be stored as Blob or different format');
+        console.log('File object keys:', Object.keys(file));
+        
+        // Check if it's stored as a blob URL or has data property
+        if (file.data) {
+          console.log('📦 Found file.data property');
+          return {
+            status: 200,
+            headers: {
+              'Content-Type': file.mimeType,
+              'Content-Length': file.size.toString(),
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: file.data
+          };
+        }
+      }
+
+      console.error('❌ File content not available - no content, no data, or zero size');
       return {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'File content not available' })
+        body: JSON.stringify({ 
+          error: 'File content not available',
+          debug: {
+            hasContent: !!file.content,
+            hasData: !!file.data,
+            size: file.size,
+            encoding: file.encoding,
+            keys: Object.keys(file)
+          }
+        })
       };
 
     } catch (error) {
