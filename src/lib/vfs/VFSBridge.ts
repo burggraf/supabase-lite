@@ -95,6 +95,14 @@ export class VFSBridge {
           }
           content = bytes.buffer;
           
+          // Debug: Check if the decoded data is valid
+          console.log('🔍 Base64 decoding verification:');
+          console.log('  Original base64 starts with:', file.content.substring(0, 50));
+          console.log('  Binary string length:', binaryString.length);
+          console.log('  Uint8Array length:', bytes.length);
+          console.log('  ArrayBuffer byteLength:', bytes.buffer.byteLength);
+          console.log('  First 20 decoded bytes:', Array.from(bytes.slice(0, 20)).join(', '));
+          
           const actualBytes = Array.from(bytes.slice(0, 10));
           const expectedPngHeader = [137, 80, 78, 71, 13, 10, 26, 10];
           const headerMatch = actualBytes.slice(0, 8).join(',') === expectedPngHeader.join(',');
@@ -133,11 +141,110 @@ export class VFSBridge {
       console.log('🔍 Creating basic binary Response with minimal headers');
       
       try {
+        // Try alternative approach for base64 files
+        if (file.encoding === 'base64') {
+          console.log('🔍 Testing base64 data validity before serving');
+          
+          // Test if the base64 data is actually valid
+          let isValidBase64 = false;
+          try {
+            // Quick base64 validation - try to decode a small sample
+            const sample = file.content.substring(0, 100);
+            atob(sample);
+            isValidBase64 = true;
+            console.log('✅ Base64 sample validation passed');
+          } catch (e) {
+            console.error('❌ Base64 validation failed:', e);
+            isValidBase64 = false;
+          }
+          
+          if (!isValidBase64) {
+            console.error('❌ Base64 data is invalid, cannot serve file');
+            return new Response('Invalid base64 data', { status: 500 });
+          }
+          
+          // Log some base64 statistics
+          console.log('🔍 Base64 data analysis:', {
+            totalLength: file.content.length,
+            expectedDecodedSize: Math.floor(file.content.length * 3 / 4),
+            actualFileSize: file.size,
+            sizeMismatch: Math.abs(Math.floor(file.content.length * 3 / 4) - file.size) > 10,
+            startsValid: file.content.match(/^[A-Za-z0-9+\/]/),
+            hasValidPadding: file.content.endsWith('=') || file.content.endsWith('==') || file.content.length % 4 === 0
+          });
+          
+          console.log('🔍 Trying alternative base64 Response approach');
+          
+          // Use data URL approach which browsers handle natively
+          const dataUrl = `data:${file.mimeType};base64,${file.content}`;
+          
+          // Test the data URL first
+          try {
+            const testResponse = await fetch(dataUrl);
+            const testBlob = await testResponse.blob();
+            
+            console.log('🔍 Data URL test result:', {
+              fetchSuccess: true,
+              blobSize: testBlob.size,
+              blobType: testBlob.type,
+              expectedSize: file.size,
+              sizeMatch: testBlob.size === file.size
+            });
+            
+            // Even though everything looks good, MSW might have issues with Blob responses
+            // Let's use the direct ArrayBuffer approach instead
+            console.log('🔍 Using direct ArrayBuffer approach for better MSW compatibility');
+            const binaryString = atob(file.content);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            // Verify the decoded bytes still have correct PNG header
+            const headerBytes = Array.from(bytes.slice(0, 8));
+            console.log('🔍 Final verification - PNG header bytes:', headerBytes.join(', '));
+            
+            const response = new Response(bytes.buffer, {
+              status: 200,
+              headers: new Headers({
+                'Content-Type': file.mimeType,
+                'Content-Length': bytes.length.toString(),
+                'Accept-Ranges': 'bytes',
+              })
+            });
+            
+            console.log('🔍 Created ArrayBuffer Response, size:', bytes.length);
+            return response;
+            
+          } catch (dataUrlError) {
+            console.error('❌ Data URL approach failed:', dataUrlError);
+            
+            // Fallback to manual decoding
+            console.log('🔍 Falling back to manual base64 decoding');
+            const binaryString = atob(file.content);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            const response = new Response(bytes, {
+              status: 200,
+              headers: new Headers({
+                'Content-Type': file.mimeType,
+                'Content-Length': bytes.length.toString(),
+              })
+            });
+            
+            return response;
+          }
+        }
+        
         // Create the simplest possible Response with binary data
-        const response = new Response(new Uint8Array(content), {
+        const response = new Response(content, {
           status: 200,
           headers: new Headers({
             'Content-Type': file.mimeType,
+            'Content-Length': content.byteLength.toString(),
           })
         });
         

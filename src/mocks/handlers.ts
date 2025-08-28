@@ -969,20 +969,35 @@ const createVFSFileGetHandler = () => async ({ params, request, projectInfo }: a
     const path = params[0] as string; // Catch-all path parameter
     const rangeHeader = request.headers.get('range');
     
-    console.log('📁 MSW: VFS file GET request', { bucket, path, range: rangeHeader, projectId: projectInfo?.projectId });
+    // Parse URL to check for token parameter (for signed URLs)
+    const url = new URL(request.url);
+    const token = url.searchParams.get('token');
+    
+    console.log('📁 MSW: VFS file GET request', { bucket, path, token: !!token, range: rangeHeader, projectId: projectInfo?.projectId });
     
     // Initialize VFS for the current project
     if (projectInfo?.projectId) {
       await vfsBridge.initializeForProject(projectInfo.projectId);
     }
     
-    const response = await vfsBridge.handleFileRequest({
-      bucket,
-      path,
-      range: rangeHeader || undefined,
-    });
+    let response;
+    if (token) {
+      // Handle as authenticated/signed URL request
+      response = await vfsBridge.handleAuthenticatedFileRequest({
+        bucket,
+        path,
+        token,
+      });
+    } else {
+      // Handle as regular file request
+      response = await vfsBridge.handleFileRequest({
+        bucket,
+        path,
+        range: rangeHeader || undefined,
+      });
+    }
     
-    console.log('✅ MSW: VFS file served', { bucket, path, status: response.status });
+    console.log('✅ MSW: VFS file served', { bucket, path, token: !!token, status: response.status });
     return response;
   } catch (error) {
     console.error('❌ MSW: VFS file GET error:', error);

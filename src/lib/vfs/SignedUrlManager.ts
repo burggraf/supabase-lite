@@ -106,9 +106,9 @@ export class SignedUrlManager {
 
       this.signedUrls.set(token, metadata);
 
-      // Build signed URL
+      // Build signed URL using a special endpoint that bypasses MSW
       const baseUrl = this.getBaseUrl();
-      const signedUrl = `${baseUrl}/storage/v1/object/${bucket}/${path}?token=${token}`;
+      const signedUrl = `${baseUrl}/vfs-direct/${bucket}/${path}?token=${token}`;
 
       logger.info('Signed URL created', { bucket, path, expiresIn });
 
@@ -189,34 +189,41 @@ export class SignedUrlManager {
    */
   async validateSignedUrl(token: string, type: SignedUrlType = 'download'): Promise<SignedUrlValidationResult> {
     try {
-      // Check if token exists in our storage
-      const metadata = type === 'download' 
-        ? this.signedUrls.get(token)
-        : this.signedUploadUrls.get(token);
-
-      if (!metadata) {
-        return { isValid: false, error: 'Token not found' };
-      }
-
-      // Check expiration
-      if (metadata.expiresAt < new Date()) {
-        // Clean up expired token
-        if (type === 'download') {
-          this.signedUrls.delete(token);
-        } else {
-          this.signedUploadUrls.delete(token);
-        }
-        return { isValid: false, error: 'Token expired' };
-      }
-
-      // Validate JWT signature
-      const isValidJWT = await this.validateJWT(token);
-      if (!isValidJWT) {
+      // Validate JWT signature and decode payload
+      let payload;
+      try {
+        console.log('🔍 Validating JWT token:', token.substring(0, 50) + '...');
+        payload = await this.jwtService.verifyToken(token);
+        console.log('✅ JWT validation successful:', payload);
+      } catch (error) {
+        console.error('❌ JWT verification failed:', error);
+        logger.error('JWT verification failed', error as Error);
         return { isValid: false, error: 'Invalid token signature' };
       }
 
-      return { isValid: true, metadata };
+      // Check expiration from JWT payload
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && payload.exp < now) {
+        return { isValid: false, error: 'Token expired' };
+      }
 
+      // Check token type matches
+      if (payload.type !== type) {
+        return { isValid: false, error: 'Invalid token type' };
+      }
+
+      // Create metadata from JWT payload
+      const metadata = {
+        id: payload.jti || 'unknown',
+        bucket: payload.bucket,
+        path: payload.path,
+        token,
+        expiresAt: new Date(payload.exp * 1000),
+        projectId: payload.sub?.split(':')[0] || 'default',
+        createdAt: new Date(payload.iat * 1000)
+      };
+
+      return { isValid: true, metadata };
     } catch (error) {
       logger.error('Failed to validate signed URL', error as Error, { token: token.substring(0, 10) + '...' });
       return { isValid: false, error: 'Validation failed' };
@@ -299,7 +306,7 @@ export class SignedUrlManager {
     const payload = {
       sub: `${projectId}:storage`,
       aud: 'storage',
-      iss: 'supabase-lite',
+      iss: 'https://supabase-lite.local/auth/v1',
       bucket,
       path,
       type,
@@ -308,7 +315,10 @@ export class SignedUrlManager {
       ...metadata
     };
 
-    return await this.jwtService.generateCustomToken(payload);
+    console.log('🔑 Generating JWT with payload:', payload);
+    const token = await this.jwtService.generateCustomToken(payload);
+    console.log('✅ JWT generated:', token.substring(0, 50) + '...');
+    return token;
   }
 
   /**
@@ -338,8 +348,8 @@ export class SignedUrlManager {
     if (typeof window !== 'undefined') {
       return window.location.origin;
     }
-    // Fallback for testing
-    return 'http://localhost:5173';
+    // Fallback for testing - detect current port or use 5174
+    return 'http://localhost:5174';
   }
 
   /**

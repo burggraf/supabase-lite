@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Toggle } from '@/components/ui/toggle';
 import { FileUpload } from './FileUpload';
@@ -66,7 +66,7 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
 
   // Initialize Storage Client
   const storageClient = new StorageClient({
-    apiUrl: 'http://localhost:5173',
+    apiUrl: window.location.origin,
     apiKey: 'dummy-key'
   });
   const storageBucket = storageClient.from(bucket.name);
@@ -270,85 +270,42 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
     }
   };
 
-  const handleCopyUrl = async (file: VFSFile) => {
+  const handleGetUrlWithExpiry = async (file: VFSFile, expiresIn: number, expiryLabel: string) => {
     try {
       const filePath = getRelativePathInBucket(file);
       
-      if (bucket.isPublic) {
-        // Use direct blob URL for public files to bypass MSW binary response issues
-        const { data: blobData, error: blobError } = await storageBucket.getDirectBlobUrl(filePath);
-        if (blobError || !blobData) {
-          // Fallback to standard public URL if direct access fails
-          const { data } = storageBucket.getPublicUrl(filePath);
-          await navigator.clipboard.writeText(data.publicUrl);
-          toast.success('Public URL copied to clipboard');
-        } else {
-          await navigator.clipboard.writeText(blobData.blobUrl);
-          toast.success(`Direct blob URL copied to clipboard`);
-          toast.info(`Note: Blob URLs don't preserve filenames when downloaded. This file is: ${file.name}`, { duration: 5000 });
-        }
-      } else {
-        const { data, error } = await storageBucket.createSignedUrl(filePath, 3600);
-        if (error) {
-          toast.error(`Failed to generate URL: ${error.message}`);
-          return;
-        }
-        if (data?.signedUrl) {
-          await navigator.clipboard.writeText(data.signedUrl);
-          toast.success('Signed URL copied to clipboard');
-        }
-      }
-    } catch (error) {
-      logger.error('Copy URL failed', error as Error);
-      toast.error('Failed to copy URL');
-    }
-  };
-
-  const handleGetSignedUrl = async (file: VFSFile) => {
-    try {
-      const filePath = getRelativePathInBucket(file);
-      const { data, error } = await storageBucket.createSignedUrl(filePath, 3600);
+      // Always use signed URLs for consistency with Supabase
+      const { data, error } = await storageBucket.createSignedUrl(filePath, expiresIn);
       
       if (error) {
-        toast.error(`Failed to generate signed URL: ${error.message}`);
+        toast.error(`Failed to generate URL: ${error.message}`);
         return;
       }
 
       if (data?.signedUrl) {
         await navigator.clipboard.writeText(data.signedUrl);
-        toast.success('Signed URL copied to clipboard (expires in 1 hour)');
+        toast.success(`URL copied to clipboard (expires ${expiryLabel})`);
       }
     } catch (error) {
-      logger.error('Get signed URL failed', error as Error);
-      toast.error('Failed to generate signed URL');
+      logger.error('Get URL failed', error as Error);
+      toast.error('Failed to generate URL');
     }
   };
+
 
   const handlePreviewFile = async (file: VFSFile) => {
     try {
       const filePath = getRelativePathInBucket(file);
       
-      if (bucket.isPublic) {
-        // Use direct blob URL for preview
-        const { data: blobData, error: blobError } = await storageBucket.getDirectBlobUrl(filePath);
-        if (blobError || !blobData) {
-          toast.error('Failed to preview file');
-          return;
-        }
-        
-        // Set preview state to show modal
+      // Always use signed URLs for consistency 
+      const { data, error } = await storageBucket.createSignedUrl(filePath, 3600);
+      if (error) {
+        toast.error(`Failed to preview file: ${error.message}`);
+        return;
+      }
+      if (data?.signedUrl) {
         setPreviewFile(file);
-        setPreviewBlobUrl(blobData.blobUrl);
-      } else {
-        const { data, error } = await storageBucket.createSignedUrl(filePath, 3600);
-        if (error) {
-          toast.error(`Failed to preview file: ${error.message}`);
-          return;
-        }
-        if (data?.signedUrl) {
-          setPreviewFile(file);
-          setPreviewBlobUrl(data.signedUrl);
-        }
+        setPreviewBlobUrl(data.signedUrl);
       }
     } catch (error) {
       logger.error('Preview file failed', error as Error);
@@ -358,9 +315,6 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
 
   const closePreview = () => {
     setPreviewFile(null);
-    if (previewBlobUrl && previewBlobUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewBlobUrl);
-    }
     setPreviewBlobUrl(null);
   };
 
@@ -707,21 +661,35 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handlePreviewFile(item as VFSFile)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Preview
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <Link className="h-4 w-4 mr-2" />
+                              Get URL
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              <DropdownMenuItem onClick={() => handleGetUrlWithExpiry(item as VFSFile, 604800, 'in 1 week')}>
+                                Expire in 1 week
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleGetUrlWithExpiry(item as VFSFile, 2629746, 'in 1 month')}>
+                                Expire in 1 month
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleGetUrlWithExpiry(item as VFSFile, 31556952, 'in 1 year')}>
+                                Expire in 1 year
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleGetUrlWithExpiry(item as VFSFile, 3600, 'in 1 hour')}>
+                                Custom expiry
+                              </DropdownMenuItem>
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                          <DropdownMenuItem>
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            Move
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDownload(item as VFSFile)}>
                             <Download className="h-4 w-4 mr-2" />
                             Download
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleCopyUrl(item as VFSFile)}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy URL
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleGetSignedUrl(item as VFSFile)}>
-                            <Link className="h-4 w-4 mr-2" />
-                            Get signed URL
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 

@@ -2,6 +2,7 @@
 // Listens for postMessage requests from test app and executes them on browser database
 
 import { EnhancedSupabaseAPIBridge } from '../../mocks/enhanced-bridge';
+import { vfsDirectHandler } from '../vfs/VFSDirectHandler';
 
 interface APIRequest {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -140,6 +141,36 @@ export class CrossOriginAPIHandler {
     // Parse the path to extract table and query parameters
     const url = new URL(request.path, 'http://localhost');
     const pathParts = url.pathname.split('/').filter(part => part);
+    
+    // Handle VFS direct requests (bypass MSW)
+    if (pathParts[0] === 'vfs-direct') {
+      console.log('🚀 Handling VFS-direct request via CrossOriginAPIHandler');
+      
+      const result = await vfsDirectHandler.handleRequest(
+        request.path,
+        request.method,
+        request.headers || {}
+      );
+      
+      // Convert ArrayBuffer to base64 string for JSON serialization
+      let responseData;
+      if (result.body instanceof ArrayBuffer) {
+        const bytes = new Uint8Array(result.body);
+        const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+        responseData = btoa(binary);
+        
+        // Add encoding info to headers
+        result.headers['X-Content-Encoding'] = 'base64';
+      } else {
+        responseData = result.body;
+      }
+      
+      return {
+        data: responseData,
+        status: result.status,
+        headers: result.headers
+      };
+    }
     
     // Handle different API endpoints
     if (pathParts[0] === 'rest' && pathParts[1] === 'v1') {

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { CrossOriginAPIHandler } from './lib/api/CrossOriginAPIHandler'
+import { vfsDirectHandler } from './lib/vfs/VFSDirectHandler'
 
 // WebSocket bridge client for external API access
 function initializeWebSocketBridge() {
@@ -52,6 +53,65 @@ function initializeWebSocketBridge() {
           const message = JSON.parse(event.data)
           
           if (message.type === 'request') {
+            
+            // Handle VFS-direct requests directly (bypass MSW)
+            if (message.url && message.url.includes('/vfs-direct/')) {
+              console.log('🚀 Handling VFS-direct request in browser:', message.url)
+              
+              try {
+                const result = await vfsDirectHandler.handleRequest(
+                  message.url,
+                  message.method,
+                  message.headers || {}
+                )
+                
+                // Convert ArrayBuffer to base64 for JSON serialization
+                let responseBody = result.body
+                if (result.body instanceof ArrayBuffer) {
+                  const bytes = new Uint8Array(result.body)
+                  const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('')
+                  responseBody = btoa(binary)
+                  result.headers['X-Content-Encoding'] = 'base64'
+                }
+                
+                // Send response back via WebSocket
+                const responseMessage = {
+                  type: 'response',
+                  requestId: message.requestId,
+                  response: {
+                    status: result.status,
+                    statusText: result.status === 200 ? 'OK' : 'Error',
+                    headers: result.headers,
+                    body: responseBody
+                  }
+                }
+                
+                console.log('✅ Sending VFS-direct response via WebSocket')
+                ws.send(JSON.stringify(responseMessage))
+                return // Skip normal fetch processing
+                
+              } catch (vfsError: any) {
+                console.error('❌ VFS-direct error:', vfsError)
+                
+                // Send error response
+                const errorResponse = {
+                  type: 'response',
+                  requestId: message.requestId,
+                  response: {
+                    status: 500,
+                    statusText: 'VFS Direct Error',
+                    headers: { 'content-type': 'application/json' },
+                    body: {
+                      error: 'VFS direct handler failed',
+                      message: vfsError.message
+                    }
+                  }
+                }
+                
+                ws.send(JSON.stringify(errorResponse))
+                return // Skip normal fetch processing
+              }
+            }
             
             // Process the request using fetch (which will be intercepted by MSW)
             const fetchOptions: RequestInit = {
