@@ -23,6 +23,12 @@ Do not say "You're absolutely right!" to me. I don't want to hear that "you've f
 - `npm test -- --run src/hooks/useHook.test.ts` - Run specific test file
 - `npm test -- --grep "specific test name"` - Run tests matching pattern
 
+### Testing Edge Functions Components
+
+- `npm test -- src/components/edge-functions/` - Run all Edge Functions component tests
+- `npm test -- src/lib/vfs/SyncManager.test.ts` - Test local folder synchronization
+- `npm test -- src/pages/EdgeFunctions.test.tsx` - Test main Edge Functions page
+
 ### External Testing with test-app
 
 - `cd test-app && npm install && npm run dev` - Start external test application on port 5176
@@ -65,13 +71,25 @@ src/
 │   ├── ui/              # shadcn/ui components (button, card, badge)
 │   ├── dashboard/       # Dashboard and Sidebar components
 │   ├── sql-editor/      # SQLEditor component
-│   └── table-editor/    # Full-featured data table with filtering and CRUD
+│   ├── table-editor/    # Full-featured data table with filtering and CRUD
+│   └── edge-functions/  # Edge Functions development environment ✅
+│       ├── FileExplorer.tsx      # Tree view file browser
+│       ├── CodeEditor.tsx        # Monaco Editor integration
+│       ├── FolderSync.tsx        # Local folder synchronization  
+│       ├── DeploymentPanel.tsx   # Function deployment
+│       └── DevTools.tsx          # Developer tools
 ├── hooks/               # Custom React hooks for database operations
 ├── lib/
 │   ├── database/        # DatabaseManager and PGlite connection
+│   ├── vfs/            # Virtual File System for Edge Functions ✅
+│   │   ├── VFSManager.ts        # File storage and management
+│   │   ├── VFSBridge.ts         # API bridge integration
+│   │   └── SyncManager.ts       # Local folder sync
 │   ├── infrastructure/ # Logger, ErrorHandler, ConfigManager
 │   ├── constants.ts     # App config, navigation items, query examples
 │   └── utils.ts         # Utility functions
+├── pages/               # Main application pages
+│   └── EdgeFunctions.tsx # Edge Functions main page ✅
 ├── mocks/               # MSW handlers and API bridge implementations
 └── types/               # TypeScript interfaces for DB operations
 ```
@@ -104,9 +122,36 @@ src/
 - **UI**: Tailwind CSS + shadcn/ui + Lucide React icons
 - **Build**: Vite with TypeScript checking, ESLint for linting
 
+### Edge Functions Architecture ✅ COMPLETE
+
+The Edge Functions module provides a complete serverless function development environment:
+
+#### Core Components
+- **EdgeFunctions Page** (`src/pages/EdgeFunctions.tsx`): Main orchestrator with tabbed interface
+- **FileExplorer** (`src/components/edge-functions/FileExplorer.tsx`): Tree view file browser with CRUD
+- **CodeEditor** (`src/components/edge-functions/CodeEditor.tsx`): Monaco Editor with TypeScript support
+- **FolderSync** (`src/components/edge-functions/FolderSync.tsx`): Local folder synchronization
+- **DeploymentPanel** (`src/components/edge-functions/DeploymentPanel.tsx`): Function deployment and testing
+- **DevTools** (`src/components/edge-functions/DevTools.tsx`): Console logs and performance monitoring
+
+#### Supporting Infrastructure
+- **SyncManager** (`src/lib/vfs/SyncManager.ts`): File System Access API integration for local sync
+- **VFS Integration**: Project-scoped file storage using existing Virtual File System
+- **MSW Handlers**: Function execution simulation with realistic responses
+
+#### Key Features
+- Monaco Editor with full TypeScript IntelliSense and auto-completion
+- Multi-file tab management with unsaved change indicators
+- Auto-save with 2-second debounce to prevent excessive saves
+- File System Access API for bidirectional local folder sync
+- Environment variable management with secure storage
+- Deployment history with rollback functionality
+- Real-time console logs and performance metrics
+- Function execution simulation with MSW integration
+
 ### Future Architecture Notes
 
-Navigation items in constants.ts show planned features (auth, storage, realtime, edge-functions, api) that will extend the current database-focused architecture. The DatabaseManager already creates schemas for these future services.
+Navigation items in constants.ts show planned features (auth, storage, realtime, api) that will extend the current database-focused architecture. The DatabaseManager already creates schemas for these future services. **Edge Functions implementation is now complete** ✅
 
 ## Testing Guidelines
 
