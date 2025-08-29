@@ -133,14 +133,23 @@ export function useDatabase() {
 
   const switchToProject = useCallback(async (databasePath: string) => {
     
-    // If we're already connected to this database, skip the switch
-    if (connectionId === databasePath && isConnected) {
-      return;
-    }
+    const currentConnectionInfo = dbManager.getConnectionInfo();
     
     // Check if database is already transitioning
     if (dbManager.isConnectionTransitioning()) {
       throw new Error('Database switch already in progress');
+    }
+    
+    // Always check actual database state instead of relying on cached React state
+    if (currentConnectionInfo && currentConnectionInfo.id === databasePath && isConnected) {
+      // Already connected to the correct database - validate with a quick query
+      try {
+        await dbManager.getTableList();
+        return; // Everything is working correctly, no switch needed
+      } catch (validationError) {
+        // Connection is stale, proceed with switch
+        console.warn('Connection validation failed, proceeding with database switch:', validationError);
+      }
     }
     
     setIsConnecting(true);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { dbManager } from '@/lib/database/connection';
 import { useDatabase } from './useDatabase';
 import type { TableInfo, ColumnInfo, TableDataResponse, FilterRule } from '@/types';
@@ -22,6 +22,7 @@ export function useTableData() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [previousTables, setPreviousTables] = useState<TableInfo[]>([]);
   const [lastConnectionId, setLastConnectionId] = useState<string | null>(null);
+  const [hasLoadedForConnection, setHasLoadedForConnection] = useState<string | null>(null);
 
   // Load available tables
   const loadTables = useCallback(async () => {
@@ -106,7 +107,7 @@ export function useTableData() {
     return columns.find(col => col.is_primary_key)?.column_name || columns[0]?.column_name || 'id';
   }, [columns]);
 
-  // FIXED: Simplified connection handling - no complex transition checks
+  // FIXED: Load tables on connection AND on first load/refresh
   useEffect(() => {
     
     // Only proceed if we have a valid connection
@@ -114,8 +115,12 @@ export function useTableData() {
       return;
     }
     
-    // Skip if this is the same connection (no actual change)
-    if (connectionId === lastConnectionId) {
+    // Check if we need to load tables for this connection:
+    // 1. If we've never loaded for this connection (refresh/initial load)
+    // 2. If the connection has changed (project switching)
+    const needsLoad = hasLoadedForConnection !== connectionId;
+    
+    if (!needsLoad) {
       return;
     }
     
@@ -132,14 +137,14 @@ export function useTableData() {
     // Load tables for new connection without clearing current state
     const loadNewConnection = async () => {
       try {
-        
-        // Load tables immediately after database connection
-        
         const tableList = await dbManager.getTableList();
         
         // Only now update the state atomically
         setTables(tableList);
+        // Always update lastConnectionId to track the actual successful load
         setLastConnectionId(connectionId);
+        // Mark that we've loaded tables for this connection (fixes refresh bug)
+        setHasLoadedForConnection(connectionId);
         
         // FIXED: Don't clear selection if we're returning to a project that has tables
         // Instead, try to restore a sensible selection
@@ -173,7 +178,7 @@ export function useTableData() {
     };
     
     loadNewConnection();
-  }, [connectionId, isConnected, lastConnectionId, tables]);
+  }, [connectionId, isConnected]); // Only watch for connection changes, not internal load tracking
 
   // Load schema when table changes
   useEffect(() => {

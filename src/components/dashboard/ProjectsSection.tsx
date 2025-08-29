@@ -54,12 +54,9 @@ export function ProjectsSection({
   };
 
   const handleSwitchProject = async (projectId: string) => {
-    
-    if (projectId === activeProject?.id) {
-      return; // Already active
-    }
-    
     try {
+      // Always attempt to switch, even if UI shows project as "active"
+      // This ensures the actual database connection matches the UI state
       await onSwitchProject(projectId);
     } catch (error) {
       console.error('🔄 Failed to switch project:', error);
