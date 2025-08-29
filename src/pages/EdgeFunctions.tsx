@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FunctionsList } from '@/components/edge-functions/FunctionsList';
 import { SecretsManager } from '@/components/edge-functions/SecretsManager';
 import { FunctionEditor } from '@/components/edge-functions/FunctionEditor';
-import { getFunctionNameFromPath, buildFunctionEditorPath } from '@/lib/routes';
 import { templates } from '@/components/edge-functions/FunctionTemplates';
 import { vfsManager } from '@/lib/vfs/VFSManager';
 import { projectManager } from '@/lib/projects/ProjectManager';
@@ -11,45 +10,6 @@ import { toast } from 'sonner';
 export function EdgeFunctions() {
   const [currentView, setCurrentView] = useState<'functions' | 'secrets' | 'editor'>('functions');
   const [currentFunctionName, setCurrentFunctionName] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Determine current view from URL
-    const path = window.location.pathname;
-    const functionName = getFunctionNameFromPath(path);
-    
-    if (path === '/edge-functions/secrets') {
-      setCurrentView('secrets');
-      setCurrentFunctionName(null);
-    } else if (functionName) {
-      setCurrentView('editor');
-      setCurrentFunctionName(functionName);
-    } else {
-      setCurrentView('functions');
-      setCurrentFunctionName(null);
-    }
-  }, []);
-
-  // Listen for popstate events to handle browser navigation
-  useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname;
-      const functionName = getFunctionNameFromPath(path);
-      
-      if (path === '/edge-functions/secrets') {
-        setCurrentView('secrets');
-        setCurrentFunctionName(null);
-      } else if (functionName) {
-        setCurrentView('editor');
-        setCurrentFunctionName(functionName);
-      } else {
-        setCurrentView('functions');
-        setCurrentFunctionName(null);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
 
   const handleCreateFunction = async (templateId?: string) => {
     try {
@@ -110,27 +70,24 @@ Deno.serve(async (req: Request) => {
   };
 
   const handleEditFunction = (functionName: string) => {
-    const path = buildFunctionEditorPath(functionName);
-    window.history.pushState(null, '', path);
     setCurrentView('editor');
     setCurrentFunctionName(functionName);
   };
 
   const handleBackToFunctions = () => {
-    window.history.pushState(null, '', '/edge-functions');
     setCurrentView('functions');
     setCurrentFunctionName(null);
   };
 
   const handleGoToSecrets = () => {
-    window.history.pushState(null, '', '/edge-functions/secrets');
     setCurrentView('secrets');
     setCurrentFunctionName(null);
   };
 
-  if (currentView === 'secrets') {
-    return <SecretsManager projectId={projectManager.getActiveProject()?.id} />;
-  }
+  const handleGoToFunctions = () => {
+    setCurrentView('functions');
+    setCurrentFunctionName(null);
+  };
 
   if (currentView === 'editor' && currentFunctionName) {
     return (
@@ -142,10 +99,48 @@ Deno.serve(async (req: Request) => {
   }
 
   return (
-    <FunctionsList
-      onCreateFunction={handleCreateFunction}
-      onEditFunction={handleEditFunction}
-      onGoToSecrets={handleGoToSecrets}
-    />
+    <div className="flex h-full">
+      {/* Sidebar Navigation */}
+      <div className="w-48 bg-gray-50 border-r border-gray-200 p-4">
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+            Manage
+          </div>
+          <div 
+            className={`text-sm px-3 py-2 cursor-pointer rounded-md ${
+              currentView === 'functions' 
+                ? 'font-medium text-gray-900 bg-gray-200' 
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+            onClick={handleGoToFunctions}
+          >
+            Functions
+          </div>
+          <div 
+            className={`text-sm px-3 py-2 cursor-pointer rounded-md ${
+              currentView === 'secrets' 
+                ? 'font-medium text-gray-900 bg-gray-200' 
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+            onClick={handleGoToSecrets}
+          >
+            Secrets
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1">
+        {currentView === 'functions' ? (
+          <FunctionsList
+            onCreateFunction={handleCreateFunction}
+            onEditFunction={handleEditFunction}
+            onGoToSecrets={handleGoToSecrets}
+          />
+        ) : (
+          <SecretsManager projectId={projectManager.getActiveProject()?.id} />
+        )}
+      </div>
+    </div>
   );
 }
