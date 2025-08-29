@@ -97,27 +97,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
   }
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar Navigation */}
-      <div className="w-48 bg-gray-50 border-r border-gray-200 p-4">
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
-            Manage
-          </div>
-          <div className="text-sm font-medium text-gray-900 px-3 py-2">
-            Functions
-          </div>
-          <div 
-            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 cursor-pointer"
-            onClick={onGoToSecrets}
-          >
-            Secrets
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 p-6">
+    <div className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -236,7 +216,6 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
             </Card>
           </div>
         )}
-      </div>
     </div>
   );
 };
