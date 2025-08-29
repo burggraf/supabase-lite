@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Do not say "You're absolutely right!" to me. I don't want to hear that "you've found the problem". Just do the thing.
 
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+
 ## Development Commands
 
 - `npm run dev` - Start development server (Vite on port 5173)
@@ -28,6 +34,23 @@ Do not say "You're absolutely right!" to me. I don't want to hear that "you've f
 - `npm test -- src/components/edge-functions/` - Run all Edge Functions component tests
 - `npm test -- src/lib/vfs/SyncManager.test.ts` - Test local folder synchronization
 - `npm test -- src/pages/EdgeFunctions.test.tsx` - Test main Edge Functions page
+
+### Testing Storage Components
+
+- `npm test -- src/components/storage/` - Run all Storage component tests
+- `npm test -- src/lib/storage/` - Test Storage API client and bucket management
+- `npm test -- src/lib/vfs/SignedUrlManager.test.ts` - Test signed URL generation
+
+### Testing Authentication Components
+
+- `npm test -- src/components/auth/` - Run all Authentication component tests
+- `npm test -- src/lib/auth/` - Test auth system components (AuthManager, JWTService, etc.)
+- `npm test -- src/lib/auth/__tests__/rls-integration.test.ts` - Test Row Level Security integration
+
+### Testing App Hosting Components
+
+- `npm test -- src/components/app-hosting/` - Run all App Hosting component tests
+- `npm test -- src/lib/vfs/FolderUploadService.test.ts` - Test folder upload and app deployment
 
 ### External Testing with test-app
 
@@ -72,19 +95,50 @@ src/
 │   ├── dashboard/       # Dashboard and Sidebar components
 │   ├── sql-editor/      # SQLEditor component
 │   ├── table-editor/    # Full-featured data table with filtering and CRUD
-│   └── edge-functions/  # Edge Functions development environment ✅
-│       ├── FileExplorer.tsx      # Tree view file browser
-│       ├── CodeEditor.tsx        # Monaco Editor integration
-│       ├── FolderSync.tsx        # Local folder synchronization  
-│       ├── DeploymentPanel.tsx   # Function deployment
-│       └── DevTools.tsx          # Developer tools
+│   ├── edge-functions/  # Edge Functions development environment ✅
+│   │   ├── FileExplorer.tsx      # Tree view file browser
+│   │   ├── CodeEditor.tsx        # Monaco Editor integration
+│   │   ├── FolderSync.tsx        # Local folder synchronization  
+│   │   ├── DeploymentPanel.tsx   # Function deployment
+│   │   └── DevTools.tsx          # Developer tools
+│   ├── storage/         # Storage management interface ✅
+│   │   ├── Storage.tsx           # Main storage interface
+│   │   ├── BucketList.tsx        # Bucket management
+│   │   ├── FileBrowser.tsx       # File browser and management
+│   │   └── FileUpload.tsx        # File upload component
+│   ├── auth/            # Authentication interface ✅
+│   │   └── AuthTestPanel.tsx     # Auth testing and management
+│   ├── app-hosting/     # Static app hosting ✅
+│   │   ├── AppHosting.tsx        # Main app hosting interface
+│   │   ├── AppList.tsx           # Deployed app management
+│   │   └── AppDeploymentModal.tsx # App deployment dialog
+│   └── api-test/        # API testing interface ✅
+│       └── APITester.tsx         # REST API testing component
 ├── hooks/               # Custom React hooks for database operations
 ├── lib/
 │   ├── database/        # DatabaseManager and PGlite connection
 │   ├── vfs/            # Virtual File System for Edge Functions ✅
 │   │   ├── VFSManager.ts        # File storage and management
 │   │   ├── VFSBridge.ts         # API bridge integration
-│   │   └── SyncManager.ts       # Local folder sync
+│   │   ├── SyncManager.ts       # Local folder sync
+│   │   ├── SignedUrlManager.ts  # Signed URL generation for file access
+│   │   └── FolderUploadService.ts # Folder upload and app deployment
+│   ├── storage/         # Storage service implementation ✅
+│   │   ├── StorageClient.ts     # Main storage API client (Supabase compatible)
+│   │   ├── StorageBucket.ts     # Bucket operations and file management
+│   │   └── StorageError.ts      # Storage error handling
+│   ├── auth/            # Authentication system ✅
+│   │   ├── AuthBridge.ts        # Main auth service bridge
+│   │   ├── core/
+│   │   │   ├── AuthManager.ts   # User management and authentication
+│   │   │   ├── JWTService.ts    # JWT token generation and validation
+│   │   │   └── SessionManager.ts # Session lifecycle management
+│   │   ├── rls-enforcer.ts      # Row Level Security enforcement
+│   │   └── services/
+│   │       └── MFAService.ts    # Multi-factor authentication
+│   ├── functions/       # Edge Functions service ✅
+│   │   ├── FunctionsClient.ts   # Functions deployment and execution
+│   │   └── integration.ts       # Functions integration with VFS
 │   ├── infrastructure/ # Logger, ErrorHandler, ConfigManager
 │   ├── constants.ts     # App config, navigation items, query examples
 │   └── utils.ts         # Utility functions
@@ -101,10 +155,14 @@ src/
   - `ProjectManager`: Multi-project management with localStorage persistence
   - `AuthBridge`: Authentication service integration with JWT token management
   - `ConfigManager`: Type-safe application configuration management
+  - `VFSManager`: Virtual file system for Edge Functions and app hosting
+  - `AuthManager`: Core authentication logic with user management
 - **Bridge Pattern**:
   - `SupabaseAPIBridge`: Basic PostgREST compatibility for REST API calls
   - `EnhancedSupabaseAPIBridge`: Advanced query parsing with full PostgREST syntax support
   - `AuthBridge`: Authentication endpoint handling with Supabase auth compatibility
+  - `VFSBridge`: File system operations for Edge Functions and storage
+  - `StorageClient`: Storage API compatibility with Supabase Storage
 - **Infrastructure Layer**:
   - `Logger`: Structured logging with performance tracking
   - `ErrorHandler`: Centralized error handling with user-friendly messages
@@ -121,6 +179,77 @@ src/
 - **Editor**: Monaco Editor (VS Code editor in browser)
 - **UI**: Tailwind CSS + shadcn/ui + Lucide React icons
 - **Build**: Vite with TypeScript checking, ESLint for linting
+
+### Storage Architecture ✅ COMPLETE
+
+The Storage module provides a complete file management system compatible with Supabase Storage:
+
+#### Core Components
+- **StorageClient** (`src/lib/storage/StorageClient.ts`): Main storage API client with Supabase compatibility
+- **StorageBucket** (`src/lib/storage/StorageBucket.ts`): Bucket operations and file management
+- **Storage UI** (`src/components/storage/Storage.tsx`): Main storage interface with bucket and file management
+- **SignedUrlManager** (`src/lib/vfs/SignedUrlManager.ts`): Signed URL generation for secure file access
+
+#### Key Features
+- Full Supabase Storage API compatibility (createBucket, getBucket, listBuckets, upload, download)
+- File upload/download with drag-and-drop support
+- Bucket management with policies and settings
+- Signed URL generation for secure file access
+- Multi-select file operations and batch actions
+- VFS integration for persistent storage using IndexedDB
+
+### Authentication Architecture ✅ COMPLETE
+
+The Authentication module provides a complete auth system compatible with Supabase Auth:
+
+#### Core Components
+- **AuthBridge** (`src/lib/auth/AuthBridge.ts`): Main authentication service bridge
+- **AuthManager** (`src/lib/auth/core/AuthManager.ts`): User management and database operations
+- **JWTService** (`src/lib/auth/core/JWTService.ts`): JWT token generation and validation
+- **SessionManager** (`src/lib/auth/core/SessionManager.ts`): Session lifecycle management
+- **MFAService** (`src/lib/auth/services/MFAService.ts`): Multi-factor authentication support
+- **RLS Enforcer** (`src/lib/auth/rls-enforcer.ts`): Row Level Security implementation
+
+#### Key Features
+- JWT-based authentication with HS256 signing
+- User signup, signin, password reset, and email verification
+- Row Level Security (RLS) enforcement with automatic user context injection
+- Session management with token refresh
+- Multi-factor authentication (TOTP)
+- Password hashing with bcrypt
+- Compatible with Supabase Auth API endpoints
+
+### App Hosting Architecture ✅ COMPLETE
+
+The App Hosting module provides static web app deployment and serving:
+
+#### Core Components
+- **AppHosting** (`src/components/app-hosting/AppHosting.tsx`): Main app hosting interface
+- **AppDeploymentModal** (`src/components/app-hosting/AppDeploymentModal.tsx`): App deployment dialog
+- **FolderUploadService** (`src/lib/vfs/FolderUploadService.ts`): Folder upload and app deployment service
+
+#### Key Features
+- Drag-and-drop folder upload for static web apps
+- App deployment with file validation and optimization
+- Deployed app management and monitoring
+- File serving with proper MIME types
+- App versioning and rollback capabilities
+- Integration with VFS for persistent app storage
+
+### API Testing Architecture ✅ COMPLETE
+
+The API Testing module provides comprehensive testing tools for the Supabase-compatible API:
+
+#### Core Components
+- **APITester** (`src/components/api-test/APITester.tsx`): Interactive API testing interface
+
+#### Key Features
+- Test REST API endpoints (GET, POST, PUT, DELETE)
+- Authentication endpoint testing
+- Query parameter validation
+- Real-time response inspection
+- Test history and result comparison
+- Error handling and debugging tools
 
 ### Edge Functions Architecture ✅ COMPLETE
 
@@ -151,7 +280,33 @@ The Edge Functions module provides a complete serverless function development en
 
 ### Future Architecture Notes
 
-Navigation items in constants.ts show planned features (auth, storage, realtime, api) that will extend the current database-focused architecture. The DatabaseManager already creates schemas for these future services. **Edge Functions implementation is now complete** ✅
+All major Supabase services are now implemented: ✅ **Database**, ✅ **Authentication**, ✅ **Storage**, ✅ **Edge Functions**, ✅ **App Hosting**, and ✅ **API Testing**. The remaining feature is **Realtime** subscriptions which will use BroadcastChannel API for cross-tab communication.
+
+### Key Implementation Files
+
+**Database Core:**
+- `src/lib/database/connection.ts` - DatabaseManager with PGlite integration
+- `src/hooks/useDatabase.ts` - React hook for database operations
+- `src/lib/projects/ProjectManager.ts` - Multi-project management
+
+**Authentication System:**
+- `src/lib/auth/AuthBridge.ts` - Main auth service
+- `src/lib/auth/core/AuthManager.ts` - User management 
+- `src/lib/auth/rls-enforcer.ts` - Row Level Security
+
+**Storage System:**
+- `src/lib/storage/StorageClient.ts` - Storage API client
+- `src/lib/vfs/SignedUrlManager.ts` - Secure file access
+- `src/components/storage/Storage.tsx` - Storage UI
+
+**Virtual File System:**
+- `src/lib/vfs/VFSManager.ts` - File storage management
+- `src/lib/vfs/SyncManager.ts` - Local folder synchronization
+
+**API & Testing:**
+- `src/mocks/enhanced-bridge.ts` - PostgREST compatibility
+- `src/mocks/handlers.ts` - MSW request handlers
+- `src/test/setup.ts` - Global test configuration
 
 ## Testing Guidelines
 
