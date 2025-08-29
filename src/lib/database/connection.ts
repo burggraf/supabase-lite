@@ -1,6 +1,8 @@
 import { PGlite } from '@electric-sql/pglite';
-// import { DATABASE_CONFIG } from '../constants';
+
+// import { roleSimulator } from '../constants';
 import { roleSimulator } from './roleSimulator';
+
 import type { QueryResult, ScriptResult, DatabaseConnection } from '@/types';
 import type { TransactionOptions, QueryOptions, QueryMetrics } from '@/types/infrastructure';
 import { logger, logQuery, logError, logPerformance } from '../infrastructure/Logger';
@@ -24,15 +26,15 @@ export class DatabaseManager {
   private queryCache = new Map<string, { result: QueryResult; timestamp: number }>();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private readonly MAX_METRICS = 1000;
-  
-  
+
+
   // Transition state for atomic connection switching
   private isTransitioning = false;
-  
+
   // Session context for RLS
   private currentSessionContext: SessionContext | null = null;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): DatabaseManager {
     if (!DatabaseManager.instance) {
@@ -46,8 +48,8 @@ export class DatabaseManager {
   public async initialize(customDataDir?: string): Promise<void> {
     const dbConfig = configManager.getDatabaseConfig();
     const targetDataDir = customDataDir || dbConfig.dataDir;
-    
-    
+
+
     // If already initialized with the CORRECT database, return immediately
     if (this.isInitialized && this.db && this.connectionInfo?.id === targetDataDir) {
       logger.debug('Already initialized with target database', { targetDataDir });
@@ -56,9 +58,9 @@ export class DatabaseManager {
 
     // If already initialized but with WRONG database, switch instead
     if (this.isInitialized && this.db && this.connectionInfo?.id !== targetDataDir) {
-      logger.info('Database initialized with different path, switching', { 
-        current: this.connectionInfo?.id, 
-        target: targetDataDir 
+      logger.info('Database initialized with different path, switching', {
+        current: this.connectionInfo?.id,
+        target: targetDataDir
       });
       await this.switchDatabase(targetDataDir);
       return;
@@ -72,7 +74,7 @@ export class DatabaseManager {
 
     // Start initialization and store the promise
     this.initializationPromise = this.doInitialization(customDataDir);
-    
+
     try {
       await this.initializationPromise;
     } finally {
@@ -84,39 +86,39 @@ export class DatabaseManager {
   public async switchDatabase(dataDir: string): Promise<void> {
     const currentDataDir = this.connectionInfo?.id || 'none';
     const startTime = performance.now();
-    
+
     // Prevent concurrent switches
     if (this.isTransitioning) {
       throw createDatabaseError('Database switch already in progress');
     }
-    
+
     try {
       console.log('🟠🟠🟠 DatabaseManager.switchDatabase called:', {
-        fromDataDir: currentDataDir, 
+        fromDataDir: currentDataDir,
         toDataDir: dataDir,
         isInitialized: this.isInitialized,
         hasDb: !!this.db
       });
-      
-      logger.info('Starting database switch (no pooling)', { 
-        fromDataDir: currentDataDir, 
-        toDataDir: dataDir 
+
+      logger.info('Starting database switch (no pooling)', {
+        fromDataDir: currentDataDir,
+        toDataDir: dataDir
       });
-      
+
       // Skip if we're already connected to this database
       if (this.isInitialized && this.connectionInfo?.id === dataDir && !this.isTransitioning) {
         logger.debug('Already connected to target database, skipping switch', { dataDir });
         return;
       }
-      
+
       // Start atomic transition
       this.isTransitioning = true;
-      
+
       // Close the current connection
       if (this.db) {
         await this.db.close();
       }
-      
+
       // Reset state
       this.db = null;
       this.isInitialized = false;
@@ -124,24 +126,24 @@ export class DatabaseManager {
       this.queryMetrics = [];
       this.queryCache.clear();
       this.initializationPromise = null;
-      
-      
+
+
       // Initialize with the new database
       await this.initialize(dataDir);
-      
+
       const switchTime = performance.now() - startTime;
-      
+
       logger.info('Database switch completed successfully', {
         fromDataDir: currentDataDir,
         toDataDir: dataDir,
         switchTime: `${switchTime.toFixed(1)}ms`
       });
-      
+
     } catch (error) {
       console.error('Database switch failed:', error);
-      logger.error('Database switch failed', error as Error, { 
+      logger.error('Database switch failed', error as Error, {
         fromDataDir: currentDataDir,
-        toDataDir: dataDir 
+        toDataDir: dataDir
       });
       throw createDatabaseError('Failed to switch database', error as Error);
     } finally {
@@ -149,7 +151,7 @@ export class DatabaseManager {
       this.isTransitioning = false;
     }
   }
-  
+
   /**
    * Validate that a connection is working properly
    */
@@ -160,7 +162,7 @@ export class DatabaseManager {
       throw createDatabaseError('Connection validation failed', error as Error);
     }
   }
-  
+
   // Method for debugging current connection status
   public getConnectionStatus(): { dataDir: string | null; isConnected: boolean; isInitialized: boolean } {
     return {
@@ -173,7 +175,7 @@ export class DatabaseManager {
   public async deleteDatabase(dataDir: string): Promise<void> {
     try {
       logger.info('Deleting database', { dataDir });
-      
+
       // If this is the current database, close it first
       const currentDataDir = configManager.getDatabaseConfig().dataDir;
       if (currentDataDir === dataDir && this.db) {
@@ -182,22 +184,22 @@ export class DatabaseManager {
 
       // Extract database name from dataDir (e.g., "project_123" from "idb://project_123")
       const dbName = dataDir.replace('idb://', '');
-      
+
       // Delete the IndexedDB database
       if (typeof indexedDB !== 'undefined') {
         return new Promise((resolve, reject) => {
           const deleteRequest = indexedDB.deleteDatabase(dbName);
-          
+
           deleteRequest.onsuccess = () => {
             logger.info('Database deleted successfully', { dataDir, dbName });
             resolve();
           };
-          
+
           deleteRequest.onerror = () => {
             logger.error('Failed to delete database', deleteRequest.error as Error, { dataDir, dbName });
             reject(deleteRequest.error);
           };
-          
+
           deleteRequest.onblocked = () => {
             logger.warn('Database deletion blocked - connections may still be open', { dataDir, dbName });
             resolve(); // Resolve anyway as deletion will complete when connections close
@@ -214,26 +216,26 @@ export class DatabaseManager {
     try {
       const dbConfig = configManager.getDatabaseConfig();
       logger.info('Initializing PGlite database', { config: dbConfig, customDataDir });
-      
+
       // Browser-only IndexedDB-backed PGlite
       const rawDataDir = customDataDir || dbConfig.dataDir;
-      
+
       // Ensure proper idb:// prefix for IndexedDB persistence
       const dataDir = rawDataDir.startsWith('idb://') ? rawDataDir : `idb://${rawDataDir}`;
-      
-      
+
+
       // Use documented dataDir approach for IndexedDB persistence
       this.db = new PGlite({
         dataDir: dataDir,
         database: 'postgres',
         relaxedDurability: true, // Allow async IndexedDB flushes for better performance
       });
-      
+
       logger.debug(`Using IndexedDB PGlite database for browser: ${dataDir}`);
 
       await this.db.waitReady;
-      
-      
+
+
       // Set connection ID
       const actualConnectionId = customDataDir || dbConfig.dataDir;
       this.connectionInfo = {
@@ -242,13 +244,13 @@ export class DatabaseManager {
         createdAt: new Date(),
         lastAccessed: new Date(),
       };
-      
+
 
       // Initialize with some basic schemas
       await this.initializeSchemas();
-      
+
       // Schema initialization complete - IndexedDB persistence is automatic
-      
+
       this.isInitialized = true;
       logger.info('PGlite initialized successfully', {
         databaseId: this.connectionInfo.id,
@@ -265,7 +267,7 @@ export class DatabaseManager {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      
+
       // First, check if any user schemas exist (more comprehensive check)
       const schemasResult = await this.db.query(`
         SELECT schema_name 
@@ -273,19 +275,19 @@ export class DatabaseManager {
         WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
         ORDER BY schema_name;
       `);
-      
-      
+
+
       // Check if database has been seeded by looking for any of our core schemas
       // Don't rely only on auth.users since user might only use public schema
       const coreSchemas = ['auth', 'storage', 'realtime'];
       const existingSchemas = schemasResult.rows.map((row: any) => row.schema_name);
-      
+
       // If we have at least 2 of our core schemas, consider it seeded
       const foundCoreSchemas = coreSchemas.filter(schema => existingSchemas.includes(schema));
       const isSeeded = foundCoreSchemas.length >= 2;
-      
+
       if (isSeeded) {
-        
+        console.log('MDB: isSeeded is true');
         // Check what tables exist in public schema
         const publicTablesResult = await this.db.query(`
           SELECT table_name 
@@ -293,7 +295,7 @@ export class DatabaseManager {
           WHERE table_schema = 'public' 
           ORDER BY table_name;
         `);
-        
+
         // Also check all tables to see what we have
         const allTablesResult = await this.db.query(`
           SELECT table_schema, table_name 
@@ -301,27 +303,35 @@ export class DatabaseManager {
           WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
           ORDER BY table_schema, table_name;
         `);
-        
+
         logger.info('Database already seeded with Supabase schema');
         return;
       }
 
       logger.info('Initializing database with Supabase seed schema');
-      
-      // Load and execute the seed.sql file
-      const seedSql = await this.loadSeedSql();
-      await this.db.exec(seedSql);
-      
+
+
+      console.log('MDB: loadRolesSql');
+
       // Load and execute roles
       const rolesSql = await this.loadRolesSql();
       await this.db.exec(rolesSql);
-      
+
+      console.log('MDB: loadSeedSql');
+
+      // Load and execute the seed.sql file
+      const seedSql = await this.loadSeedSql();
+      await this.db.exec(seedSql);
+
+      console.log('MDB: loadPoliciesSql');
+
       // Load and execute default RLS policies
       const policiesSql = await this.loadPoliciesSql();
       await this.db.exec(policiesSql);
+      console.log('MDB: loadPoliciesSql completed');
 
       logger.info('Supabase database schema with RLS initialized successfully');
-      
+
       // Verify schema initialization with simple query
       try {
         await this.db.query('SELECT 1');
@@ -339,7 +349,8 @@ export class DatabaseManager {
   private async loadSeedSql(): Promise<string> {
     try {
       // Browser-only: fetch from static assets
-      const response = await fetch('/sql_scripts/seed.sql');
+      // const response = await fetch('/sql_scripts/seed.sql');
+      const response = await fetch('/sql_scripts/schema.sql');
       if (!response.ok) {
         throw new Error(`Failed to load seed.sql: ${response.statusText}`);
       }
@@ -420,15 +431,15 @@ export class DatabaseManager {
     try {
       // For PGlite compatibility, we'll set session variables but skip role changes
       // if they fail (since PGlite might not support role switching the same way)
-      
+
       // Try to set the role, but don't fail if it doesn't work
       try {
         await this.db.query(`SET LOCAL role = '${context.role}';`);
         logger.debug('Role set successfully', { role: context.role });
       } catch (roleError) {
-        logger.warn('Role setting not supported, continuing with session variables only', { 
-          role: context.role, 
-          error: roleError 
+        logger.warn('Role setting not supported, continuing with session variables only', {
+          role: context.role,
+          error: roleError
         });
         // Continue with session variable setting even if role setting fails
       }
@@ -451,16 +462,16 @@ export class DatabaseManager {
           logger.warn('Could not set sub claim variable', { error: subError });
         }
       }
-      
+
       try {
         await this.db.query(`SET LOCAL request.jwt.claim.role = '${context.role}';`);
       } catch (roleClaimError) {
         logger.warn('Could not set role claim variable', { error: roleClaimError });
       }
 
-      logger.debug('Session context set (with possible limitations)', { 
-        role: context.role, 
-        userId: context.userId 
+      logger.debug('Session context set (with possible limitations)', {
+        role: context.role,
+        userId: context.userId
       });
     } catch (error) {
       logger.error('Failed to set session context', error as Error);
@@ -484,28 +495,28 @@ export class DatabaseManager {
       } catch (roleError) {
         logger.warn('Could not reset role', { error: roleError });
       }
-      
+
       // Clear session variables - handle each one gracefully
       try {
         await this.db.query(`SET LOCAL request.jwt.claims = '';`);
       } catch (claimError) {
         logger.warn('Could not clear JWT claims', { error: claimError });
       }
-      
+
       try {
         await this.db.query(`SET LOCAL request.jwt.claim.sub = '';`);
       } catch (subError) {
         logger.warn('Could not clear sub claim', { error: subError });
       }
-      
+
       try {
         await this.db.query(`SET LOCAL request.jwt.claim.role = 'anon';`);
       } catch (roleClaimError) {
         logger.warn('Could not clear role claim', { error: roleClaimError });
       }
-      
+
       this.currentSessionContext = null;
-      
+
       logger.debug('Session context cleared (with possible limitations)');
     } catch (error) {
       logger.error('Failed to clear session context', error as Error);
@@ -519,19 +530,19 @@ export class DatabaseManager {
    * Automatically sets and clears context around the query
    */
   public async queryWithContext(
-    sql: string, 
+    sql: string,
     context: SessionContext,
     optionsOrParams?: QueryOptions | any[]
   ): Promise<QueryResult> {
     const previousContext = this.currentSessionContext;
-    
+
     try {
       // Set context for this query
       await this.setSessionContext(context);
-      
+
       // Execute the query with the context
       const result = await this.query(sql, optionsOrParams);
-      
+
       return result;
     } finally {
       // Always restore previous context
@@ -560,7 +571,7 @@ export class DatabaseManager {
     // Handle overloaded method signatures
     let options: QueryOptions | undefined
     let params: any[] | undefined
-    
+
     if (Array.isArray(optionsOrParams)) {
       params = optionsOrParams
       options = undefined
@@ -571,7 +582,7 @@ export class DatabaseManager {
 
     const startTime = performance.now();
     const cacheKey = options?.cache ? this.getCacheKey(sql) : null;
-    
+
     try {
       // Check cache if enabled
       if (cacheKey && configManager.get('enableQueryCaching')) {
@@ -584,15 +595,15 @@ export class DatabaseManager {
 
       // Validate query permissions based on current role
       roleSimulator.preprocessQuery(sql);
-      
+
       // Execute the query with timeout if specified
       const timeout = options?.timeout || configManager.getDatabaseConfig().queryTimeout;
-      const result = params 
+      const result = params
         ? await this.executeWithTimeout(() => this.db!.query(sql, params), timeout)
         : await this.executeWithTimeout(() => this.db!.query(sql), timeout);
-      
+
       const duration = performance.now() - startTime;
-      
+
       // Update last accessed time
       if (this.connectionInfo) {
         this.connectionInfo.lastAccessed = new Date();
@@ -618,15 +629,15 @@ export class DatabaseManager {
       if (configManager.getDatabaseConfig().enableQueryLogging) {
         logQuery(sql, duration, queryResult.rowCount);
       }
-      
+
       return queryResult;
     } catch (error: any) {
       const duration = performance.now() - startTime;
-      logError('Database query execution', error as Error, { 
-        sql: sql.slice(0, 200), 
-        duration 
+      logError('Database query execution', error as Error, {
+        sql: sql.slice(0, 200),
+        duration
       });
-      
+
       // Preserve the original PGlite error for PostgREST error mapping
       // Don't wrap it in a generic infrastructure error
       throw error;
@@ -639,26 +650,26 @@ export class DatabaseManager {
     }
 
     const startTime = performance.now();
-    
+
     try {
       // Validate script permissions based on current role
       roleSimulator.preprocessQuery(sql); // This now only validates, doesn't modify SQL
-      
+
       // Execute the original script
       const results = await this.db.exec(sql);
       const totalDuration = performance.now() - startTime;
-      
+
       // Update last accessed time
       if (this.connectionInfo) {
         this.connectionInfo.lastAccessed = new Date();
       }
-      
+
       // Convert PGlite results to our QueryResult format
       const queryResults: QueryResult[] = results.map((result, index) => {
         // Extract command from the statement (first word)
         const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
         const command = statements[index]?.split(' ')[0]?.toUpperCase() || 'UNKNOWN';
-        
+
         return {
           rows: result.rows || [],
           fields: result.fields || [],
@@ -678,7 +689,7 @@ export class DatabaseManager {
     } catch (error: any) {
       const totalDuration = performance.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Script execution failed';
-      
+
       // If the error occurred, we assume all statements failed
       throw {
         message: errorMessage,
@@ -694,7 +705,7 @@ export class DatabaseManager {
 
     try {
       await this.db.exec(sql);
-      
+
       // Update last accessed time
       if (this.connectionInfo) {
         this.connectionInfo.lastAccessed = new Date();
@@ -725,7 +736,7 @@ export class DatabaseManager {
       const result = await this.db.query(`
         SELECT pg_database_size(current_database()) as size;
       `);
-      
+
       const sizeInBytes = (result.rows[0] as any)?.size || 0;
       return this.formatBytes(sizeInBytes);
     } catch {
@@ -740,10 +751,10 @@ export class DatabaseManager {
 
     try {
       const connectionInfo = this.getConnectionInfo();
-      
-      
-      
-      
+
+
+
+
       const result = await this.db.query(`
         SELECT 
           t.table_schema as schema,
@@ -755,7 +766,7 @@ export class DatabaseManager {
           AND t.table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
         ORDER BY t.table_schema, t.table_name;
       `);
-      
+
       return result.rows as Array<{ name: string; schema: string; rows: number }>;
     } catch (error) {
       console.error('Failed to get table list:', error);
@@ -796,7 +807,7 @@ export class DatabaseManager {
           AND c.table_schema = $2
         ORDER BY c.ordinal_position;
       `, [tableName, schema]);
-      
+
       return result.rows as Array<{
         column_name: string;
         data_type: string;
@@ -811,9 +822,9 @@ export class DatabaseManager {
   }
 
   public async getTableData(
-    tableName: string, 
-    schema: string = 'public', 
-    limit: number = 100, 
+    tableName: string,
+    schema: string = 'public',
+    limit: number = 100,
     offset: number = 0,
     filters?: Array<{ column: string; operator: string; value: string }>
   ): Promise<{
@@ -828,12 +839,12 @@ export class DatabaseManager {
       // Build WHERE clause from filters
       let whereClause = '';
       const values: any[] = [];
-      
+
       if (filters && filters.length > 0) {
         const conditions = filters.map((filter, index) => {
           const paramIndex = index + 1;
           values.push(filter.value);
-          
+
           switch (filter.operator) {
             case 'equals':
               return `${filter.column} = $${paramIndex}`;
@@ -879,7 +890,7 @@ export class DatabaseManager {
       const countQuery = `SELECT COUNT(*) as total FROM ${schema}.${tableName}${whereClause}`;
       const countResult = await this.db.query(countQuery, values);
       const totalCount = (countResult.rows[0] as any)?.total || 0;
-      
+
       // Get paginated data with filters
       const dataQuery = `
         SELECT * FROM ${schema}.${tableName}${whereClause}
@@ -889,7 +900,7 @@ export class DatabaseManager {
         LIMIT ${limit} OFFSET ${offset}
       `;
       const dataResult = await this.db.query(dataQuery, values);
-      
+
       return {
         rows: dataResult.rows,
         totalCount: parseInt(totalCount, 10)
@@ -901,9 +912,9 @@ export class DatabaseManager {
   }
 
   public async updateTableRow(
-    tableName: string, 
-    primaryKeyColumn: string, 
-    primaryKeyValue: any, 
+    tableName: string,
+    primaryKeyColumn: string,
+    primaryKeyValue: any,
     updates: Record<string, any>,
     schema: string = 'public'
   ): Promise<boolean> {
@@ -914,15 +925,15 @@ export class DatabaseManager {
     try {
       const updateColumns = Object.keys(updates);
       const updateValues = Object.values(updates);
-      
+
       const setClause = updateColumns.map((col, index) => `${col} = $${index + 1}`).join(', ');
-      
+
       await this.db.query(`
         UPDATE ${schema}.${tableName}
         SET ${setClause}
         WHERE ${primaryKeyColumn} = $${updateColumns.length + 1};
       `, [...updateValues, primaryKeyValue]);
-      
+
       return true;
     } catch (error) {
       console.error('Failed to update table row:', error);
@@ -931,7 +942,7 @@ export class DatabaseManager {
   }
 
   public async insertTableRow(
-    tableName: string, 
+    tableName: string,
     data: Record<string, any>,
     schema: string = 'public'
   ): Promise<boolean> {
@@ -942,15 +953,15 @@ export class DatabaseManager {
     try {
       const columns = Object.keys(data);
       const values = Object.values(data);
-      
+
       const columnsClause = columns.join(', ');
       const valuesClause = values.map((_, index) => `$${index + 1}`).join(', ');
-      
+
       await this.db.query(`
         INSERT INTO ${schema}.${tableName} (${columnsClause})
         VALUES (${valuesClause});
       `, values);
-      
+
       return true;
     } catch (error) {
       console.error('Failed to insert table row:', error);
@@ -959,8 +970,8 @@ export class DatabaseManager {
   }
 
   public async deleteTableRow(
-    tableName: string, 
-    primaryKeyColumn: string, 
+    tableName: string,
+    primaryKeyColumn: string,
     primaryKeyValue: any,
     schema: string = 'public'
   ): Promise<boolean> {
@@ -973,7 +984,7 @@ export class DatabaseManager {
         DELETE FROM ${schema}.${tableName}
         WHERE ${primaryKeyColumn} = $1;
       `, [primaryKeyValue]);
-      
+
       return true;
     } catch (error) {
       console.error('Failed to delete table row:', error);
@@ -983,7 +994,7 @@ export class DatabaseManager {
 
   // Transaction support
   public async transaction<T>(
-    queries: (() => Promise<T>)[], 
+    queries: (() => Promise<T>)[],
     options?: TransactionOptions
   ): Promise<T[]> {
     if (!this.db || !this.isInitialized) {
@@ -1008,7 +1019,7 @@ export class DatabaseManager {
       }
 
       const results: T[] = [];
-      
+
       // Execute queries within transaction
       for (let i = 0; i < queries.length; i++) {
         try {
@@ -1018,12 +1029,12 @@ export class DatabaseManager {
           // Rollback on error
           await this.db.exec('ROLLBACK');
           const duration = performance.now() - startTime;
-          logError(`Transaction failed at query ${i + 1}`, error as Error, { 
-            duration, 
-            queryIndex: i 
+          logError(`Transaction failed at query ${i + 1}`, error as Error, {
+            duration,
+            queryIndex: i
           });
           throw createDatabaseError(
-            `Transaction failed at query ${i + 1}`, 
+            `Transaction failed at query ${i + 1}`,
             error as Error
           );
         }
@@ -1031,13 +1042,13 @@ export class DatabaseManager {
 
       // Commit transaction
       await this.db.exec('COMMIT');
-      
+
       const duration = performance.now() - startTime;
-      logger.info('Transaction completed successfully', { 
-        queries: queries.length, 
-        duration 
+      logger.info('Transaction completed successfully', {
+        queries: queries.length,
+        duration
       });
-      
+
       return results;
     } catch (error) {
       // Ensure rollback in case of any error
@@ -1073,12 +1084,12 @@ export class DatabaseManager {
     const totalQueries = this.queryMetrics.length;
     const cachedQueries = this.queryMetrics.filter(m => m.cached).length;
     const hitRate = totalQueries > 0 ? (cachedQueries / totalQueries) * 100 : 0;
-    
+
     return { size, hitRate };
   }
 
   private async executeWithTimeout<T>(
-    operation: () => Promise<T>, 
+    operation: () => Promise<T>,
     timeout?: number
   ): Promise<T> {
     if (!timeout) return operation();
@@ -1158,11 +1169,11 @@ export class DatabaseManager {
 
   private formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
-    
+
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
@@ -1182,7 +1193,7 @@ export class DatabaseManager {
 
       // Use PGlite's dumpDataDir method to create backup
       const backup = await this.db.dumpDataDir(compression);
-      
+
       const duration = performance.now() - startTime;
       logger.info('Database backup completed successfully', {
         compression,
@@ -1206,19 +1217,19 @@ export class DatabaseManager {
    */
   public static async restoreDatabase(backupBlob: Blob | File, dataDir: string): Promise<void> {
     try {
-      logger.info('Starting database restore', { 
+      logger.info('Starting database restore', {
         dataDir,
-        backupSize: backupBlob.size 
+        backupSize: backupBlob.size
       });
-      
+
       const startTime = performance.now();
 
       // Import PGlite dynamically to avoid circular dependencies
       const { PGlite } = await import('@electric-sql/pglite');
-      
+
       // Ensure proper idb:// prefix for IndexedDB persistence
       const fullDataDir = dataDir.startsWith('idb://') ? dataDir : `idb://${dataDir}`;
-      
+
       // Create new PGlite instance with the backup data
       const restoredDb = new PGlite({
         dataDir: fullDataDir,
@@ -1232,10 +1243,10 @@ export class DatabaseManager {
 
       // Test the connection
       await restoredDb.query('SELECT 1');
-      
+
       // Close the temporary instance (the actual instance will be created by initialize)
       await restoredDb.close();
-      
+
       const duration = performance.now() - startTime;
       logger.info('Database restore completed successfully', {
         dataDir: fullDataDir,
@@ -1243,9 +1254,9 @@ export class DatabaseManager {
         backupSize: backupBlob.size
       });
     } catch (error) {
-      logger.error('Database restore failed', error as Error, { 
+      logger.error('Database restore failed', error as Error, {
         dataDir,
-        backupSize: backupBlob.size 
+        backupSize: backupBlob.size
       });
       throw createDatabaseError('Failed to restore database from backup', error as Error);
     }
@@ -1260,7 +1271,7 @@ export class DatabaseManager {
         logger.error('Error closing database connection', error as Error);
         // Continue with cleanup even if close fails
       }
-      
+
       // Reset all state
       this.db = null;
       this.isInitialized = false;
