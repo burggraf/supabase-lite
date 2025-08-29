@@ -8,7 +8,7 @@ import { projectManager } from '@/lib/projects/ProjectManager';
 import type { Project } from '@/lib/projects/ProjectManager';
 
 export function Dashboard() {
-  const { isConnected, isConnecting, error, getConnectionInfo, switchToProject, connectionId, getTableList, initialize, close } = useDatabase();
+  const { isConnected, isConnecting, error, getConnectionInfo, switchToProject, connectionId, getTableList, initialize } = useDatabase();
   const connectionInfo = getConnectionInfo();
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
@@ -191,7 +191,7 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="flex-1 space-y-6 p-6 overflow-y-auto min-h-full">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-muted-foreground">
