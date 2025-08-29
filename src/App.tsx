@@ -158,6 +158,8 @@ function App() {
           </ErrorBoundary>
         );
       case 'edge-functions':
+      case 'edge-functions-secrets':  
+      case 'edge-functions-editor':
         return (
           <ErrorBoundary>
             <EdgeFunctions />
