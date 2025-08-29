@@ -235,6 +235,9 @@ export class DatabaseManager {
 
       await this.db.waitReady;
 
+      // Give PGlite more time to fully load persisted IndexedDB data
+      // This prevents schema detection issues on page refresh
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Set connection ID
       const actualConnectionId = customDataDir || dbConfig.dataDir;
@@ -268,23 +271,29 @@ export class DatabaseManager {
 
     try {
 
-      // First, check if any user schemas exist (more comprehensive check)
-      const schemasResult = await this.db.query(`
-        SELECT schema_name 
-        FROM information_schema.schemata 
-        WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-        ORDER BY schema_name;
-      `);
-
-
-      // Check if database has been seeded by looking for any of our core schemas
-      // Don't rely only on auth.users since user might only use public schema
-      const coreSchemas = ['auth', 'storage', 'realtime'];
-      const existingSchemas = schemasResult.rows.map((row: any) => row.schema_name);
-
-      // If we have at least 2 of our core schemas, consider it seeded
-      const foundCoreSchemas = coreSchemas.filter(schema => existingSchemas.includes(schema));
-      const isSeeded = foundCoreSchemas.length >= 2;
+      // Check if database has been seeded by looking for specific roles that we create
+      // Since roles persist but schemas/tables might not, this is the most reliable check
+      let isSeeded = false;
+      try {
+        const roleCheckResult = await this.db.query(`
+          SELECT EXISTS (
+            SELECT 1 FROM pg_roles WHERE rolname = 'anon'
+          ) as anon_exists,
+          EXISTS (
+            SELECT 1 FROM pg_roles WHERE rolname = 'authenticated'
+          ) as authenticated_exists;
+        `);
+        
+        const anonExists = roleCheckResult.rows[0]?.anon_exists === true;
+        const authenticatedExists = roleCheckResult.rows[0]?.authenticated_exists === true;
+        isSeeded = anonExists && authenticatedExists;
+        
+        console.log('MDB: Role check - anon exists:', anonExists, 'authenticated exists:', authenticatedExists, 'isSeeded:', isSeeded);
+        
+      } catch (error) {
+        console.log('MDB: Error checking for seeded database roles, assuming not seeded:', error);
+        isSeeded = false;
+      }
 
       if (isSeeded) {
         console.log('MDB: isSeeded is true');
@@ -332,6 +341,10 @@ export class DatabaseManager {
 
       logger.info('Supabase database schema with RLS initialized successfully');
 
+      // Ensure all schema changes are persisted to IndexedDB
+      await this.db.query('CHECKPOINT');
+      console.log('MDB: CHECKPOINT executed to ensure persistence');
+
       // Verify schema initialization with simple query
       try {
         await this.db.query('SELECT 1');
@@ -355,6 +368,8 @@ export class DatabaseManager {
         throw new Error(`Failed to load seed.sql: ${response.statusText}`);
       }
       const seedSql = await response.text();
+      console.log('MDB: loaded seed.sql', response.statusText);
+
       logger.debug('Loaded seed.sql from static assets');
       return seedSql;
     } catch (error) {
