@@ -100,16 +100,19 @@ export class DatabaseManager {
         hasDb: !!this.db
       });
 
+
       logger.info('Starting database switch (no pooling)', {
         fromDataDir: currentDataDir,
         toDataDir: dataDir
       });
 
-      // Skip if we're already connected to this database
-      if (this.isInitialized && this.connectionInfo?.id === dataDir && !this.isTransitioning) {
-        logger.debug('Already connected to target database, skipping switch', { dataDir });
-        return;
-      }
+      // Always perform the database switch - don't skip based on cached connection info
+      // This prevents the bug where tables disappear when switching back to a project
+      logger.debug('Performing database switch', { 
+        fromDataDir: currentDataDir, 
+        toDataDir: dataDir,
+        forceSwitch: true 
+      });
 
       // Start atomic transition
       this.isTransitioning = true;
@@ -296,25 +299,42 @@ export class DatabaseManager {
       }
 
       if (isSeeded) {
-        console.log('MDB: isSeeded is true');
-        // Check what tables exist in public schema
-        const publicTablesResult = await this.db.query(`
-          SELECT table_name 
+        // CRITICAL FIX: Also check that essential tables exist, not just roles
+        // Roles persist but tables can be lost on refresh
+        const essentialTablesResult = await this.db.query(`
+          SELECT COUNT(*) as table_count
           FROM information_schema.tables 
-          WHERE table_schema = 'public' 
-          ORDER BY table_name;
+          WHERE table_schema IN ('auth', 'storage', 'realtime')
+          AND table_type = 'BASE TABLE';
         `);
+        
+        const tableCount = parseInt(essentialTablesResult.rows[0]?.table_count || '0');
+        
+        if (tableCount < 10) {
+          // We should have many more tables in auth/storage/realtime schemas
+          logger.warn('Database roles exist but tables are missing, re-initializing schema');
+          
+          // Skip role creation since roles already exist, just create tables
+          logger.info('Re-initializing database schema (skipping roles)');
 
-        // Also check all tables to see what we have
-        const allTablesResult = await this.db.query(`
-          SELECT table_schema, table_name 
-          FROM information_schema.tables 
-          WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-          ORDER BY table_schema, table_name;
-        `);
+          // Load and execute the seed.sql file (tables, schemas, etc.)
+          const seedSql = await this.loadSeedSql();
+          await this.db.exec(seedSql);
 
-        logger.info('Database already seeded with Supabase schema');
-        return;
+          // Load and execute default RLS policies
+          const policiesSql = await this.loadPoliciesSql();
+          await this.db.exec(policiesSql);
+
+          logger.info('Supabase database schema re-initialized successfully');
+
+          // Ensure all schema changes are persisted to IndexedDB
+          await this.db.query('CHECKPOINT');
+          
+          return;
+        } else {
+          logger.info('Database already seeded with Supabase schema');
+          return;
+        }
       }
 
       logger.info('Initializing database with Supabase seed schema');
@@ -782,6 +802,7 @@ export class DatabaseManager {
           AND t.table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
         ORDER BY t.table_schema, t.table_name;
       `);
+
 
       return result.rows as Array<{ name: string; schema: string; rows: number }>;
     } catch (error) {

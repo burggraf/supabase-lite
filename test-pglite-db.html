@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PGlite IndexedDB Test</title>
+</head>
+<body>
+    <h1>PGlite IndexedDB Test</h1>
+    <button onclick="testDatabase()">Test Database Creation</button>
+    <pre id="output"></pre>
+    
+    <script type="module">
+        import { PGlite } from 'https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.2.14/dist/index.js';
+        
+        window.testDatabase = async function() {
+            const output = document.getElementById('output');
+            
+            // Test what PGlite creates
+            const testId = 'project_test_' + Date.now();
+            const dataDir = 'idb://' + testId;
+            
+            output.textContent = 'Creating PGlite with dataDir: ' + dataDir + '\n';
+            
+            const db = new PGlite({
+                dataDir: dataDir,
+                database: 'postgres'
+            });
+            
+            await db.waitReady;
+            output.textContent += 'Database ready\n';
+            
+            // List all IndexedDB databases
+            const databases = await indexedDB.databases();
+            output.textContent += '\nAll IndexedDB databases:\n';
+            databases.forEach(db => {
+                output.textContent += '  - ' + db.name + '\n';
+            });
+            
+            // Check what PGlite actually created
+            output.textContent += '\nDatabases matching our test ID:\n';
+            databases.forEach(db => {
+                if (db.name.includes(testId)) {
+                    output.textContent += '  - ' + db.name + '\n';
+                }
+            });
+            
+            await db.close();
+        }
+    </script>
+</body>
+</html>

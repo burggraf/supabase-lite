@@ -262,34 +262,83 @@ export class ProjectManager {
       // Extract the database name from the path (e.g., "project_123" from "idb://project_123")
       const dbName = databasePath.replace('idb://', '');
       
+      logger.info('Starting database cleanup', { databasePath, dbName });
+      
       // Try to delete the IndexedDB database
       if (typeof indexedDB !== 'undefined') {
-        return new Promise((resolve, reject) => {
-          const deleteRequest = indexedDB.deleteDatabase(dbName);
-          
-          deleteRequest.onsuccess = () => {
-            logger.debug('IndexedDB database deleted successfully', { dbName });
-            resolve();
-          };
-          
-          deleteRequest.onerror = () => {
-            logger.warn('Failed to delete IndexedDB database', { 
-              dbName, 
-              error: deleteRequest.error 
-            });
-            reject(deleteRequest.error);
-          };
-          
-          deleteRequest.onblocked = () => {
-            logger.warn('Database deletion blocked - there may be open connections', { dbName });
-            // Resolve anyway as the deletion will complete when connections close
-            resolve();
-          };
+        // First, list all databases to see what exists
+        const allDatabases = await indexedDB.databases();
+        logger.debug('All IndexedDB databases before cleanup', { 
+          databases: allDatabases.map(db => db.name),
+          targetDbName: dbName
         });
+        
+        // Find databases that match our project
+        const matchingDatabases = allDatabases.filter(db => 
+          db.name === dbName || 
+          db.name?.startsWith(dbName) ||
+          db.name?.includes(dbName)
+        );
+        
+        logger.debug('Databases to delete', { 
+          matchingDatabases: matchingDatabases.map(db => db.name),
+          count: matchingDatabases.length
+        });
+        
+        // Delete each matching database
+        const deletePromises = matchingDatabases.map(db => {
+          return new Promise<void>((resolve, reject) => {
+            if (!db.name) {
+              resolve();
+              return;
+            }
+            
+            const deleteRequest = indexedDB.deleteDatabase(db.name);
+            
+            deleteRequest.onsuccess = () => {
+              logger.debug('IndexedDB database deleted successfully', { dbName: db.name });
+              resolve();
+            };
+            
+            deleteRequest.onerror = () => {
+              logger.warn('Failed to delete IndexedDB database', { 
+                dbName: db.name, 
+                error: deleteRequest.error 
+              });
+              // Don't reject - continue with other deletions
+              resolve();
+            };
+            
+            deleteRequest.onblocked = () => {
+              logger.warn('Database deletion blocked - there may be open connections', { dbName: db.name });
+              // Resolve anyway as the deletion will complete when connections close
+              resolve();
+            };
+          });
+        });
+        
+        // Wait for all deletions to complete
+        await Promise.all(deletePromises);
+        
+        // Verify deletion
+        const remainingDatabases = await indexedDB.databases();
+        const stillExists = remainingDatabases.filter(db => 
+          db.name === dbName || 
+          db.name?.startsWith(dbName) ||
+          db.name?.includes(dbName)
+        );
+        
+        if (stillExists.length > 0) {
+          logger.warn('Some databases could not be deleted', { 
+            stillExists: stillExists.map(db => db.name)
+          });
+        } else {
+          logger.info('All project databases deleted successfully', { dbName });
+        }
       }
     } catch (error) {
-      logger.warn('Database cleanup failed', error as Error, { databasePath });
-      throw error;
+      logger.error('Database cleanup failed', error as Error, { databasePath });
+      // Don't throw error - database deletion is not critical for project deletion
     }
   }
 
