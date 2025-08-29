@@ -103,6 +103,7 @@ export function useDatabase() {
     }
   }, [isConnected]);
 
+
   const getConnectionInfo = useCallback(() => {
     return dbManager.getConnectionInfo();
   }, []);

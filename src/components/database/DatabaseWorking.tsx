@@ -28,10 +28,12 @@ import {
   Eye,
   Edit,
   Trash2,
-  Copy
+  Copy,
+  Upload
 } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
 import { SeedDataSection } from './SeedDataSection';
+import { LoadDataSection } from './LoadDataSection';
 import { BackupsSection } from './BackupsSection';
 import { CreateTableDialog } from './tables/CreateTableDialog';
 
@@ -57,6 +59,7 @@ const sidebarSections = [
       { id: 'indexes', label: 'Indexes', icon: Key },
       { id: 'publications', label: 'Publications', icon: Link },
       { id: 'seed-data', label: 'Seed Data', icon: Plus },
+      { id: 'load-data', label: 'Load Data', icon: Upload },
       { id: 'replication', label: 'Replication', icon: DatabaseIcon, badge: 'Coming Soon' },
     ]
   },
@@ -246,13 +249,15 @@ export function DatabaseWorking() {
       <div className="flex-1 flex flex-col">
         {activeSection === 'seed-data' ? (
           <SeedDataSection />
+        ) : activeSection === 'load-data' ? (
+          <LoadDataSection />
         ) : activeSection === 'backups' ? (
           <BackupsSection />
         ) : (
           <>
             {/* Header */}
             <div className="p-6 border-b">
-          <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Database Tables</h1>
             <Button onClick={() => {
               console.log('NEW TABLE BUTTON CLICKED!');
