@@ -3,27 +3,31 @@
 -- Based on Supabase default schema and roles
 -- Adapted for PGlite compatibility
 --
-
 -- Set basic configuration
 SET statement_timeout = 0;
+
 SET lock_timeout = 0;
+
 SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SET check_function_bodies = false;
+
+SET standard_conforming_strings = ON;
+
+SET check_function_bodies = FALSE;
+
 SET xmloption = content;
+
 SET client_min_messages = warning;
-SET row_security = off;
+
+SET row_security = OFF;
 
 -- =============================================================================
 -- ROLES (Simulated for PGlite - actual role management not fully supported)
 -- =============================================================================
-
 -- Note: PGlite doesn't support full role management, but we'll create these
 -- statements for documentation and potential future compatibility
-
 -- Core roles (commented out as PGlite doesn't support most role operations)
 -- CREATE ROLE anon;
--- CREATE ROLE authenticated; 
+-- CREATE ROLE authenticated;
 -- CREATE ROLE authenticator;
 -- CREATE ROLE dashboard_user;
 -- CREATE ROLE pgbouncer;
@@ -35,19 +39,24 @@ SET row_security = off;
 -- CREATE ROLE supabase_realtime_admin;
 -- CREATE ROLE supabase_replication_admin;
 -- CREATE ROLE supabase_storage_admin;
-
 -- =============================================================================
 -- SCHEMAS
 -- =============================================================================
-
 -- Create Supabase schemas
 CREATE SCHEMA IF NOT EXISTS auth;
+
 CREATE SCHEMA IF NOT EXISTS extensions;
+
 CREATE SCHEMA IF NOT EXISTS graphql;
+
 CREATE SCHEMA IF NOT EXISTS graphql_public;
+
 CREATE SCHEMA IF NOT EXISTS pgbouncer;
+
 CREATE SCHEMA IF NOT EXISTS realtime;
+
 CREATE SCHEMA IF NOT EXISTS storage;
+
 CREATE SCHEMA IF NOT EXISTS vault;
 
 -- Grant permissions to postgres role (PGlite default)
@@ -59,52 +68,45 @@ CREATE SCHEMA IF NOT EXISTS vault;
 -- ALTER SCHEMA realtime OWNER TO supabase_admin;
 -- ALTER SCHEMA storage OWNER TO supabase_admin;
 -- ALTER SCHEMA vault OWNER TO supabase_admin;
-
 -- =============================================================================
 -- EXTENSIONS (Only PGlite-supported ones)
 -- =============================================================================
-
 -- Note: Most PostgreSQL extensions are not supported in PGlite
 -- We'll use built-in functions instead
-
 -- UUID generation (use gen_random_uuid() which is built-in)
 -- CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
-
 -- Cryptographic functions (not supported in PGlite)
 -- CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
-
 -- Unsupported extensions (commented out):
 -- CREATE EXTENSION IF NOT EXISTS pg_graphql WITH SCHEMA graphql;
 -- CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA extensions;
 -- CREATE EXTENSION IF NOT EXISTS supabase_vault WITH SCHEMA vault;
-
 -- =============================================================================
 -- AUTH SCHEMA TYPES
 -- =============================================================================
-
-CREATE TYPE auth.aal_level AS ENUM (
+CREATE TYPE auth.aal_level AS ENUM(
     'aal1',
     'aal2',
     'aal3'
 );
 
-CREATE TYPE auth.code_challenge_method AS ENUM (
+CREATE TYPE auth.code_challenge_method AS ENUM(
     's256',
     'plain'
 );
 
-CREATE TYPE auth.factor_status AS ENUM (
+CREATE TYPE auth.factor_status AS ENUM(
     'unverified',
     'verified'
 );
 
-CREATE TYPE auth.factor_type AS ENUM (
+CREATE TYPE auth.factor_type AS ENUM(
     'totp',
     'webauthn',
     'phone'
 );
 
-CREATE TYPE auth.one_time_token_type AS ENUM (
+CREATE TYPE auth.one_time_token_type AS ENUM(
     'confirmation_token',
     'reauthentication_token',
     'recovery_token',
@@ -116,9 +118,8 @@ CREATE TYPE auth.one_time_token_type AS ENUM (
 -- =============================================================================
 -- AUTH SCHEMA TABLES
 -- =============================================================================
-
 -- Users table
-CREATE TABLE auth.users (
+CREATE TABLE auth.users(
     instance_id uuid,
     id uuid NOT NULL,
     aud character varying(255),
@@ -151,15 +152,15 @@ CREATE TABLE auth.users (
     banned_until timestamp with time zone,
     reauthentication_token character varying(255) DEFAULT ''::character varying,
     reauthentication_sent_at timestamp with time zone,
-    is_sso_user boolean DEFAULT false NOT NULL,
+    is_sso_user boolean DEFAULT FALSE NOT NULL,
     deleted_at timestamp with time zone,
-    is_anonymous boolean DEFAULT false NOT NULL,
+    is_anonymous boolean DEFAULT FALSE NOT NULL,
     CONSTRAINT users_pkey PRIMARY KEY (id),
     CONSTRAINT users_phone_key UNIQUE (phone)
 );
 
 -- Identities table
-CREATE TABLE auth.identities (
+CREATE TABLE auth.identities(
     provider_id text NOT NULL,
     user_id uuid NOT NULL,
     identity_data jsonb NOT NULL,
@@ -175,7 +176,7 @@ CREATE TABLE auth.identities (
 );
 
 -- Sessions table
-CREATE TABLE auth.sessions (
+CREATE TABLE auth.sessions(
     id uuid NOT NULL,
     user_id uuid NOT NULL,
     created_at timestamp with time zone,
@@ -192,7 +193,7 @@ CREATE TABLE auth.sessions (
 );
 
 -- Refresh tokens table
-CREATE TABLE auth.refresh_tokens (
+CREATE TABLE auth.refresh_tokens(
     instance_id uuid,
     id bigint NOT NULL,
     token character varying(255),
@@ -207,13 +208,13 @@ CREATE TABLE auth.refresh_tokens (
 );
 
 -- Schema migrations table
-CREATE TABLE auth.schema_migrations (
+CREATE TABLE auth.schema_migrations(
     version character varying(255) NOT NULL,
     CONSTRAINT schema_migrations_pkey PRIMARY KEY (version)
 );
 
 -- Audit log entries table
-CREATE TABLE auth.audit_log_entries (
+CREATE TABLE auth.audit_log_entries(
     instance_id uuid,
     id uuid NOT NULL,
     payload json,
@@ -223,7 +224,7 @@ CREATE TABLE auth.audit_log_entries (
 );
 
 -- Instances table
-CREATE TABLE auth.instances (
+CREATE TABLE auth.instances(
     id uuid NOT NULL,
     uuid uuid,
     raw_base_config text,
@@ -233,7 +234,7 @@ CREATE TABLE auth.instances (
 );
 
 -- MFA factors table
-CREATE TABLE auth.mfa_factors (
+CREATE TABLE auth.mfa_factors(
     id uuid NOT NULL,
     user_id uuid NOT NULL,
     friendly_name text,
@@ -250,8 +251,8 @@ CREATE TABLE auth.mfa_factors (
     CONSTRAINT mfa_factors_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- MFA challenges table  
-CREATE TABLE auth.mfa_challenges (
+-- MFA challenges table
+CREATE TABLE auth.mfa_challenges(
     id uuid NOT NULL,
     factor_id uuid NOT NULL,
     created_at timestamp with time zone NOT NULL,
@@ -264,7 +265,7 @@ CREATE TABLE auth.mfa_challenges (
 );
 
 -- MFA AMR claims table
-CREATE TABLE auth.mfa_amr_claims (
+CREATE TABLE auth.mfa_amr_claims(
     session_id uuid NOT NULL,
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
@@ -275,7 +276,7 @@ CREATE TABLE auth.mfa_amr_claims (
 );
 
 -- One-time tokens table
-CREATE TABLE auth.one_time_tokens (
+CREATE TABLE auth.one_time_tokens(
     id uuid NOT NULL,
     user_id uuid NOT NULL,
     token_type auth.one_time_token_type NOT NULL,
@@ -288,7 +289,7 @@ CREATE TABLE auth.one_time_tokens (
 );
 
 -- Flow state table
-CREATE TABLE auth.flow_state (
+CREATE TABLE auth.flow_state(
     id uuid NOT NULL,
     user_id uuid,
     auth_code text NOT NULL,
@@ -305,7 +306,7 @@ CREATE TABLE auth.flow_state (
 );
 
 -- SSO providers table
-CREATE TABLE auth.sso_providers (
+CREATE TABLE auth.sso_providers(
     id uuid NOT NULL,
     resource_id text,
     created_at timestamp with time zone,
@@ -314,7 +315,7 @@ CREATE TABLE auth.sso_providers (
 );
 
 -- SSO domains table
-CREATE TABLE auth.sso_domains (
+CREATE TABLE auth.sso_domains(
     id uuid NOT NULL,
     sso_provider_id uuid NOT NULL,
     domain text NOT NULL,
@@ -325,7 +326,7 @@ CREATE TABLE auth.sso_domains (
 );
 
 -- SAML providers table
-CREATE TABLE auth.saml_providers (
+CREATE TABLE auth.saml_providers(
     id uuid NOT NULL,
     sso_provider_id uuid NOT NULL,
     entity_id text NOT NULL,
@@ -340,7 +341,7 @@ CREATE TABLE auth.saml_providers (
 );
 
 -- SAML relay states table
-CREATE TABLE auth.saml_relay_states (
+CREATE TABLE auth.saml_relay_states(
     id uuid NOT NULL,
     sso_provider_id uuid NOT NULL,
     request_id text NOT NULL,
@@ -357,16 +358,15 @@ CREATE TABLE auth.saml_relay_states (
 -- =============================================================================
 -- STORAGE SCHEMA (Basic structure)
 -- =============================================================================
-
 -- Storage buckets table
-CREATE TABLE storage.buckets (
+CREATE TABLE storage.buckets(
     id text NOT NULL,
     name text NOT NULL,
     owner uuid,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    public boolean DEFAULT false,
-    avif_autodetection boolean DEFAULT false,
+    public boolean DEFAULT FALSE,
+    avif_autodetection boolean DEFAULT FALSE,
     file_size_limit bigint,
     allowed_mime_types text[],
     owner_id text,
@@ -374,7 +374,7 @@ CREATE TABLE storage.buckets (
 );
 
 -- Storage objects table
-CREATE TABLE storage.objects (
+CREATE TABLE storage.objects(
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     bucket_id text,
     name text,
@@ -391,7 +391,7 @@ CREATE TABLE storage.objects (
 );
 
 -- Storage migrations table
-CREATE TABLE storage.migrations (
+CREATE TABLE storage.migrations(
     id integer NOT NULL,
     name character varying(100) NOT NULL,
     hash character varying(40) NOT NULL,
@@ -402,9 +402,8 @@ CREATE TABLE storage.migrations (
 -- =============================================================================
 -- REALTIME SCHEMA (Basic structure)
 -- =============================================================================
-
 -- Realtime schema migrations
-CREATE TABLE realtime.schema_migrations (
+CREATE TABLE realtime.schema_migrations(
     version bigint NOT NULL,
     inserted_at timestamp(0) without time zone,
     CONSTRAINT schema_migrations_pkey PRIMARY KEY (version)
@@ -413,113 +412,131 @@ CREATE TABLE realtime.schema_migrations (
 -- =============================================================================
 -- INDEXES (Critical ones for performance)
 -- =============================================================================
-
 -- Auth indexes
 CREATE INDEX IF NOT EXISTS users_instance_id_idx ON auth.users(instance_id);
+
 CREATE INDEX IF NOT EXISTS users_instance_id_email_idx ON auth.users(instance_id, lower(email));
-CREATE UNIQUE INDEX IF NOT EXISTS users_email_partial_key ON auth.users(email) WHERE is_sso_user = false;
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_partial_key ON auth.users(email)
+WHERE
+    is_sso_user = FALSE;
+
 CREATE INDEX IF NOT EXISTS identities_email_idx ON auth.identities(email);
+
 CREATE INDEX IF NOT EXISTS identities_user_id_idx ON auth.identities(user_id);
+
 CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON auth.sessions(user_id);
+
 CREATE INDEX IF NOT EXISTS sessions_not_after_idx ON auth.sessions(not_after DESC);
+
 CREATE INDEX IF NOT EXISTS refresh_tokens_instance_id_idx ON auth.refresh_tokens(instance_id);
+
 CREATE INDEX IF NOT EXISTS refresh_tokens_instance_id_user_id_idx ON auth.refresh_tokens(instance_id, user_id);
+
 CREATE INDEX IF NOT EXISTS refresh_tokens_parent_idx ON auth.refresh_tokens(parent);
+
 CREATE INDEX IF NOT EXISTS refresh_tokens_session_id_revoked_idx ON auth.refresh_tokens(session_id, revoked);
+
 CREATE INDEX IF NOT EXISTS refresh_tokens_updated_at_idx ON auth.refresh_tokens(updated_at DESC);
+
 CREATE INDEX IF NOT EXISTS audit_logs_instance_id_idx ON auth.audit_log_entries(instance_id);
+
 CREATE INDEX IF NOT EXISTS mfa_factors_user_id_idx ON auth.mfa_factors(user_id);
 
 -- Storage indexes
 CREATE INDEX IF NOT EXISTS bname ON storage.buckets(name);
+
 CREATE INDEX IF NOT EXISTS bucketid_objname ON storage.objects(bucket_id, name);
+
 CREATE INDEX IF NOT EXISTS name_prefix_search ON storage.objects(name);
 
 -- =============================================================================
 -- SAMPLE DATA (Basic setup)
 -- =============================================================================
-
 -- Insert schema migration records for auth
-INSERT INTO auth.schema_migrations (version) VALUES 
-    ('20171026211738'),
-    ('20171026211808'),
-    ('20171026211834'),
-    ('20180103212743'),
-    ('20180108183307'),
-    ('20180119214651'),
-    ('20180125194653'),
-    ('20180209173617');
+INSERT INTO auth.schema_migrations(version)
+    VALUES ('20171026211738'),
+('20171026211808'),
+('20171026211834'),
+('20180103212743'),
+('20180108183307'),
+('20180119214651'),
+('20180125194653'),
+('20180209173617');
 
 -- Insert default storage migrations
-INSERT INTO storage.migrations (id, name, hash, executed_at) VALUES 
-    (0, 'create-migrations-table', 'e18db15504ca87ae5e29ba90e099893d', now()),
-    (1, 'create-buckets-table', 'e18db15504ca87ae5e29ba90e099893e', now()),
-    (2, 'create-objects-table', 'e18db15504ca87ae5e29ba90e099893f', now());
+INSERT INTO storage.migrations(id, name, hash, executed_at)
+    VALUES (0, 'create-migrations-table', 'e18db15504ca87ae5e29ba90e099893d', now()),
+(1, 'create-buckets-table', 'e18db15504ca87ae5e29ba90e099893e', now()),
+(2, 'create-objects-table', 'e18db15504ca87ae5e29ba90e099893f', now());
 
 -- Insert realtime schema migration
-INSERT INTO realtime.schema_migrations (version, inserted_at) VALUES 
-    (20210706140551, now());
+INSERT INTO realtime.schema_migrations(version, inserted_at)
+    VALUES (20210706140551, now());
 
 -- =============================================================================
 -- SECURITY (Basic RLS setup - commented as PGlite doesn't support full RLS)
 -- =============================================================================
-
 -- Enable RLS on auth tables (may not work in PGlite)
 -- ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE auth.sessions ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE auth.refresh_tokens ENABLE ROW LEVEL SECURITY;
-
 -- Storage RLS
 -- ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
 -- =============================================================================
 -- FUNCTIONS AND TRIGGERS (Simplified for PGlite)
 -- =============================================================================
-
 -- Basic trigger function for updated_at timestamps
 CREATE OR REPLACE FUNCTION handle_updated_at()
-RETURNS TRIGGER AS $$
+    RETURNS TRIGGER
+    AS $$
 BEGIN
     NEW.updated_at = now();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$
+LANGUAGE plpgsql;
 
 -- Apply updated_at trigger to relevant tables
-CREATE TRIGGER handle_updated_at BEFORE UPDATE ON auth.users 
-    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON auth.users
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_updated_at();
 
-CREATE TRIGGER handle_updated_at BEFORE UPDATE ON auth.sessions 
-    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON auth.sessions
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_updated_at();
 
-CREATE TRIGGER handle_updated_at BEFORE UPDATE ON storage.buckets 
-    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON storage.buckets
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_updated_at();
 
-CREATE TRIGGER handle_updated_at BEFORE UPDATE ON storage.objects 
-    FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON storage.objects
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_updated_at();
 
 -- =============================================================================
 -- COMPLETION MESSAGE
 -- =============================================================================
-
 -- Create a simple view to verify setup
 CREATE VIEW public.supabase_setup_status AS
-SELECT 
-    'Supabase Lite Database' as name,
-    'Initialized successfully' as status,
-    now() as initialized_at;
-
-
-
-
+SELECT
+    'Supabase Lite Database' AS name,
+    'Initialized successfully' AS status,
+    now() AS initialized_at;
 
 -- Success message
-DO $$ 
-BEGIN 
+DO $$
+BEGIN
     RAISE NOTICE 'Supabase Lite database initialized successfully!';
     RAISE NOTICE 'Schemas created: auth, storage, realtime, extensions, graphql, graphql_public, pgbouncer, vault';
     RAISE NOTICE 'Auth tables created with proper structure';
     RAISE NOTICE 'Basic triggers and functions installed';
     RAISE NOTICE 'Core Supabase tables ready for development';
-END $$;
+END
+$$;
+
