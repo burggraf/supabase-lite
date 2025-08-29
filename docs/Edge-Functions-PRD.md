@@ -1,178 +1,206 @@
 # Supabase Edge Functions Implementation PRD
 
 **Product Requirements Document**  
-**Version:** 1.0  
+**Version:** 2.0  
 **Date:** August 2025  
-**Status:** Complete (100%)  
+**Status:** In Progress - Redesign for Supabase UI Compatibility  
 
 ---
 
 ## 1. Executive Summary
 
-This Product Requirements Document (PRD) documents the complete Edge Functions implementation for Supabase Lite. The project has achieved 100% of the planned functionality, providing a comprehensive serverless function development environment that runs entirely in the browser. This implementation maintains Supabase Lite's core principle of zero server dependencies while delivering a full-featured development experience.
+This Product Requirements Document (PRD) documents the redesigned Edge Functions implementation for Supabase Lite. The project is being completely redesigned to match the official Supabase Edge Functions interface, providing a cleaner, more intuitive development experience that exactly mirrors Supabase's production UI.
 
-### Project Goals ✅ ACHIEVED
-- **✅ 100% Browser-Only Architecture**: Complete implementation without server dependencies
-- **✅ Full Development Environment**: From code editing to deployment and debugging
-- **✅ Seamless Integration**: Perfect integration with existing VFS and project systems
-- **✅ Developer Experience**: Intuitive interface with professional development tools
-- **✅ Performance**: Sub-100ms response times for most operations
+### Project Goals 🚧 IN PROGRESS
+- **🚧 100% Supabase UI Compatibility**: Exact match to Supabase's Edge Functions interface
+- **🚧 Simplified User Experience**: Clean two-view navigation structure
+- **🚧 Template-First Approach**: Emphasize function templates for quick starts
+- **✅ Browser-Only Architecture**: Maintains zero server dependencies
+- **🚧 Streamlined Development**: Focus on essential features without complexity
 
-### Success Metrics ✅ ACHIEVED
-- **✅ 100% Feature completion** of all planned components
-- **✅ Monaco Editor Integration** with full TypeScript support
-- **✅ File System Access API** for local folder synchronization
-- **✅ MSW Handler Integration** for function execution simulation
-- **✅ VFS Integration** for persistent file storage across projects
+### Success Metrics 🚧 IN PROGRESS
+- **🚧 UI/UX Match**: 100% visual and interaction parity with Supabase
+- **🚧 Template Gallery**: 10 pre-built function templates
+- **🚧 Two-View Navigation**: Functions list and editor views
+- **✅ Monaco Editor Integration**: Full TypeScript support maintained
+- **✅ VFS Integration**: Persistent file storage across projects
 
 ---
 
-## 2. Implementation Status ✅ COMPLETE
+## 2. Implementation Status 🚧 REDESIGN IN PROGRESS
 
-### 2.1 Core Components Implementation
+### 2.1 New UI Architecture
 
-All core components have been successfully implemented and are fully functional:
+The interface is being completely redesigned to match Supabase's official Edge Functions UI:
 
-#### **EdgeFunctions Page** ✅ COMPLETE
+#### **Two-View Navigation System** 🚧 IN PROGRESS
+1. **Functions List View** (`/edge-functions`)
+   - Main landing page with function list or empty state
+   - Template gallery with 10 function templates
+   - Three creation methods (Editor, AI Assistant, CLI)
+   - Sidebar navigation (Functions, Secrets)
+
+2. **Function Editor View** (`/edge-functions/[function-name]`)
+   - Breadcrumb navigation
+   - Simple file tree (left panel)
+   - Monaco Editor (center panel)
+   - Deploy controls (bottom)
+
+### 2.2 Core Components (Redesigned)
+
+#### **EdgeFunctions Page** 🚧 REDESIGNING
 **File**: `src/pages/EdgeFunctions.tsx`
-- **Purpose**: Main orchestrator component for the Edge Functions interface
+- **Purpose**: Route orchestrator for two-view navigation system
 - **Features**:
-  - Function listing with project-scoped filtering
-  - Multi-tab interface (Editor, Deployment, DevTools, Sync)
-  - File selection state management
-  - Integration with all sub-components
-- **Integration**: Seamlessly integrated with app routing and navigation
+  - Route handling between list and editor views
+  - State management for current function
+  - Navigation between views
+  - Integration with new simplified components
+- **Integration**: Clean routing with breadcrumb navigation
 
-#### **FileExplorer Component** ✅ COMPLETE  
+#### **FunctionsList Component** 🚧 NEW
+**File**: `src/components/edge-functions/FunctionsList.tsx`
+- **Purpose**: Main functions list view with empty state
+- **Features**:
+  - List of deployed functions with quick actions
+  - Empty state with creation options
+  - Template gallery integration
+  - Function management (delete, edit)
+- **Integration**: Connected to VFS for function storage
+
+#### **FileExplorer Component** 🚧 SIMPLIFYING  
 **File**: `src/components/edge-functions/FileExplorer.tsx`
-- **Purpose**: Hierarchical file browser with full CRUD operations
+- **Purpose**: Simple file tree for editor view
 - **Features**:
-  - Tree view with expand/collapse functionality
-  - Create, rename, delete operations for files and folders
-  - Real-time search with filtering
-  - Context menu interactions
-  - Drag-and-drop support (structure ready)
+  - Basic tree view for current function files
+  - File selection for editing
+  - Add file capability
+  - Simplified without complex CRUD operations
 - **Technical Details**:
-  - Recursive tree building from flat file structure
-  - Optimized rendering with virtual scrolling capability
-  - Integration with VFS for persistent storage
+  - Lightweight tree rendering
+  - Integration with single-function editing workflow
 
-#### **CodeEditor Component** ✅ COMPLETE
+#### **CodeEditor Component** 🚧 SIMPLIFYING
 **File**: `src/components/edge-functions/CodeEditor.tsx`  
-- **Purpose**: Professional code editing experience with Monaco Editor
+- **Purpose**: Single-file code editing experience
 - **Features**:
-  - Full Monaco Editor integration with VS Code experience
+  - Full Monaco Editor integration maintained
   - TypeScript syntax highlighting and IntelliSense
-  - Multi-file tab support with unsaved change indicators
-  - Auto-save functionality with 2-second debounce
-  - File switching with state preservation
+  - Single-file focus (no tabs)
+  - Auto-save functionality with debounce
+  - File switching via file tree
 - **Technical Implementation**:
-  - Monaco Editor lazy loading for performance
-  - Custom TypeScript configuration for Edge Functions
-  - Automatic file loading and saving via VFS
-  - Tab management with close functionality
+  - Monaco Editor lazy loading preserved
+  - Simplified state management for single file
+  - VFS integration for file operations
+  - Removed complex tab management
 
-#### **FolderSync Component** ✅ COMPLETE
-**File**: `src/components/edge-functions/FolderSync.tsx`
-- **Purpose**: Bidirectional synchronization with local file system
+#### **FunctionTemplates Component** 🚧 NEW
+**File**: `src/components/edge-functions/FunctionTemplates.tsx`
+- **Purpose**: Template gallery for quick function creation
 - **Features**:
-  - File System Access API integration (Chrome/Edge support)
-  - Bidirectional sync with conflict detection
-  - Conflict resolution UI with merge options
-  - Sync status indicators and progress tracking
-  - Configurable sync settings and filters
-- **Technical Implementation**:
-  - SyncManager class for handling sync operations
-  - Real-time file watching and change detection
-  - Atomic sync operations with rollback support
+  - 10 pre-built function templates
+  - Template preview and selection
+  - Direct creation from template
+  - Template categories and descriptions
+- **Templates Included**:
+  - Simple Hello World
+  - Supabase Database Access
+  - Storage Upload, Node API, Express Server
+  - OpenAI, Stripe Webhook, Email, Image Transform, WebSocket
 
-#### **DeploymentPanel Component** ✅ COMPLETE
-**File**: `src/components/edge-functions/DeploymentPanel.tsx`
-- **Purpose**: Function deployment and lifecycle management
+#### **SecretsManager Component** 🚧 NEW
+**File**: `src/components/edge-functions/SecretsManager.tsx`
+- **Purpose**: Environment variables management
 - **Features**:
-  - Function deployment with environment variables
-  - Deployment history with timestamps and status
-  - Rollback functionality to previous versions
-  - Environment variable management with secure storage
-  - Function invocation testing interface
-- **Integration**: Connected to MSW handlers for realistic deployment simulation
+  - Key-value pair management interface
+  - Secure storage of environment variables
+  - Project-scoped variable isolation
+  - Import/export functionality
+- **Integration**: Accessible via sidebar navigation
 
-#### **DevTools Component** ✅ COMPLETE
-**File**: `src/components/edge-functions/DevTools.tsx`
-- **Purpose**: Comprehensive debugging and monitoring tools
+#### **FunctionCreationOptions Component** 🚧 NEW
+**File**: `src/components/edge-functions/FunctionCreationOptions.tsx`
+- **Purpose**: Three creation methods presentation
 - **Features**:
-  - Real-time console logs with filtering and search
-  - Network request monitoring with response inspection
-  - Performance metrics visualization
-  - Function execution statistics and timing
-  - Memory usage tracking
-- **Technical Implementation**:
-  - Simulated log generation with realistic patterns
-  - Performance data collection and visualization
-  - Real-time metrics updates with configurable intervals
+  - Via Editor option with description
+  - AI Assistant integration point
+  - CLI instructions and guidance
+  - Visual cards matching Supabase design
+- **Integration**: Part of empty state on functions list view
 
-### 2.2 Supporting Infrastructure ✅ COMPLETE
+### 2.3 Deprecated Components ❌ REMOVED
 
-#### **SyncManager Class** ✅ COMPLETE
-**File**: `src/lib/vfs/SyncManager.ts`
-- **Purpose**: Handles local folder synchronization operations
-- **Features**:
-  - File System Access API integration
-  - Bidirectional sync with conflict detection
-  - Real-time change monitoring
-  - Batch operations for performance
-  - Error handling and recovery
+The following components are being removed to match Supabase's cleaner interface:
 
-#### **MSW Handler Integration** ✅ COMPLETE
-**File**: `src/mocks/handlers.ts` (inline implementation)
-- **Purpose**: Simulate Edge Function execution and management
-- **Endpoints**:
-  - `POST /functions/:functionName` - Function execution
-  - Function deployment simulation
-  - Logs and metrics generation
-  - Error handling and response simulation
+#### **FolderSync Component** ❌ DEPRECATED
+- **Reason**: Not present in Supabase UI, adds unnecessary complexity
+- **Replacement**: Direct editing with VFS persistence
 
-### 2.3 Integration Points ✅ COMPLETE
+#### **DevTools Complex Features** ❌ SIMPLIFIED
+- **Reason**: Supabase uses simpler logging approach
+- **Replacement**: Basic function logs accessible from function list
 
-#### **VFS Integration** ✅ COMPLETE
-- Perfect integration with existing Virtual File System
-- Project-scoped file storage and retrieval
-- Efficient file operations with IndexedDB persistence
-- Cross-project file isolation
+#### **Multi-Tab Interface** ❌ REMOVED
+- **Reason**: Supabase uses single-file editing approach
+- **Replacement**: File tree navigation with single editor
 
-#### **Project Management** ✅ COMPLETE  
-- Full integration with ProjectManager for multi-project support
-- Automatic project switching with state preservation
-- Project-scoped environment variables and settings
+### 2.4 Supporting Infrastructure ✅ MAINTAINED
+
+#### **MSW Handler Integration** ✅ MAINTAINED
+**File**: `src/mocks/handlers.ts`
+- **Purpose**: Function execution and template simulation
+- **Features**: Maintained for deployment and execution simulation
+
+### 2.5 Integration Points ✅ MAINTAINED
+
+#### **VFS Integration** ✅ MAINTAINED
+- Continued integration with Virtual File System
+- Project-scoped function storage
+- Template-based function creation
+- Simplified file operations
+
+#### **Project Management** ✅ MAINTAINED  
+- Multi-project function isolation
+- Project-scoped templates and functions
+- Seamless project switching
 
 ---
 
 ## 3. Technical Architecture
 
-### 3.1 Component Hierarchy
+### 3.1 New Component Hierarchy
 
+#### Functions List View (`/edge-functions`)
 ```
-EdgeFunctions (Main Page)
-├── FileExplorer (Left Sidebar)
-│   ├── Tree View Rendering
-│   ├── CRUD Operations
-│   └── Search Functionality
-├── CodeEditor (Center Panel)
-│   ├── Monaco Editor Instance
-│   ├── Tab Management
-│   └── Auto-save System
-├── FolderSync (Tab)
-│   ├── SyncManager
-│   ├── Conflict Resolution UI
-│   └── Status Monitoring
-├── DeploymentPanel (Tab)
-│   ├── Environment Variables
-│   ├── Deployment History
-│   └── Function Testing
-└── DevTools (Tab)
-    ├── Console Logs
-    ├── Network Monitor
-    └── Performance Metrics
+FunctionsList (Main Component)
+├── Sidebar Navigation
+│   ├── Functions (Active)
+│   └── Secrets
+├── Main Content Area
+│   ├── Header (Title + Deploy Button)
+│   ├── Empty State (when no functions)
+│   │   ├── FunctionCreationOptions
+│   │   └── FunctionTemplates
+│   └── Functions List (when functions exist)
+│       └── Function Cards with Actions
+```
+
+#### Function Editor View (`/edge-functions/[name]`)
+```
+FunctionEditor (Main Component)
+├── Breadcrumb Navigation
+├── Top Bar
+│   ├── Template Selector
+│   └── AI Assistant Button
+├── Left Panel - Files
+│   ├── FileExplorer (Simplified)
+│   └── Add File Button
+├── Center Panel
+│   └── CodeEditor (Single File)
+└── Bottom Section
+    ├── Function Name Input
+    └── Deploy Button
 ```
 
 ### 3.2 Data Flow
