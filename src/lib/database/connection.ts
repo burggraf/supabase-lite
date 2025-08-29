@@ -730,6 +730,7 @@ export class DatabaseManager {
     }
   }
 
+
   public getConnectionInfo(): DatabaseConnection | null {
     return this.connectionInfo;
   }
