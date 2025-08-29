@@ -131,7 +131,7 @@ export function AppHosting() {
   };
 
   return (
-    <div className="flex-1 p-6">
+    <div className="flex-1 p-6 overflow-y-auto min-h-full">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">

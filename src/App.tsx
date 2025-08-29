@@ -132,7 +132,7 @@ function App() {
       case 'auth':
         return (
           <ErrorBoundary>
-            <div className="flex-1 p-6">
+            <div className="flex-1 p-6 overflow-y-auto min-h-full">
               <div className="max-w-4xl mx-auto">
                 <div className="mb-6">
                   <h1 className="text-3xl font-bold">Authentication</h1>
@@ -167,7 +167,7 @@ function App() {
       case 'api':
         return (
           <ErrorBoundary>
-            <div className="flex-1 p-6">
+            <div className="flex-1 p-6 overflow-y-auto min-h-full">
               <APITester />
             </div>
           </ErrorBoundary>
@@ -187,7 +187,7 @@ function App() {
   return (
     <div className="flex h-screen bg-background">
       <Sidebar currentPage={currentPage} onPageChange={navigate} currentProjectName={currentProjectName || undefined} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-auto">
         {renderCurrentPage()}
       </div>
       <Toaster richColors position="top-right" />

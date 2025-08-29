@@ -81,7 +81,7 @@ export function DatabaseBasic() {
 
   return (
     <div className="flex h-full">
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-y-auto min-h-full">
         <h1 className="text-2xl font-bold mb-6">Database Tables</h1>
         
         {!isConnected ? (
