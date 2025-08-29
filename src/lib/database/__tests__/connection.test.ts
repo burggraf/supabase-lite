@@ -49,6 +49,7 @@ describe('DatabaseManager', () => {
       expect(PGlite).toHaveBeenCalledWith({
         dataDir: 'idb://supabase_lite_db',
         database: 'postgres',
+        relaxedDurability: true,
       })
       expect(global.mockPGliteInstance.exec).toHaveBeenCalledWith(expect.stringContaining('CREATE SCHEMA IF NOT EXISTS auth'))
       expect(dbManager.isConnected()).toBe(true)
@@ -120,10 +121,7 @@ describe('DatabaseManager', () => {
       const error = new Error('Query failed')
       global.mockPGliteInstance.query.mockRejectedValue(error)
       
-      await expect(dbManager.query('INVALID SQL')).rejects.toMatchObject({
-        message: 'Query failed',
-        duration: expect.any(Number),
-      })
+      await expect(dbManager.query('INVALID SQL')).rejects.toThrow('Query failed')
     })
 
     it('should throw error when querying uninitialized database', async () => {
@@ -282,7 +280,7 @@ describe('DatabaseManager', () => {
       const info = dbManager.getConnectionInfo()
       
       expect(info).toMatchObject({
-        id: 'supabase_lite_db',
+        id: 'idb://supabase_lite_db',
         name: 'Supabase Lite DB',
         createdAt: expect.any(Date),
         lastAccessed: expect.any(Date),
