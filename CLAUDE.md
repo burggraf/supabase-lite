@@ -341,20 +341,43 @@ src/
 
 ### Testing Requirements
 
-#### MANDATORY: Test Everything You Build
+#### 🚨 MANDATORY: TEST-DRIVEN DEVELOPMENT (TDD) ONLY
 
-- **Write tests BEFORE or ALONGSIDE implementation** - never after
-- **Test every new feature, component, hook, and utility function**
-- **Run tests immediately after writing them** to ensure they pass
-- **Always run the full test suite before considering a feature complete**
+**ABSOLUTE RULE: ALL new features, components, hooks, and utilities MUST follow strict Test-Driven Development. NO EXCEPTIONS.**
 
-#### For New Features:
+- **TESTS MUST BE WRITTEN FIRST** - Writing implementation before tests is FORBIDDEN
+- **Red-Green-Refactor cycle is MANDATORY** - No feature is complete without this process
+- **NO CODE may be considered complete without comprehensive tests**
+- **ALL new code MUST start with failing tests that define the expected behavior**
 
-1. **Plan tests first**: Identify what needs testing (happy path, edge cases, errors)
-2. **Write failing tests**: Create tests that describe the expected behavior
-3. **Implement feature**: Write the minimal code to make tests pass
-4. **Refactor**: Improve code while keeping tests green
-5. **Test coverage**: Ensure all branches and edge cases are covered
+#### ENFORCED TDD WORKFLOW:
+
+**STEP 1: RED - Write Failing Tests**
+- Write tests that describe the exact behavior expected
+- Tests MUST fail initially (red state)
+- Tests should cover happy path, edge cases, and error conditions
+- NO implementation code allowed until tests are written
+
+**STEP 2: GREEN - Minimal Implementation**
+- Write the absolute minimum code to make tests pass
+- Focus only on making tests green, not on perfect code
+- Implementation should be just enough to satisfy the test requirements
+
+**STEP 3: REFACTOR - Improve Code Quality**
+- Clean up code while keeping all tests green
+- Apply best practices, design patterns, and optimizations
+- All tests must continue to pass throughout refactoring
+
+**STEP 4: REPEAT**
+- Add new failing tests for additional functionality
+- Continue the Red-Green-Refactor cycle until feature is complete
+
+#### MANDATORY TDD RULES:
+
+- **NO implementation before tests** - Violating this rule requires rewriting from scratch
+- **Every line of code MUST be driven by a failing test**
+- **Tests define the API and behavior contract before any code exists**
+- **If you can't write a test for it, you can't implement it**
 
 #### Test Types to Write:
 
@@ -445,20 +468,27 @@ describe('formatBytes', () => {
 })
 ```
 
-### CRITICAL TESTING WORKFLOW:
+### 🚨 CRITICAL TESTING WORKFLOW - TDD ENFORCEMENT:
 
-**For Every Feature/Fix:**
+**MANDATORY STEPS FOR EVERY FEATURE/FIX:**
 
-1. ✅ Write tests that describe the expected behavior
-2. ✅ Run tests to ensure they fail initially (red)
-3. ✅ Implement the minimal code to make tests pass (green)
-4. ✅ Refactor code while keeping tests green
-5. ✅ Run full test suite: `npm test`
-6. ✅ Check coverage and add tests for missed cases
-7. ✅ Run lint: `npm run lint`
-8. ✅ Run build: `npm run build`
+1. 🔴 **RED**: Write failing tests that define expected behavior - NO implementation yet
+2. 🔴 **VERIFY**: Run tests to confirm they fail for the right reasons
+3. 🟢 **GREEN**: Write minimal code to make tests pass - nothing more
+4. 🟢 **VERIFY**: Run tests to confirm they all pass
+5. 🔵 **REFACTOR**: Improve code quality while keeping tests green
+6. ✅ **VALIDATE**: Run full test suite: `npm test`
+7. ✅ **QUALITY**: Check coverage and add tests for missed cases (must be 90%+)
+8. ✅ **LINT**: Run `npm run lint` - no warnings allowed
+9. ✅ **BUILD**: Run `npm run build` - must pass without errors
 
-**Never skip testing!** Tests are as important as the feature itself. Untested code is broken code waiting to happen.
+**ZERO TOLERANCE POLICY:**
+- ❌ **Implementation without tests first = REJECTED**
+- ❌ **Tests written after implementation = START OVER**
+- ❌ **Skipping any step in TDD cycle = INCOMPLETE**
+- ❌ **Less than 90% coverage = NOT DONE**
+
+**TDD is non-negotiable. Every single line of code must be test-driven.**
 
 ### Test Configuration Files:
 
