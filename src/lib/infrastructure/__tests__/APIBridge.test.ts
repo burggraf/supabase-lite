@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { InfrastructureAPIBridge } from '../APIBridge';
 import type { APIRequest } from '@/types/infrastructure';
+import { server } from '../../../mocks/server';
 
-// Mock fetch
-global.fetch = vi.fn();
+// Mock fetch with proper vi.fn() functionality
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('InfrastructureAPIBridge', () => {
   let apiBridge: InfrastructureAPIBridge;
@@ -11,6 +13,18 @@ describe('InfrastructureAPIBridge', () => {
   beforeEach(() => {
     apiBridge = new InfrastructureAPIBridge();
     vi.clearAllMocks();
+    mockFetch.mockClear();
+    
+    // Default successful response for most tests
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Map([
+        ['content-type', 'application/json']
+      ]),
+      json: () => Promise.resolve({ success: true }),
+      text: () => Promise.resolve(JSON.stringify({ success: true }))
+    });
   });
 
   describe('Request validation', () => {
@@ -105,7 +119,7 @@ describe('InfrastructureAPIBridge', () => {
   describe('Convenience methods', () => {
     beforeEach(() => {
       // Mock successful fetch response
-      (global.fetch as any).mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
         headers: new Map([['content-type', 'application/json']]),
@@ -116,7 +130,7 @@ describe('InfrastructureAPIBridge', () => {
     it('should provide GET convenience method', async () => {
       const response = await apiBridge.get('http://example.com/api');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://example.com/api',
         expect.objectContaining({
           method: 'GET',
@@ -135,7 +149,7 @@ describe('InfrastructureAPIBridge', () => {
       const postData = { name: 'test' };
       await apiBridge.post('http://example.com/api', postData);
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://example.com/api',
         expect.objectContaining({
           method: 'POST',
@@ -153,7 +167,7 @@ describe('InfrastructureAPIBridge', () => {
       const putData = { id: 1, name: 'updated' };
       await apiBridge.put('http://example.com/api/1', putData);
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://example.com/api/1',
         expect.objectContaining({
           method: 'PUT',
@@ -166,7 +180,7 @@ describe('InfrastructureAPIBridge', () => {
       const patchData = { name: 'patched' };
       await apiBridge.patch('http://example.com/api/1', patchData);
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://example.com/api/1',
         expect.objectContaining({
           method: 'PATCH',
@@ -178,7 +192,7 @@ describe('InfrastructureAPIBridge', () => {
     it('should provide DELETE convenience method', async () => {
       await apiBridge.delete('http://example.com/api/1');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'http://example.com/api/1',
         expect.objectContaining({
           method: 'DELETE',
@@ -189,7 +203,7 @@ describe('InfrastructureAPIBridge', () => {
 
   describe('Error handling', () => {
     it('should handle network errors', async () => {
-      (global.fetch as any).mockRejectedValue(new TypeError('Network error'));
+      mockFetch.mockRejectedValue(new TypeError('Network error'));
 
       await expect(apiBridge.get('http://example.com')).rejects.toThrow('Network error');
     });
@@ -197,13 +211,13 @@ describe('InfrastructureAPIBridge', () => {
     it('should handle timeout errors', async () => {
       const timeoutError = new Error('Request timeout');
       timeoutError.name = 'AbortError';
-      (global.fetch as any).mockRejectedValue(timeoutError);
+      mockFetch.mockRejectedValue(timeoutError);
 
       await expect(apiBridge.get('http://example.com')).rejects.toThrow('Request timeout');
     });
 
     it('should handle HTTP error responses', async () => {
-      (global.fetch as any).mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
         headers: new Map(),
@@ -218,7 +232,7 @@ describe('InfrastructureAPIBridge', () => {
 
   describe('Retry logic', () => {
     it('should retry on 500 errors', async () => {
-      (global.fetch as any)
+      mockFetch
         .mockResolvedValueOnce({
           ok: false,
           status: 500,
@@ -234,12 +248,12 @@ describe('InfrastructureAPIBridge', () => {
 
       const response = await apiBridge.get('http://example.com');
       
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(response.success).toBe(true);
     });
 
     it('should retry on 429 rate limiting', async () => {
-      (global.fetch as any)
+      mockFetch
         .mockResolvedValueOnce({
           ok: false,
           status: 429,
@@ -255,12 +269,12 @@ describe('InfrastructureAPIBridge', () => {
 
       const response = await apiBridge.get('http://example.com');
       
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(response.success).toBe(true);
     });
 
     it('should not retry on client errors', async () => {
-      (global.fetch as any).mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 400,
         headers: new Map(),
@@ -269,7 +283,7 @@ describe('InfrastructureAPIBridge', () => {
 
       const response = await apiBridge.get('http://example.com');
       
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(response.success).toBe(false);
       expect(response.status).toBe(400);
     });
@@ -277,7 +291,7 @@ describe('InfrastructureAPIBridge', () => {
 
   describe('Content type handling', () => {
     it('should parse JSON responses', async () => {
-      (global.fetch as any).mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
         headers: new Map([['content-type', 'application/json']]),
@@ -289,7 +303,7 @@ describe('InfrastructureAPIBridge', () => {
     });
 
     it('should handle text responses', async () => {
-      (global.fetch as any).mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
         headers: new Map([['content-type', 'text/plain']]),
@@ -301,7 +315,7 @@ describe('InfrastructureAPIBridge', () => {
     });
 
     it('should handle empty responses', async () => {
-      (global.fetch as any).mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         status: 204,
         headers: new Map([['content-type', 'application/json']]),

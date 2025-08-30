@@ -8,14 +8,17 @@ const mockUseTableData = {
   selectedTable: 'users',
   selectedSchema: 'public',
   columns: [
-    { name: 'id', type: 'integer', is_nullable: false, is_primary_key: true },
-    { name: 'email', type: 'text', is_nullable: false, is_primary_key: false },
-    { name: 'name', type: 'text', is_nullable: true, is_primary_key: false }
+    { column_name: 'id', data_type: 'integer', is_nullable: 'NO', column_default: null, is_primary_key: true },
+    { column_name: 'email', data_type: 'text', is_nullable: 'NO', column_default: null, is_primary_key: false },
+    { column_name: 'name', data_type: 'text', is_nullable: 'YES', column_default: null, is_primary_key: false }
   ],
-  tableData: [
-    { id: 1, email: 'user1@example.com', name: 'User 1' },
-    { id: 2, email: 'user2@example.com', name: 'User 2' }
-  ],
+  tableData: {
+    rows: [
+      { id: 1, email: 'user1@example.com', name: 'User 1' },
+      { id: 2, email: 'user2@example.com', name: 'User 2' }
+    ],
+    totalCount: 2
+  },
   pagination: { pageIndex: 0, pageSize: 50 },
   filters: [],
   loading: false,

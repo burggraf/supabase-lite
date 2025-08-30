@@ -60,6 +60,36 @@ Object.defineProperty(global, 'crypto', {
         }
         
         return signature.buffer
+      }),
+      generateKey: vi.fn().mockImplementation(async (algorithm, extractable, keyUsages) => {
+        // Return a mock ES256 key pair
+        const privateKey = {
+          algorithm,
+          extractable,
+          type: 'private',
+          usages: keyUsages.filter(usage => ['sign'].includes(usage))
+        }
+        const publicKey = {
+          algorithm,
+          extractable,
+          type: 'public',
+          usages: keyUsages.filter(usage => ['verify'].includes(usage))
+        }
+        return { privateKey, publicKey }
+      }),
+      exportKey: vi.fn().mockImplementation(async (format, key) => {
+        // Return mock JWK for public keys
+        if (format === 'jwk' && key.type === 'public') {
+          return {
+            kty: 'EC',
+            crv: 'P-256',
+            x: 'mock-x-coordinate',
+            y: 'mock-y-coordinate',
+            use: 'sig',
+            alg: 'ES256'
+          }
+        }
+        throw new Error(`Unsupported format: ${format}`)
       })
     }
   }
@@ -97,6 +127,52 @@ global.mockPGliteInstance = {
 vi.mock('@electric-sql/pglite', () => {
   return {
     PGlite: vi.fn().mockImplementation(() => global.mockPGliteInstance)
+  }
+})
+
+// Mock jose JWT library
+vi.mock('jose', () => {
+  return {
+    SignJWT: vi.fn().mockImplementation(() => ({
+      setProtectedHeader: vi.fn().mockReturnThis(),
+      setIssuedAt: vi.fn().mockReturnThis(),
+      setExpirationTime: vi.fn().mockReturnThis(),
+      setIssuer: vi.fn().mockReturnThis(),
+      setAudience: vi.fn().mockReturnThis(),
+      setSubject: vi.fn().mockReturnThis(),
+      setJti: vi.fn().mockReturnThis(),
+      sign: vi.fn().mockImplementation(async () => {
+        // Return a mock JWT token
+        const header = btoa(JSON.stringify({ alg: 'ES256', typ: 'JWT' }))
+        const payload = btoa(JSON.stringify({ 
+          iss: 'mock-issuer', 
+          sub: 'mock-subject', 
+          aud: 'mock-audience',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          iat: Math.floor(Date.now() / 1000),
+          jti: 'mock-jti'
+        }))
+        const signature = btoa('mock-signature')
+        return `${header}.${payload}.${signature}`
+      })
+    })),
+    jwtVerify: vi.fn().mockImplementation(async (jwt, key, options) => {
+      // Simple mock verification - just decode the JWT
+      const parts = jwt.split('.')
+      if (parts.length !== 3) {
+        throw new Error('Invalid token: Invalid Compact JWS')
+      }
+      
+      try {
+        const payload = JSON.parse(atob(parts[1]))
+        return {
+          payload,
+          protectedHeader: JSON.parse(atob(parts[0]))
+        }
+      } catch (error) {
+        throw new Error('Invalid token: Invalid Compact JWS')
+      }
+    })
   }
 })
 
