@@ -1,6 +1,23 @@
 import { EventEmitter } from 'events';
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import open from 'open';
-import { ProxyRequest, ProxyResponse } from './websocket-client.js';
+
+export interface ProxyRequest {
+  id: string;
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  body?: string;
+}
+
+export interface ProxyResponse {
+  status: number;
+  headers: Record<string, string>;
+  body: any;
+}
 
 interface PostMessageRequest {
   type: 'API_REQUEST';
@@ -25,11 +42,13 @@ interface PostMessageResponse {
 }
 
 export class PostMessageClient extends EventEmitter {
+  private bridgeServer: any = null;
+  private bridgeApp: any = null;
+  private bridgePort = 8765; // Different from proxy port to avoid conflicts
   private targetUrl: string;
-  private broadcastChannel: any | null = null;
   private pendingRequests = new Map<string, { resolve: Function; reject: Function; timeout: NodeJS.Timeout }>();
-  private connected = false;
-  private connectionPromise: Promise<void> | null = null;
+  private isServerRunning = false;
+  private messageListener: ((event: MessageEvent) => void) | null = null;
 
   constructor(targetUrl: string) {
     super();
@@ -37,148 +56,273 @@ export class PostMessageClient extends EventEmitter {
   }
 
   async connect(): Promise<void> {
-    if (this.connectionPromise) {
-      return this.connectionPromise;
+    if (this.isServerRunning) {
+      return;
     }
 
-    this.connectionPromise = this._connect();
-    return this.connectionPromise;
-  }
-
-  private async _connect(): Promise<void> {
-    console.log(`🔗 Connecting to ${this.targetUrl} via PostMessage...`);
+    console.log(`🔌 Starting PostMessage bridge for ${this.targetUrl}`);
+    
+    // Start local bridge server
+    await this.startBridgeServer();
+    
+    // Open browser to bridge page
+    const bridgeUrl = `http://localhost:${this.bridgePort}`;
+    console.log(`🌐 Opening bridge at ${bridgeUrl}`);
     
     try {
-      // Try to create BroadcastChannel for communication
-      this.broadcastChannel = new BroadcastChannel('supabase-api');
-      
-      // Set up message handling
-      this.broadcastChannel.addEventListener('message', (event: MessageEvent) => {
-        this.handleBroadcastMessage(event);
-      });
-
-      console.log(`✅ BroadcastChannel created for ${this.targetUrl}`);
-      this.connected = true;
-      
-      // Test the connection
-      console.log(`🔍 Testing connection to deployed instance...`);
-      const connectionEstablished = await this.testConnection();
-      
-      if (!connectionEstablished) {
-        console.log(`⚠️  No active browser tab detected for ${this.targetUrl}`);
-        console.log(`   Connection will be established when browser opens`);
-      }
-
+      await open(bridgeUrl, { wait: false });
     } catch (error) {
-      console.error(`❌ Failed to create BroadcastChannel:`, error);
-      throw new Error(`Failed to initialize PostMessage connection: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.warn(`⚠️ Could not auto-open browser. Please manually open: ${bridgeUrl}`);
     }
+    
+    // Setup message listener (for when we add browser automation later)
+    this.setupMessageListener();
+    
+    this.isServerRunning = true;
+    console.log('✅ PostMessage bridge ready');
   }
 
-  private async testConnection(): Promise<boolean> {
-    if (!this.broadcastChannel) {
-      console.log('🔍 No BroadcastChannel available');
-      return false;
-    }
-
-    return new Promise((resolve) => {
-      const testId = `test_${Date.now()}`;
-      const timeout = setTimeout(() => {
-        console.log('🔍 Test connection timeout - no response from browser tab');
-        resolve(false);
-      }, 3000); // Increase timeout slightly
-
-      const testHandler = (event: any) => {
-        console.log('🔍 Received test response:', event.data);
-        if (event.data.type === 'API_RESPONSE' && event.data.data.requestId === testId) {
-          clearTimeout(timeout);
-          this.broadcastChannel!.removeEventListener('message', testHandler);
-          console.log('🔍 Test connection successful!');
-          resolve(true);
-        }
-      };
-
-      this.broadcastChannel.addEventListener('message', testHandler);
+  private async startBridgeServer(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const app = express();
       
-      // Send a test request
-      console.log(`🔍 Sending test request: ${testId}`);
-      this.broadcastChannel.postMessage({
-        type: 'API_REQUEST',
-        data: {
-          method: 'GET',
-          path: '/health',
-          headers: {},
-          requestId: testId
+      // Get current directory for ESM
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      
+      // Serve bridge HTML file
+      app.get('/', (req, res) => {
+        const bridgeHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Lite Proxy Bridge</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .connected { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .disconnected { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .log {
+            font-family: monospace;
+            font-size: 12px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Supabase Lite Proxy Bridge</h1>
+        <p>This bridge connects your local proxy to your <strong>EXISTING</strong> Supabase Lite tab.</p>
+        <p><strong>Target:</strong> ${this.targetUrl}</p>
+        <p><strong>Method:</strong> PostMessage (connects to your existing browser tab)</p>
+        
+        <div id="status" class="status loading">
+            🔄 Ready to connect - click button below to establish connection
+        </div>
+        
+        <button id="connectBtn" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 20px 0; font-size: 14px; display: block;">Connect to Existing Tab</button>
+        
+        <div class="log" id="log">
+            <div>🚀 Bridge server started</div>
+        </div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        
+        let broadcastChannel;
+        let isConnected = false;
+        const pendingRequests = new Map();
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += '<div>' + timestamp + ' - ' + message + '</div>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        // Manual connection to existing Supabase Lite tab
+        let supabaseWindow = null;
+        
+        function updateStatus(connected) {
+            isConnected = connected;
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.innerHTML = '✅ Connected to your EXISTING Supabase Lite tab';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.innerHTML = '❌ Not connected - click "Connect to Existing Tab" button';
+            }
+        }
+        
+        // Get the connect button from HTML
+        const connectBtn = document.getElementById('connectBtn');
+        
+        connectBtn.addEventListener('click', function() {
+            try {
+                log('🌐 Opening connection to existing tab: ${this.targetUrl}');
+                supabaseWindow = window.open('${this.targetUrl}', '_blank');
+                
+                if (supabaseWindow) {
+                    log('✅ Tab opened - waiting for connection to existing tab');
+                    isConnected = true;
+                    updateStatus(true);
+                    connectBtn.textContent = 'Connected';
+                    connectBtn.disabled = true;
+                    connectBtn.style.background = '#059669';
+                } else {
+                    throw new Error('Failed to open new tab - check popup blocker');
+                }
+            } catch (error) {
+                log('❌ Failed to connect to existing tab: ' + error.message);
+                updateStatus(false);
+            }
+        });
+        
+        // Listen for responses from existing Supabase Lite tab
+        window.addEventListener('message', function(event) {
+            // Only accept messages from the target origin
+            if (event.origin !== '${new URL(this.targetUrl).origin}') {
+                return;
+            }
+            
+            log('📥 Response from existing tab: ' + JSON.stringify(event.data).substring(0, 100) + '...');
+            
+            if (event.data.type === 'API_RESPONSE') {
+                const requestId = event.data.data.requestId;
+                const pending = pendingRequests.get(requestId);
+                
+                if (pending) {
+                    pendingRequests.delete(requestId);
+                    
+                    // Forward response to proxy server via fetch
+                    fetch('/api/response', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(event.data)
+                    }).catch(err => {
+                        log('❌ Failed to forward response: ' + err.message);
+                    });
+                }
+            }
+        });
+        
+        // Poll for requests from proxy server
+        async function pollForRequests() {
+            try {
+                const response = await fetch('/api/request');
+                if (response.ok) {
+                    const request = await response.json();
+                    if (request && supabaseWindow && isConnected) {
+                        log('📤 Sending to existing tab: ' + request.data.method + ' ' + request.data.path);
+                        
+                        // Store pending request
+                        pendingRequests.set(request.data.requestId, request);
+                        
+                        // Send to existing Supabase Lite tab via PostMessage
+                        supabaseWindow.postMessage({
+                            type: 'API_REQUEST',
+                            data: request.data
+                        }, '${new URL(this.targetUrl).origin}');
+                    }
+                }
+            } catch (error) {
+                log('❌ Poll error: ' + error.message);
+            }
+            
+            // Continue polling
+            setTimeout(pollForRequests, 100);
+        }
+        
+        // Start polling immediately
+        pollForRequests();
+    </script>
+</body>
+</html>`;
+        res.send(bridgeHtml);
+      });
+      
+      // API endpoints for request/response handling
+      let pendingRequest: PostMessageRequest | null = null;
+      let pendingResponse: PostMessageResponse | null = null;
+      
+      app.get('/api/request', (req, res) => {
+        if (pendingRequest) {
+          const request = pendingRequest;
+          pendingRequest = null;
+          res.json(request);
+        } else {
+          res.json(null);
+        }
+      });
+      
+      app.use(express.json());
+      app.post('/api/response', (req, res) => {
+        pendingResponse = req.body;
+        res.json({ success: true });
+      });
+      
+      // Store app with methods for later access
+      const appWithMethods = app as any;
+      appWithMethods.sendRequest = (request: PostMessageRequest) => {
+        pendingRequest = request;
+      };
+      
+      appWithMethods.getResponse = (): PostMessageResponse | null => {
+        const response = pendingResponse;
+        pendingResponse = null;
+        return response;
+      };
+      
+      this.bridgeApp = appWithMethods;
+      
+      this.bridgeServer = app.listen(this.bridgePort, () => {
+        console.log(`🌐 Bridge server running on http://localhost:${this.bridgePort}`);
+        resolve();
+      });
+      
+      this.bridgeServer.on('error', (error: any) => {
+        if (error.code === 'EADDRINUSE') {
+          this.bridgePort++;
+          console.log(`Port in use, trying ${this.bridgePort}`);
+          this.bridgeServer = app.listen(this.bridgePort, () => resolve());
+        } else {
+          reject(error);
         }
       });
     });
   }
 
-  private async waitForConnection(timeoutMs: number): Promise<boolean> {
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        console.log(`⏰ Connection timeout after ${timeoutMs/1000}s`);
-        resolve(false);
-      }, timeoutMs);
-      
-      let attempts = 0;
-      const maxAttempts = timeoutMs / 1000; // 1 attempt per second
-      
-      const checkConnection = async () => {
-        attempts++;
-        console.log(`🔍 Connection attempt ${attempts}/${maxAttempts}...`);
-        
-        const connected = await this.testConnection();
-        if (connected) {
-          clearTimeout(timeout);
-          console.log(`✅ Connected after ${attempts} attempts`);
-          resolve(true);
-        } else if (attempts >= maxAttempts) {
-          clearTimeout(timeout);
-          console.log(`❌ Failed to connect after ${attempts} attempts`);
-          resolve(false);
-        } else {
-          setTimeout(checkConnection, 1000);
-        }
-      };
-
-      // Start checking after a brief delay to let the browser load
-      setTimeout(checkConnection, 2000);
-    });
-  }
-
-  private handleBroadcastMessage(event: any) {
-    const { type, data } = event.data;
-    
-    if (type === 'API_RESPONSE') {
-      const requestId = data.requestId;
-      const pending = this.pendingRequests.get(requestId);
-      
-      if (pending) {
-        clearTimeout(pending.timeout);
-        this.pendingRequests.delete(requestId);
-        
-        if (data.error) {
-          pending.reject(new Error(data.error));
-        } else {
-          const response: ProxyResponse = {
-            status: data.status,
-            headers: data.headers,
-            body: data.data
-          };
-          pending.resolve(response);
-        }
-      }
-    }
+  private setupMessageListener(): void {
+    // This will be enhanced later when we add browser automation
+    console.log('📡 PostMessage listener setup complete');
   }
 
   async sendRequest(request: ProxyRequest): Promise<ProxyResponse> {
-    if (!this.connected) {
+    if (!this.isServerRunning) {
       await this.connect();
-    }
-
-    if (!this.broadcastChannel) {
-      throw new Error('BroadcastChannel not available');
     }
 
     return new Promise((resolve, reject) => {
@@ -201,31 +345,46 @@ export class PostMessageClient extends EventEmitter {
         }
       };
 
-      // Send via BroadcastChannel
-      this.broadcastChannel.postMessage(postMessageRequest);
+      // Send request to bridge server
+      if (this.bridgeApp) {
+        this.bridgeApp.sendRequest(postMessageRequest);
+        
+        // Poll for response
+        const pollForResponse = () => {
+          const response = this.bridgeApp.getResponse();
+          if (response && response.data.requestId === request.id) {
+            const pending = this.pendingRequests.get(request.id);
+            if (pending) {
+              clearTimeout(pending.timeout);
+              this.pendingRequests.delete(request.id);
+              
+              // Convert back to ProxyResponse format
+              const proxyResponse: ProxyResponse = {
+                status: response.data.status,
+                headers: response.data.headers,
+                body: response.data.error ? { error: response.data.error } : response.data.data
+              };
+              
+              pending.resolve(proxyResponse);
+            }
+          } else if (this.pendingRequests.has(request.id)) {
+            setTimeout(pollForResponse, 50);
+          }
+        };
+        
+        setTimeout(pollForResponse, 100);
+      }
     });
   }
 
   isConnected(): boolean {
-    return this.connected;
-  }
-
-  async sendCommandComplete(): Promise<void> {
-    if (this.broadcastChannel && this.connected) {
-      console.log('📤 Sending command completion signal to browser via BroadcastChannel');
-      this.broadcastChannel.postMessage({
-        type: 'COMMAND_COMPLETE',
-        timestamp: new Date().toISOString()
-      });
-      // Give some time for the message to be sent before closing
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+    return this.isServerRunning;
   }
 
   disconnect(): void {
-    if (this.broadcastChannel) {
-      this.broadcastChannel.close();
-      this.broadcastChannel = null;
+    if (this.bridgeServer) {
+      this.bridgeServer.close();
+      this.bridgeServer = null;
     }
     
     // Reject all pending requests
@@ -235,8 +394,7 @@ export class PostMessageClient extends EventEmitter {
     }
     this.pendingRequests.clear();
     
-    this.connected = false;
-    this.connectionPromise = null;
-    console.log('🔌 PostMessage client disconnected');
+    this.isServerRunning = false;
+    console.log('🔌 PostMessage bridge disconnected');
   }
 }

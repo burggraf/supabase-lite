@@ -66,27 +66,17 @@ async function executeProxyStart(options: ProxyStartOptions): Promise<void> {
       process.exit(1);
     }
 
-    // Check if this is a deployed instance
+    // Check if this is a deployed instance and provide helpful info
     const url = new URL(options.target);
     const isDeployedInstance = !['localhost', '127.0.0.1'].includes(url.hostname) && url.protocol === 'https:';
     
     if (isDeployedInstance) {
       console.log(`\n🔗 Starting proxy for deployed instance: ${options.target}`);
-      console.log(`\n⚠️  Note: Connection to deployed instances requires manual browser setup.`);
-      console.log(`\nTo use this proxy:`);
-      console.log(`\n  1. Keep this proxy running`);
-      console.log(`  2. Open ${options.target} in your browser`);
-      console.log(`  3. Use http://localhost:3000 in your CLI commands`);
-      console.log(`\nThe connection will be established through your browser tab.\n`);
-      
-      // For now, just show a placeholder message since the PostMessage isn't fully working
-      console.log(`❌ Proxy for deployed instances is not yet fully implemented.`);
-      console.log(`\nThis feature will be completed in a future update.`);
-      console.log(`For now, you can only use the CLI with local instances (http://localhost:5173).\n`);
-      process.exit(1);
+      console.log(`\n💡 This will open a bridge page in your browser to connect to your existing Supabase Lite tab.`);
+      console.log(`\nOnce running, you can use the proxy URL in your CLI commands.\n`);
     }
 
-    // Continue with normal proxy setup for local instances
+    // Continue with proxy setup for all instances (local and deployed)
     // Validate mode
     if (options.mode && !['websocket', 'postmessage', 'auto'].includes(options.mode)) {
       console.error(ResultFormatter.formatGeneralError('Invalid mode. Must be: websocket, postmessage, or auto'));
