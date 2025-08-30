@@ -23,6 +23,25 @@ supabase-lite psql --url https://supabase-lite.pages.dev
 supabase-lite psql --url http://localhost:5173/abc123def456
 ```
 
+### Command Line Options
+
+```bash
+# Interactive mode (default)
+supabase-lite psql -u http://localhost:5173
+
+# Execute single command
+supabase-lite psql -u http://localhost:5173 -c "SELECT * FROM auth.users;"
+
+# Execute SQL script from file
+supabase-lite psql -u http://localhost:5173 -f schema.sql
+
+# Execute file with error handling options
+supabase-lite psql -u http://localhost:5173 -f migration.sql --continue-on-error --show-progress
+
+# Quiet mode (suppress connection messages)
+supabase-lite psql -u http://localhost:5173 -f script.sql --quiet
+```
+
 ### Interactive SQL Session
 
 Once connected, you can run SQL queries interactively:
@@ -44,12 +63,46 @@ WHERE created_at > NOW() - INTERVAL '7 days'
 ORDER BY created_at DESC;
 ```
 
+### SQL File Execution
+
+Execute complex multi-statement SQL scripts:
+
+```sql
+-- Example: schema.sql
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  price DECIMAL(10,2)
+);
+
+INSERT INTO products (name, price) VALUES 
+  ('Widget A', 19.99),
+  ('Widget B', 29.99);
+
+SELECT * FROM products;
+```
+
+```bash
+# Execute the script
+supabase-lite psql -u http://localhost:5173 -f schema.sql
+```
+
+**File Execution Features:**
+- **Multi-statement support**: Execute multiple SQL statements in sequence
+- **Comment handling**: Properly handles line comments (`--`) and block comments (`/* */`)
+- **Error handling**: Use `--continue-on-error` to continue execution after failures
+- **Progress tracking**: Use `--show-progress` to see execution status for long scripts
+- **Detailed results**: View execution time and results for each statement
+
 ### Meta Commands
 
 - `\q` - Quit the session
 - `\l` - List databases/projects
-- `\dt` - List tables
+- `\dt` - List tables in current schema
+- `\dt *.*` - List all tables in all schemas  
 - `\d <table>` - Describe table structure
+- `\dn` - List schemas
+- `\du` - List users/roles
 - `\?` - Show help
 
 ## Development
