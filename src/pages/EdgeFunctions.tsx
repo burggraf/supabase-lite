@@ -8,8 +8,48 @@ import { projectManager } from '@/lib/projects/ProjectManager';
 import { toast } from 'sonner';
 
 export function EdgeFunctions() {
-  const [currentView, setCurrentView] = useState<'functions' | 'secrets' | 'editor'>('functions');
+  const [currentView, setCurrentView] = useState<'functions' | 'secrets'>('functions');
   const [currentFunctionName, setCurrentFunctionName] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const generateUniqueFunctionName = async (): Promise<string> => {
+    try {
+      const files = await vfsManager.listFiles({ directory: 'edge-functions' });
+      console.log('All files in edge-functions for name generation:', files);
+      
+      const existingNames = new Set<string>();
+      
+      // Check both directories and files for existing function names
+      files.forEach(file => {
+        if (file.type === 'directory' && file.path.startsWith('edge-functions/')) {
+          const functionName = file.path.split('/')[1];
+          existingNames.add(functionName);
+        }
+        // Also check for index.ts files which indicate function directories
+        if (file.type === 'file' && file.path.match(/^edge-functions\/([^\/]+)\/index\.ts$/)) {
+          const functionName = file.path.split('/')[1];
+          existingNames.add(functionName);
+        }
+      });
+
+      console.log('Existing function names:', Array.from(existingNames));
+
+      let counter = 1;
+      let functionName = `function-${counter}`;
+      
+      while (existingNames.has(functionName)) {
+        counter++;
+        functionName = `function-${counter}`;
+      }
+      
+      console.log('Generated unique function name:', functionName);
+      return functionName;
+    } catch (error) {
+      console.error('Failed to generate unique function name:', error);
+      // Use timestamp to ensure uniqueness
+      return `function-${Date.now()}`;
+    }
+  };
 
   const handleCreateFunction = async (templateId?: string) => {
     try {
@@ -21,8 +61,8 @@ export function EdgeFunctions() {
 
       await vfsManager.initialize(activeProject.id);
 
-      // Generate function name
-      const functionName = 'new-function';
+      // Generate unique function name
+      const functionName = await generateUniqueFunctionName();
       
       // Get template content
       let templateContent = '';
@@ -54,6 +94,27 @@ Deno.serve(async (req: Request) => {
 
       // Create function file
       const functionPath = `edge-functions/${functionName}/index.ts`;
+      
+      // Double-check if file exists before creating
+      try {
+        const existingFile = await vfsManager.readFile(functionPath);
+        if (existingFile) {
+          console.warn(`File ${functionPath} already exists, using timestamp-based name`);
+          const timestampName = `function-${Date.now()}`;
+          const timestampPath = `edge-functions/${timestampName}/index.ts`;
+          await vfsManager.createFile(timestampPath, {
+            content: templateContent,
+            mimeType: 'text/typescript'
+          });
+          toast.success(`Created new function: ${timestampName}`);
+          handleEditFunction(timestampName);
+          return;
+        }
+      } catch (error) {
+        // File doesn't exist, which is what we want
+        console.log(`File ${functionPath} does not exist, proceeding with creation`);
+      }
+      
       await vfsManager.createFile(functionPath, {
         content: templateContent,
         mimeType: 'text/typescript'
@@ -61,7 +122,7 @@ Deno.serve(async (req: Request) => {
 
       toast.success(`Created new function: ${functionName}`);
       
-      // Navigate to editor
+      // Navigate to inline editor
       handleEditFunction(functionName);
     } catch (error) {
       console.error('Failed to create function:', error);
@@ -70,33 +131,26 @@ Deno.serve(async (req: Request) => {
   };
 
   const handleEditFunction = (functionName: string) => {
-    setCurrentView('editor');
     setCurrentFunctionName(functionName);
+    setIsCreating(true);
   };
 
   const handleBackToFunctions = () => {
-    setCurrentView('functions');
     setCurrentFunctionName(null);
+    setIsCreating(false);
   };
 
   const handleGoToSecrets = () => {
     setCurrentView('secrets');
     setCurrentFunctionName(null);
+    setIsCreating(false);
   };
 
   const handleGoToFunctions = () => {
     setCurrentView('functions');
     setCurrentFunctionName(null);
+    setIsCreating(false);
   };
-
-  if (currentView === 'editor' && currentFunctionName) {
-    return (
-      <FunctionEditor
-        functionName={currentFunctionName}
-        onBack={handleBackToFunctions}
-      />
-    );
-  }
 
   return (
     <div className="flex h-full">
@@ -131,7 +185,12 @@ Deno.serve(async (req: Request) => {
 
       {/* Main Content */}
       <div className="flex-1">
-        {currentView === 'functions' ? (
+        {isCreating && currentFunctionName ? (
+          <FunctionEditor
+            functionName={currentFunctionName}
+            onBack={handleBackToFunctions}
+          />
+        ) : currentView === 'functions' ? (
           <FunctionsList
             onCreateFunction={handleCreateFunction}
             onEditFunction={handleEditFunction}
