@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BackupsSection } from '../BackupsSection';
 import * as useDatabase from '@/hooks/useDatabase';
