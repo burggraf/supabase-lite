@@ -273,107 +273,54 @@ export class DatabaseManager {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-
-      // Check if database has been seeded by looking for specific roles that we create
-      // Since roles persist but schemas/tables might not, this is the most reliable check
-      let isSeeded = false;
-      try {
-        const roleCheckResult = await this.db.query(`
-          SELECT EXISTS (
-            SELECT 1 FROM pg_roles WHERE rolname = 'anon'
-          ) as anon_exists,
-          EXISTS (
-            SELECT 1 FROM pg_roles WHERE rolname = 'authenticated'
-          ) as authenticated_exists;
-        `);
-        
-        const anonExists = roleCheckResult.rows[0]?.anon_exists === true;
-        const authenticatedExists = roleCheckResult.rows[0]?.authenticated_exists === true;
-        isSeeded = anonExists && authenticatedExists;
-        
-        console.log('MDB: Role check - anon exists:', anonExists, 'authenticated exists:', authenticatedExists, 'isSeeded:', isSeeded);
-        
-      } catch (error) {
-        console.log('MDB: Error checking for seeded database roles, assuming not seeded:', error);
-        isSeeded = false;
+      // Check if database is already initialized by looking for persistent roles
+      // Roles persist in PGlite but schemas/tables can be lost, so this is more reliable
+      const roleCheck = await this.db.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_roles WHERE rolname = 'anon'
+        ) as initialized
+      `);
+      
+      const isInitialized = (roleCheck.rows[0] as any)?.initialized === true;
+      logger.info('Database initialization check', { isInitialized });
+      
+      if (isInitialized) {
+        logger.info('Database already initialized, skipping schema setup');
+        return;
       }
 
-      if (isSeeded) {
-        // CRITICAL FIX: Also check that essential tables exist, not just roles
-        // Roles persist but tables can be lost on refresh
-        const essentialTablesResult = await this.db.query(`
-          SELECT COUNT(*) as table_count
-          FROM information_schema.tables 
-          WHERE table_schema IN ('auth', 'storage', 'realtime')
-          AND table_type = 'BASE TABLE';
-        `);
-        
-        const tableCount = parseInt(essentialTablesResult.rows[0]?.table_count || '0');
-        
-        if (tableCount < 10) {
-          // We should have many more tables in auth/storage/realtime schemas
-          logger.warn('Database roles exist but tables are missing, re-initializing schema');
-          
-          // Skip role creation since roles already exist, just create tables
-          logger.info('Re-initializing database schema (skipping roles)');
-
-          // Load and execute the seed.sql file (tables, schemas, etc.)
-          const seedSql = await this.loadSeedSql();
-          await this.db.exec(seedSql);
-
-          // Load and execute default RLS policies
-          const policiesSql = await this.loadPoliciesSql();
-          await this.db.exec(policiesSql);
-
-          logger.info('Supabase database schema re-initialized successfully');
-
-          // Ensure all schema changes are persisted to IndexedDB
-          await this.db.query('CHECKPOINT');
-          
-          return;
+      // Not initialized - run ALL initialization ONCE
+      logger.info('Initializing new database with Supabase schema');
+      
+      try {
+        // 1. Create roles (with error handling for existing roles)
+        const rolesSql = await this.loadRolesSql();
+        await this.db.exec(rolesSql);
+        logger.info('Roles created successfully');
+      } catch (roleError: any) {
+        if (roleError.message?.includes('already exists')) {
+          logger.warn('Some roles already exist, continuing with schema creation');
         } else {
-          logger.info('Database already seeded with Supabase schema');
-          return;
+          throw roleError;
         }
       }
-
-      logger.info('Initializing database with Supabase seed schema');
-
-
-      console.log('MDB: loadRolesSql');
-
-      // Load and execute roles
-      const rolesSql = await this.loadRolesSql();
-      await this.db.exec(rolesSql);
-
-      console.log('MDB: loadSeedSql');
-
-      // Load and execute the seed.sql file
+      
+      // 2. Create schemas, tables, functions
       const seedSql = await this.loadSeedSql();
       await this.db.exec(seedSql);
-
-      console.log('MDB: loadPoliciesSql');
-
-      // Load and execute default RLS policies
+      logger.info('Schema and tables created successfully');
+      
+      // 3. Create RLS policies
       const policiesSql = await this.loadPoliciesSql();
       await this.db.exec(policiesSql);
-      console.log('MDB: loadPoliciesSql completed');
-
-      logger.info('Supabase database schema with RLS initialized successfully');
-
-      // Ensure all schema changes are persisted to IndexedDB
+      logger.info('RLS policies created successfully');
+      
+      logger.info('Database initialization complete');
+      
+      // Ensure persistence
       await this.db.query('CHECKPOINT');
-      console.log('MDB: CHECKPOINT executed to ensure persistence');
-
-      // Verify schema initialization with simple query
-      try {
-        await this.db.query('SELECT 1');
-      } catch (error) {
-        console.error('Schema validation failed:', error);
-        throw error;
-      }
+      
     } catch (error) {
-      console.error('Error during schema initialization:', error);
       logError('Schema initialization', error as Error);
       throw createDatabaseError('Failed to initialize database schemas', error as Error);
     }
@@ -576,7 +523,9 @@ export class DatabaseManager {
       await this.setSessionContext(context);
 
       // Execute the query with the context
-      const result = await this.query(sql, optionsOrParams);
+      const result = Array.isArray(optionsOrParams)
+        ? await this.query(sql, optionsOrParams)
+        : await this.query(sql, optionsOrParams);
 
       return result;
     } finally {
@@ -786,7 +735,6 @@ export class DatabaseManager {
     }
 
     try {
-      const connectionInfo = this.getConnectionInfo();
 
 
 
@@ -1163,7 +1111,9 @@ export class DatabaseManager {
     // Clean old entries if cache is full
     if (this.queryCache.size >= 100) {
       const oldestKey = this.queryCache.keys().next().value;
-      this.queryCache.delete(oldestKey);
+      if (oldestKey) {
+        this.queryCache.delete(oldestKey);
+      }
     }
 
     this.queryCache.set(key, {
