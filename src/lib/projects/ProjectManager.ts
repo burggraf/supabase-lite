@@ -268,13 +268,17 @@ export class ProjectManager {
       if (typeof indexedDB !== 'undefined') {
         // First, list all databases to see what exists
         const allDatabases = await indexedDB.databases();
+        
+        // Ensure allDatabases is an array to prevent map errors
+        const databasesList = Array.isArray(allDatabases) ? allDatabases : [];
+        
         logger.debug('All IndexedDB databases before cleanup', { 
-          databases: allDatabases.map(db => db.name),
+          databases: databasesList.map(db => db.name),
           targetDbName: dbName
         });
         
         // Find databases that match our project
-        const matchingDatabases = allDatabases.filter(db => 
+        const matchingDatabases = databasesList.filter(db => 
           db.name === dbName || 
           db.name?.startsWith(dbName) ||
           db.name?.includes(dbName)
@@ -322,7 +326,8 @@ export class ProjectManager {
         
         // Verify deletion
         const remainingDatabases = await indexedDB.databases();
-        const stillExists = remainingDatabases.filter(db => 
+        const remainingDatabasesList = Array.isArray(remainingDatabases) ? remainingDatabases : [];
+        const stillExists = remainingDatabasesList.filter(db => 
           db.name === dbName || 
           db.name?.startsWith(dbName) ||
           db.name?.includes(dbName)

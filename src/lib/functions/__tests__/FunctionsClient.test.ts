@@ -8,6 +8,28 @@ import {
   type FunctionResponse
 } from '../FunctionsClient';
 
+// Mock ProjectManager to provide a test project
+vi.mock('../../projects/ProjectManager', () => ({
+  ProjectManager: {
+    getInstance: () => ({
+      getActiveProject: () => ({
+        id: 'test-project',
+        name: 'Test Project',
+        databasePath: 'idb://test_project',
+        createdAt: new Date(),
+        isActive: true
+      }),
+      getProjects: () => [{
+        id: 'test-project',
+        name: 'Test Project', 
+        databasePath: 'idb://test_project',
+        createdAt: new Date(),
+        isActive: true
+      }]
+    })
+  }
+}));
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
