@@ -51,17 +51,27 @@ The Supabase Lite CLI is a command-line interface designed to interact with brow
   - Meta-command processing (\dt, \d, \q, etc.)
   - Auto-completion (future enhancement)
 
-### 6. psql Command (`src/commands/psql.ts`)
+### 6. Auto Proxy Manager (`src/lib/proxy/auto-proxy-manager.ts`)
+- **Responsibility**: Automatic proxy management for HTTPS instances
+- **Features**:
+  - Auto-detection of HTTPS URLs requiring proxy
+  - Temporary proxy lifecycle management (start/stop)
+  - Browser opening for deployed instances
+  - Port allocation and conflict resolution
+  - Cleanup on command completion
+
+### 7. psql Command (`src/commands/psql.ts`)
 - **Responsibility**: Main psql command implementation
 - **Features**:
   - Interactive and non-interactive modes
   - Meta-command processing
-  - Connection establishment
+  - Connection establishment with automatic proxy support
   - Query execution and result display
 
 ## Communication Protocol
 
-### HTTP Endpoint Communication
+### Direct Communication (Local Development)
+For local instances (`http://localhost:5173`):
 ```
 POST /debug/sql
 Content-Type: application/json
@@ -70,6 +80,18 @@ Content-Type: application/json
   "sql": "SELECT * FROM auth.users LIMIT 5;"
 }
 ```
+
+### Proxy-Mediated Communication (Deployed Instances)
+For HTTPS instances (`https://supabase-lite.pages.dev`):
+```
+CLI ─HTTP─> Auto Proxy ─PostMessage─> Browser ─PGlite─> Database
+```
+
+1. **CLI** makes HTTP request to local proxy (auto-started on available port)
+2. **Auto Proxy** forwards request via PostMessage bridge to browser
+3. **Browser** processes request through PGlite and returns response
+4. **Proxy** forwards response back to CLI
+5. **Cleanup** - proxy automatically stops after command completion
 
 ### Response Format
 ```json
