@@ -7,7 +7,7 @@ import { ResultFormatter } from '../lib/result-formatter.js';
 interface ProxyStartOptions {
   target: string;
   port?: number;
-  mode?: 'websocket' | 'postmessage' | 'auto';
+  mode?: 'websocket' | 'auto';
   quiet?: boolean;
 }
 
@@ -31,7 +31,7 @@ export function createProxyCommand(): Command {
     .description('Start a proxy server for a Supabase Lite instance')
     .requiredOption('-t, --target <url>', 'Target Supabase Lite URL (e.g., https://supabase-lite.pages.dev)')
     .option('-p, --port <port>', 'Port to run the proxy server on (auto-selected if not specified)')
-    .option('-m, --mode <mode>', 'Connection mode: websocket, postmessage, or auto', 'auto')
+    .option('-m, --mode <mode>', 'Connection mode: websocket or auto', 'auto')
     .option('-q, --quiet', 'Run quietly (suppress logging)', false)
     .action(async (options: ProxyStartOptions) => {
       await executeProxyStart(options);
@@ -78,8 +78,8 @@ async function executeProxyStart(options: ProxyStartOptions): Promise<void> {
 
     // Continue with proxy setup for all instances (local and deployed)
     // Validate mode
-    if (options.mode && !['websocket', 'postmessage', 'auto'].includes(options.mode)) {
-      console.error(ResultFormatter.formatGeneralError('Invalid mode. Must be: websocket, postmessage, or auto'));
+    if (options.mode && !['websocket', 'auto'].includes(options.mode)) {
+      console.error(ResultFormatter.formatGeneralError('Invalid mode. Must be: websocket or auto'));
       process.exit(1);
     }
 
@@ -132,11 +132,9 @@ async function executeProxyStart(options: ProxyStartOptions): Promise<void> {
       console.log(`   Set your Supabase URL to: http://localhost:${port}`);
       console.log(`   Target: ${options.target}`);
       console.log(`   Mode: ${options.mode}`);
-      console.log(`   Press Ctrl+C to stop the server`);
+      console.log(`   Proxy server is now running in the background`);
+      console.log(`   Use 'supabase-lite proxy stop' to stop the server`);
     }
-
-    // Keep the process running
-    await new Promise(() => {}); // Never resolves
 
   } catch (error: any) {
     console.error(ResultFormatter.formatGeneralError(

@@ -105,22 +105,30 @@ async function executeCreateProject(options: CreateProjectOptions): Promise<void
 
     console.log(ResultFormatter.formatProjectCreated(project));
 
-    // Clean up proxy after successful completion
+    // Send completion signal to browser and then exit for deployed instances
     const autoProxyManager = AutoProxyManager.getInstance();
-    await autoProxyManager.stopProxy(options.url);
+    if (autoProxyManager.isProxyNeeded(options.url)) {
+      // Find the running proxy instance and send completion signal
+      const runningProxies = autoProxyManager.getRunningProxies();
+      const proxyForUrl = runningProxies.find(p => p.url === options.url);
+      
+      if (proxyForUrl) {
+        try {
+          // Send completion signal to browser before shutdown
+          await autoProxyManager.sendCompletionSignalAndExit(options.url);
+        } catch (error) {
+          console.error('Error sending completion signal:', error);
+          setTimeout(() => process.exit(0), 1000);
+        }
+      } else {
+        setTimeout(() => process.exit(0), 1000);
+      }
+    }
 
   } catch (error) {
     console.error(ResultFormatter.formatGeneralError(
       error instanceof Error ? error.message : 'Failed to create project'
     ));
-    
-    // Clean up proxy even on error
-    try {
-      const autoProxyManager = AutoProxyManager.getInstance();
-      await autoProxyManager.stopProxy(options.url);
-    } catch (cleanupError) {
-      // Ignore cleanup errors
-    }
     
     process.exit(1);
   }
@@ -184,13 +192,6 @@ async function executeDeleteProject(options: DeleteProjectOptions): Promise<void
 
         if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
           console.log('❌ Project deletion cancelled');
-          // Clean up proxy before exit
-          try {
-            const autoProxyManager = AutoProxyManager.getInstance();
-            await autoProxyManager.stopProxy(options.url);
-          } catch (cleanupError) {
-            // Ignore cleanup errors
-          }
           process.exit(0);
         }
       } catch (error) {
@@ -206,22 +207,30 @@ async function executeDeleteProject(options: DeleteProjectOptions): Promise<void
 
     console.log(ResultFormatter.formatProjectDeleted(projectInfo));
 
-    // Clean up proxy after successful completion
+    // Send completion signal to browser and then exit for deployed instances
     const autoProxyManager = AutoProxyManager.getInstance();
-    await autoProxyManager.stopProxy(options.url);
+    if (autoProxyManager.isProxyNeeded(options.url)) {
+      // Find the running proxy instance and send completion signal
+      const runningProxies = autoProxyManager.getRunningProxies();
+      const proxyForUrl = runningProxies.find(p => p.url === options.url);
+      
+      if (proxyForUrl) {
+        try {
+          // Send completion signal to browser before shutdown
+          await autoProxyManager.sendCompletionSignalAndExit(options.url);
+        } catch (error) {
+          console.error('Error sending completion signal:', error);
+          setTimeout(() => process.exit(0), 1000);
+        }
+      } else {
+        setTimeout(() => process.exit(0), 1000);
+      }
+    }
 
   } catch (error) {
     console.error(ResultFormatter.formatGeneralError(
       error instanceof Error ? error.message : 'Failed to delete project'
     ));
-    
-    // Clean up proxy even on error
-    try {
-      const autoProxyManager = AutoProxyManager.getInstance();
-      await autoProxyManager.stopProxy(options.url);
-    } catch (cleanupError) {
-      // Ignore cleanup errors
-    }
     
     process.exit(1);
   }
@@ -246,22 +255,30 @@ async function executeListProjects(options: AdminOptions): Promise<void> {
 
     console.log(ResultFormatter.formatProjectList(projects));
 
-    // Clean up proxy after successful completion
+    // Send completion signal to browser and then exit for deployed instances
     const autoProxyManager = AutoProxyManager.getInstance();
-    await autoProxyManager.stopProxy(options.url);
+    if (autoProxyManager.isProxyNeeded(options.url)) {
+      // Find the running proxy instance and send completion signal
+      const runningProxies = autoProxyManager.getRunningProxies();
+      const proxyForUrl = runningProxies.find(p => p.url === options.url);
+      
+      if (proxyForUrl) {
+        try {
+          // Send completion signal to browser before shutdown
+          await autoProxyManager.sendCompletionSignalAndExit(options.url);
+        } catch (error) {
+          console.error('Error sending completion signal:', error);
+          setTimeout(() => process.exit(0), 1000);
+        }
+      } else {
+        setTimeout(() => process.exit(0), 1000);
+      }
+    }
 
   } catch (error) {
     console.error(ResultFormatter.formatGeneralError(
       error instanceof Error ? error.message : 'Failed to list projects'
     ));
-    
-    // Clean up proxy even on error
-    try {
-      const autoProxyManager = AutoProxyManager.getInstance();
-      await autoProxyManager.stopProxy(options.url);
-    } catch (cleanupError) {
-      // Ignore cleanup errors
-    }
     
     process.exit(1);
   }

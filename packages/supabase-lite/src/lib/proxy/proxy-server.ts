@@ -3,12 +3,11 @@ import cors from 'cors';
 import { WebSocket, WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { WebSocketClient, ProxyRequest } from './websocket-client.js';
-import { PostMessageClient } from './postmessage-client.js';
 
 export interface ProxyServerOptions {
   port: number;
   targetUrl: string;
-  mode?: 'websocket' | 'postmessage' | 'auto';
+  mode?: 'websocket' | 'auto';
   enableLogging?: boolean;
 }
 
@@ -18,6 +17,7 @@ interface ProxyClient {
   disconnect(): void;
   sendRequest(request: ProxyRequest): Promise<any>;
   isConnected(): boolean;
+  sendCommandComplete(): Promise<void>;
 }
 
 export class ProxyServer {
@@ -28,7 +28,7 @@ export class ProxyServer {
   private wsServer: WebSocketServer | null = null;
   private browserClients = new Set<WebSocket>();
   private enableLogging: boolean;
-  private connectionMode: 'websocket' | 'postmessage';
+  private connectionMode: 'websocket';
 
   constructor(private options: ProxyServerOptions) {
     this.app = express();
@@ -37,18 +37,21 @@ export class ProxyServer {
     // Determine connection mode
     this.connectionMode = this.determineConnectionMode();
     
-    // Create appropriate client
-    if (this.connectionMode === 'websocket') {
-      // WebSocket bridge always connects to local WebSocket server
+    // Create WebSocket client
+    // Determine if this is local development or deployed instance
+    const url = this.options.targetUrl.toLowerCase();
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      // Local development: connect to local WebSocket server
       const wsUrl = 'ws://localhost:5176';
       this.client = new WebSocketClient(wsUrl);
       if (this.enableLogging) {
         console.log(`🔌 Using WebSocket mode: ${wsUrl} (bridging to ${this.options.targetUrl})`);
       }
     } else {
-      this.client = new PostMessageClient(this.options.targetUrl);
+      // Deployed instance: create a null client that waits for browser connections
+      this.client = new WebSocketClient(null); // null means no external connection
       if (this.enableLogging) {
-        console.log(`🔗 Using PostMessage mode: ${this.options.targetUrl}`);
+        console.log(`🔌 Using WebSocket mode: direct browser connection (target: ${this.options.targetUrl})`);
       }
     }
     
@@ -57,21 +60,11 @@ export class ProxyServer {
     this.setupErrorHandling();
   }
 
-  private determineConnectionMode(): 'websocket' | 'postmessage' {
-    // Manual override
-    if (this.options.mode && this.options.mode !== 'auto') {
-      return this.options.mode;
-    }
-    
-    // Auto-detect based on URL
-    const url = this.options.targetUrl.toLowerCase();
-    if (url.includes('localhost') || url.includes('127.0.0.1')) {
-      // Use WebSocket for local development (has WebSocket server)
-      return 'websocket';
-    } else {
-      // Use PostMessage + BroadcastChannel for production (connects to existing tab)
-      return 'postmessage';
-    }
+  private determineConnectionMode(): 'websocket' {
+    // Always use WebSocket mode for consistent behavior
+    // The WebSocket connection is between CLI proxy and browser tab,
+    // not between CLI proxy and target URL
+    return 'websocket';
   }
 
   private setupMiddleware(): void {
@@ -423,23 +416,28 @@ export class ProxyServer {
   }
 
   /**
+   * Register callback for command completion events
+   */
+  public onCommandComplete(callback: () => void): void {
+    const originalSendStatusToAllBrowsers = this.sendStatusToAllBrowsers.bind(this);
+    this.sendStatusToAllBrowsers = (status: string, message: string) => {
+      originalSendStatusToAllBrowsers(status, message);
+      
+      if (status === 'completed') {
+        callback();
+      }
+    };
+  }
+
+  /**
    * Send completion signal to browser before shutdown
    */
   public async sendCompletionSignal(): Promise<void> {
-    if (this.connectionMode === 'websocket' && this.client.isConnected()) {
-      // Send via WebSocket client
-      try {
-        await (this.client as any).sendCommandComplete?.();
-      } catch (error) {
-        console.error('Error sending WebSocket completion signal:', error);
-      }
-    } else if (this.connectionMode === 'postmessage' && this.client.isConnected()) {
-      // Send via PostMessage client  
-      try {
-        await (this.client as any).sendCommandComplete?.();
-      } catch (error) {
-        console.error('Error sending PostMessage completion signal:', error);
-      }
+    // Send via WebSocket client
+    try {
+      await this.client.sendCommandComplete();
+    } catch (error) {
+      console.error('Error sending WebSocket completion signal:', error);
     }
 
     // Also send to any direct WebSocket browser connections
@@ -491,17 +489,15 @@ export class ProxyServer {
         console.log('🛑 Stopping proxy server...');
       }
       
-      // Send completion signal if we're using WebSocket client
-      if (this.connectionMode === 'websocket' && this.client.isConnected()) {
-        try {
-          if (this.enableLogging) {
-            console.log('📤 Sending command completion signal before shutdown...');
-          }
-          await (this.client as any).sendCommandComplete?.();
-        } catch (error) {
-          if (this.enableLogging) {
-            console.error('Error sending completion signal:', error);
-          }
+      // Send completion signal
+      try {
+        if (this.enableLogging) {
+          console.log('📤 Sending command completion signal before shutdown...');
+        }
+        await this.client.sendCommandComplete();
+      } catch (error) {
+        if (this.enableLogging) {
+          console.error('Error sending completion signal:', error);
         }
       }
       

@@ -73,8 +73,8 @@ export class AutoProxyManager {
     const proxyInstance = await this.startTemporaryProxy(url, options.persistent);
     
     if (!options.persistent) {
-      // Register cleanup for single command mode
-      this.registerTemporaryProxyCleanup(proxyInstance);
+      // For single command mode, we'll handle shutdown explicitly from the admin commands
+      // No automatic shutdown mechanism needed here
     }
 
     return `http://localhost:${proxyInstance.port}`;
@@ -281,6 +281,50 @@ export class AutoProxyManager {
     process.once('beforeExit', cleanup);
     process.once('SIGINT', cleanup);
     process.once('SIGTERM', cleanup);
+
+    // This is now handled in ensureProxy method
+  }
+
+  /**
+   * Schedule auto-shutdown after the first successful command
+   */
+  private scheduleAutoShutdown(proxyInstance: ProxyInstance): void {
+    let requestCount = 0;
+    let shutdownTimer: NodeJS.Timeout | null = null;
+
+    // Set up a timer that shuts down the proxy after successful requests
+    const scheduleShutdown = () => {
+      if (shutdownTimer) {
+        clearTimeout(shutdownTimer);
+      }
+      
+      shutdownTimer = setTimeout(async () => {
+        console.log('🔄 Auto-shutting down proxy after command completion...');
+        try {
+          await proxyInstance.server.stop();
+          this.runningProxies.delete(proxyInstance.targetUrl);
+          this.temporaryProxies.delete(proxyInstance.targetUrl);
+          console.log('✅ Proxy auto-shutdown completed');
+          
+          // Use setImmediate to ensure console.log completes, then force kill
+          setImmediate(() => {
+            process.kill(process.pid, 'SIGTERM');
+          });
+        } catch (error) {
+          console.error('❌ Error during auto-shutdown:', error);
+          setImmediate(() => {
+            process.kill(process.pid, 'SIGTERM');
+          });
+        }
+      }, 1000); // Reduced wait time to 1 second
+    };
+
+    // Register callback for command completion
+    proxyInstance.server.onCommandComplete(() => {
+      requestCount++;
+      console.log(`📊 Command completed (${requestCount} total), scheduling auto-shutdown...`);
+      scheduleShutdown();
+    });
   }
 
   /**
@@ -335,6 +379,39 @@ export class AutoProxyManager {
       url,
       port: instance.port
     }));
+  }
+
+  /**
+   * Send completion signal to browser and exit gracefully
+   */
+  async sendCompletionSignalAndExit(url: string): Promise<void> {
+    const proxyInstance = this.runningProxies.get(url);
+    if (!proxyInstance) {
+      return;
+    }
+
+    console.log('📤 Sending completion signal to browser...');
+    
+    try {
+      // Send completion signal to all browser connections
+      proxyInstance.server.sendStatusToAllBrowsers('completed', '✅ Command completed - Connection will close');
+      
+      // Give the browser time to process the completion signal
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Stop the proxy server
+      await proxyInstance.server.stop();
+      this.runningProxies.delete(url);
+      this.temporaryProxies.delete(url);
+      
+      console.log('✅ Proxy gracefully shut down');
+      
+      // Exit the process
+      process.exit(0);
+    } catch (error) {
+      console.error('❌ Error during graceful shutdown:', error);
+      process.exit(1);
+    }
   }
 
   /**

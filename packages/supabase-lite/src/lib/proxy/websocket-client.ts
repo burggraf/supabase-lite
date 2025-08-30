@@ -35,12 +35,20 @@ export class WebSocketClient extends EventEmitter {
   private readonly maxReconnectAttempts = 10;
   private readonly reconnectDelay = 1000;
   private connectionPromise: Promise<void> | null = null;
+  private isNullClient: boolean;
 
-  constructor(private url: string) {
+  constructor(private url: string | null) {
     super();
+    this.isNullClient = url === null;
   }
 
   async connect(): Promise<void> {
+    // If this is a null client (for deployed instances), don't connect to external WebSocket
+    if (this.isNullClient) {
+      console.log('🔌 Null WebSocket client - waiting for direct browser connections');
+      return Promise.resolve();
+    }
+
     if (this.connectionPromise) {
       return this.connectionPromise;
     }
@@ -53,7 +61,7 @@ export class WebSocketClient extends EventEmitter {
     return new Promise((resolve, reject) => {
       console.log(`🔌 Attempting to connect to WebSocket at ${this.url}`);
       
-      this.ws = new WebSocket(this.url);
+      this.ws = new WebSocket(this.url!);
 
       this.ws.on('open', () => {
         console.log('✅ Connected to Supabase Lite WebSocket bridge');
@@ -111,6 +119,11 @@ export class WebSocketClient extends EventEmitter {
   }
 
   async sendRequest(request: ProxyRequest): Promise<ProxyResponse> {
+    // Null client should never send requests - they're handled by direct browser connections
+    if (this.isNullClient) {
+      throw new Error('Null WebSocket client cannot send requests - requests should go through browser WebSocket connections');
+    }
+
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       await this.connect();
     }
@@ -149,10 +162,20 @@ export class WebSocketClient extends EventEmitter {
   }
 
   isConnected(): boolean {
+    // Null clients are always "connected" since they don't need external connections
+    if (this.isNullClient) {
+      return true;
+    }
     return this.ws?.readyState === WebSocket.OPEN;
   }
 
   async sendCommandComplete(): Promise<void> {
+    // Null clients don't send command completion signals
+    if (this.isNullClient) {
+      console.log('📤 Null client - command completion handled by browser connections');
+      return;
+    }
+
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       console.log('📤 Sending command completion signal to browser');
       this.ws.send(JSON.stringify({
