@@ -12,7 +12,12 @@
     "dev": "tsc --watch",
     "start": "node dist/cli.js",
     "test": "vitest",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "prepublishOnly": "npm run build && npm test",
+    "prepack": "npm run build",
+    "publish:patch": "npm version patch && npm publish",
+    "publish:minor": "npm version minor && npm publish",
+    "publish:major": "npm version major && npm publish"
   },
   "keywords": [
     "supabase",
