@@ -64,9 +64,7 @@ describe('CreateBucketDialog', () => {
     expect(screen.queryByText('Create a new bucket')).not.toBeInTheDocument();
   });
 
-  it('validates bucket name requirement', async () => {
-    const user = userEvent.setup();
-    
+  it('disables create button when bucket name is empty', () => {
     render(
       <CreateBucketDialog
         open={true}
@@ -76,11 +74,7 @@ describe('CreateBucketDialog', () => {
     );
 
     const createButton = screen.getByText('Create bucket');
-    await user.click(createButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Bucket name is required')).toBeInTheDocument();
-    });
+    expect(createButton).toBeDisabled();
   });
 
   it('creates bucket with valid input', async () => {
