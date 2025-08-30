@@ -1,5 +1,6 @@
 import Table from 'cli-table3';
-import { QueryResult, QueryError, QueryField } from '../types/index.js';
+import { QueryResult, QueryError, QueryField, FileExecutionSummary } from '../types/index.js';
+import { FileExecutionResult, StatementResult } from './file-executor.js';
 
 export class ResultFormatter {
   private static readonly MAX_COLUMN_WIDTH = 50;
@@ -277,5 +278,133 @@ export class ResultFormatter {
 
     output.push(table.toString());
     return output.join('\n');
+  }
+
+  /**
+   * Format file execution results
+   */
+  static formatFileExecutionResult(result: FileExecutionResult, quiet: boolean = false): string {
+    const output: string[] = [];
+
+    if (!quiet) {
+      output.push(`📁 File: ${result.filePath}`);
+      output.push(`📊 Summary: ${result.successfulStatements}/${result.totalStatements} statements executed successfully`);
+      if (result.failedStatements > 0) {
+        output.push(`❌ Failed: ${result.failedStatements} statements`);
+      }
+      output.push(`⏱️  Total time: ${result.totalExecutionTime.toFixed(2)}ms`);
+      output.push('');
+    }
+
+    // Show results for each statement
+    for (let i = 0; i < result.results.length; i++) {
+      const stmtResult = result.results[i];
+      
+      if (!quiet) {
+        const status = stmtResult.success ? '✅' : '❌';
+        output.push(`${status} Statement ${i + 1} (line ${stmtResult.statement.lineNumber}, ${stmtResult.executionTime.toFixed(2)}ms):`);
+        
+        // Show the SQL if not quiet
+        const sqlPreview = stmtResult.statement.sql.length > 100 
+          ? stmtResult.statement.sql.substring(0, 100) + '...'
+          : stmtResult.statement.sql;
+        output.push(`   SQL: ${sqlPreview.replace(/\n/g, ' ')}`);
+      }
+
+      if (stmtResult.success && stmtResult.result) {
+        // Show query results
+        if (stmtResult.result.data && stmtResult.result.data.length > 0) {
+          if (quiet) {
+            // In quiet mode, just show the data
+            stmtResult.result.data.forEach(row => {
+              output.push(JSON.stringify(row));
+            });
+          } else {
+            output.push(this.formatResult(stmtResult.result));
+          }
+        } else if (!quiet) {
+          output.push(`   Result: Query executed successfully (${stmtResult.result.rowCount || 0} rows affected)`);
+        }
+      } else if (stmtResult.error) {
+        if (!quiet) {
+          if (this.isQueryError(stmtResult.error)) {
+            output.push(`   Error: ${this.formatError(stmtResult.error)}`);
+          } else {
+            output.push(`   Error: ${stmtResult.error.message}`);
+          }
+        }
+      }
+
+      if (!quiet && i < result.results.length - 1) {
+        output.push(''); // Add spacing between statements
+      }
+    }
+
+    return output.join('\n');
+  }
+
+  /**
+   * Format file execution summary
+   */
+  static formatFileExecutionSummary(summary: FileExecutionSummary): string {
+    const output: string[] = [];
+    
+    output.push('📋 Execution Summary:');
+    output.push(`   File: ${summary.filePath}`);
+    output.push(`   Statements: ${summary.totalStatements}`);
+    output.push(`   Successful: ${summary.successfulStatements}`);
+    output.push(`   Failed: ${summary.failedStatements}`);
+    output.push(`   Total time: ${summary.totalExecutionTime.toFixed(2)}ms`);
+    
+    if (summary.failedStatements === 0) {
+      output.push('   Status: ✅ All statements executed successfully');
+    } else {
+      output.push(`   Status: ❌ ${summary.failedStatements} statement(s) failed`);
+    }
+
+    return output.join('\n');
+  }
+
+  /**
+   * Format multiple file execution results
+   */
+  static formatMultipleFileResults(results: FileExecutionResult[], quiet: boolean = false): string {
+    const output: string[] = [];
+
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      output.push(this.formatFileExecutionResult(result, quiet));
+      
+      if (i < results.length - 1) {
+        output.push('');
+        output.push('─'.repeat(50));
+        output.push('');
+      }
+    }
+
+    if (!quiet && results.length > 1) {
+      output.push('');
+      output.push('🎯 Overall Summary:');
+      
+      const totalStatements = results.reduce((sum, r) => sum + r.totalStatements, 0);
+      const totalSuccessful = results.reduce((sum, r) => sum + r.successfulStatements, 0);
+      const totalFailed = results.reduce((sum, r) => sum + r.failedStatements, 0);
+      const totalTime = results.reduce((sum, r) => sum + r.totalExecutionTime, 0);
+      
+      output.push(`   Files processed: ${results.length}`);
+      output.push(`   Total statements: ${totalStatements}`);
+      output.push(`   Total successful: ${totalSuccessful}`);
+      output.push(`   Total failed: ${totalFailed}`);
+      output.push(`   Total execution time: ${totalTime.toFixed(2)}ms`);
+    }
+
+    return output.join('\n');
+  }
+
+  /**
+   * Type guard for QueryError
+   */
+  private static isQueryError(error: any): error is QueryError {
+    return typeof error === 'object' && error !== null && 'error' in error && 'message' in error;
   }
 }

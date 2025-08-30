@@ -44,3 +44,11 @@ export type MetaCommand =
   | 'list_databases'
   | 'list_schemas'
   | 'list_users';
+
+export interface FileExecutionSummary {
+  totalStatements: number;
+  successfulStatements: number;
+  failedStatements: number;
+  totalExecutionTime: number;
+  filePath: string;
+}

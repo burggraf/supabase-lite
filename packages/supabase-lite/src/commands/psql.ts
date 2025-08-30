@@ -3,12 +3,15 @@ import { SqlClient } from '../lib/sql-client.js';
 import { Repl } from '../lib/repl.js';
 import { UrlParser } from '../lib/url-parser.js';
 import { ResultFormatter } from '../lib/result-formatter.js';
+import { FileExecutor } from '../lib/file-executor.js';
 
 interface PsqlOptions {
   url: string;
   command?: string;
   file?: string;
   quiet?: boolean;
+  continueOnError?: boolean;
+  showProgress?: boolean;
 }
 
 export function createPsqlCommand(): Command {
@@ -18,8 +21,10 @@ export function createPsqlCommand(): Command {
     .description('Connect to Supabase Lite database (psql-compatible interface)')
     .requiredOption('-u, --url <url>', 'Supabase Lite URL (e.g., http://localhost:5173)')
     .option('-c, --command <sql>', 'Execute a single SQL command and exit')
-    .option('-f, --file <path>', 'Execute SQL commands from a file (not yet supported)')
+    .option('-f, --file <path>', 'Execute SQL commands from a file')
     .option('-q, --quiet', 'Run quietly (suppress connection messages)', false)
+    .option('--continue-on-error', 'Continue executing statements even if one fails', false)
+    .option('--show-progress', 'Show progress when executing multiple statements', false)
     .action(async (options: PsqlOptions) => {
       await executePsqlCommand(options);
     });
@@ -68,11 +73,8 @@ async function executePsqlCommand(options: PsqlOptions): Promise<void> {
       // Single command mode
       await executeSingleCommand(sqlClient, options.command, options.quiet || false);
     } else if (options.file) {
-      // File mode (not yet implemented)
-      console.error(ResultFormatter.formatGeneralError(
-        'File execution mode is not yet supported'
-      ));
-      process.exit(1);
+      // File mode
+      await executeFileCommand(sqlClient, options.file, options);
     } else {
       // Interactive mode
       await executeInteractiveMode(sqlClient);
@@ -121,6 +123,42 @@ async function executeSingleCommand(
         error instanceof Error ? error.message : 'Query execution failed'
       ));
     }
+    process.exit(1);
+  } finally {
+    sqlClient.disconnect();
+  }
+}
+
+async function executeFileCommand(
+  sqlClient: SqlClient,
+  filePath: string,
+  options: PsqlOptions
+): Promise<void> {
+  try {
+    if (!options.quiet) {
+      console.log(`📁 Executing SQL file: ${filePath}`);
+    }
+
+    const fileExecutor = new FileExecutor(sqlClient);
+    const result = await fileExecutor.executeFile(filePath, {
+      continueOnError: options.continueOnError || false,
+      showProgress: options.showProgress || false,
+      quiet: options.quiet || false
+    });
+
+    // Display results
+    const output = ResultFormatter.formatFileExecutionResult(result, options.quiet || false);
+    console.log(output);
+
+    // Exit with error code if execution failed
+    if (!result.success) {
+      process.exit(1);
+    }
+
+  } catch (error) {
+    console.error(ResultFormatter.formatGeneralError(
+      error instanceof Error ? error.message : 'File execution failed'
+    ));
     process.exit(1);
   } finally {
     sqlClient.disconnect();
