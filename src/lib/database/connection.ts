@@ -108,10 +108,10 @@ export class DatabaseManager {
 
       // Always perform the database switch - don't skip based on cached connection info
       // This prevents the bug where tables disappear when switching back to a project
-      logger.debug('Performing database switch', { 
-        fromDataDir: currentDataDir, 
+      logger.debug('Performing database switch', {
+        fromDataDir: currentDataDir,
         toDataDir: dataDir,
-        forceSwitch: true 
+        forceSwitch: true
       });
 
       // Start atomic transition
@@ -280,10 +280,10 @@ export class DatabaseManager {
           SELECT 1 FROM pg_roles WHERE rolname = 'anon'
         ) as initialized
       `);
-      
+
       const isInitialized = (roleCheck.rows[0] as any)?.initialized === true;
       logger.info('Database initialization check', { isInitialized });
-      
+
       if (isInitialized) {
         logger.info('Database already initialized, skipping schema setup');
         return;
@@ -291,7 +291,7 @@ export class DatabaseManager {
 
       // Not initialized - run ALL initialization ONCE
       logger.info('Initializing new database with Supabase schema');
-      
+
       try {
         // 1. Create roles (with error handling for existing roles)
         const rolesSql = await this.loadRolesSql();
@@ -304,22 +304,22 @@ export class DatabaseManager {
           throw roleError;
         }
       }
-      
+
       // 2. Create schemas, tables, functions
       const seedSql = await this.loadSeedSql();
       await this.db.exec(seedSql);
       logger.info('Schema and tables created successfully');
-      
+
       // 3. Create RLS policies
       const policiesSql = await this.loadPoliciesSql();
       await this.db.exec(policiesSql);
       logger.info('RLS policies created successfully');
-      
+
       logger.info('Database initialization complete');
-      
+
       // Ensure persistence
       await this.db.query('CHECKPOINT');
-      
+
     } catch (error) {
       logError('Schema initialization', error as Error);
       throw createDatabaseError('Failed to initialize database schemas', error as Error);
@@ -329,19 +329,18 @@ export class DatabaseManager {
   private async loadSeedSql(): Promise<string> {
     try {
       // Browser-only: fetch from static assets
-      // const response = await fetch('/sql_scripts/seed.sql');
       const response = await fetch('/sql_scripts/schema.sql');
       if (!response.ok) {
-        throw new Error(`Failed to load seed.sql: ${response.statusText}`);
+        throw new Error(`Failed to load schema.sql: ${response.statusText}`);
       }
       const seedSql = await response.text();
-      console.log('MDB: loaded seed.sql', response.statusText);
+      console.log('MDB: loaded schema.sql', response.statusText);
 
-      logger.debug('Loaded seed.sql from static assets');
+      logger.debug('Loaded schema.sql from static assets');
       return seedSql;
     } catch (error) {
-      logger.warn('Could not load seed.sql file, falling back to basic schema', error as Error);
-      // Fallback to basic schema if seed.sql is not available
+      logger.warn('Could not load schema.sql file, falling back to basic schema', error as Error);
+      // Fallback to basic schema if schema.sql is not available
       return `
         -- Fallback basic schema
         CREATE SCHEMA IF NOT EXISTS auth;
