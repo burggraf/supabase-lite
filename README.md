@@ -185,7 +185,22 @@ The Supabase Lite Proxy is an HTTP server that bridges external API requests to 
 
 This enables full cross-origin API access and 100% Supabase.js compatibility.
 
+**Note**: The Supabase Lite CLI (v1.3.1+) includes **automatic proxy support** - it detects HTTPS URLs and automatically starts/stops the proxy as needed. Manual proxy setup is only required for non-CLI use cases.
+
 ### Installation & Setup
+
+#### For CLI Users (Automatic)
+The Supabase Lite CLI automatically handles proxy setup for deployed instances:
+
+```bash
+# Install CLI (includes automatic proxy)
+npm install -g supabase-lite
+
+# Connect to deployed instance - proxy starts automatically
+supabase-lite psql --url https://supabase-lite.pages.dev
+```
+
+#### For Non-CLI Applications (Manual)
 
 1. **Install the proxy globally**:
    ```bash

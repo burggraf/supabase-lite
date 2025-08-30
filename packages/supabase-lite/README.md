@@ -16,12 +16,24 @@ npm install -g supabase-lite
 # Connect to default local instance
 supabase-lite psql --url http://localhost:5173
 
-# Connect to production instance
+# Connect to production instance (automatic proxy handling)
 supabase-lite psql --url https://supabase-lite.pages.dev
 
 # Connect to specific project
 supabase-lite psql --url http://localhost:5173/abc123def456
 ```
+
+### Automatic Proxy Support
+
+The CLI automatically handles connections to deployed HTTPS instances by:
+
+- **Auto-detecting** HTTPS URLs (deployed instances vs local development)
+- **Starting proxy** automatically when needed (no manual setup required)  
+- **Opening browser** to ensure the deployed app is loaded and ready
+- **Managing lifecycle** - proxy starts before commands and stops after completion
+- **Transparent operation** - no configuration needed, works seamlessly
+
+For local development (`http://localhost:5173`), the CLI connects directly without proxy.
 
 ### Command Line Options
 
