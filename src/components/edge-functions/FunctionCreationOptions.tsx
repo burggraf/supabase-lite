@@ -198,7 +198,7 @@ export const FunctionCreationOptions: React.FC<FunctionCreationOptionsProps> = (
                   <li>• Use <code className="bg-blue-200 px-1 rounded">supabase functions serve --debug</code> for detailed logs</li>
                   <li>• Functions are deployed to <code className="bg-blue-200 px-1 rounded">supabase/functions/</code> directory</li>
                   <li>• Set environment variables with <code className="bg-blue-200 px-1 rounded">supabase secrets set KEY=value</code></li>
-                  <li>• Test functions locally at <code className="bg-blue-200 px-1 rounded">http://localhost:54321/functions/v1/function-name</code></li>
+                  <li>• Test functions locally at <code className="bg-blue-200 px-1 rounded">http://localhost:[PORT]/functions/v1/function-name</code></li>
                 </ul>
               </div>
 

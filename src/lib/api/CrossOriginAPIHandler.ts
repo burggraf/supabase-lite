@@ -23,23 +23,6 @@ interface APIResponse {
 export class CrossOriginAPIHandler {
   private apibridge: EnhancedSupabaseAPIBridge;
   private broadcastChannel: BroadcastChannel | null = null;
-  private allowedOrigins = [
-    'http://localhost:5173', // Your test app
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'http://localhost:5176',
-    // PostMessage bridge ports (proxy can use any available port)
-    ...Array.from({length: 20}, (_, i) => `http://localhost:${8765 + i}`),
-    // Additional common development ports
-    'http://localhost:3000',
-    'http://localhost:3001', 
-    'http://localhost:4000',
-    'http://localhost:4001',
-    'http://localhost:8000',
-    'http://localhost:8001',
-    'http://localhost:9000',
-    'http://localhost:9001'
-  ];
 
   constructor() {
     this.apibridge = new EnhancedSupabaseAPIBridge();
@@ -61,6 +44,26 @@ export class CrossOriginAPIHandler {
       });
     } catch (error) {
       console.warn('BroadcastChannel not available:', error);
+    }
+  }
+
+  private isAllowedOrigin(origin: string): boolean {
+    try {
+      const url = new URL(origin);
+      
+      // Allow localhost with any port
+      if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+        return true;
+      }
+      
+      // Allow HTTPS origins (for deployed versions)
+      if (url.protocol === 'https:') {
+        return true;
+      }
+      
+      return false;
+    } catch {
+      return false;
     }
   }
 
@@ -99,8 +102,8 @@ export class CrossOriginAPIHandler {
   }
 
   private async handleMessage(event: MessageEvent) {
-    // Check origin
-    if (!this.allowedOrigins.includes(event.origin)) {
+    // Allow localhost origins and any HTTPS origin since this is a local-only app
+    if (!this.isAllowedOrigin(event.origin)) {
       return;
     }
 

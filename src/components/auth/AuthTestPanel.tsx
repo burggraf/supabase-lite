@@ -9,6 +9,7 @@ import { apiKeyGenerator } from '@/lib/auth/api-keys'
 import type { User, Session } from '@/lib/auth/types'
 import type { ApiKeys } from '@/lib/auth/api-keys'
 import { Copy, Eye, EyeOff, Check } from 'lucide-react'
+import { getBaseUrl } from '@/lib/utils'
 
 interface AuthTestResult {
   success: boolean
@@ -348,7 +349,7 @@ export function AuthTestPanel() {
 {`import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
-  'http://localhost:5173',
+  '${getBaseUrl()}',
   '${maskKey(apiKeys.anon)}' // Use anon key for client-side
 )`}
                         </pre>
@@ -360,7 +361,7 @@ const supabase = createClient(
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">With anon key (respects RLS):</p>
                             <pre className="bg-muted p-3 rounded text-xs overflow-auto">
-{`curl -X GET "http://localhost:5173/rest/v1/your_table" \\
+{`curl -X GET "${getBaseUrl()}/rest/v1/your_table" \\
   -H "Content-Type: application/json" \\
   -H "Accept: application/json" \\
   -H "apikey: ${maskKey(apiKeys.anon)}" \\
@@ -370,7 +371,7 @@ const supabase = createClient(
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">With service_role key (bypasses RLS):</p>
                             <pre className="bg-muted p-3 rounded text-xs overflow-auto">
-{`curl -X GET "http://localhost:5173/rest/v1/your_table" \\
+{`curl -X GET "${getBaseUrl()}/rest/v1/your_table" \\
   -H "Content-Type: application/json" \\
   -H "Accept: application/json" \\
   -H "apikey: ${maskKey(apiKeys.service_role)}" \\
@@ -383,7 +384,7 @@ const supabase = createClient(
                       <div>
                         <h5 className="text-sm font-medium mb-2">JavaScript Fetch</h5>
                         <pre className="bg-muted p-3 rounded text-sm overflow-auto">
-{`fetch('http://localhost:5173/rest/v1/your_table', {
+{`fetch('${getBaseUrl()}/rest/v1/your_table', {
   method: 'GET',
   headers: {
     'Content-Type': 'application/json',

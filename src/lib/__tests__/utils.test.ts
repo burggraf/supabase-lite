@@ -1,5 +1,67 @@
-import { describe, it, expect } from 'vitest'
-import { cn } from '../utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { cn, getBaseUrl, formatBytes } from '../utils'
+
+describe('getBaseUrl', () => {
+  beforeEach(() => {
+    // Mock window.location
+    Object.defineProperty(window, 'location', {
+      value: {
+        origin: 'http://localhost:5173'
+      },
+      writable: true
+    })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should return window.location.origin when window is available', () => {
+    expect(getBaseUrl()).toBe('http://localhost:5173')
+  })
+
+  it('should return empty string when window is undefined', () => {
+    const originalWindow = global.window
+    // @ts-expect-error - Intentionally setting window to undefined for testing
+    global.window = undefined
+
+    expect(getBaseUrl()).toBe('')
+
+    global.window = originalWindow
+  })
+
+  it('should work with different origins', () => {
+    Object.defineProperty(window, 'location', {
+      value: {
+        origin: 'https://supabase-lite.pages.dev'
+      },
+      writable: true
+    })
+
+    expect(getBaseUrl()).toBe('https://supabase-lite.pages.dev')
+  })
+
+  it('should work with localhost on different ports', () => {
+    Object.defineProperty(window, 'location', {
+      value: {
+        origin: 'http://localhost:3000'
+      },
+      writable: true
+    })
+
+    expect(getBaseUrl()).toBe('http://localhost:3000')
+  })
+})
+
+describe('formatBytes', () => {
+  it('should format bytes correctly', () => {
+    expect(formatBytes(0)).toBe('0 B')
+    expect(formatBytes(1024)).toBe('1 KB')
+    expect(formatBytes(1536)).toBe('1.5 KB')
+    expect(formatBytes(1048576)).toBe('1 MB')
+    expect(formatBytes(1073741824)).toBe('1 GB')
+  })
+})
 
 describe('cn utility function', () => {
   it('should combine class names correctly', () => {

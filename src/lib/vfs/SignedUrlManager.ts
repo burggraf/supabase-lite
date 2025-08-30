@@ -1,5 +1,6 @@
 import { JWTService } from '../auth/core/JWTService';
 import { logger } from '../infrastructure/Logger';
+import { getBaseUrl } from '../utils';
 import type {
   SignedUrlOptions,
   SignedUrlMetadata,
@@ -344,12 +345,7 @@ export class SignedUrlManager {
    * Get base URL for signed URLs
    */
   private getBaseUrl(): string {
-    // In browser environment, use current origin
-    if (typeof window !== 'undefined') {
-      return window.location.origin;
-    }
-    // Fallback for testing - detect current port or use 5174
-    return 'http://localhost:5174';
+    return getBaseUrl();
   }
 
   /**
