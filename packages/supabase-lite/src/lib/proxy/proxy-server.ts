@@ -124,7 +124,17 @@ export class ProxyServer {
           return;
         }
 
-        // Fallback to traditional client routing
+        // Check if this is a deployed instance with null client
+        const url = this.options.targetUrl.toLowerCase();
+        const isDeployedInstance = !url.includes('localhost') && !url.includes('127.0.0.1');
+        
+        if (isDeployedInstance) {
+          // For deployed instances without browser connection, use direct HTTP proxy
+          await this.handleRequestViaDirectHTTP(req, res);
+          return;
+        }
+
+        // Local development: fallback to WebSocket client routing
         // Check if client is connected
         if (!this.client.isConnected()) {
           await this.client.connect();
@@ -183,6 +193,78 @@ export class ProxyServer {
         });
       }
     });
+  }
+
+  /**
+   * Handle HTTP request via direct HTTP proxy (for deployed instances)
+   */
+  private async handleRequestViaDirectHTTP(req: express.Request, res: express.Response): Promise<void> {
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    if (this.enableLogging) {
+      console.log(`🔄 Direct HTTP proxy ${req.method} ${req.url} to ${this.options.targetUrl} (ID: ${requestId})`);
+    }
+
+    try {
+      // Use axios to make the actual HTTP request
+      const axios = (await import('axios')).default;
+      
+      // Build the target URL
+      const targetUrl = new URL(req.url, this.options.targetUrl).toString();
+      
+      // Prepare headers (exclude some that shouldn't be forwarded)
+      const forwardedHeaders = { ...req.headers } as Record<string, string>;
+      delete forwardedHeaders.host;
+      delete forwardedHeaders.connection;
+      delete forwardedHeaders['transfer-encoding'];
+      delete forwardedHeaders['content-length'];
+      
+      // Make the request
+      const response = await axios({
+        method: req.method,
+        url: targetUrl,
+        headers: forwardedHeaders,
+        data: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
+        validateStatus: () => true // Accept all status codes
+      });
+
+      if (this.enableLogging) {
+        console.log(`✅ Direct HTTP response received for ${requestId} (status: ${response.status})`);
+        console.log(`📋 Response content-type: ${response.headers['content-type']}`);
+        console.log(`📋 Response preview: ${typeof response.data === 'string' ? response.data.substring(0, 200) + '...' : JSON.stringify(response.data).substring(0, 200) + '...'}`);
+      }
+
+      // Set response headers
+      Object.entries(response.headers).forEach(([key, value]) => {
+        // Skip some headers that shouldn't be forwarded
+        if (!['connection', 'transfer-encoding', 'content-encoding', 'content-length'].includes(key.toLowerCase())) {
+          res.setHeader(key, String(value));
+        }
+      });
+
+      // Set status and send response
+      res.status(response.status);
+      
+      // Send response data
+      if (typeof response.data === 'object') {
+        res.json(response.data);
+      } else {
+        res.send(response.data);
+      }
+
+    } catch (error: any) {
+      if (this.enableLogging) {
+        console.error(`❌ Error in direct HTTP proxy ${req.method} ${req.url}:`, error);
+      }
+      
+      res.status(500).json({
+        error: 'Direct HTTP proxy error',
+        message: error.message,
+        path: req.url,
+        method: req.method,
+        timestamp: new Date().toISOString()
+      });
+    }
   }
 
   /**

@@ -126,6 +126,38 @@ async function executeProxyStart(options: ProxyStartOptions): Promise<void> {
 
     await proxyServer.start();
     
+    // For deployed instances, open browser tab to establish connection
+    const targetUrl = new URL(options.target);
+    const isDeployedTarget = !['localhost', '127.0.0.1'].includes(targetUrl.hostname) && targetUrl.protocol === 'https:';
+    
+    if (isDeployedTarget) {
+      if (!options.quiet) {
+        console.log(`🔍 Checking for existing browser tabs...`);
+      }
+      
+      if (!options.quiet) {
+        console.log(`🌐 Opening browser tab to establish connection...`);
+      }
+      
+      // Open browser with proxy parameter
+      const open = await import('open');
+      const browserUrl = `${options.target}?proxy=ws://localhost:${port}`;
+      await open.default(browserUrl);
+      
+      if (!options.quiet) {
+        console.log(`⏳ Waiting for browser connection...`);
+      }
+      
+      // Wait for browser connection (with timeout)
+      const connected = await waitForProxyConnection(proxyServer, 15000);
+      if (!connected) {
+        console.log(`⚠️  Browser connection not established within 15 seconds`);
+        console.log(`   The proxy will continue running, but API requests may fail`);
+      } else {
+        console.log(`🔗 Browser connected successfully!`);
+      }
+    }
+    
     if (!options.quiet) {
       console.log(`✅ Proxy server started successfully on port ${port}`);
       console.log(`📋 Usage:`);
@@ -197,6 +229,35 @@ async function executeProxyList(options: ProxyListOptions): Promise<void> {
     ));
     process.exit(1);
   }
+}
+
+/**
+ * Wait for proxy connection to be established
+ */
+async function waitForProxyConnection(proxyServer: ProxyServer, timeoutMs: number): Promise<boolean> {
+  const startTime = Date.now();
+  
+  return new Promise((resolve) => {
+    const checkConnection = () => {
+      // Check if we've exceeded timeout
+      if (Date.now() - startTime > timeoutMs) {
+        resolve(false);
+        return;
+      }
+
+      // Check if any browsers are connected to the proxy's WebSocket server
+      if (proxyServer.hasBrowserClients && proxyServer.hasBrowserClients()) {
+        resolve(true);
+        return;
+      }
+
+      // Keep checking every 500ms
+      setTimeout(checkConnection, 500);
+    };
+
+    // Start checking after 2 seconds to allow browser to load
+    setTimeout(checkConnection, 2000);
+  });
 }
 
 export { executeProxyStart, executeProxyStop, executeProxyList };
