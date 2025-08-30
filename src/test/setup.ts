@@ -113,6 +113,13 @@ Object.defineProperty(window, 'performance', {
   }
 })
 
+// Mock ResizeObserver for Radix UI components
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}))
+
 // Note: fetch is provided by MSW, don't mock it globally
 
 // Global database manager instance mock helpers

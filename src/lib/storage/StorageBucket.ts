@@ -30,6 +30,13 @@ export class StorageBucket {
   ) {}
 
   /**
+   * Get the bucket ID
+   */
+  get id(): string {
+    return this.bucketId
+  }
+
+  /**
    * Uploads a file to the bucket
    */
   async upload(
