@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { AdminClient } from '../lib/admin-client.js';
 import { UrlParser } from '../lib/url-parser.js';
 import { ResultFormatter } from '../lib/result-formatter.js';
+import { AutoProxyManager } from '../lib/proxy/auto-proxy-manager.js';
 import readline from 'readline/promises';
 
 interface AdminOptions {
@@ -15,6 +16,14 @@ interface CreateProjectOptions extends AdminOptions {
 interface DeleteProjectOptions extends AdminOptions {
   projectId: string;
   yes?: boolean;
+}
+
+/**
+ * Helper function to ensure proxy is set up if needed and return the proper URL
+ */
+async function ensureProxyForUrl(originalUrl: string): Promise<string> {
+  const autoProxyManager = AutoProxyManager.getInstance();
+  return await autoProxyManager.ensureProxy(originalUrl);
 }
 
 export function createAdminCommand(): Command {
@@ -88,7 +97,10 @@ async function executeCreateProject(options: CreateProjectOptions): Promise<void
 
     console.log('🚀 Creating project...');
 
-    const adminClient = new AdminClient(options.url);
+    // Set up proxy if needed for HTTPS URLs
+    const effectiveUrl = await ensureProxyForUrl(options.url);
+    
+    const adminClient = new AdminClient(effectiveUrl);
     const project = await adminClient.createProject(trimmedName);
 
     console.log(ResultFormatter.formatProjectCreated(project));
@@ -117,7 +129,10 @@ async function executeDeleteProject(options: DeleteProjectOptions): Promise<void
       process.exit(1);
     }
 
-    const adminClient = new AdminClient(options.url);
+    // Set up proxy if needed for HTTPS URLs
+    const effectiveUrl = await ensureProxyForUrl(options.url);
+    
+    const adminClient = new AdminClient(effectiveUrl);
 
     // Get project info first to show what will be deleted
     let projectInfo;
@@ -190,7 +205,10 @@ async function executeListProjects(options: AdminOptions): Promise<void> {
 
     console.log('📋 Fetching projects...');
 
-    const adminClient = new AdminClient(options.url);
+    // Set up proxy if needed for HTTPS URLs
+    const effectiveUrl = await ensureProxyForUrl(options.url);
+    
+    const adminClient = new AdminClient(effectiveUrl);
     const projects = await adminClient.listProjects();
 
     console.log(ResultFormatter.formatProjectList(projects));

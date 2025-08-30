@@ -4,6 +4,7 @@ import { Repl } from '../lib/repl.js';
 import { UrlParser } from '../lib/url-parser.js';
 import { ResultFormatter } from '../lib/result-formatter.js';
 import { FileExecutor } from '../lib/file-executor.js';
+import { AutoProxyManager } from '../lib/proxy/auto-proxy-manager.js';
 
 interface PsqlOptions {
   url: string;
@@ -41,8 +42,12 @@ async function executePsqlCommand(options: PsqlOptions): Promise<void> {
       process.exit(1);
     }
 
+    // Set up proxy if needed for HTTPS URLs
+    const autoProxyManager = AutoProxyManager.getInstance();
+    const effectiveUrl = await autoProxyManager.ensureProxy(options.url);
+
     // Create SQL client
-    const sqlClient = new SqlClient(options.url);
+    const sqlClient = new SqlClient(effectiveUrl);
 
     if (!options.quiet) {
       console.log('🔗 Connecting to Supabase Lite...');

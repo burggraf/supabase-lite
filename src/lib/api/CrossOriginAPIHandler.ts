@@ -1,8 +1,10 @@
 // Cross-origin API handler for the main app
 // Listens for postMessage requests from test app and executes them on browser database
+// Also handles WebSocket proxy connections from CLI
 
 import { EnhancedSupabaseAPIBridge } from '../../mocks/enhanced-bridge';
 import { vfsDirectHandler } from '../vfs/VFSDirectHandler';
+import { ProxyConnector } from './ProxyConnector';
 
 interface APIRequest {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -23,9 +25,11 @@ interface APIResponse {
 export class CrossOriginAPIHandler {
   private apibridge: EnhancedSupabaseAPIBridge;
   private broadcastChannel: BroadcastChannel | null = null;
+  private proxyConnector: ProxyConnector;
 
   constructor() {
     this.apibridge = new EnhancedSupabaseAPIBridge();
+    this.proxyConnector = new ProxyConnector();
     this.setupMessageListener();
     this.setupBroadcastChannel();
   }
@@ -237,5 +241,59 @@ export class CrossOriginAPIHandler {
         throw new Error(`Failed to forward request to ${request.path}: ${error.message}`);
       }
     }
+  }
+
+  /**
+   * Check if proxy connection is active
+   */
+  public isProxyActive(): boolean {
+    return this.proxyConnector.isProxyActive();
+  }
+
+  /**
+   * Get proxy connector instance
+   */
+  public getProxyConnector(): ProxyConnector {
+    return this.proxyConnector;
+  }
+
+  /**
+   * Route API request through proxy if available, otherwise use normal handling
+   */
+  public async routeAPIRequest(request: APIRequest): Promise<Omit<APIResponse, 'requestId'>> {
+    if (this.proxyConnector.isProxyActive()) {
+      console.log('🔗 Routing request through proxy connector:', request.method, request.path);
+      
+      try {
+        const response = await this.proxyConnector.sendAPIRequest(
+          request.method,
+          request.path,
+          request.headers,
+          request.body
+        );
+
+        return {
+          data: response.data,
+          status: response.status,
+          headers: response.headers
+        };
+      } catch (error: any) {
+        console.error('❌ Proxy request failed, falling back to local execution:', error);
+        // Fall back to local execution if proxy fails
+      }
+    }
+
+    // Execute locally if proxy is not available or failed
+    return this.executeRequest(request);
+  }
+
+  /**
+   * Cleanup resources
+   */
+  public cleanup(): void {
+    if (this.broadcastChannel) {
+      this.broadcastChannel.close();
+    }
+    this.proxyConnector.cleanup();
   }
 }

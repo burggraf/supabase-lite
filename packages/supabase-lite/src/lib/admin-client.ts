@@ -18,9 +18,12 @@ export interface AdminError {
 
 export class AdminClient {
   private config: ConnectionConfig;
+  private isDeployedInstance: boolean;
 
   constructor(url: string) {
     this.config = UrlParser.parse(url);
+    // Detect if this is a deployed instance (not localhost)
+    this.isDeployedInstance = !url.includes('localhost') && !url.includes('127.0.0.1');
   }
 
   /**
@@ -53,13 +56,20 @@ export class AdminClient {
         throw new Error(error.message);
       }
 
+      // Check if we got an HTML response instead of JSON (this should not happen with auto-proxy)
+      if (typeof result === 'string' && result.includes('<!doctype html>')) {
+        throw new Error(
+          `Received HTML instead of JSON response. Make sure Supabase Lite is running properly.`
+        );
+      }
+
       return result.projects || [];
 
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNREFUSED') {
           throw new Error(
-            `Connection refused. Make sure Supabase Lite is running at ${this.config.baseUrl}`
+            `Connection refused. Make sure Supabase Lite is accessible at ${this.config.baseUrl}`
           );
         } else if (error.response?.status === 404) {
           throw new Error(
@@ -120,7 +130,7 @@ export class AdminClient {
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNREFUSED') {
           throw new Error(
-            `Connection refused. Make sure Supabase Lite is running at ${this.config.baseUrl}`
+            `Connection refused. Make sure Supabase Lite is accessible at ${this.config.baseUrl}`
           );
         } else if (error.response?.status === 404) {
           throw new Error(
@@ -179,7 +189,7 @@ export class AdminClient {
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNREFUSED') {
           throw new Error(
-            `Connection refused. Make sure Supabase Lite is running at ${this.config.baseUrl}`
+            `Connection refused. Make sure Supabase Lite is accessible at ${this.config.baseUrl}`
           );
         } else if (error.response?.status === 404) {
           throw new Error(
