@@ -498,12 +498,26 @@ describe('useTableMutations', () => {
   });
 
   describe('Error Management', () => {
-    it('should clear error', () => {
+    it('should clear error', async () => {
+      // Mock a failed operation to set an error state
+      mockDbManager.updateTableRow.mockRejectedValueOnce(new Error('Test error'));
+      
       const { result } = renderHook(() => useTableMutations());
 
+      // First, cause an error by attempting a failed operation
+      await act(async () => {
+        try {
+          await result.current.updateRow('users', 'id', 1, { name: 'test' }, 'public');
+        } catch (error) {
+          // Expected to fail
+        }
+      });
+
+      // Verify error is set
+      expect(result.current.error).not.toBeNull();
+
+      // Now clear the error
       act(() => {
-        // Set an error first (simulate error state)
-        (result.current as any).error = 'Test error';
         result.current.clearError();
       });
 

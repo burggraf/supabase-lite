@@ -124,6 +124,12 @@ export class InfrastructureErrorHandler implements ErrorHandler {
   }
 
   private convertToInfrastructureError(error: unknown, context?: Record<string, any>): InfrastructureError {
+    // Handle PostgreSQL errors first (before InfrastructureError check) 
+    // because PG errors can have code/message properties that look like InfrastructureErrors
+    if (this.isPGError(error)) {
+      return this.mapPGError(error, context);
+    }
+
     // Handle InfrastructureError (already processed)
     if (this.isInfrastructureError(error)) {
       return { ...error, context: { ...error.context, ...context } };
@@ -132,11 +138,6 @@ export class InfrastructureErrorHandler implements ErrorHandler {
     // Handle standard Error objects
     if (error instanceof Error) {
       return this.mapStandardError(error, context);
-    }
-
-    // Handle PostgreSQL errors (PGlite specific)
-    if (this.isPGError(error)) {
-      return this.mapPGError(error, context);
     }
 
     // Handle HTTP errors
@@ -175,7 +176,13 @@ export class InfrastructureErrorHandler implements ErrorHandler {
     return (
       typeof error === 'object' &&
       error !== null &&
-      ('severity' in error || 'code' in error || 'position' in error)
+      'code' in error &&
+      typeof (error as any).code === 'string' &&
+      // PostgreSQL error codes are 5 characters (like '23505', '42P01')
+      /^[0-9A-Z]{5}$/.test((error as any).code) &&
+      // Must have message and not be an InfrastructureError (which would have different code format)
+      'message' in error &&
+      typeof (error as any).message === 'string'
     );
   }
 
