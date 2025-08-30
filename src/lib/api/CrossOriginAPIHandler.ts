@@ -72,6 +72,7 @@ export class CrossOriginAPIHandler {
   }
 
   private async handleBroadcastMessage(event: MessageEvent) {
+    console.log('🔍 BroadcastChannel message received:', event.data);
     const { type, data } = event.data;
     
     if (type === 'API_REQUEST') {
@@ -102,6 +103,13 @@ export class CrossOriginAPIHandler {
         
         console.error(`❌ Cross-origin API error (BC): ${request.method} ${request.path}:`, error);
       }
+    } else if (type === 'COMMAND_COMPLETE') {
+      // Handle command completion from CLI (PostMessage mode)
+      console.log('✅ CLI command completed via BroadcastChannel');
+      // Simulate the WebSocket message format for ProxyConnector
+      this.proxyConnector.handleCommandComplete();
+    } else {
+      console.log('🔍 Unknown BroadcastChannel message type:', type);
     }
   }
 

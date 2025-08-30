@@ -105,6 +105,18 @@ function websocketBridge(): Plugin {
                   }
                 }
                 
+                // Handle command completion signal from proxy
+                else if (message.type === 'command_complete') {
+                  console.log('✅ CLI command completed - sending completion signal to browser')
+                  // Forward completion signal to browser
+                  if (browserSocket && browserSocket.readyState === 1) {
+                    browserSocket.send(JSON.stringify({
+                      type: 'COMMAND_COMPLETE',
+                      timestamp: new Date().toISOString()
+                    }))
+                  }
+                }
+                
                 // Handle requests from proxy - forward to browser
                 else if (message.type === 'request' && message.requestId) {
                   console.log(`🔄 Forwarding WebSocket request ${message.method} ${message.url} to browser`)
@@ -173,6 +185,16 @@ function websocketBridge(): Plugin {
               } else if (connectionType === 'proxy') {
                 console.log('🔌 Proxy disconnected from WebSocket bridge')
                 proxyConnections.delete(ws)
+                
+                // Send completion signal to browser when proxy disconnects
+                // This handles the case where CLI exits without sending explicit completion signal
+                if (browserSocket && browserSocket.readyState === 1) {
+                  console.log('📤 Proxy disconnected - sending completion signal to browser')
+                  browserSocket.send(JSON.stringify({
+                    type: 'COMMAND_COMPLETE',
+                    timestamp: new Date().toISOString()
+                  }))
+                }
               } else {
                 console.log('🔌 Unknown connection disconnected from WebSocket bridge')
               }
