@@ -65,21 +65,39 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
       // Initialize VFS with the active project ID
       await vfsManager.initialize(activeProject.id);
       
-      const files = await vfsManager.listFiles({ directory: 'edge-functions' });
-      console.log('Files found in edge-functions:', files);
+      // Get all files and filter manually since VFS directory filter expects exact match
+      const allFiles = await vfsManager.listFiles();
+      console.log('ALL files in VFS:', allFiles.length);
       
-      const functionDirs = files
-        .filter(file => file.type === 'directory' && file.path.startsWith('edge-functions/'))
-        .map(dir => {
-          const functionName = dir.path.split('/')[1];
-          return {
-            id: functionName,
-            name: functionName,
-            lastDeployed: dir.lastModified?.toISOString() || new Date().toISOString(),
-            status: 'active' as const,
-            description: `Edge function: ${functionName}`,
-          };
-        });
+      // Filter files that are in edge-functions directory
+      const files = allFiles.filter(file => file.path.startsWith('edge-functions/'));
+      console.log('Edge function files found:', files.length);
+      
+      // Extract function names from file paths (files like edge-functions/function-name/index.ts)
+      const functionNames = new Set<string>();
+      
+      files.forEach(file => {
+        if (file.path.startsWith('edge-functions/') && file.path.includes('/')) {
+          const pathParts = file.path.split('/');
+          if (pathParts.length >= 2) {
+            const functionName = pathParts[1];
+            functionNames.add(functionName);
+          }
+        }
+      });
+
+      const functionDirs = Array.from(functionNames).map(functionName => {
+        // Find the main file (index.ts) for this function to get metadata
+        const mainFile = files.find(f => f.path === `edge-functions/${functionName}/index.ts`);
+        
+        return {
+          id: functionName,
+          name: functionName,
+          lastDeployed: mainFile?.lastModified?.toISOString() || new Date().toISOString(),
+          status: 'active' as const,
+          description: `Edge function: ${functionName}`,
+        };
+      });
 
       setFunctions(functionDirs);
 
