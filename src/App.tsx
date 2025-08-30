@@ -13,6 +13,7 @@ import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
 import { initializeInfrastructure, logger } from '@/lib/infrastructure';
 import { projectManager } from '@/lib/projects/ProjectManager';
+import { CrossOriginAPIHandler } from '@/lib/api/CrossOriginAPIHandler';
 import { Toaster } from 'sonner';
 
 function App() {
@@ -20,17 +21,28 @@ function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const [currentProjectName, setCurrentProjectName] = useState<string | null>(null);
+  const [, setApiHandler] = useState<CrossOriginAPIHandler | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
+    let handlerRef: CrossOriginAPIHandler | null = null;
     
     const initialize = async () => {
       try {
         await initializeInfrastructure();
         
+        // Initialize Cross-Origin API Handler (includes ProxyConnector)
+        const handler = new CrossOriginAPIHandler();
+        handlerRef = handler;
+        
+        // Make API handler globally accessible for ProxyConnector
+        (window as any).crossOriginAPIHandler = handler;
+        
         // Only update state if the effect hasn't been cancelled
         if (!isCancelled) {
+          setApiHandler(handler);
           logger.info('Application initialized successfully');
+          logger.info('Cross-Origin API Handler and ProxyConnector initialized');
           setIsInitializing(false);
         }
       } catch (error) {
@@ -49,6 +61,11 @@ function App() {
     // Cleanup function to prevent state updates if component unmounts
     return () => {
       isCancelled = true;
+      
+      // Cleanup API handler
+      if (handlerRef) {
+        handlerRef.cleanup();
+      }
     };
   }, []);
 
