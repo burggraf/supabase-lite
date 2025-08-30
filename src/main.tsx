@@ -15,6 +15,8 @@ function initializeWebSocketBridge() {
     // WebSocket bridge setup (development only)
     setupWebSocketBridge();
   } else {
+    // PostMessage bridge setup (production/deployed instances)
+    setupPostMessageBridge();
   }
   
   function setupWebSocketBridge() {
@@ -220,6 +222,161 @@ function initializeWebSocketBridge() {
   // Initial connection
   connect()
   } // End of setupWebSocketBridge function
+
+  function setupPostMessageBridge() {
+    console.log('🔗 Setting up PostMessage bridge for deployed instance')
+    
+    // Listen for API requests from proxy bridge
+    window.addEventListener('message', async (event) => {
+      // Only accept messages from localhost (proxy bridge)
+      if (!event.origin.startsWith('http://localhost:')) {
+        return;
+      }
+      
+      if (event.data.type === 'API_REQUEST') {
+        console.log('📥 PostMessage bridge received API request:', {
+          method: event.data.data.method,
+          path: event.data.data.path,
+          requestId: event.data.data.requestId
+        });
+        
+        const { method, path, headers, body, requestId } = event.data.data;
+        
+        try {
+          // Check for VFS direct handler first (same as WebSocket bridge)
+          if (path.startsWith('/vfs/')) {
+            try {
+              console.log('🔄 Processing VFS-direct request via PostMessage')
+              const vfsResponse = await vfsDirectHandler(path, {
+                method,
+                headers: headers || {},
+                body: body ? JSON.stringify(body) : undefined
+              });
+              
+              // Send VFS response back via PostMessage
+              const vfsResponseMessage = {
+                type: 'API_RESPONSE',
+                data: {
+                  requestId,
+                  status: vfsResponse.status,
+                  headers: vfsResponse.headers,
+                  data: vfsResponse.body
+                }
+              };
+              
+              if (event.source) {
+                console.log('✅ Sending VFS-direct response via PostMessage')
+                event.source.postMessage(vfsResponseMessage, event.origin);
+              }
+              return; // Skip normal fetch processing
+              
+            } catch (vfsError: any) {
+              console.error('❌ VFS-direct error:', vfsError)
+              
+              // Send error response
+              const errorResponse = {
+                type: 'API_RESPONSE',
+                data: {
+                  requestId,
+                  status: 500,
+                  headers: { 'content-type': 'application/json' },
+                  error: 'VFS direct handler failed',
+                  data: { error: vfsError.message }
+                }
+              };
+              
+              if (event.source) {
+                event.source.postMessage(errorResponse, event.origin);
+              }
+              return; // Skip normal fetch processing
+            }
+          }
+          
+          // Process the request using fetch (which will be intercepted by MSW)
+          const fetchOptions: RequestInit = {
+            method,
+            headers: {
+              ...headers
+            }
+          };
+          
+          // Only set content-type to JSON for requests that actually need it
+          if (body && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
+            fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+            // Only set JSON content-type if not already specified
+            if (!fetchOptions.headers?.['content-type'] && !fetchOptions.headers?.['Content-Type']) {
+              (fetchOptions.headers as any)['Content-Type'] = 'application/json'
+            }
+          }
+          
+          // Make the fetch request - this WILL be intercepted by MSW!
+          const response = await fetch(path, fetchOptions);
+          
+          // Get response data - handle different content types properly
+          const contentType = response.headers.get('content-type') || '';
+          let responseData;
+          
+          if (contentType.includes('application/json')) {
+            // JSON response
+            const responseText = await response.text();
+            try {
+              responseData = JSON.parse(responseText);
+            } catch {
+              responseData = responseText;
+            }
+          } else {
+            // Non-JSON response (JavaScript, CSS, HTML, etc.) - keep as text
+            responseData = await response.text();
+          }
+          
+          // Send response back via PostMessage
+          const responseMessage = {
+            type: 'API_RESPONSE',
+            data: {
+              requestId,
+              status: response.status,
+              headers: Object.fromEntries(response.headers.entries()),
+              data: responseData
+            }
+          };
+          
+          if (event.source) {
+            console.log('✅ Sending API response via PostMessage:', {
+              requestId,
+              status: response.status
+            });
+            event.source.postMessage(responseMessage, event.origin);
+          }
+          
+        } catch (fetchError: any) {
+          console.error(`❌ PostMessage fetch error for ${requestId}:`, fetchError);
+          
+          // Send error response
+          const errorResponse = {
+            type: 'API_RESPONSE',
+            data: {
+              requestId,
+              status: 500,
+              headers: { 'content-type': 'application/json' },
+              error: 'Database operation failed',
+              data: {
+                error: 'Database operation failed',
+                message: fetchError.message,
+                path: path,
+                method: method
+              }
+            }
+          };
+          
+          if (event.source) {
+            event.source.postMessage(errorResponse, event.origin);
+          }
+        }
+      }
+    });
+    
+    console.log('✅ PostMessage bridge ready for proxy connections');
+  }
 }
 
 // Start MSW for browser-based API simulation and cross-origin API handler
