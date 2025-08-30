@@ -203,7 +203,7 @@ describe('FunctionsList', () => {
 
       await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(
-          `${window.location.origin}/functions/test-function`,
+          `${window.location.origin}/functions/v1/test-function`,
           expect.objectContaining({
             method: 'POST',
             headers: expect.objectContaining({
