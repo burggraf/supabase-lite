@@ -2989,6 +2989,181 @@ Deno.serve(async (req: Request) => {
     }
   }),
 
+  // ==== ADMIN ENDPOINTS (server-level) ====
+
+  // List all projects
+  http.get('/admin/projects', async ({ request }: any) => {
+    try {
+      console.log('🔧 MSW: Admin - List projects');
+      
+      const projects = projectManager.getProjects();
+      
+      // Convert to admin-friendly format
+      const adminProjects = projects.map(project => ({
+        id: project.id,
+        name: project.name,
+        createdAt: project.createdAt.toISOString(),
+        lastAccessed: project.lastAccessed.toISOString(),
+        isActive: project.isActive
+      }));
+
+      return HttpResponse.json({
+        projects: adminProjects
+      }, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    } catch (error: any) {
+      console.error('❌ MSW: Admin list projects error:', error);
+      return HttpResponse.json({
+        error: 'ADMIN_ERROR',
+        message: error.message || 'Failed to list projects'
+      }, {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  }),
+
+  // Create a new project
+  http.post('/admin/projects', async ({ request }: any) => {
+    try {
+      const { name } = await request.json();
+      
+      if (!name || typeof name !== 'string') {
+        return HttpResponse.json({
+          error: 'VALIDATION_ERROR',
+          message: 'Project name is required and must be a string'
+        }, {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+
+      console.log('🔧 MSW: Admin - Create project:', name);
+      
+      const newProject = await projectManager.createProject(name.trim());
+      
+      // Convert to admin-friendly format
+      const adminProject = {
+        id: newProject.id,
+        name: newProject.name,
+        createdAt: newProject.createdAt.toISOString(),
+        lastAccessed: newProject.lastAccessed.toISOString(),
+        isActive: newProject.isActive
+      };
+
+      return HttpResponse.json({
+        project: adminProject
+      }, {
+        status: 201,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    } catch (error: any) {
+      console.error('❌ MSW: Admin create project error:', error);
+      
+      // Check for duplicate name error
+      if (error.message && error.message.includes('already exists')) {
+        return HttpResponse.json({
+          error: 'DUPLICATE_NAME',
+          message: error.message
+        }, {
+          status: 409,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+      
+      return HttpResponse.json({
+        error: 'ADMIN_ERROR',
+        message: error.message || 'Failed to create project'
+      }, {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  }),
+
+  // Delete a project
+  http.delete('/admin/projects/:projectId', async ({ params, request }: any) => {
+    try {
+      const projectId = params.projectId;
+      
+      if (!projectId || typeof projectId !== 'string') {
+        return HttpResponse.json({
+          error: 'VALIDATION_ERROR',
+          message: 'Project ID is required'
+        }, {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+
+      console.log('🔧 MSW: Admin - Delete project:', projectId);
+      
+      // Check if project exists first
+      const projects = projectManager.getProjects();
+      const project = projects.find(p => p.id === projectId);
+      
+      if (!project) {
+        return HttpResponse.json({
+          error: 'NOT_FOUND',
+          message: 'Project not found'
+        }, {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+      
+      await projectManager.deleteProject(projectId);
+
+      return HttpResponse.json({
+        message: 'Project deleted successfully'
+      }, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    } catch (error: any) {
+      console.error('❌ MSW: Admin delete project error:', error);
+      return HttpResponse.json({
+        error: 'ADMIN_ERROR',
+        message: error.message || 'Failed to delete project'
+      }, {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  }),
+
   // Debug SQL endpoint - uses active project by default
   http.post('/debug/sql', withProjectResolution(async ({ request }: any) => {
     try {
