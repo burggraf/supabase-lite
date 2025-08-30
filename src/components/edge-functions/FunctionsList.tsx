@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { ExternalLink, Code2, Bot, Terminal, Edit3, Trash2, Play } from 'lucide-react';
+import { ExternalLink, Code2, Bot, Terminal, Edit3, Trash2, Play, X, Send } from 'lucide-react';
 import { FunctionTemplates } from './FunctionTemplates';
 import { FunctionCreationOptions } from './FunctionCreationOptions';
 import { vfsManager } from '../../lib/vfs/VFSManager';
 import { projectManager } from '../../lib/projects/ProjectManager';
+import { toast } from 'sonner';
 
 interface Function {
   id: string;
@@ -29,6 +30,21 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
 }) => {
   const [functions, setFunctions] = useState<Function[]>([]);
   const [loading, setLoading] = useState(true);
+  const [testModal, setTestModal] = useState<{
+    open: boolean;
+    functionName: string;
+    loading: boolean;
+    response: any;
+    error: string | null;
+    requestBody: string;
+  }>({
+    open: false,
+    functionName: '',
+    loading: false,
+    response: null,
+    error: null,
+    requestBody: '{\n  "message": "Hello World"\n}'
+  });
 
   useEffect(() => {
     loadFunctions();
@@ -50,6 +66,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
       await vfsManager.initialize(activeProject.id);
       
       const files = await vfsManager.listFiles({ directory: 'edge-functions' });
+      console.log('Files found in edge-functions:', files);
       
       const functionDirs = files
         .filter(file => file.type === 'directory' && file.path.startsWith('edge-functions/'))
@@ -65,6 +82,18 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         });
 
       setFunctions(functionDirs);
+
+      // For testing purposes, add a mock function if no functions exist
+      // Temporarily commented out to test CLI instructions
+      // if (functionDirs.length === 0) {
+      //   setFunctions([{
+      //     id: 'function-1756513545100',
+      //     name: 'function-1756513545100',
+      //     lastDeployed: new Date().toISOString(),
+      //     status: 'active' as const,
+      //     description: 'Test function for demonstration'
+      //   }]);
+      // }
     } catch (error) {
       console.error('Failed to load functions:', error);
       setFunctions([]);
@@ -90,6 +119,88 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         console.error('Failed to delete function:', error);
       }
     }
+  };
+
+  const handleTestFunction = (functionName: string) => {
+    setTestModal({
+      open: true,
+      functionName,
+      loading: false,
+      response: null,
+      error: null,
+      requestBody: '{\n  "message": "Hello World"\n}'
+    });
+  };
+
+  const executeTest = async () => {
+    setTestModal(prev => ({ ...prev, loading: true, response: null, error: null }));
+
+    try {
+      const activeProject = projectManager.getActiveProject();
+      if (!activeProject) {
+        throw new Error('No active project found');
+      }
+
+      const projectId = activeProject.id;
+      let requestBody = null;
+      
+      // Try to parse JSON body
+      if (testModal.requestBody.trim()) {
+        try {
+          requestBody = JSON.parse(testModal.requestBody);
+        } catch (e) {
+          // If not JSON, send as text
+          requestBody = testModal.requestBody;
+        }
+      }
+
+      const startTime = performance.now();
+      
+      const response = await fetch(`http://localhost:5174/functions/${testModal.functionName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${projectId}`,
+          'apikey': projectId
+        },
+        body: requestBody ? JSON.stringify(requestBody) : undefined
+      });
+
+      const endTime = performance.now();
+      const executionTime = Math.round(endTime - startTime);
+
+      const responseData = await response.json();
+
+      setTestModal(prev => ({
+        ...prev,
+        loading: false,
+        response: {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          data: responseData,
+          executionTime
+        }
+      }));
+
+      if (!response.ok) {
+        toast.error(`Function test failed: ${response.status} ${response.statusText}`);
+      } else {
+        toast.success(`Function executed successfully in ${executionTime}ms`);
+      }
+    } catch (error) {
+      console.error('Function test failed:', error);
+      setTestModal(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }));
+      toast.error('Function test failed');
+    }
+  };
+
+  const closeTestModal = () => {
+    setTestModal(prev => ({ ...prev, open: false }));
   };
 
   const formatDate = (dateString: string) => {
@@ -191,7 +302,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {}}
+                          onClick={() => handleTestFunction(func.id)}
                         >
                           <Play className="w-4 h-4 mr-1" />
                           Test
@@ -235,6 +346,101 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                 </Button>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* Test Modal */}
+        {testModal.open && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-semibold">Test Function: {testModal.functionName}</h2>
+                <Button variant="ghost" size="sm" onClick={closeTestModal}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Request Body */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Request Body (JSON)
+                  </label>
+                  <textarea
+                    className="w-full h-32 p-3 border border-gray-300 rounded-md font-mono text-sm"
+                    value={testModal.requestBody}
+                    onChange={(e) => setTestModal(prev => ({ ...prev, requestBody: e.target.value }))}
+                    placeholder="Enter JSON request body..."
+                  />
+                </div>
+
+                {/* Test Button */}
+                <div className="flex justify-end">
+                  <Button
+                    onClick={executeTest}
+                    disabled={testModal.loading}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {testModal.loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Test Function
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Response */}
+                {(testModal.response || testModal.error) && (
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-medium mb-4">Response</h3>
+                    
+                    {testModal.error ? (
+                      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                        <div className="text-red-800 font-medium mb-2">Error</div>
+                        <div className="text-red-700 text-sm font-mono">{testModal.error}</div>
+                      </div>
+                    ) : testModal.response ? (
+                      <div className="space-y-4">
+                        {/* Status */}
+                        <div className="flex items-center space-x-4 text-sm">
+                          <div className={`px-3 py-1 rounded-full text-white ${
+                            testModal.response.status < 300 ? 'bg-green-500' : 
+                            testModal.response.status < 400 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}>
+                            {testModal.response.status} {testModal.response.statusText}
+                          </div>
+                          <div className="text-gray-600">
+                            Execution time: {testModal.response.executionTime}ms
+                          </div>
+                        </div>
+
+                        {/* Response Data */}
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 mb-2">Response Body</div>
+                          <pre className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm overflow-x-auto">
+                            {JSON.stringify(testModal.response.data, null, 2)}
+                          </pre>
+                        </div>
+
+                        {/* Headers */}
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 mb-2">Response Headers</div>
+                          <pre className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm overflow-x-auto">
+                            {JSON.stringify(testModal.response.headers, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
     </div>
