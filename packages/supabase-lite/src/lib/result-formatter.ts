@@ -1,5 +1,5 @@
 import Table from 'cli-table3';
-import { QueryResult, QueryError, QueryField, FileExecutionSummary } from '../types/index.js';
+import { QueryResult, QueryError, QueryField, FileExecutionSummary, AdminProject } from '../types/index.js';
 import { FileExecutionResult, StatementResult } from './file-executor.js';
 
 export class ResultFormatter {
@@ -398,6 +398,73 @@ export class ResultFormatter {
       output.push(`   Total execution time: ${totalTime.toFixed(2)}ms`);
     }
 
+    return output.join('\n');
+  }
+
+  /**
+   * Format project list for admin command
+   */
+  static formatProjectList(projects: AdminProject[]): string {
+    if (!projects || projects.length === 0) {
+      return 'No projects found.';
+    }
+
+    const table = new Table({
+      head: ['Name', 'ID', 'Status', 'Created', 'Last Accessed'],
+      style: { 
+        head: ['cyan'],
+        border: ['gray'],
+        compact: true
+      }
+    });
+
+    projects.forEach(project => {
+      const createdDate = new Date(project.createdAt).toLocaleDateString();
+      const accessedDate = new Date(project.lastAccessed).toLocaleDateString();
+      const status = project.isActive ? '● Active' : '○ Inactive';
+      
+      table.push([
+        project.name,
+        project.id, // Show full ID
+        status,
+        createdDate,
+        accessedDate
+      ]);
+    });
+
+    return table.toString() + `\n(${projects.length} ${projects.length === 1 ? 'project' : 'projects'})`;
+  }
+
+  /**
+   * Format project creation success message
+   */
+  static formatProjectCreated(project: AdminProject): string {
+    const output: string[] = [];
+    output.push('✅ Project created successfully!');
+    output.push('');
+    output.push(`   Name: ${project.name}`);
+    output.push(`   ID: ${project.id}`);
+    output.push(`   Created: ${new Date(project.createdAt).toLocaleString()}`);
+    output.push(`   Status: ${project.isActive ? 'Active' : 'Inactive'}`);
+    output.push('');
+    output.push('💡 You can now connect to this project using:');
+    output.push(`   supabase-lite psql --url http://localhost:5173/${project.id}`);
+    
+    return output.join('\n');
+  }
+
+  /**
+   * Format project deletion success message
+   */
+  static formatProjectDeleted(project: AdminProject): string {
+    const output: string[] = [];
+    output.push('✅ Project deleted successfully!');
+    output.push('');
+    output.push(`   Name: ${project.name}`);
+    output.push(`   ID: ${project.id}`);
+    output.push('');
+    output.push('⚠️  All data from this project has been permanently removed.');
+    
     return output.join('\n');
   }
 

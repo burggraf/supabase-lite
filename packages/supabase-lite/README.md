@@ -25,6 +25,8 @@ supabase-lite psql --url http://localhost:5173/abc123def456
 
 ### Command Line Options
 
+#### Database Connection (psql)
+
 ```bash
 # Interactive mode (default)
 supabase-lite psql -u http://localhost:5173
@@ -40,6 +42,22 @@ supabase-lite psql -u http://localhost:5173 -f migration.sql --continue-on-error
 
 # Quiet mode (suppress connection messages)
 supabase-lite psql -u http://localhost:5173 -f script.sql --quiet
+```
+
+#### Project Administration (admin)
+
+```bash
+# List all projects
+supabase-lite admin list-projects -u http://localhost:5173
+
+# Create a new project
+supabase-lite admin create-project "My New Project" -u http://localhost:5173
+
+# Delete a project (with confirmation)
+supabase-lite admin delete-project abc123def456 -u http://localhost:5173
+
+# Delete a project (skip confirmation)
+supabase-lite admin delete-project abc123def456 -u http://localhost:5173 --yes
 ```
 
 ### Interactive SQL Session
@@ -93,6 +111,44 @@ supabase-lite psql -u http://localhost:5173 -f schema.sql
 - **Error handling**: Use `--continue-on-error` to continue execution after failures
 - **Progress tracking**: Use `--show-progress` to see execution status for long scripts
 - **Detailed results**: View execution time and results for each statement
+
+### Project Management
+
+The admin command provides comprehensive project management capabilities:
+
+#### List Projects
+```bash
+supabase-lite admin list-projects -u http://localhost:5173
+```
+Shows a table with:
+- Project name and ID
+- Active/inactive status  
+- Creation date and last accessed date
+- Total number of projects
+
+#### Create Projects
+```bash
+supabase-lite admin create-project "My New Project" -u http://localhost:5173
+```
+Creates a new project with:
+- **Name validation**: 2-50 characters, alphanumeric plus spaces, hyphens, underscores
+- **Unique names**: Prevents duplicate project names
+- **Automatic activation**: New projects become the active project
+- **Connection info**: Shows how to connect to the new project
+
+#### Delete Projects
+```bash
+# With confirmation prompt
+supabase-lite admin delete-project abc123def456 -u http://localhost:5173
+
+# Skip confirmation (use with caution)
+supabase-lite admin delete-project abc123def456 -u http://localhost:5173 --yes
+```
+Safely deletes projects with:
+- **Project verification**: Confirms project exists before deletion
+- **Safety prompts**: Interactive confirmation unless `--yes` flag is used
+- **Clear warnings**: Shows exactly what will be deleted
+- **Permanent deletion**: All project data is permanently removed
 
 ### Meta Commands
 

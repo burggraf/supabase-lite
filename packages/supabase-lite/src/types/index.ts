@@ -52,3 +52,23 @@ export interface FileExecutionSummary {
   totalExecutionTime: number;
   filePath: string;
 }
+
+export interface AdminProject {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastAccessed: string;
+  isActive: boolean;
+}
+
+export interface AdminError {
+  error: string;
+  message: string;
+  details?: string;
+}
+
+export interface AdminResponse<T = any> {
+  data?: T;
+  error?: AdminError;
+  message?: string;
+}
