@@ -100,12 +100,18 @@ export class ProxyConnector {
     // Check for proxy parameter in URL
     const urlParams = new URLSearchParams(window.location.search);
     const proxyParam = urlParams.get('proxy');
+    const proxyConnect = urlParams.get('proxy-connect');
 
     if (proxyParam) {
       console.log('🔗 Proxy parameter detected:', proxyParam);
       this.parseProxyConfig(proxyParam);
       this.createStatusElement();
       this.connectToProxy();
+    } else if (proxyConnect === 'true') {
+      console.log('🔗 Auto-connection parameter detected, setting up proxy listener...');
+      this.createStatusElement();
+      this.showStatus('⏳ Ready for proxy connection...');
+      this.setupProxyListener();
     }
   }
 
@@ -483,6 +489,118 @@ export class ProxyConnector {
     setTimeout(() => {
       this.connectToProxy();
     }, this.reconnectDelay);
+  }
+
+  /**
+   * Show status message
+   */
+  private showStatus(message: string): void {
+    this.updateStatus('connected', message);
+  }
+
+  /**
+   * Set up proxy listener for auto-connection mode
+   */
+  private setupProxyListener(): void {
+    if (!this.discoveryChannel) {
+      console.warn('⚠️ BroadcastChannel not available for auto-connection');
+      this.showStatus('❌ Auto-connection not supported in this browser');
+      return;
+    }
+
+    // Add listener for proxy establishment requests
+    this.discoveryChannel.addEventListener('message', (event) => {
+      const { type, data } = event.data;
+      
+      if (type === 'ESTABLISH_PROXY_CONNECTION') {
+        const currentUrl = window.location.origin + window.location.pathname;
+        if (data.url === currentUrl) {
+          console.log('🔗 Received proxy establishment request, ready for API requests');
+          this.showStatus('✅ Proxy connection established - Ready for API requests');
+          
+          // Set up API request listener via separate channel
+          this.setupAPIRequestListener();
+        }
+      }
+    });
+
+    console.log('📡 Auto-connection listener setup complete');
+  }
+
+  /**
+   * Set up API request listener via BroadcastChannel
+   */
+  private setupAPIRequestListener(): void {
+    try {
+      const apiChannel = new BroadcastChannel('supabase-api-proxy');
+      
+      apiChannel.addEventListener('message', async (event) => {
+        const { type, data } = event.data;
+        
+        if (type === 'API_REQUEST') {
+          console.log(`📡 Received API request via BroadcastChannel: ${data.method} ${data.path} (ID: ${data.requestId})`);
+          
+          try {
+            // Update status to show we're processing
+            this.showStatus(`🟡 Executing: ${data.method} ${data.path}...`);
+            
+            // Get the CrossOriginAPIHandler instance from the global scope
+            const apiHandler = (window as any).crossOriginAPIHandler;
+            if (!apiHandler) {
+              throw new Error('CrossOriginAPIHandler not available');
+            }
+            
+            // Create API request object
+            const request = {
+              method: data.method as 'GET' | 'POST' | 'PATCH' | 'DELETE',
+              path: data.path,
+              headers: data.headers || {},
+              body: data.body
+            };
+            
+            // Execute the request locally
+            const response = await apiHandler.executeRequest(request);
+            
+            console.log(`✅ API request completed: ${data.method} ${data.path} (status: ${response.status})`);
+            
+            // Send response back via BroadcastChannel
+            apiChannel.postMessage({
+              type: 'API_RESPONSE',
+              data: {
+                requestId: data.requestId,
+                status: response.status,
+                headers: response.headers,
+                data: response.data
+              }
+            });
+            
+            // Update status
+            this.showStatus(`✅ Request completed: ${data.method} ${data.path}`);
+            
+          } catch (error: any) {
+            console.error(`❌ Error handling API request: ${data.method} ${data.path}:`, error);
+            
+            // Send error response back via BroadcastChannel
+            apiChannel.postMessage({
+              type: 'API_RESPONSE',
+              data: {
+                requestId: data.requestId,
+                error: error.message,
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+              }
+            });
+            
+            // Update status
+            this.showStatus(`❌ Error: ${error.message}`);
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Failed to set up API request listener:', error);
+      this.showStatus('❌ Failed to set up API listener');
+    }
   }
 
   /**
