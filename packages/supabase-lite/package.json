@@ -1,0 +1,61 @@
+{
+  "name": "supabase-lite",
+  "version": "1.0.0",
+  "description": "Command-line interface for Supabase Lite - browser-based PostgreSQL database. Compatible with Supabase CLI commands starting with psql functionality.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "supabase-lite": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch"
+  },
+  "keywords": [
+    "supabase",
+    "postgresql",
+    "cli",
+    "psql",
+    "database",
+    "pglite",
+    "browser-database",
+    "sql",
+    "repl"
+  ],
+  "author": "burggraf",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "axios": "^1.7.7",
+    "cli-table3": "^0.6.5",
+    "readline": "^1.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.2.1",
+    "typescript": "~5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/burggraf/supabase-lite.git",
+    "directory": "packages/supabase-lite"
+  },
+  "homepage": "https://github.com/burggraf/supabase-lite#readme",
+  "bugs": {
+    "url": "https://github.com/burggraf/supabase-lite/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
