@@ -1,6 +1,6 @@
 {
   "name": "supabase-lite",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Command-line interface for Supabase Lite - browser-based PostgreSQL database. Compatible with Supabase CLI commands starting with psql functionality.",
   "type": "module",
   "main": "dist/index.js",
