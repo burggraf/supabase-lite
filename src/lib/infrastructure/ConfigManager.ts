@@ -1,6 +1,7 @@
 import type { ConfigManager, AppConfig, DatabaseConfig, APIConfig, AuthConfig, LogLevel } from '@/types/infrastructure';
 import { logger } from './Logger';
 import { errorHandler } from './ErrorHandler';
+import { getBaseUrl } from '../utils';
 
 const DEFAULT_CONFIG: AppConfig = {
   database: {
@@ -11,7 +12,7 @@ const DEFAULT_CONFIG: AppConfig = {
     enableQueryLogging: true,
   },
   api: {
-    baseUrl: 'http://localhost:3001',
+    baseUrl: '',
     timeout: 10000, // 10 seconds
     retryAttempts: 3,
     retryDelay: 1000, // 1 second
@@ -127,7 +128,14 @@ export class InfrastructureConfigManager implements ConfigManager {
   }
 
   getAPIConfig(): APIConfig {
-    return { ...this.config.api };
+    const apiConfig = { ...this.config.api };
+    
+    // Use dynamic base URL if none is configured
+    if (!apiConfig.baseUrl) {
+      apiConfig.baseUrl = getBaseUrl();
+    }
+    
+    return apiConfig;
   }
 
   getAuthConfig(): AuthConfig {
@@ -285,14 +293,17 @@ export class InfrastructureConfigManager implements ConfigManager {
   }
 
   private validateAPIConfig(config: APIConfig): void {
-    if (!config.baseUrl || typeof config.baseUrl !== 'string') {
-      throw errorHandler.createValidationError('API baseUrl is required and must be a string');
+    if (typeof config.baseUrl !== 'string') {
+      throw errorHandler.createValidationError('API baseUrl must be a string');
     }
 
-    try {
-      new URL(config.baseUrl);
-    } catch {
-      throw errorHandler.createValidationError('API baseUrl must be a valid URL');
+    // Allow empty baseUrl since it gets filled dynamically in getAPIConfig()
+    if (config.baseUrl) {
+      try {
+        new URL(config.baseUrl);
+      } catch {
+        throw errorHandler.createValidationError('API baseUrl must be a valid URL');
+      }
     }
 
     if (config.timeout < 1000 || config.timeout > 60000) {

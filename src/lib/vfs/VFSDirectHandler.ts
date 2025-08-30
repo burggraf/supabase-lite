@@ -6,6 +6,7 @@
 import { vfsManager } from './VFSManager';
 import { SignedUrlManager } from './SignedUrlManager';
 import { logger } from '../infrastructure/Logger';
+import { getBaseUrl } from '../utils';
 
 export class VFSDirectHandler {
   private static instance: VFSDirectHandler;
@@ -33,7 +34,7 @@ export class VFSDirectHandler {
     try {
       console.log('🔍 VFS Direct Handler:', { url, method });
 
-      const urlObj = new URL(url, 'http://localhost:5173');
+      const urlObj = new URL(url, getBaseUrl());
       const pathParts = urlObj.pathname.split('/');
       
       // Parse URL: /vfs-direct/bucket/path/to/file?token=...
