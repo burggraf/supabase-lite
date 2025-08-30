@@ -23,6 +23,7 @@ export class ProxyConnector {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 2000;
   private discoveryChannel: BroadcastChannel | null = null;
+  private commandCompleted = false; // Track if command completed gracefully
 
   constructor() {
     this.init();
@@ -135,6 +136,13 @@ export class ProxyConnector {
    * Create status element to show connection status
    */
   private createStatusElement(): void {
+    // Check if status element already exists to prevent duplicates
+    const existingStatus = document.getElementById('proxy-status');
+    if (existingStatus) {
+      this.statusElement = existingStatus as HTMLElement;
+      return;
+    }
+
     // Create status banner
     this.statusElement = document.createElement('div');
     this.statusElement.id = 'proxy-status';
@@ -144,14 +152,52 @@ export class ProxyConnector {
       left: 0;
       right: 0;
       z-index: 10000;
-      padding: 12px;
+      padding: 12px 48px 12px 48px;
       text-align: center;
       font-weight: bold;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 14px;
       transition: all 0.3s ease;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     `;
+
+    // Create close button (LEFT side)
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '×';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      font-weight: bold;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+    `;
+
+    closeButton.onmouseover = () => closeButton.style.opacity = '1';
+    closeButton.onmouseout = () => closeButton.style.opacity = '0.7';
+    closeButton.onclick = () => this.dismissStatusBar();
+
+    // Create content div
+    const contentDiv = document.createElement('div');
+    contentDiv.id = 'proxy-status-content';
+    contentDiv.style.cssText = 'flex: 1; text-align: center;';
+
+    this.statusElement.appendChild(closeButton);
+    this.statusElement.appendChild(contentDiv);
 
     // Insert at top of body
     document.body.insertBefore(this.statusElement, document.body.firstChild);
@@ -178,17 +224,21 @@ export class ProxyConnector {
       error: 'background: #ef4444; color: white;'
     };
 
-    const baseStyle = this.statusElement.style.cssText.split('transition')[0] + 'transition: all 0.3s ease;';
+    const baseStyle = this.statusElement.style.cssText.split('background')[0];
     this.statusElement.style.cssText = baseStyle + (statusStyles[status] || statusStyles.connected);
     
     const disconnectedSuffix = status === 'disconnected' || status === 'error' 
       ? '<br><small>This tab can remain open or be closed</small>' 
       : '';
 
-    this.statusElement.innerHTML = `
-      <div>${message}</div>
-      ${disconnectedSuffix}
-    `;
+    // Update only the content div, preserving the close button
+    const contentDiv = document.getElementById('proxy-status-content');
+    if (contentDiv) {
+      contentDiv.innerHTML = `
+        <div>${message}</div>
+        ${disconnectedSuffix}
+      `;
+    }
   }
 
   /**
@@ -248,12 +298,33 @@ export class ProxyConnector {
         const statusData: StatusUpdate = message.data;
         console.log('📊 Status update:', statusData);
         this.updateStatus(statusData.status, statusData.message);
+        
+        // Check if this is a completion status update
+        if (statusData.status === 'completed') {
+          console.log('✅ Detected completion via status update');
+          this.commandCompleted = true;
+          // Close connection gracefully after a short delay
+          setTimeout(() => {
+            this.disconnect();
+            this.updateStatus('disconnected', '✅ Command completed - Connection closed');
+          }, 1000);
+        }
       } else if (message.type === 'API_RESPONSE') {
         // This would be handled by the API integration
         console.log('📡 API Response received:', message.data);
       } else if (message.type === 'API_REQUEST') {
         // Handle incoming API request from proxy server
         this.handleIncomingAPIRequest(message.data);
+      } else if (message.type === 'COMMAND_COMPLETE') {
+        // Command completed gracefully
+        console.log('✅ CLI command completed successfully');
+        this.commandCompleted = true;
+        this.updateStatus('completed', '✅ Command completed successfully');
+        // Close connection gracefully after a short delay
+        setTimeout(() => {
+          this.disconnect();
+          this.updateStatus('disconnected', '✅ Command completed - Connection closed');
+        }, 1000);
       }
 
     } catch (error) {
@@ -395,6 +466,12 @@ export class ProxyConnector {
    * Attempt to reconnect to proxy
    */
   private attemptReconnect(): void {
+    // Don't reconnect if command completed gracefully
+    if (this.commandCompleted) {
+      console.log('🚫 Not attempting reconnect - command completed gracefully');
+      return;
+    }
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.updateStatus('error', '❌ Connection lost - max reconnect attempts reached');
       return;
@@ -439,6 +516,43 @@ export class ProxyConnector {
       this.ws = null;
     }
     this.isConnected = false;
+  }
+
+  /**
+   * Dismiss the status bar
+   */
+  private dismissStatusBar(): void {
+    if (this.statusElement) {
+      // Animate out
+      this.statusElement.style.transform = 'translateY(-100%)';
+      
+      setTimeout(() => {
+        if (this.statusElement) {
+          this.statusElement.remove();
+          this.statusElement = null;
+          
+          // Remove margin from app element
+          const appElement = document.getElementById('root') || document.body.children[1];
+          if (appElement instanceof HTMLElement) {
+            appElement.style.marginTop = '';
+          }
+        }
+      }, 300); // Match transition duration
+    }
+  }
+
+  /**
+   * Handle command completion (public method for CrossOriginAPIHandler)
+   */
+  public handleCommandComplete(): void {
+    console.log('✅ CLI command completed successfully');
+    this.commandCompleted = true;
+    this.updateStatus('completed', '✅ Command completed successfully');
+    // Close connection gracefully after a short delay
+    setTimeout(() => {
+      this.disconnect();
+      this.updateStatus('disconnected', '✅ Command completed - Connection closed');
+    }, 1000);
   }
 
   /**

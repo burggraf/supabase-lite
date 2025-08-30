@@ -290,6 +290,18 @@ export class AutoProxyManager {
     const proxyInstance = this.runningProxies.get(url);
     if (proxyInstance) {
       console.log(`🛑 Stopping proxy for ${url}...`);
+      
+      // Send completion signal before stopping
+      try {
+        console.log('📤 Sending completion signal before proxy shutdown...');
+        await proxyInstance.server.sendCompletionSignal();
+      } catch (error) {
+        console.error('Error sending completion signal:', error);
+      }
+      
+      // Small delay to ensure signal is processed
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       await proxyInstance.server.stop();
       this.runningProxies.delete(url);
       console.log(`✅ Proxy stopped`);

@@ -75,7 +75,7 @@ describe('AdminClient', () => {
       mockedAxios.isAxiosError.mockReturnValue(true);
 
       await expect(adminClient.listProjects()).rejects.toThrow(
-        'Connection refused. Make sure Supabase Lite is running at http://localhost:5173'
+        'Connection refused. Make sure Supabase Lite is accessible at http://localhost:5173'
       );
     });
 
@@ -218,7 +218,7 @@ describe('AdminClient', () => {
       mockedAxios.isAxiosError.mockReturnValue(true);
 
       await expect(adminClient.createProject('Test Project')).rejects.toThrow(
-        'Connection refused. Make sure Supabase Lite is running at http://localhost:5173'
+        'Connection refused. Make sure Supabase Lite is accessible at http://localhost:5173'
       );
     });
   });
@@ -272,7 +272,7 @@ describe('AdminClient', () => {
       mockedAxios.isAxiosError.mockReturnValue(true);
 
       await expect(adminClient.deleteProject('abc123def456')).rejects.toThrow(
-        'Connection refused. Make sure Supabase Lite is running at http://localhost:5173'
+        'Connection refused. Make sure Supabase Lite is accessible at http://localhost:5173'
       );
     });
 

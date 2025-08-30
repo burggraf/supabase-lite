@@ -210,6 +210,18 @@ export class PostMessageClient extends EventEmitter {
     return this.connected;
   }
 
+  async sendCommandComplete(): Promise<void> {
+    if (this.broadcastChannel && this.connected) {
+      console.log('📤 Sending command completion signal to browser via BroadcastChannel');
+      this.broadcastChannel.postMessage({
+        type: 'COMMAND_COMPLETE',
+        timestamp: new Date().toISOString()
+      });
+      // Give some time for the message to be sent before closing
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
   disconnect(): void {
     if (this.broadcastChannel) {
       this.broadcastChannel.close();

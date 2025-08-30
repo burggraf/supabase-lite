@@ -16,7 +16,7 @@ export interface ProxyResponse {
 }
 
 export interface WebSocketMessage {
-  type: 'request' | 'response';
+  type: 'request' | 'response' | 'command_complete';
   requestId: string;
   method?: string;
   url?: string;
@@ -150,6 +150,19 @@ export class WebSocketClient extends EventEmitter {
 
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  async sendCommandComplete(): Promise<void> {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('📤 Sending command completion signal to browser');
+      this.ws.send(JSON.stringify({
+        type: 'command_complete',
+        requestId: `complete_${Date.now()}`,
+        timestamp: new Date().toISOString()
+      }));
+      // Give some time for the message to be sent before closing
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   }
 
   disconnect(): void {

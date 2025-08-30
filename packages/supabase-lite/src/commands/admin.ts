@@ -105,10 +105,23 @@ async function executeCreateProject(options: CreateProjectOptions): Promise<void
 
     console.log(ResultFormatter.formatProjectCreated(project));
 
+    // Clean up proxy after successful completion
+    const autoProxyManager = AutoProxyManager.getInstance();
+    await autoProxyManager.stopProxy(options.url);
+
   } catch (error) {
     console.error(ResultFormatter.formatGeneralError(
       error instanceof Error ? error.message : 'Failed to create project'
     ));
+    
+    // Clean up proxy even on error
+    try {
+      const autoProxyManager = AutoProxyManager.getInstance();
+      await autoProxyManager.stopProxy(options.url);
+    } catch (cleanupError) {
+      // Ignore cleanup errors
+    }
+    
     process.exit(1);
   }
 }
@@ -171,6 +184,13 @@ async function executeDeleteProject(options: DeleteProjectOptions): Promise<void
 
         if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
           console.log('❌ Project deletion cancelled');
+          // Clean up proxy before exit
+          try {
+            const autoProxyManager = AutoProxyManager.getInstance();
+            await autoProxyManager.stopProxy(options.url);
+          } catch (cleanupError) {
+            // Ignore cleanup errors
+          }
           process.exit(0);
         }
       } catch (error) {
@@ -186,10 +206,23 @@ async function executeDeleteProject(options: DeleteProjectOptions): Promise<void
 
     console.log(ResultFormatter.formatProjectDeleted(projectInfo));
 
+    // Clean up proxy after successful completion
+    const autoProxyManager = AutoProxyManager.getInstance();
+    await autoProxyManager.stopProxy(options.url);
+
   } catch (error) {
     console.error(ResultFormatter.formatGeneralError(
       error instanceof Error ? error.message : 'Failed to delete project'
     ));
+    
+    // Clean up proxy even on error
+    try {
+      const autoProxyManager = AutoProxyManager.getInstance();
+      await autoProxyManager.stopProxy(options.url);
+    } catch (cleanupError) {
+      // Ignore cleanup errors
+    }
+    
     process.exit(1);
   }
 }
@@ -213,10 +246,23 @@ async function executeListProjects(options: AdminOptions): Promise<void> {
 
     console.log(ResultFormatter.formatProjectList(projects));
 
+    // Clean up proxy after successful completion
+    const autoProxyManager = AutoProxyManager.getInstance();
+    await autoProxyManager.stopProxy(options.url);
+
   } catch (error) {
     console.error(ResultFormatter.formatGeneralError(
       error instanceof Error ? error.message : 'Failed to list projects'
     ));
+    
+    // Clean up proxy even on error
+    try {
+      const autoProxyManager = AutoProxyManager.getInstance();
+      await autoProxyManager.stopProxy(options.url);
+    } catch (cleanupError) {
+      // Ignore cleanup errors
+    }
+    
     process.exit(1);
   }
 }

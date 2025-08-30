@@ -422,6 +422,30 @@ export class ProxyServer {
     return this.browserClients.size > 0;
   }
 
+  /**
+   * Send completion signal to browser before shutdown
+   */
+  public async sendCompletionSignal(): Promise<void> {
+    if (this.connectionMode === 'websocket' && this.client.isConnected()) {
+      // Send via WebSocket client
+      try {
+        await (this.client as any).sendCommandComplete?.();
+      } catch (error) {
+        console.error('Error sending WebSocket completion signal:', error);
+      }
+    } else if (this.connectionMode === 'postmessage' && this.client.isConnected()) {
+      // Send via PostMessage client  
+      try {
+        await (this.client as any).sendCommandComplete?.();
+      } catch (error) {
+        console.error('Error sending PostMessage completion signal:', error);
+      }
+    }
+
+    // Also send to any direct WebSocket browser connections
+    this.sendStatusToAllBrowsers('completed', '✅ Command completed successfully');
+  }
+
   async start(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
@@ -462,42 +486,59 @@ export class ProxyServer {
   }
 
   async stop(): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
       if (this.enableLogging) {
         console.log('🛑 Stopping proxy server...');
       }
       
-      // Notify browser clients that proxy is shutting down
-      this.sendStatusToAllBrowsers('disconnecting', '🔴 Proxy shutting down...');
-      
-      // Close WebSocket connections
-      this.browserClients.forEach(ws => {
+      // Send completion signal if we're using WebSocket client
+      if (this.connectionMode === 'websocket' && this.client.isConnected()) {
         try {
-          ws.close();
-        } catch (error) {
-          console.error('Error closing WebSocket:', error);
-        }
-      });
-      this.browserClients.clear();
-
-      // Close WebSocket server
-      if (this.wsServer) {
-        this.wsServer.close();
-      }
-      
-      // Disconnect client
-      this.client.disconnect();
-      
-      if (this.server) {
-        this.server.close(() => {
           if (this.enableLogging) {
-            console.log('✅ Proxy server stopped');
+            console.log('📤 Sending command completion signal before shutdown...');
           }
-          resolve();
-        });
-      } else {
-        resolve();
+          await (this.client as any).sendCommandComplete?.();
+        } catch (error) {
+          if (this.enableLogging) {
+            console.error('Error sending completion signal:', error);
+          }
+        }
       }
+      
+      // Notify browser clients that command completed
+      this.sendStatusToAllBrowsers('completed', '✅ Command completed successfully');
+      
+      // Give a moment for the completion signal to be processed
+      setTimeout(() => {
+        // Close WebSocket connections
+        this.browserClients.forEach(ws => {
+          try {
+            ws.close();
+          } catch (error) {
+            console.error('Error closing WebSocket:', error);
+          }
+        });
+        this.browserClients.clear();
+
+        // Close WebSocket server
+        if (this.wsServer) {
+          this.wsServer.close();
+        }
+        
+        // Disconnect client
+        this.client.disconnect();
+        
+        if (this.server) {
+          this.server.close(() => {
+            if (this.enableLogging) {
+              console.log('✅ Proxy server stopped');
+            }
+            resolve();
+          });
+        } else {
+          resolve();
+        }
+      }, 200); // Small delay to ensure completion signal is sent
     });
   }
 
