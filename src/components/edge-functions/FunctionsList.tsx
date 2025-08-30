@@ -6,6 +6,7 @@ import { ExternalLink, Code2, Bot, Terminal, Edit3, Trash2, Play } from 'lucide-
 import { FunctionTemplates } from './FunctionTemplates';
 import { FunctionCreationOptions } from './FunctionCreationOptions';
 import { vfsManager } from '../../lib/vfs/VFSManager';
+import { projectManager } from '../../lib/projects/ProjectManager';
 
 interface Function {
   id: string;
@@ -36,6 +37,18 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
   const loadFunctions = async () => {
     try {
       setLoading(true);
+      
+      // Get active project and initialize VFS
+      const activeProject = projectManager.getActiveProject();
+      if (!activeProject) {
+        console.warn('No active project found - cannot load functions');
+        setFunctions([]);
+        return;
+      }
+      
+      // Initialize VFS with the active project ID
+      await vfsManager.initialize(activeProject.id);
+      
       const files = await vfsManager.listFiles({ directory: 'edge-functions' });
       
       const functionDirs = files
@@ -63,6 +76,14 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
   const handleDeleteFunction = async (functionId: string) => {
     if (confirm(`Are you sure you want to delete the function "${functionId}"?`)) {
       try {
+        // Get active project and initialize VFS
+        const activeProject = projectManager.getActiveProject();
+        if (!activeProject) {
+          console.error('No active project found - cannot delete function');
+          return;
+        }
+        
+        await vfsManager.initialize(activeProject.id);
         await vfsManager.deleteFile(`edge-functions/${functionId}`);
         await loadFunctions();
       } catch (error) {
