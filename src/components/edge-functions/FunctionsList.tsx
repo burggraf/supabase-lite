@@ -174,7 +174,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
 
       const startTime = performance.now();
       
-      const response = await fetch(`${window.location.origin}/functions/${testModal.functionName}`, {
+      const response = await fetch(`${window.location.origin}/functions/v1/${testModal.functionName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
