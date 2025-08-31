@@ -179,19 +179,27 @@ async function executeInteractiveMode(sqlClient: SqlClient): Promise<void> {
     sqlClient.disconnect();
   };
 
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
+  // Set up signal handlers for graceful shutdown
+  const handleSignal = () => {
+    cleanup();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', handleSignal);
+  process.on('SIGTERM', handleSignal);
   process.on('exit', cleanup);
 
   try {
     await repl.start();
+    // REPL has exited normally (e.g., user typed \q)
+    cleanup();
+    process.exit(0);
   } catch (error) {
     console.error(ResultFormatter.formatGeneralError(
       error instanceof Error ? error.message : 'REPL session failed'
     ));
-    process.exit(1);
-  } finally {
     cleanup();
+    process.exit(1);
   }
 }
 

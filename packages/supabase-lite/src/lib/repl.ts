@@ -48,6 +48,7 @@ export class Repl {
    * Stop the REPL session
    */
   stop(): void {
+    this.rl.removeAllListeners();
     this.rl.close();
   }
 
@@ -63,9 +64,9 @@ export class Repl {
         this.multilineBuffer = '';
         this.showPrompt();
       } else {
-        // Exit
-        console.log('\nUse \\q to quit.');
-        this.showPrompt();
+        // Exit cleanly
+        console.log('\nGoodbye!');
+        this.rl.close();
       }
     });
   }

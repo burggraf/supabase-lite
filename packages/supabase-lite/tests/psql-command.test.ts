@@ -230,7 +230,9 @@ describe('PSQL Command', () => {
       
       const mockRepl = new Repl(expect.any(Object));
       
-      await executePsqlCommand({ url: 'http://localhost:5173' });
+      await expect(async () => {
+        await executePsqlCommand({ url: 'http://localhost:5173' });
+      }).rejects.toThrow('process.exit called');
       
       expect(mockRepl.start).toHaveBeenCalled();
     });
