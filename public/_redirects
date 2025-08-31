@@ -1,0 +1,50 @@
+# Cloudflare Pages redirects for Supabase Lite
+# Handle project-specific API routes by redirecting to index.html so MSW can intercept
+
+# Project-specific debug endpoints
+/*/debug/sql /index.html 200
+/*/debug/* /index.html 200
+
+# Project-specific REST API endpoints  
+/*/rest/v1/* /index.html 200
+/*/rest/* /index.html 200
+
+# Project-specific auth endpoints
+/*/auth/v1/* /index.html 200
+/*/auth/* /index.html 200
+
+# Project-specific storage endpoints
+/*/storage/v1/* /index.html 200
+/*/storage/* /index.html 200
+
+# Project-specific functions endpoints
+/*/functions/v1/* /index.html 200
+/*/functions/* /index.html 200
+
+# Project-specific app hosting endpoints
+/*/app/* /index.html 200
+
+# Project-specific VFS direct endpoints
+/*/vfs-direct/* /index.html 200
+
+# Admin endpoints (for CLI)
+/admin/* /index.html 200
+
+# Global API endpoints (no project prefix)
+/rest/v1/* /index.html 200
+/rest/* /index.html 200
+/auth/v1/* /index.html 200
+/auth/* /index.html 200
+/storage/v1/* /index.html 200
+/storage/* /index.html 200
+/functions/v1/* /index.html 200
+/functions/* /index.html 200
+/debug/sql /index.html 200
+/debug/* /index.html 200
+/health /index.html 200
+/projects /index.html 200
+/app/* /index.html 200
+/vfs-direct/* /index.html 200
+
+# Fallback: anything not matching above should go to the SPA
+/* /index.html 200
