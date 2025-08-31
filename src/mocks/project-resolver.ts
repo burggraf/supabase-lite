@@ -50,7 +50,13 @@ export async function resolveAndSwitchToProject(url: URL): Promise<ProjectResolu
     const dbManager = DatabaseManager.getInstance();
     
     // If no project identifier in path, use the active project
-    if (pathSegments.length === 0 || !pathSegments[0] || pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || pathSegments[0] === 'storage' || pathSegments[0] === 'app' || pathSegments[0] === 'debug') {
+    // Check for direct API endpoints (no project prefix) or debug endpoint at root level
+    const isDirectApiCall = pathSegments.length === 0 || !pathSegments[0] || 
+      pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || 
+      pathSegments[0] === 'storage' || pathSegments[0] === 'app' ||
+      pathSegments[0] === 'debug';
+      
+    if (isDirectApiCall) {
       // Check cache for active project
       const cacheKey = '__active__';
       const cached = projectResolutionCache.get(cacheKey);
