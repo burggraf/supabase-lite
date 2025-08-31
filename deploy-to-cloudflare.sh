@@ -125,7 +125,7 @@ fi
 
 # Deploy without project name - Wrangler will prompt to create or select a project
 echo -e "${BLUE}📝 Wrangler will prompt you to create or select a project${NC}"
-wrangler pages deploy $BUILD_DIR --commit-dirty=true
+wrangler pages deploy $BUILD_DIR --commit-dirty=true --project-name=supabase-lite
 
 echo -e "${GREEN}🎉 Deployment completed successfully!${NC}"
 echo -e "${BLUE}🌐 Your site should be available at: https://$PROJECT_NAME.pages.dev${NC}"
