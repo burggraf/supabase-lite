@@ -1,0 +1,108 @@
+# Cloudflare Pages headers for Supabase Lite API endpoints
+# Set CORS headers for all API routes to allow external CLI access
+
+# Project-specific API routes
+/*/rest/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Expose-Headers: Content-Range, Content-Profile
+  Access-Control-Max-Age: 86400
+
+/*/auth/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/*/storage/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/*/functions/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/*/debug/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/*/app/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/*/vfs-direct/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+# Global API routes (no project prefix)
+/rest/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Expose-Headers: Content-Range, Content-Profile
+  Access-Control-Max-Age: 86400
+
+/auth/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/storage/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/functions/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/debug/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/health
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/projects
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/admin/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/app/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
+
+/vfs-direct/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, apikey, prefer, range, x-supabase-api-version, x-client-info, accept-profile, content-profile
+  Access-Control-Max-Age: 86400
