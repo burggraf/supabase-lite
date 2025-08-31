@@ -62,6 +62,12 @@ export class AutoProxyManager {
     console.log(`🔗 Deployed instance detected: ${url}`);
     console.log(`🚀 Starting automatic proxy...`);
 
+    // Register cleanup handlers if not already done
+    if (!this.isCleanupRegistered) {
+      this.registerCleanupHandlers();
+      this.isCleanupRegistered = true;
+    }
+
     // Check if we already have a running proxy for this URL
     const existingProxy = this.runningProxies.get(url);
     if (existingProxy) {
