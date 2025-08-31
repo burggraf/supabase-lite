@@ -113,6 +113,24 @@ export async function resolveAndSwitchToProject(url: URL): Promise<ProjectResolu
 
     const projectIdentifier = pathSegments[0];
     
+    return await switchToProjectById(projectIdentifier, dbManager);
+  } catch (error) {
+    logger.error('Failed to resolve and switch to project', error as Error, {
+      url: url.pathname
+    });
+    
+    return {
+      success: false,
+      error: `Failed to switch to project database: ${(error as Error).message}`
+    };
+  }
+}
+
+/**
+ * Helper function to switch to a project by its ID or name
+ */
+async function switchToProjectById(projectIdentifier: string, dbManager: any): Promise<ProjectResolutionResult> {
+  try {
     // Check cache for this project identifier
     const cacheKey = projectIdentifier;
     const cached = projectResolutionCache.get(cacheKey);
@@ -161,7 +179,7 @@ export async function resolveAndSwitchToProject(url: URL): Promise<ProjectResolu
         projectId: targetProject.id,
         projectName: targetProject.name,
         databasePath: targetProject.databasePath,
-        requestUrl: url.pathname
+        projectIdentifier
       });
       
       await dbManager.switchDatabase(targetProject.databasePath);
@@ -185,8 +203,8 @@ export async function resolveAndSwitchToProject(url: URL): Promise<ProjectResolu
       projectName: targetProject.name
     };
   } catch (error) {
-    logger.error('Failed to resolve and switch to project', error as Error, {
-      url: url.pathname
+    logger.error('Failed to switch to project by ID', error as Error, {
+      projectIdentifier
     });
     
     return {
