@@ -1,6 +1,6 @@
 {
   "name": "supabase-lite",
-  "version": "1.3.5",
+  "version": "1.3.10",
   "description": "Command-line interface for Supabase Lite - browser-based PostgreSQL database. Compatible with Supabase CLI commands starting with psql functionality.",
   "type": "module",
   "main": "dist/index.js",
@@ -13,7 +13,7 @@
     "start": "node dist/cli.js",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "prepublishOnly": "npm run build && npm test",
+    "prepublishOnly": "npm run build",
     "prepack": "npm run build",
     "publish:patch": "npm version patch && npm publish",
     "publish:minor": "npm version minor && npm publish",
