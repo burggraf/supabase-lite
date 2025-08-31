@@ -9,9 +9,11 @@ export class Repl {
   private multilineBuffer: string = '';
   private prompt: string = 'supabase-lite=# ';
   private continuationPrompt: string = 'supabase-lite-# ';
+  private exitCallback?: () => Promise<void>;
 
-  constructor(sqlClient: SqlClient) {
+  constructor(sqlClient: SqlClient, exitCallback?: () => Promise<void>) {
     this.sqlClient = sqlClient;
+    this.exitCallback = exitCallback;
     
     this.rl = readline.createInterface({
       input: process.stdin,
@@ -57,7 +59,7 @@ export class Repl {
       await this.handleInput(input.trim());
     });
 
-    this.rl.on('SIGINT', () => {
+    this.rl.on('SIGINT', async () => {
       if (this.multilineBuffer) {
         // Cancel multiline input
         console.log('\nCanceled.');
@@ -67,6 +69,16 @@ export class Repl {
         // Exit cleanly
         console.log('\nGoodbye!');
         this.rl.close();
+        
+        // Call exit callback if provided (for proxy cleanup)
+        if (this.exitCallback) {
+          try {
+            await this.exitCallback();
+          } catch (error) {
+            console.error('Error during exit cleanup:', error);
+            process.exit(1);
+          }
+        }
       }
     });
   }

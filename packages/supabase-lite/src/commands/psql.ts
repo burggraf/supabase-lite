@@ -82,7 +82,7 @@ async function executePsqlCommand(options: PsqlOptions): Promise<void> {
       await executeFileCommand(sqlClient, options.file, options);
     } else {
       // Interactive mode
-      await executeInteractiveMode(sqlClient);
+      await executeInteractiveMode(sqlClient, options.url, effectiveUrl);
     }
 
   } catch (error) {
@@ -170,19 +170,35 @@ async function executeFileCommand(
   }
 }
 
-async function executeInteractiveMode(sqlClient: SqlClient): Promise<void> {
-  const repl = new Repl(sqlClient);
+async function executeInteractiveMode(sqlClient: SqlClient, originalUrl: string, effectiveUrl: string): Promise<void> {
+  const autoProxyManager = AutoProxyManager.getInstance();
+  const isProxied = originalUrl !== effectiveUrl;
 
-  // Handle graceful shutdown
+  // Enhanced cleanup that includes proxy shutdown
+  const cleanupWithProxy = async () => {
+    sqlClient.disconnect();
+    
+    if (isProxied) {
+      // For deployed instances with proxy, use graceful shutdown
+      await autoProxyManager.sendCompletionSignalAndExit(originalUrl);
+    } else {
+      // For local instances, just exit normally
+      process.exit(0);
+    }
+  };
+
+  // Create REPL with exit callback for Ctrl+C handling
+  const repl = new Repl(sqlClient, cleanupWithProxy);
+
+  // Handle graceful shutdown with proxy cleanup
   const cleanup = () => {
     repl.stop();
     sqlClient.disconnect();
   };
 
   // Set up signal handlers for graceful shutdown
-  const handleSignal = () => {
-    cleanup();
-    process.exit(0);
+  const handleSignal = async () => {
+    await cleanupWithProxy();
   };
 
   process.on('SIGINT', handleSignal);
@@ -192,14 +208,22 @@ async function executeInteractiveMode(sqlClient: SqlClient): Promise<void> {
   try {
     await repl.start();
     // REPL has exited normally (e.g., user typed \q)
-    cleanup();
-    process.exit(0);
+    await cleanupWithProxy();
   } catch (error) {
     console.error(ResultFormatter.formatGeneralError(
       error instanceof Error ? error.message : 'REPL session failed'
     ));
     cleanup();
-    process.exit(1);
+    
+    if (isProxied) {
+      try {
+        await autoProxyManager.sendCompletionSignalAndExit(originalUrl);
+      } catch {
+        process.exit(1);
+      }
+    } else {
+      process.exit(1);
+    }
   }
 }
 
