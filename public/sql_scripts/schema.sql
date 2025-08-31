@@ -4146,3 +4146,6 @@ ALTER EVENT TRIGGER pgrst_drop_watch OWNER TO supabase_admin;
 --
 -- PostgreSQL database dump complete
 --
+-- ALTER DATABASE postgres SET search_path TO E'\\$user', 'public', 'extensions';
+SET search_path TO "$user", public, extensions;
+

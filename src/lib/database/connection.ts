@@ -273,19 +273,13 @@ export class DatabaseManager {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      // Check if database is already initialized by looking for persistent roles
-      // Roles persist in PGlite but schemas/tables can be lost, so this is more reliable
-      const roleCheck = await this.db.query(`
-        SELECT EXISTS (
-          SELECT 1 FROM pg_roles WHERE rolname = 'anon'
-        ) as initialized
-      `);
+      // CRITICAL FIX: Check if database is properly initialized by validating ALL required components
+      // The original bug was only checking roles, which persist while schemas can be lost
+      const isFullyInitialized = await this.validateFullInitialization();
+      logger.info('Database initialization check', { isFullyInitialized });
 
-      const isInitialized = (roleCheck.rows[0] as any)?.initialized === true;
-      logger.info('Database initialization check', { isInitialized });
-
-      if (isInitialized) {
-        logger.info('Database already initialized, skipping schema setup');
+      if (isFullyInitialized) {
+        logger.info('Database fully initialized - skipping schema setup to prevent data loss');
         return;
       }
 
@@ -317,11 +311,29 @@ export class DatabaseManager {
 
       logger.info('Database initialization complete');
 
+      // Verify initialization was successful
+      const verifyResult = await this.validateFullInitialization();
+      if (!verifyResult) {
+        throw new Error('Database initialization verification failed');
+      }
+
       // Ensure persistence
       await this.db.query('CHECKPOINT');
 
     } catch (error) {
-      logError('Schema initialization', error as Error);
+      // Enhanced error logging with context
+      const errorContext = {
+        dataDir: this.connectionInfo?.id || 'unknown',
+        hasDb: !!this.db,
+        isInitialized: this.isInitialized
+      };
+      
+      logError('Schema initialization failed', error as Error, errorContext);
+      logger.error('Critical database initialization failure', error as Error, errorContext);
+      
+      // Log additional context for debugging
+      logger.warn('Schema initialization failed - this may indicate corrupted database state');
+      
       throw createDatabaseError('Failed to initialize database schemas', error as Error);
     }
   }
@@ -397,6 +409,54 @@ export class DatabaseManager {
       return `-- No default policies loaded`;
     }
   }
+
+  /**
+   * Validates that the database is fully initialized with all required components
+   * CRITICAL: This prevents data loss by ensuring schemas exist before skipping initialization
+   */
+  private async validateFullInitialization(): Promise<boolean> {
+    if (!this.db) return false;
+
+    try {
+      // Step 1: Check for required schemas - this is the critical fix
+      const schemaCheck = await this.db.query(`
+        SELECT 
+          EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'auth') as has_auth,
+          EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'storage') as has_storage,
+          EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'realtime') as has_realtime,
+          EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'public') as has_public
+      `);
+      const schemas = schemaCheck.rows[0] as any;
+      
+      if (!schemas.has_auth || !schemas.has_storage || !schemas.has_realtime || !schemas.has_public) {
+        logger.info('Missing required schemas, database needs initialization', schemas);
+        return false;
+      }
+
+      // Step 2: Check for key tables to ensure schemas are functional (not just empty)
+      const tableCheck = await this.db.query(`
+        SELECT 
+          EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'users') as has_auth_users,
+          COUNT(*) FILTER (WHERE table_schema = 'auth') as auth_table_count,
+          COUNT(*) FILTER (WHERE table_schema = 'storage') as storage_table_count
+        FROM information_schema.tables 
+        WHERE table_schema IN ('auth', 'storage', 'realtime')
+      `);
+      const tables = tableCheck.rows[0] as any;
+      
+      if (!tables.has_auth_users || tables.auth_table_count < 5) {
+        logger.info('Schemas exist but lack required tables, database needs initialization', tables);
+        return false;
+      }
+
+      logger.info('Database validation passed - all schemas and tables present');
+      return true;
+    } catch (error) {
+      logger.warn('Error during initialization validation, assuming uninitialized', { error });
+      return false;
+    }
+  }
+
 
   /**
    * Set session context for RLS enforcement
