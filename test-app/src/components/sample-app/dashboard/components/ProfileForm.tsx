@@ -33,10 +33,8 @@ const profileSchema = z.object({
     .trim(),
   about_me: z
     .string()
-    .max(500, 'About me must be 500 characters or less')
-    .optional()
-    .transform(val => val || ''),
-})
+    .max(500, 'About me must be 500 characters or less'),
+}) satisfies z.ZodType<ProfileFormData>
 
 export default function ProfileForm({ profile, loading, onSave, onCancel }: ProfileFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)

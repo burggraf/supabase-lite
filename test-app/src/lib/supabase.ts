@@ -1,15 +1,24 @@
 import { createClient } from '@supabase/supabase-js'
 
+// Storage keys for configuration
+const SUPABASE_URL_KEY = 'supabase-lite-url';
+const SUPABASE_API_KEY_KEY = 'supabase-lite-api-key';
+
+// Default configuration
+const DEFAULT_CONFIG = {
+  url: 'http://localhost:5173',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQyMDk2MDAsImV4cCI6MTg5MVECWMDh0.o6LGZvMJoV5U7CDIsKKHhjqTLLHgJ9jlNUmNgcjnv6c'
+};
+
 // Get the Supabase URL and anonymous key
-// These will point to our local Supabase Lite instance
 const getSupabaseConfig = () => {
-  const savedPort = localStorage.getItem('supabase-lite-test-port')
-  const port = savedPort ? parseInt(savedPort) : 5173 // Default to main app port
+  const savedUrl = localStorage.getItem(SUPABASE_URL_KEY);
+  const savedApiKey = localStorage.getItem(SUPABASE_API_KEY_KEY);
   
   return {
-    url: `http://localhost:${port}`,
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQyMDk2MDAsImV4cCI6MTg5MTk3NjAwMH0.o6LGZvMJoV5U7CDIsKKHhjqTLLHgJ9jlNUmNgcjnv6c' // Mock anon key for local development
-  }
+    url: savedUrl || DEFAULT_CONFIG.url,
+    anonKey: savedApiKey || DEFAULT_CONFIG.anonKey
+  };
 }
 
 let supabaseClient: ReturnType<typeof createClient> | null = null
@@ -53,12 +62,16 @@ export function createSupabaseClient() {
 // Export a default client instance
 export const supabase = createSupabaseClient()
 
-// Helper function to update the client URL when port changes
-export function updateSupabaseClient(port?: number) {
-  const config = getSupabaseConfig()
-  if (port) {
-    config.url = `http://localhost:${port}`
+// Helper function to update the client configuration
+export function updateSupabaseClient(url?: string, apiKey?: string) {
+  if (url) {
+    localStorage.setItem(SUPABASE_URL_KEY, url);
   }
+  if (apiKey) {
+    localStorage.setItem(SUPABASE_API_KEY_KEY, apiKey);
+  }
+  
+  const config = getSupabaseConfig();
   
   supabaseClient = createClient(config.url, config.anonKey, {
     auth: {
@@ -70,7 +83,12 @@ export function updateSupabaseClient(port?: number) {
         removeItem: (key: string) => localStorage.removeItem(key)
       }
     }
-  })
+  });
   
-  return supabaseClient
+  return supabaseClient;
+}
+
+// Legacy function for backward compatibility
+export function updateSupabaseClientPort(port: number) {
+  return updateSupabaseClient(`http://localhost:${port}`);
 }

@@ -329,7 +329,6 @@ export function AuthTesting() {
                               test={test}
                               onResponse={handleTestResponse}
                               existingResponse={responses[test.id]}
-                              authState={authState}
                             />
                           </div>
                         ))}

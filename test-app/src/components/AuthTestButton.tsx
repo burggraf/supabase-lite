@@ -20,7 +20,7 @@ interface AuthTestButtonProps {
   authState: AuthState;
 }
 
-export function AuthTestButton({ test, onResponse, isLoading = false, existingResponse, authState }: AuthTestButtonProps) {
+export function AuthTestButton({ test, onResponse, isLoading = false, existingResponse }: Omit<AuthTestButtonProps, 'authState'>) {
   const [isExecuting, setIsExecuting] = useState(false);
 
   const handleClick = async () => {
@@ -79,18 +79,7 @@ export function AuthTestButton({ test, onResponse, isLoading = false, existingRe
     return null;
   };
 
-  const isTestDisabled = () => {
-    // No tests are disabled now - auto-auth handles authentication
-    return false;
-  };
 
-  const getDisabledReason = () => {
-    // No disabled reasons - auto-auth handles everything
-    return null;
-  };
-
-  const disabled = isTestDisabled() || isExecuting || isLoading;
-  const disabledReason = getDisabledReason();
 
   return (
     <div className={`flex flex-col gap-2 p-3 border rounded-lg transition-colors ${

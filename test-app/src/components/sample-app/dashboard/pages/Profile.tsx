@@ -8,11 +8,10 @@ import { Button } from '../../../ui/button'
 import { Separator } from '../../../ui/separator'
 import { CalendarIcon, MailIcon, UserIcon, ShieldCheckIcon, ClockIcon, EditIcon, EyeIcon } from 'lucide-react'
 import ProfileForm from '../components/ProfileForm'
-import { toast } from 'sonner'
 
 export default function Profile() {
   const { user } = useAuth()
-  const { profile, loading: profileLoading, error: profileError, updateProfile, refreshProfile } = useProfile()
+  const { profile, loading: profileLoading, error: profileError, updateProfile } = useProfile()
   const [isEditing, setIsEditing] = useState(false)
 
   if (!user) {
