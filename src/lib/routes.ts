@@ -56,6 +56,11 @@ export function getPageFromPath(path: string): string {
     return 'edge-functions-editor';
   }
   
+  // Handle hosted app routes
+  if (path.startsWith('/app/')) {
+    return 'hosted-app';
+  }
+  
   return 'dashboard';
 }
 
@@ -80,4 +85,19 @@ export function buildFunctionEditorPath(functionName: string): string {
 
 export function buildFunctionEditorUrl(functionName: string): string {
   return buildFunctionEditorPath(functionName);
+}
+
+// Helper functions for hosted app routes
+export function getAppNameFromPath(path: string): string | null {
+  if (path.startsWith('/app/')) {
+    const segments = path.split('/');
+    if (segments[2]) {
+      return segments[2];
+    }
+  }
+  return null;
+}
+
+export function buildAppPath(appName: string): string {
+  return `/app/${appName}`;
 }
