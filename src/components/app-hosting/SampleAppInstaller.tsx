@@ -102,43 +102,30 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 	}
 
 	const copyPublicAppToVFS = async (appId: string, targetAppName: string) => {
-		// List of files to copy from the public/apps/{appId} directory
-		const filesToCopy = [
-			{
-				src: '/apps/test-app/index.html',
-				dest: `app/${targetAppName}/index.html`,
-				mimeType: 'text/html',
-			},
-			{
-				src: '/apps/test-app/vite.svg',
-				dest: `app/${targetAppName}/vite.svg`,
-				mimeType: 'image/svg+xml',
-			},
-			{
-				src: '/apps/test-app/assets/index-DYy6_uKM.js',
-				dest: `app/${targetAppName}/assets/index-DYy6_uKM.js`,
-				mimeType: 'application/javascript',
-			},
-			{
-				src: '/apps/test-app/assets/index-BVN694CE.css',
-				dest: `app/${targetAppName}/assets/index-BVN694CE.css`,
-				mimeType: 'text/css',
-			},
-		]
+		// Dynamically discover all files in the source app directory
+		const sourceBasePath = `/apps/${appId}`
+		
+		console.log(`🔍 Discovering files in ${sourceBasePath}`)
+		
+		// Get the list of all files by parsing index.html and checking for assets
+		const filesToCopy = await discoverFilesInPublicApp(sourceBasePath)
+		
+		console.log(`📂 Found ${filesToCopy.length} files to copy:`, filesToCopy)
 
 		for (const file of filesToCopy) {
 			try {
 				// Fetch file from public folder
 				const response = await fetch(file.src)
 				if (!response.ok) {
-					throw new Error(`Failed to fetch ${file.src}: ${response.statusText}`)
+					console.warn(`⚠️ Could not fetch ${file.src}: ${response.statusText}`)
+					continue // Skip this file instead of failing the whole installation
 				}
 
-				// Determine if file is text or binary
-				const isTextFile =
-					file.mimeType.startsWith('text/') ||
-					file.mimeType === 'application/javascript' ||
-					file.mimeType === 'image/svg+xml'
+				// Get the content-type header or infer from filename
+				const contentType = response.headers.get('content-type') || getMimeTypeFromFilename(file.src)
+				
+				// Determine if file is text or binary based on MIME type
+				const isTextFile = isTextMimeType(contentType)
 
 				let content: string
 				let encoding: 'utf-8' | 'base64' = 'utf-8'
@@ -155,18 +142,137 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 					encoding = 'base64'
 				}
 
+				// Convert source path to destination path
+				const destPath = file.src.replace(sourceBasePath, `app/${targetAppName}`)
+				
 				// Store in VFS using createFile
-				await vfsManager.createFile(file.dest, {
+				await vfsManager.createFile(destPath, {
 					content,
-					mimeType: file.mimeType,
+					mimeType: contentType,
 					encoding,
 					createDirectories: true,
 				})
+
+				console.log(`✅ Copied ${file.src} → ${destPath}`)
 			} catch (error) {
-				console.error(`Failed to copy ${file.src}:`, error)
-				throw new Error(`Failed to copy ${file.src}`)
+				console.error(`❌ Failed to copy ${file.src}:`, error)
+				throw new Error(`Failed to copy ${file.src}: ${error}`)
 			}
 		}
+	}
+
+	// Helper function to discover all files in a public app directory
+	const discoverFilesInPublicApp = async (basePath: string): Promise<{ src: string }[]> => {
+		const files: { src: string }[] = []
+		
+		// Always try to get index.html first
+		try {
+			const indexResponse = await fetch(`${basePath}/index.html`, { method: 'HEAD' })
+			if (indexResponse.ok) {
+				files.push({ src: `${basePath}/index.html` })
+			}
+		} catch {
+			console.warn('No index.html found')
+		}
+		
+		// Try common root files
+		const commonRootFiles = ['vite.svg', 'favicon.ico', 'logo.svg', 'manifest.json']
+		for (const fileName of commonRootFiles) {
+			try {
+				const response = await fetch(`${basePath}/${fileName}`, { method: 'HEAD' })
+				if (response.ok) {
+					files.push({ src: `${basePath}/${fileName}` })
+				}
+			} catch {
+				// File doesn't exist, skip
+			}
+		}
+		
+		// Parse index.html to discover asset references
+		try {
+			const indexResponse = await fetch(`${basePath}/index.html`)
+			if (indexResponse.ok) {
+				const indexContent = await indexResponse.text()
+				
+				// Extract all asset references from HTML (href, src attributes)
+				const assetRegex = /(?:href|src)=["']([^"']+)["']/g
+				const matches = [...indexContent.matchAll(assetRegex)]
+				
+				for (const match of matches) {
+					let assetPath = match[1]
+					
+					// Skip external URLs
+					if (assetPath.startsWith('http://') || assetPath.startsWith('https://') || assetPath.startsWith('//')) {
+						continue
+					}
+					
+					// Convert relative paths to absolute from the app root
+					if (assetPath.startsWith('./')) {
+						assetPath = assetPath.substring(2) // Remove './'
+					}
+					
+					if (!assetPath.startsWith('/')) {
+						assetPath = '/' + assetPath
+					}
+					
+					// Full path for fetching
+					const fullPath = basePath + assetPath
+					
+					// Check if this asset actually exists
+					try {
+						const assetResponse = await fetch(fullPath, { method: 'HEAD' })
+						if (assetResponse.ok) {
+							files.push({ src: fullPath })
+						}
+					} catch {
+						console.warn(`Asset not found: ${fullPath}`)
+					}
+				}
+			}
+		} catch (error) {
+			console.warn('Could not parse index.html for assets:', error)
+		}
+		
+		// Remove duplicates
+		const uniqueFiles = files.filter((file, index, self) => 
+			self.findIndex(f => f.src === file.src) === index
+		)
+		
+		return uniqueFiles
+	}
+
+	// Helper function to determine MIME type from filename
+	const getMimeTypeFromFilename = (filename: string): string => {
+		const ext = filename.split('.').pop()?.toLowerCase()
+		const mimeTypes: Record<string, string> = {
+			html: 'text/html',
+			css: 'text/css',
+			js: 'application/javascript',
+			mjs: 'application/javascript',
+			json: 'application/json',
+			svg: 'image/svg+xml',
+			png: 'image/png',
+			jpg: 'image/jpeg',
+			jpeg: 'image/jpeg',
+			gif: 'image/gif',
+			webp: 'image/webp',
+			ico: 'image/x-icon',
+			woff: 'font/woff',
+			woff2: 'font/woff2',
+			ttf: 'font/ttf',
+			eot: 'application/vnd.ms-fontobject',
+		}
+		return mimeTypes[ext || ''] || 'application/octet-stream'
+	}
+
+	// Helper function to determine if a MIME type is text-based
+	const isTextMimeType = (mimeType: string): boolean => {
+		return (
+			mimeType.startsWith('text/') ||
+			mimeType === 'application/javascript' ||
+			mimeType === 'application/json' ||
+			mimeType === 'image/svg+xml'
+		)
 	}
 
 	const handleDialogClose = () => {
