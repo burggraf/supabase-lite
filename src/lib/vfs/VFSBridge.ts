@@ -557,7 +557,7 @@ export class VFSBridge {
   }): Promise<Response> {
     try {
       const { path } = options;
-
+      
       // Parse the path to extract app name
       // Expected paths: /app/my-app/some/route or /app/my-app
       const pathParts = path.split('/').filter(part => part !== '');

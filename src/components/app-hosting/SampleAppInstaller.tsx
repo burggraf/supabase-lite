@@ -115,13 +115,13 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 				mimeType: 'image/svg+xml',
 			},
 			{
-				src: '/apps/test-app/assets/index-lf7rQcQT.js',
-				dest: `app/${targetAppName}/assets/index-lf7rQcQT.js`,
+				src: '/apps/test-app/assets/index-DYy6_uKM.js',
+				dest: `app/${targetAppName}/assets/index-DYy6_uKM.js`,
 				mimeType: 'application/javascript',
 			},
 			{
-				src: '/apps/test-app/assets/index-DvUIxfFc.css',
-				dest: `app/${targetAppName}/assets/index-DvUIxfFc.css`,
+				src: '/apps/test-app/assets/index-BVN694CE.css',
+				dest: `app/${targetAppName}/assets/index-BVN694CE.css`,
 				mimeType: 'text/css',
 			},
 		]
