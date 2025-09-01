@@ -682,13 +682,25 @@ export class VFSBridge {
             fullContent: htmlContent
           });
           
-          return new Response(htmlContent, {
+          const response = new Response(htmlContent, {
             status: 200,
             headers: {
               'Content-Type': 'text/html',
-              'Access-Control-Allow-Origin': '*'
+              'Access-Control-Allow-Origin': '*',
+              'X-VFS-Bridge': 'true',
+              'X-App-Name': appName,
+              'X-Content-Length': htmlContent.length.toString()
             }
           });
+          
+          console.log('🐛 RESPONSE DEBUG - Created response:', {
+            status: response.status,
+            headers: Object.fromEntries(response.headers.entries()),
+            bodyLength: htmlContent.length,
+            isOk: response.ok
+          });
+          
+          return response;
         }
         
         // For non-HTML files, use regular file serving
