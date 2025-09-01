@@ -19,14 +19,9 @@ export function EdgeFunctions() {
       
       const existingNames = new Set<string>();
       
-      // Check both directories and files for existing function names
+      // Check for index.ts files which indicate function directories
       files.forEach(file => {
-        if (file.type === 'directory' && file.path.startsWith('edge-functions/')) {
-          const functionName = file.path.split('/')[1];
-          existingNames.add(functionName);
-        }
-        // Also check for index.ts files which indicate function directories
-        if (file.type === 'file' && file.path.match(/^edge-functions\/([^\/]+)\/index\.ts$/)) {
+        if (file.path.match(/^edge-functions\/([^\/]+)\/index\.ts$/)) {
           const functionName = file.path.split('/')[1];
           existingNames.add(functionName);
         }
@@ -51,7 +46,7 @@ export function EdgeFunctions() {
     }
   };
 
-  const handleCreateFunction = async (templateId?: string) => {
+  const handleCreateFunction = async (templateId?: string, functionName?: string) => {
     try {
       const activeProject = projectManager.getActiveProject();
       if (!activeProject) {
@@ -61,8 +56,29 @@ export function EdgeFunctions() {
 
       await vfsManager.initialize(activeProject.id);
 
-      // Generate unique function name
-      const functionName = await generateUniqueFunctionName();
+      // Use provided function name or generate unique one
+      let finalFunctionName: string;
+      if (functionName && functionName.trim()) {
+        finalFunctionName = functionName.trim();
+        // Validate the provided name doesn't already exist
+        const files = await vfsManager.listFiles({ directory: 'edge-functions' });
+        const existingNames = new Set<string>();
+        
+        files.forEach(file => {
+          if (file.path.match(/^edge-functions\/([^\/]+)\/index\.ts$/)) {
+            const existingName = file.path.split('/')[1];
+            existingNames.add(existingName);
+          }
+        });
+
+        if (existingNames.has(finalFunctionName)) {
+          toast.error(`Function "${finalFunctionName}" already exists`);
+          return;
+        }
+      } else {
+        // Generate unique function name
+        finalFunctionName = await generateUniqueFunctionName();
+      }
       
       // Get template content
       let templateContent = '';
@@ -79,7 +95,7 @@ export function EdgeFunctions() {
 
 Deno.serve(async (req: Request) => {
   const data = {
-    message: "Hello from ${functionName}!",
+    message: "Hello from ${finalFunctionName}!",
     timestamp: new Date().toISOString(),
   };
   
@@ -93,7 +109,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Create function file
-      const functionPath = `edge-functions/${functionName}/index.ts`;
+      const functionPath = `edge-functions/${finalFunctionName}/index.ts`;
       
       // Double-check if file exists before creating
       try {
@@ -120,10 +136,10 @@ Deno.serve(async (req: Request) => {
         mimeType: 'text/typescript'
       });
 
-      toast.success(`Created new function: ${functionName}`);
+      toast.success(`Created new function: ${finalFunctionName}`);
       
       // Navigate to inline editor
-      handleEditFunction(functionName);
+      handleEditFunction(finalFunctionName);
     } catch (error) {
       console.error('Failed to create function:', error);
       toast.error('Failed to create new function');

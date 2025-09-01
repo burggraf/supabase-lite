@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { ExternalLink, Code2, Bot, Terminal, Edit3, Trash2, Play, X, Send } from 'lucide-react';
+import { ExternalLink, Code2, Bot, Terminal, Edit3, Trash2, Play, X, Send, Plus } from 'lucide-react';
 import { FunctionTemplates } from './FunctionTemplates';
 import { FunctionCreationOptions } from './FunctionCreationOptions';
 import { vfsManager } from '../../lib/vfs/VFSManager';
@@ -18,7 +18,7 @@ interface Function {
 }
 
 interface FunctionsListProps {
-  onCreateFunction: (template?: string) => void;
+  onCreateFunction: (template?: string, functionName?: string) => void;
   onEditFunction: (functionId: string) => void;
   onGoToSecrets?: () => void;
 }
@@ -44,6 +44,16 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
     response: null,
     error: null,
     requestBody: '{\n  "message": "Hello World"\n}'
+  });
+
+  const [createFunctionModal, setCreateFunctionModal] = useState<{
+    open: boolean;
+    functionName: string;
+    selectedTemplate?: string;
+  }>({
+    open: false,
+    functionName: '',
+    selectedTemplate: undefined
   });
 
   useEffect(() => {
@@ -131,10 +141,12 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         }
         
         await vfsManager.initialize(activeProject.id);
-        await vfsManager.deleteFile(`edge-functions/${functionId}`);
+        await vfsManager.deleteDirectory(`edge-functions/${functionId}`, true);
         await loadFunctions();
+        toast.success(`Function "${functionId}" deleted successfully`);
       } catch (error) {
         console.error('Failed to delete function:', error);
+        toast.error(`Failed to delete function: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   };
@@ -221,6 +233,42 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
     setTestModal(prev => ({ ...prev, open: false }));
   };
 
+  const handleCreateFunctionClick = (template?: string) => {
+    setCreateFunctionModal({
+      open: true,
+      functionName: '',
+      selectedTemplate: template
+    });
+  };
+
+  const handleCreateFunctionSubmit = () => {
+    const name = createFunctionModal.functionName.trim();
+    if (!name) {
+      toast.error('Function name is required');
+      return;
+    }
+
+    // Validate function name
+    if (!/^[a-z0-9-_]+$/.test(name)) {
+      toast.error('Function name can only contain lowercase letters, numbers, hyphens, and underscores');
+      return;
+    }
+
+    // Check if function already exists
+    const existingFunction = functions.find(f => f.name === name);
+    if (existingFunction) {
+      toast.error(`Function "${name}" already exists`);
+      return;
+    }
+
+    onCreateFunction(createFunctionModal.selectedTemplate, name);
+    setCreateFunctionModal({ open: false, functionName: '', selectedTemplate: undefined });
+  };
+
+  const closeCreateFunctionModal = () => {
+    setCreateFunctionModal({ open: false, functionName: '', selectedTemplate: undefined });
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
@@ -264,7 +312,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
               Examples
             </Button>
             <Button
-              onClick={() => onCreateFunction()}
+              onClick={() => handleCreateFunctionClick()}
               className="bg-green-600 hover:bg-green-700"
             >
               Deploy a new function
@@ -280,7 +328,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
               <h2 className="text-xl font-semibold text-gray-900 mb-6">
                 Create your first edge function
               </h2>
-              <FunctionCreationOptions onCreateFunction={onCreateFunction} />
+              <FunctionCreationOptions onCreateFunction={handleCreateFunctionClick} />
             </div>
 
             {/* Templates */}
@@ -288,7 +336,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
               <h2 className="text-xl font-semibold text-gray-900 mb-6">
                 Start with a template
               </h2>
-              <FunctionTemplates onSelectTemplate={onCreateFunction} />
+              <FunctionTemplates onSelectTemplate={handleCreateFunctionClick} />
             </div>
           </div>
         ) : (
@@ -354,7 +402,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                 <Button
                   variant="ghost"
                   className="w-full h-20 text-gray-600 hover:text-gray-900"
-                  onClick={() => onCreateFunction()}
+                  onClick={() => handleCreateFunctionClick()}
                 >
                   <div className="text-center">
                     <Code2 className="w-8 h-8 mx-auto mb-2" />
@@ -457,6 +505,72 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                     ) : null}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Function Modal */}
+        {createFunctionModal.open && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h2 className="text-xl font-semibold">Create New Function</h2>
+                <Button variant="ghost" size="sm" onClick={closeCreateFunctionModal}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {createFunctionModal.selectedTemplate && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                    <div className="text-sm text-blue-800">
+                      <strong>Template:</strong> {createFunctionModal.selectedTemplate}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Function Name
+                  </label>
+                  <input
+                    type="text"
+                    value={createFunctionModal.functionName}
+                    onChange={(e) => setCreateFunctionModal(prev => ({ 
+                      ...prev, 
+                      functionName: e.target.value 
+                    }))}
+                    placeholder="my-function"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleCreateFunctionSubmit();
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <div className="mt-1 text-xs text-gray-500">
+                    Use lowercase letters, numbers, hyphens, and underscores only
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={closeCreateFunctionModal}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateFunctionSubmit}
+                    disabled={!createFunctionModal.functionName.trim()}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Function
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
