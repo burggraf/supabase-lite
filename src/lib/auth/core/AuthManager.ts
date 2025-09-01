@@ -487,10 +487,10 @@ export class AuthManager {
       const emailConfirmedAt = user.email_verified ? user.created_at : null
       const phoneConfirmedAt = user.phone_verified ? user.created_at : null
       
-      // For bcrypt, we store the hash directly. For PBKDF2, we still store just the hash part
-      const passwordHash = hashedPassword.hash
+      // Store complete HashedPassword object as JSON to preserve algorithm and salt info
+      const passwordData = JSON.stringify(hashedPassword)
       
-      // Create user record with password hash in standard Supabase location
+      // Create user record with password data in standard Supabase location
       await this.dbManager.query(`
         INSERT INTO auth.users (
           id, email, phone, encrypted_password, email_confirmed_at, phone_confirmed_at, 
@@ -500,7 +500,7 @@ export class AuthManager {
         user.id,
         user.email,
         user.phone,
-        passwordHash,
+        passwordData,
         emailConfirmedAt,
         phoneConfirmedAt,
         user.created_at,
@@ -557,7 +557,7 @@ export class AuthManager {
     `, [...updateValues, userId])
   }
 
-  private async getStoredPassword(userId: string): Promise<string | null> {
+  private async getStoredPassword(userId: string): Promise<string | any> {
     const result = await this.dbManager.query(
       'SELECT encrypted_password FROM auth.users WHERE id = $1',
       [userId]
@@ -565,17 +565,32 @@ export class AuthManager {
     
     if (!result.rows[0] || !result.rows[0].encrypted_password) return null
 
-    // Return the password hash directly (works for both bcrypt and PBKDF2)
-    return result.rows[0].encrypted_password
+    const storedData = result.rows[0].encrypted_password
+    
+    // Try to parse as HashedPassword object (new format)
+    try {
+      const parsed = JSON.parse(storedData)
+      if (parsed && typeof parsed === 'object' && parsed.hash && parsed.algorithm) {
+        return parsed // Return HashedPassword object
+      }
+    } catch (e) {
+      // Not JSON, treat as legacy string format
+    }
+    
+    // Return as string for backward compatibility (legacy bcrypt hashes)
+    return storedData
   }
 
   private async updatePasswordInDB(userId: string, hashedPassword: any): Promise<void> {
+    // Store complete HashedPassword object as JSON to preserve algorithm and salt info
+    const passwordData = JSON.stringify(hashedPassword)
+    
     await this.dbManager.query(`
       UPDATE auth.users 
       SET encrypted_password = $1, updated_at = $2
       WHERE id = $3
     `, [
-      hashedPassword.hash,
+      passwordData,
       new Date().toISOString(),
       userId
     ])
