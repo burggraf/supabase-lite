@@ -11,17 +11,17 @@ describe('AuthBridge API Compatibility', () => {
   beforeEach(async () => {
     // Create a test instance with mocked database
     authManager = new (AuthManager as any)()
-    
+
     // Mock the database manager
     const mockDbManager = {
       query: vi.fn(),
       initialize: vi.fn(),
       isConnected: vi.fn(() => true)
     } as any
-    
+
     // Mock other services
     const mockJwtService = { initialize: vi.fn() } as any
-    const mockSessionManager = { 
+    const mockSessionManager = {
       initialize: vi.fn(),
       createSession: vi.fn(() => ({
         access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -36,7 +36,7 @@ describe('AuthBridge API Compatibility', () => {
         return await bcrypt.compare(password, hash)
       })
     } as any
-    
+
     // Inject mocks
     authManager['dbManager'] = mockDbManager
     authManager['jwtService'] = mockJwtService
@@ -44,8 +44,8 @@ describe('AuthBridge API Compatibility', () => {
     authManager['passwordService'] = mockPasswordService
 
     // Setup mock database responses
-    const testUserHash = await bcrypt.hash('Password123!', 10)
-    
+    const testUserHash = await bcrypt.hash('Password123$!', 10)
+
     mockDbManager.query.mockImplementation((sql: string, params: any[]) => {
       if (sql.includes('SELECT * FROM auth.users WHERE email')) {
         const email = params[0]
@@ -88,7 +88,7 @@ describe('AuthBridge API Compatibility', () => {
 
       const signInRequest: SignInRequest = {
         email: 'test@example.com',
-        password: 'Password123!',
+        password: 'Password123$!',
         grant_type: 'password'
       }
 
@@ -167,7 +167,7 @@ describe('AuthBridge API Compatibility', () => {
       const request = {
         endpoint: 'token',
         method: 'POST' as const,
-        body: { email: 'test@example.com', password: 'Password123!', grant_type: 'password' },
+        body: { email: 'test@example.com', password: 'Password123$!', grant_type: 'password' },
         headers: { 'content-type': 'application/json' },
         url: new URL('http://localhost:5173/auth/v1/token')
       }
@@ -231,7 +231,7 @@ describe('AuthBridge API Compatibility', () => {
 
       const signUpRequest: SignUpRequest = {
         email: 'newuser@example.com',
-        password: 'Password123!'
+        password: 'Password123$!'
       }
 
       const request = {
@@ -326,12 +326,12 @@ describe('AuthBridge API Compatibility', () => {
         updated_at: '2023-01-02T00:00:00Z',
         last_sign_in_at: '2023-01-03T00:00:00Z',
         role: 'authenticated',
-        app_metadata: { 
-          provider: 'email', 
+        app_metadata: {
+          provider: 'email',
           providers: ['email'],
           custom_claim: 'value'
         },
-        user_metadata: { 
+        user_metadata: {
           name: 'Test User',
           avatar_url: 'https://example.com/avatar.jpg'
         },

@@ -22,14 +22,14 @@ Object.defineProperty(global, 'crypto', {
     randomUUID: () => Math.random().toString(36).substring(2, 15),
     subtle: {
       digest: vi.fn().mockImplementation(async (_algorithm, _data) => {
-        // Simple mock hash - return a consistent hash for 'password123'
-        const hashForPassword123 = new Uint8Array([
-          0xef, 0x92, 0xb7, 0x78, 0xba, 0xfe, 0x77, 0x1e, 
+        // Simple mock hash - return a consistent hash for 'Password123$'
+        const hashForPassword123$ = new Uint8Array([
+          0xef, 0x92, 0xb7, 0x78, 0xba, 0xfe, 0x77, 0x1e,
           0x89, 0x24, 0x5b, 0x89, 0xec, 0xbc, 0x08, 0xa4,
           0x4a, 0x4e, 0x16, 0x6c, 0x06, 0x65, 0x99, 0x11,
           0x88, 0x1f, 0x38, 0x3d, 0x44, 0x73, 0xe9, 0x4f
         ])
-        return hashForPassword123.buffer
+        return hashForPassword123$.buffer
       }),
       importKey: vi.fn().mockImplementation(async (format, keyData, algorithm, extractable, keyUsages) => {
         // Return a mock key object
@@ -45,20 +45,20 @@ Object.defineProperty(global, 'crypto', {
         const encoder = new TextEncoder()
         const keyStr = JSON.stringify(key)
         const dataStr = new TextDecoder().decode(data)
-        
+
         // Create a simple hash-like signature based on key and data
         let hash = 0
         const combined = keyStr + dataStr
         for (let i = 0; i < combined.length; i++) {
           hash = ((hash << 5) - hash + combined.charCodeAt(i)) & 0xffffffff
         }
-        
+
         // Generate 32-byte signature based on hash
         const signature = new Uint8Array(32)
         for (let i = 0; i < 32; i++) {
           signature[i] = (hash + i) & 0xff
         }
-        
+
         return signature.buffer
       }),
       generateKey: vi.fn().mockImplementation(async (algorithm, extractable, keyUsages) => {
@@ -151,9 +151,9 @@ vi.mock('jose', () => {
       sign: vi.fn().mockImplementation(async () => {
         // Return a mock JWT token
         const header = btoa(JSON.stringify({ alg: 'ES256', typ: 'JWT' }))
-        const payload = btoa(JSON.stringify({ 
-          iss: 'mock-issuer', 
-          sub: 'mock-subject', 
+        const payload = btoa(JSON.stringify({
+          iss: 'mock-issuer',
+          sub: 'mock-subject',
           aud: 'mock-audience',
           exp: Math.floor(Date.now() / 1000) + 3600,
           iat: Math.floor(Date.now() / 1000),
@@ -169,7 +169,7 @@ vi.mock('jose', () => {
       if (parts.length !== 3) {
         throw new Error('Invalid token: Invalid Compact JWS')
       }
-      
+
       try {
         const payload = JSON.parse(atob(parts[1]))
         return {

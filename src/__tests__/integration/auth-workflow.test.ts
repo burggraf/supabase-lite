@@ -6,11 +6,11 @@ import type { User, Session } from '../../lib/auth/types';
 describe('Authentication Workflow Integration', () => {
   let authBridge: AuthBridge;
   let dbManager: DatabaseManager;
-  
+
   // Test user data
   const testUser = {
     email: 'test@example.com',
-    password: 'password123',
+    password: 'Password123$',
     data: {
       firstName: 'Test',
       lastName: 'User'
@@ -18,7 +18,7 @@ describe('Authentication Workflow Integration', () => {
   };
 
   const testUser2 = {
-    email: 'test2@example.com', 
+    email: 'test2@example.com',
     password: 'password456',
     data: {
       firstName: 'Test2',
@@ -30,7 +30,7 @@ describe('Authentication Workflow Integration', () => {
     // Initialize database and auth bridge
     dbManager = DatabaseManager.getInstance();
     await dbManager.initialize();
-    
+
     authBridge = AuthBridge.getInstance();
     await authBridge.initialize();
   });
@@ -275,7 +275,7 @@ describe('Authentication Workflow Integration', () => {
       };
 
       const signupResponse = await authBridge.handleRequest(signupRequest);
-      
+
       const signinRequest = {
         endpoint: '/auth/v1/token',
         method: 'POST' as const,
@@ -422,7 +422,7 @@ describe('Authentication Workflow Integration', () => {
       };
 
       await authBridge.handleRequest(signupRequest);
-      
+
       const signinRequest = {
         endpoint: '/auth/v1/token',
         method: 'POST' as const,

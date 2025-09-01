@@ -101,12 +101,12 @@ export function clearAuthData() {
 // Check if current session is valid and not expired
 export function isSessionValid(): boolean {
   if (typeof window === 'undefined') return false;
-  
+
   const accessToken = localStorage.getItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN);
   const sessionStr = localStorage.getItem(AUTH_STORAGE_KEYS.SESSION);
-  
+
   if (!accessToken || !sessionStr) return false;
-  
+
   try {
     const session = JSON.parse(sessionStr);
     const expiresAt = session.expires_at * 1000; // Convert to milliseconds
@@ -125,7 +125,7 @@ export async function ensureAuthenticated(): Promise<{ success: boolean; respons
   }
 
   console.log('🔐 Authentication required, attempting sign-in...');
-  
+
   // First try signing in (user might already exist)
   const signinTest: AuthTest = {
     id: 'auto-signin',
@@ -134,7 +134,7 @@ export async function ensureAuthenticated(): Promise<{ success: boolean; respons
     endpoint: '/auth/v1/token?grant_type=password',
     body: {
       email: 'test@example.com',
-      password: 'password123'
+      password: 'Password123$'
     },
     description: 'Automatic sign-in for authentication',
     skipAutoAuth: true
@@ -142,13 +142,13 @@ export async function ensureAuthenticated(): Promise<{ success: boolean; respons
 
   try {
     const signinResponse = await executeAuthTest(signinTest);
-    
+
     // If signin successful, we're done
     if (signinResponse.status >= 200 && signinResponse.status < 300) {
       console.log('✅ Auto sign-in successful');
       return { success: true, response: signinResponse };
     }
-    
+
     // If signin failed, try signup
     console.log('🔐 Sign-in failed, attempting sign-up...');
     const signupTest: AuthTest = {
@@ -158,7 +158,7 @@ export async function ensureAuthenticated(): Promise<{ success: boolean; respons
       endpoint: '/auth/v1/signup',
       body: {
         email: 'test@example.com',
-        password: 'password123',
+        password: 'Password123$',
         data: {
           full_name: 'Test User (Auto)'
         }
@@ -168,23 +168,23 @@ export async function ensureAuthenticated(): Promise<{ success: boolean; respons
     };
 
     const signupResponse = await executeAuthTest(signupTest);
-    
+
     if (signupResponse.status >= 200 && signupResponse.status < 300) {
       console.log('✅ Auto sign-up successful');
       return { success: true, response: signupResponse };
     }
-    
+
     // Both failed
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: `Authentication failed: Sign-in (${signinResponse.status}) and Sign-up (${signupResponse.status}) both failed`,
       response: signupResponse
     };
-    
+
   } catch (error) {
-    return { 
-      success: false, 
-      error: `Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    return {
+      success: false,
+      error: `Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
 }
@@ -203,7 +203,7 @@ export const authTestCategories: AuthTestCategory[] = [
         endpoint: '/auth/v1/signup',
         body: {
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password123$',
           data: {
             full_name: 'Test User'
           }
@@ -217,7 +217,7 @@ export const authTestCategories: AuthTestCategory[] = [
         endpoint: '/auth/v1/signup',
         body: {
           phone: '+1234567890',
-          password: 'password123',
+          password: 'Password123$',
           data: {
             full_name: 'Test Phone User'
           }
@@ -231,7 +231,7 @@ export const authTestCategories: AuthTestCategory[] = [
         endpoint: '/auth/v1/token?grant_type=password',
         body: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123$'
         },
         description: 'Authenticate user with email and password'
       },
@@ -242,7 +242,7 @@ export const authTestCategories: AuthTestCategory[] = [
         endpoint: '/auth/v1/token?grant_type=password',
         body: {
           phone: '+1234567890',
-          password: 'password123'
+          password: 'Password123$'
         },
         description: 'Authenticate user with phone number and password'
       },
@@ -338,7 +338,7 @@ export const authTestCategories: AuthTestCategory[] = [
         method: 'PUT',
         endpoint: '/auth/v1/user',
         body: {
-          password: 'newpassword123'
+          password: 'newPassword123$'
         },
         description: 'Change user password (requires current session)',
         requiresAuth: true
@@ -361,7 +361,7 @@ export const authTestCategories: AuthTestCategory[] = [
         body: {
           type: 'recovery',
           token: 'mock-recovery-token',
-          password: 'resetpassword123'
+          password: 'resetPassword123$'
         },
         description: 'Complete password reset with token'
       }
@@ -665,7 +665,7 @@ export const authTestCategories: AuthTestCategory[] = [
         endpoint: '/auth/v1/admin/users',
         body: {
           email: 'admin-created@example.com',
-          password: 'password123',
+          password: 'Password123$',
           email_confirm: true,
           user_metadata: {
             full_name: 'Admin Created User'
@@ -740,7 +740,7 @@ export const authTestCategories: AuthTestCategory[] = [
         endpoint: '/auth/v1/user',
         body: {
           email: 'converted@example.com',
-          password: 'password123'
+          password: 'Password123$'
         },
         description: 'Convert anonymous user to permanent account',
         requiresAuth: true
@@ -826,7 +826,7 @@ export const authTestCategories: AuthTestCategory[] = [
         endpoint: '/auth/v1/signup',
         body: {
           email: 'not-an-email',
-          password: 'password123'
+          password: 'Password123$'
         },
         description: 'Test signup with invalid email format (422 error)'
       },
@@ -863,7 +863,7 @@ export const authTestCategories: AuthTestCategory[] = [
         endpoint: '/auth/v1/token?grant_type=password',
         body: {
           email: 'rate-limit-test@example.com',
-          password: 'password123'
+          password: 'Password123$'
         },
         description: 'Test authentication rate limiting (429 error after multiple attempts)'
       }
@@ -873,7 +873,7 @@ export const authTestCategories: AuthTestCategory[] = [
 
 export async function executeAuthTest(test: AuthTest, options: { skipAutoAuth?: boolean } = {}): Promise<AuthResponse> {
   const startTime = Date.now();
-  
+
   try {
     // Auto-authenticate if test requires auth and we're not skipping auto-auth
     if ((test.requiresAuth || test.adminOnly) && !options.skipAutoAuth && !test.skipAutoAuth) {
@@ -883,8 +883,8 @@ export async function executeAuthTest(test: AuthTest, options: { skipAutoAuth?: 
         return {
           status: 401,
           statusText: 'Authentication Required',
-          data: { 
-            error: 'authentication_required', 
+          data: {
+            error: 'authentication_required',
             message: authResult.error || 'Could not authenticate for this test'
           },
           headers: {},
@@ -894,7 +894,7 @@ export async function executeAuthTest(test: AuthTest, options: { skipAutoAuth?: 
         };
       }
     }
-    
+
     const url = `${BASE_URL}${test.endpoint}`;
     const requestOptions: RequestInit = {
       method: test.method,
@@ -937,19 +937,19 @@ export async function executeAuthTest(test: AuthTest, options: { skipAutoAuth?: 
 
     const response = await fetch(url, requestOptions);
     const responseTime = Date.now() - startTime;
-    
+
     let data: any;
     const contentType = response.headers.get('content-type');
-    
+
     if (contentType && contentType.includes('application/json')) {
       data = await response.json();
-      
+
       // Store auth data from successful responses
-      if (response.ok && (test.id.includes('signin') || test.id.includes('signup') || test.id.includes('refresh') || 
-                          test.id.includes('auto-signin') || test.id.includes('auto-signup'))) {
+      if (response.ok && (test.id.includes('signin') || test.id.includes('signup') || test.id.includes('refresh') ||
+        test.id.includes('auto-signin') || test.id.includes('auto-signup'))) {
         storeAuthData(data);
       }
-      
+
       // Clear auth data on logout
       if (response.ok && test.id.includes('logout')) {
         clearAuthData();
@@ -999,7 +999,7 @@ export function getMethodColor(method: string): string {
   switch (method) {
     case 'GET': return 'success';
     case 'POST': return 'default';
-    case 'PATCH': 
+    case 'PATCH':
     case 'PUT': return 'warning';
     case 'DELETE': return 'destructive';
     default: return 'outline';

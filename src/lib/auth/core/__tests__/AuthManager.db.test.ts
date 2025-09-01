@@ -42,14 +42,14 @@ describe('AuthManager Database Operations', () => {
   beforeEach(async () => {
     // Reset all mocks
     vi.clearAllMocks()
-    
+
     // Get the mocked database manager
     mockDbManager = DatabaseManager.getInstance()
-    
+
     // Get the mocked AuthQueryBuilder 
     const { AuthQueryBuilder } = await import('../../utils/DatabaseQueryBuilder')
     mockAuthQuery = new (AuthQueryBuilder as any)()
-    
+
     // Create new AuthManager instance
     authManager = new (AuthManager as any)()
     authManager['dbManager'] = mockDbManager
@@ -110,7 +110,7 @@ describe('AuthManager Database Operations', () => {
 
       // Verify the AuthQueryBuilder method was called with correct parameters
       expect(mockAuthQuery.getUserByEmail).toHaveBeenCalledWith(email)
-      
+
       // Verify result is properly mapped
       expect(result).toBeDefined()
       expect(result?.email).toBe(email)
@@ -119,7 +119,7 @@ describe('AuthManager Database Operations', () => {
 
     it('should prevent SQL injection in email parameters', async () => {
       const maliciousEmail = "'; DROP TABLE auth.users; --"
-      
+
       mockAuthQuery.getUserByEmail.mockResolvedValue(null)
 
       await authManager['getUserByEmail'](maliciousEmail)
@@ -131,7 +131,7 @@ describe('AuthManager Database Operations', () => {
     it('should handle null and undefined values correctly', async () => {
       const credentials: SignUpCredentials = {
         email: 'test@example.com',
-        password: 'Password123!',
+        password: 'Password123$!',
         data: { profile: null }
       }
 
@@ -140,10 +140,10 @@ describe('AuthManager Database Operations', () => {
       await expect(authManager.signUp(credentials)).resolves.toBeDefined()
 
       // Check that createUserInDB was called with proper null handling
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call => 
+      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
         call[0].includes('INSERT INTO auth.users')
       )
-      
+
       expect(createUserCalls.length).toBeGreaterThan(0)
       const insertQuery = createUserCalls[0][0]
       expect(insertQuery).toContain('NULL')
@@ -152,17 +152,17 @@ describe('AuthManager Database Operations', () => {
     it('should handle boolean values correctly in formatSqlWithValues', async () => {
       const credentials: SignUpCredentials = {
         email: 'test@example.com',
-        password: 'Password123!'
+        password: 'Password123$!'
       }
 
       mockDbManager.query.mockResolvedValue({ rows: [] })
 
       await authManager.signUp(credentials)
 
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call => 
+      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
         call[0].includes('INSERT INTO auth.users')
       )
-      
+
       const insertQuery = createUserCalls[0][0]
       // Should contain 'false' for is_anonymous boolean value
       expect(insertQuery).toContain('false')
@@ -174,23 +174,23 @@ describe('AuthManager Database Operations', () => {
     it('should map email_verified boolean to email_confirmed_at timestamp correctly', async () => {
       const credentials: SignUpCredentials = {
         email: 'test@example.com',
-        password: 'Password123!'
+        password: 'Password123$!'
       }
 
       mockDbManager.query.mockResolvedValue({ rows: [] })
 
       await authManager.signUp(credentials)
 
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call => 
+      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
         call[0].includes('INSERT INTO auth.users')
       )
-      
+
       const insertQuery = createUserCalls[0][0]
-      
+
       // Should insert email_confirmed_at with a timestamp (not just true/false)
       expect(insertQuery).toContain('email_confirmed_at')
       expect(insertQuery).not.toContain('email_verified')
-      
+
       // Since requireEmailVerification is false by default, should have a timestamp
       expect(insertQuery).toMatch(/'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z'/)
     })
@@ -220,11 +220,11 @@ describe('AuthManager Database Operations', () => {
       expect(result).toBeDefined()
       expect(result?.id).toBe('user-id')
       expect(result?.email).toBe('test@example.com')
-      
+
       // Check that timestamp fields are properly handled
       expect(result?.email_verified).toBe(true) // should be converted from timestamp
       expect(result?.phone_verified).toBe(false) // should be false when phone_confirmed_at is null
-      
+
       // Check metadata parsing
       expect(result?.app_metadata).toEqual({ provider: 'email' })
       expect(result?.user_metadata).toEqual({ name: 'Test User' })
@@ -277,7 +277,7 @@ describe('AuthManager Database Operations', () => {
     it('should handle complex JSON metadata in database operations', async () => {
       const credentials: SignUpCredentials = {
         email: 'test@example.com',
-        password: 'Password123!',
+        password: 'Password123$!',
         data: {
           profile: {
             name: 'Test User',
@@ -294,12 +294,12 @@ describe('AuthManager Database Operations', () => {
 
       await authManager.signUp(credentials)
 
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call => 
+      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
         call[0].includes('INSERT INTO auth.users')
       )
-      
+
       const insertQuery = createUserCalls[0][0]
-      
+
       // Should properly stringify complex JSON
       expect(insertQuery).toContain('"profile"')
       expect(insertQuery).toContain('"preferences"')
@@ -349,8 +349,8 @@ describe('AuthManager Database Operations', () => {
 
   describe('Performance and Security', () => {
     it('should not log sensitive information in queries', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { })
+
       mockDbManager.query.mockResolvedValue({ rows: [] })
 
       await authManager['getUserByEmail']('test@example.com')
@@ -359,12 +359,12 @@ describe('AuthManager Database Operations', () => {
       const logCalls = consoleSpy.mock.calls.flat().join(' ')
       expect(logCalls).not.toContain('password')
       expect(logCalls).not.toContain('token')
-      
+
       consoleSpy.mockRestore()
     })
 
     it('should handle concurrent database operations', async () => {
-      mockDbManager.query.mockImplementation(() => 
+      mockDbManager.query.mockImplementation(() =>
         new Promise(resolve => setTimeout(() => resolve({ rows: [] }), 10))
       )
 
@@ -387,18 +387,18 @@ describe('AuthManager Database Operations', () => {
         .mockResolvedValueOnce({ rows: [] }) // getUserByEmail
         .mockRejectedValueOnce(new Error('Audit log failed')) // logAuditEvent
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { })
 
       const credentials: SignUpCredentials = {
         email: 'test@example.com',
-        password: 'Password123!'
+        password: 'Password123$!'
       }
 
       // Should not throw even if audit logging fails
       await expect(authManager.signUp(credentials)).resolves.toBeDefined()
-      
+
       expect(consoleSpy).toHaveBeenCalledWith('Audit logging failed:', expect.any(Error))
-      
+
       consoleSpy.mockRestore()
     })
   })

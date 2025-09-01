@@ -6,16 +6,16 @@ import { rlsEnforcer } from '../../lib/auth/rls-enforcer';
 describe('Row Level Security (RLS) Workflow Integration', () => {
   let authBridge: AuthBridge;
   let dbManager: DatabaseManager;
-  
+
   // Test users
   const user1 = {
     email: 'user1@example.com',
-    password: 'password123',
+    password: 'Password123$',
     data: { name: 'User One' }
   };
 
   const user2 = {
-    email: 'user2@example.com', 
+    email: 'user2@example.com',
     password: 'password456',
     data: { name: 'User Two' }
   };
@@ -29,7 +29,7 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
     // Initialize database and auth
     dbManager = DatabaseManager.getInstance();
     await dbManager.initialize();
-    
+
     authBridge = AuthBridge.getInstance();
     await authBridge.initialize();
 
@@ -207,7 +207,7 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
       };
 
       await dbManager.setSessionContext(user1Context);
-      
+
       const user1Posts = await dbManager.query('SELECT * FROM test_posts;');
       expect(user1Posts.rows).toHaveLength(1);
       expect(user1Posts.rows[0].user_id).toBe(user1Id);
@@ -221,7 +221,7 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
       };
 
       await dbManager.setSessionContext(user2Context);
-      
+
       const user2Posts = await dbManager.query('SELECT * FROM test_posts;');
       expect(user2Posts.rows).toHaveLength(1);
       expect(user2Posts.rows[0].user_id).toBe(user2Id);
@@ -436,7 +436,7 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
     it('should handle concurrent user contexts safely', async () => {
       // This test verifies that the RLS context is properly isolated
       // In a real concurrent scenario, each connection would have its own context
-      
+
       const user1Context = {
         role: 'authenticated' as const,
         userId: user1Id,
@@ -452,10 +452,10 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
       // Simulate rapid context switching
       await dbManager.setSessionContext(user1Context);
       await dbManager.query('INSERT INTO test_posts (user_id, title, content) VALUES ($1, $2, $3)', [user1Id, 'Post 1', 'Content 1']);
-      
+
       await dbManager.setSessionContext(user2Context);
       await dbManager.query('INSERT INTO test_posts (user_id, title, content) VALUES ($1, $2, $3)', [user2Id, 'Post 2', 'Content 2']);
-      
+
       await dbManager.setSessionContext(user1Context);
       await dbManager.query('INSERT INTO test_posts (user_id, title, content) VALUES ($1, $2, $3)', [user1Id, 'Post 3', 'Content 3']);
 
