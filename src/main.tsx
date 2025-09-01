@@ -379,47 +379,97 @@ function initializeWebSocketBridge() {
   }
 }
 
+// Navigation interceptor for /app/* routes to work around MSW navigation bypass
+function setupAppNavigationInterceptor() {
+  console.log('🔧 Setting up app navigation interceptor')
+
+  // Intercept link clicks to /app/* routes
+  document.addEventListener('click', (event) => {
+    const link = (event.target as Element)?.closest('a')
+    if (link?.href) {
+      const url = new URL(link.href)
+      if (url.pathname.startsWith('/app/')) {
+        console.log('🔗 Intercepting link click to app route:', url.pathname)
+        event.preventDefault()
+        handleAppNavigation(url.pathname)
+        // Update browser history without navigation
+        history.pushState(null, '', url.pathname)
+      }
+    }
+  })
+  
+  // Handle browser back/forward navigation to app routes
+  window.addEventListener('popstate', (event) => {
+    if (window.location.pathname.startsWith('/app/')) {
+      console.log('🔄 Handling popstate to app route:', window.location.pathname)
+      handleAppNavigation(window.location.pathname)
+    }
+  })
+}
+
+// Handle app navigation by fetching content via MSW handlers
+async function handleAppNavigation(pathname: string) {
+  try {
+    console.log('🚀 Intercepting app navigation:', pathname)
+    
+    // Make a fetch request that MSW can intercept (not navigation mode)
+    const response = await fetch(pathname, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      }
+    })
+    
+    if (response.ok) {
+      const html = await response.text()
+      // Replace current page content
+      document.open()
+      document.write(html)
+      document.close()
+      console.log('✅ App navigation handled successfully')
+    } else {
+      console.error('❌ App navigation failed:', response.status, response.statusText)
+    }
+  } catch (error) {
+    console.error('❌ App navigation error:', error)
+  }
+}
+
 // Start MSW for browser-based API simulation and cross-origin API handler
 async function initializeApp() {
   try {
     // Initialize WebSocket bridge BEFORE MSW to avoid WebSocket override conflicts
     initializeWebSocketBridge()
     
+    // Check if we're on an app route - if so, handle it separately
+    if (window.location.pathname.startsWith('/app/')) {
+      console.log('🎯 App route detected, setting up MSW and handling app navigation')
+      
+      const { worker } = await import('./mocks/browser')
+      await worker.start({
+        onUnhandledRequest: 'bypass',
+      })
+      
+      // Wait for MSW to be ready, then handle the app navigation
+      await waitForMSW()
+      
+      // Initialize cross-origin API handler
+      new CrossOriginAPIHandler()
+      
+      // Handle the app navigation instead of rendering React app
+      await handleAppNavigation(window.location.pathname)
+      return // Don't render the main app
+    }
+    
+    // Setup navigation interceptor for future navigation to app routes
+    setupAppNavigationInterceptor()
+    
     const { worker } = await import('./mocks/browser')
     await worker.start({
       onUnhandledRequest: 'bypass',
     })
     
-    // Wait for service worker to be fully ready and controlling the page
-    // This ensures MSW intercepts requests before React router processes URLs
-    if ('serviceWorker' in navigator) {
-      let serviceWorkerReady = false
-      let attempts = 0
-      const maxAttempts = 50 // 5 second timeout
-      
-      while (!serviceWorkerReady && attempts < maxAttempts) {
-        const registration = await navigator.serviceWorker.getRegistration()
-        if (registration && registration.active && registration.active.state === 'activated') {
-          // Double-check that the service worker is controlling this client
-          if (navigator.serviceWorker.controller) {
-            serviceWorkerReady = true
-            console.log('✅ MSW service worker is ready and controlling page')
-          } else {
-            // Force the service worker to take control
-            navigator.serviceWorker.controller?.postMessage({ type: 'CLIENT_READY' })
-          }
-        }
-        
-        if (!serviceWorkerReady) {
-          await new Promise(resolve => setTimeout(resolve, 100))
-          attempts++
-        }
-      }
-      
-      if (!serviceWorkerReady) {
-        console.warn('⚠️ MSW service worker not ready after timeout - proceeding anyway')
-      }
-    }
+    await waitForMSW()
     
     // Initialize cross-origin API handler for test app communication
     new CrossOriginAPIHandler()
@@ -428,11 +478,44 @@ async function initializeApp() {
     console.error('Failed to start MSW worker or cross-origin handler:', error)
   }
 
+  // Only render React app if we're not handling an app route
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
     </StrictMode>,
   )
+}
+
+// Helper function to wait for MSW to be ready
+async function waitForMSW() {
+  if ('serviceWorker' in navigator) {
+    let serviceWorkerReady = false
+    let attempts = 0
+    const maxAttempts = 50 // 5 second timeout
+    
+    while (!serviceWorkerReady && attempts < maxAttempts) {
+      const registration = await navigator.serviceWorker.getRegistration()
+      if (registration && registration.active && registration.active.state === 'activated') {
+        // Double-check that the service worker is controlling this client
+        if (navigator.serviceWorker.controller) {
+          serviceWorkerReady = true
+          console.log('✅ MSW service worker is ready and controlling page')
+        } else {
+          // Force the service worker to take control
+          navigator.serviceWorker.controller?.postMessage({ type: 'CLIENT_READY' })
+        }
+      }
+      
+      if (!serviceWorkerReady) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+        attempts++
+      }
+    }
+    
+    if (!serviceWorkerReady) {
+      console.warn('⚠️ MSW service worker not ready after timeout - proceeding anyway')
+    }
+  }
 }
 
 initializeApp()
