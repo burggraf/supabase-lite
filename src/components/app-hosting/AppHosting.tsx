@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Globe, Upload, Folder, ExternalLink, Trash2 } from 'lucide-react';
 import { AppDeploymentModal } from './AppDeploymentModal';
+import { SampleAppInstaller } from './SampleAppInstaller';
 import { vfsManager } from '@/lib/vfs/VFSManager';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { toast } from 'sonner';
@@ -269,9 +270,23 @@ export function AppHosting() {
           </TabsContent>
 
           <TabsContent value="deploy" className="space-y-4">
+            {/* Sample Apps Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Deploy New App</CardTitle>
+                <CardTitle>Sample Apps</CardTitle>
+                <CardDescription>
+                  Install pre-built sample applications to get started quickly.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SampleAppInstaller onAppInstalled={loadDeployedApps} />
+              </CardContent>
+            </Card>
+
+            {/* Custom App Upload Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Deploy Your Own App</CardTitle>
                 <CardDescription>
                   Upload your static web application files from a local folder.
                 </CardDescription>
