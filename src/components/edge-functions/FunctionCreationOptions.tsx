@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Code2, Bot, Terminal, X, Copy, Check } from 'lucide-react';
 
 interface FunctionCreationOptionsProps {
-  onCreateFunction: () => void;
+  onCreateFunction: (template?: string) => void;
 }
 
 export const FunctionCreationOptions: React.FC<FunctionCreationOptionsProps> = ({
