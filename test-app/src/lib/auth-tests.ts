@@ -133,7 +133,7 @@ export async function ensureAuthenticated(): Promise<{ success: boolean; respons
     id: 'auto-signin',
     name: 'Auto Sign In',
     method: 'POST',
-    endpoint: '/auth/v1/token?grant_type=password',
+    endpoint: '/auth/v1/signin',
     body: {
       email: 'test@example.com',
       password: 'Password123$'
@@ -230,7 +230,7 @@ export const authTestCategories: AuthTestCategory[] = [
         id: 'signin-email',
         name: 'Sign In with Email',
         method: 'POST',
-        endpoint: '/auth/v1/token?grant_type=password',
+        endpoint: '/auth/v1/signin',
         body: {
           email: 'test@example.com',
           password: 'Password123$'
@@ -241,7 +241,7 @@ export const authTestCategories: AuthTestCategory[] = [
         id: 'signin-phone',
         name: 'Sign In with Phone',
         method: 'POST',
-        endpoint: '/auth/v1/token?grant_type=password',
+        endpoint: '/auth/v1/signin',
         body: {
           phone: '+1234567890',
           password: 'Password123$'
@@ -814,7 +814,7 @@ export const authTestCategories: AuthTestCategory[] = [
         id: 'invalid-credentials',
         name: 'Invalid Credentials',
         method: 'POST',
-        endpoint: '/auth/v1/token?grant_type=password',
+        endpoint: '/auth/v1/signin',
         body: {
           email: 'test@example.com',
           password: 'wrongpassword'
@@ -862,7 +862,7 @@ export const authTestCategories: AuthTestCategory[] = [
         id: 'rate-limit-test',
         name: 'Rate Limit Test',
         method: 'POST',
-        endpoint: '/auth/v1/token?grant_type=password',
+        endpoint: '/auth/v1/signin',
         body: {
           email: 'rate-limit-test@example.com',
           password: 'Password123$'
@@ -950,7 +950,14 @@ export async function executeAuthTest(test: AuthTest, options: { skipAutoAuth?: 
       // Store auth data from successful responses
       if (response.ok && (test.id.includes('signin') || test.id.includes('signup') || test.id.includes('refresh') ||
         test.id.includes('auto-signin') || test.id.includes('auto-signup'))) {
-        storeAuthData(data);
+        // Handle both direct token format and session format
+        const authData = {
+          access_token: data.access_token || data.session?.access_token,
+          refresh_token: data.refresh_token || data.session?.refresh_token,
+          session: data.session,
+          user: data.user
+        };
+        storeAuthData(authData);
       }
 
       // Clear auth data on logout
