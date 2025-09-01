@@ -622,21 +622,40 @@ export class VFSBridge {
         });
         
         // If this is an HTML file, we need to rewrite asset paths
+        console.log('🐛 VFS BRIDGE DEBUG - File check:', { 
+          mimeType: file.mimeType, 
+          hasContent: !!file.content, 
+          isHtml: file.mimeType === 'text/html',
+          contentPreview: file.content ? file.content.substring(0, 200) : 'NO CONTENT'
+        });
+        
         if (file.mimeType === 'text/html' && file.content) {
+          console.log('🐛 VFS BRIDGE - Entering HTML rewrite logic');
           let htmlContent = file.content;
           
           // Add base tag to ensure relative paths resolve correctly
           const baseTag = `<base href="/app/${appName}/">`;
           if (!htmlContent.includes('<base')) {
             htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`);
+            console.log('🐛 VFS BRIDGE - Added base tag');
+          } else {
+            console.log('🐛 VFS BRIDGE - Base tag already exists');
           }
           
           // Convert absolute paths to relative (they'll resolve against the base tag)
+          const originalContent = htmlContent;
           htmlContent = htmlContent
             .replace(/href="\/assets\//g, `href="assets/`)
             .replace(/src="\/assets\//g, `src="assets/`)
             .replace(/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g, `href="$1"`)
             .replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`);
+          
+          console.log('🐛 VFS BRIDGE - HTML rewrite result:', {
+            changed: originalContent !== htmlContent,
+            originalLength: originalContent.length,
+            newLength: htmlContent.length,
+            preview: htmlContent.substring(0, 300)
+          });
           
           console.log('🔧 Added base tag and rewrote HTML asset paths for direct file serve:', { appName, baseTag, originalLength: file.content.length, newLength: htmlContent.length });
           

@@ -105,27 +105,37 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 		// Dynamically discover all files in the source app directory
 		const sourceBasePath = `/apps/${appId}`
 		
-		console.log(`🔍 Discovering files in ${sourceBasePath}`)
-		
 		// Get the list of all files by parsing index.html and checking for assets
 		const filesToCopy = await discoverFilesInPublicApp(sourceBasePath)
-		
-		console.log(`📂 Found ${filesToCopy.length} files to copy:`, filesToCopy)
 
 		for (const file of filesToCopy) {
 			try {
 				// Fetch file from public folder
 				const response = await fetch(file.src)
 				if (!response.ok) {
-					console.warn(`⚠️ Could not fetch ${file.src}: ${response.statusText}`)
+					console.warn(`Could not fetch ${file.src}: ${response.statusText}`)
 					continue // Skip this file instead of failing the whole installation
 				}
 
 				// Get the content-type header or infer from filename
 				const contentType = response.headers.get('content-type') || getMimeTypeFromFilename(file.src)
 				
+				// Debug JavaScript files specifically
+				const isJsFile = file.src.endsWith('.js') || file.src.endsWith('.mjs')
+				if (isJsFile) {
+					console.log(`🐛 JS FILE DEBUG for ${file.src}:`, {
+						serverContentType: response.headers.get('content-type'),
+						fallbackContentType: getMimeTypeFromFilename(file.src),
+						finalContentType: contentType
+					})
+				}
+				
 				// Determine if file is text or binary based on MIME type
 				const isTextFile = isTextMimeType(contentType)
+				
+				if (isJsFile) {
+					console.log(`🐛 JS FILE isTextFile check:`, { contentType, isTextFile })
+				}
 
 				let content: string
 				let encoding: 'utf-8' | 'base64' = 'utf-8'
@@ -133,6 +143,9 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 				if (isTextFile) {
 					// For text files, get as text
 					content = await response.text()
+					if (isJsFile) {
+						console.log(`🐛 JS FILE content preview:`, content.substring(0, 200) + '...')
+					}
 				} else {
 					// For binary files, get as base64
 					const blob = await response.blob()
@@ -145,6 +158,37 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 				// Convert source path to destination path
 				const destPath = file.src.replace(sourceBasePath, `app/${targetAppName}`)
 				
+				// CRITICAL: For HTML files, rewrite asset paths BEFORE storing in VFS
+				if (contentType.includes('text/html') && content) {
+					console.log('🔧 SAMPLE INSTALLER: Rewriting HTML asset paths before storing in VFS');
+					console.log('🔧 Original HTML preview:', content.substring(0, 300));
+					
+					// Add base tag
+					let htmlContent = content;
+					const baseTag = `<base href="/app/${targetAppName}/">`;
+					if (!htmlContent.includes('<base')) {
+						htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`);
+						console.log('🔧 SAMPLE INSTALLER: Added base tag');
+					}
+					
+					// Convert absolute paths to relative
+					const originalContent = htmlContent;
+					htmlContent = htmlContent
+						.replace(/href="\/assets\//g, `href="assets/`)
+						.replace(/src="\/assets\//g, `src="assets/`)
+						.replace(/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g, `href="$1"`)
+						.replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`);
+					
+					console.log('🔧 SAMPLE INSTALLER: HTML rewrite result:', {
+						changed: originalContent !== htmlContent,
+						originalLength: originalContent.length,
+						newLength: htmlContent.length,
+						preview: htmlContent.substring(0, 400)
+					});
+					
+					content = htmlContent; // Use rewritten HTML
+				}
+
 				// Store in VFS using createFile
 				await vfsManager.createFile(destPath, {
 					content,
@@ -153,12 +197,13 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 					createDirectories: true,
 				})
 
-				console.log(`✅ Copied ${file.src} → ${destPath}`)
+				console.log(`Copied ${file.src} → ${destPath}`)
 			} catch (error) {
-				console.error(`❌ Failed to copy ${file.src}:`, error)
+				console.error(`Failed to copy ${file.src}:`, error)
 				throw new Error(`Failed to copy ${file.src}: ${error}`)
 			}
 		}
+		
 	}
 
 	// Helper function to discover all files in a public app directory
@@ -172,11 +217,11 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 				files.push({ src: `${basePath}/index.html` })
 			}
 		} catch {
-			console.warn('No index.html found')
+			// Index.html not found, skip
 		}
 		
-		// Try common root files
-		const commonRootFiles = ['vite.svg', 'favicon.ico', 'logo.svg', 'manifest.json']
+		// Try common root files (only include vite.svg since that's what actually exists)
+		const commonRootFiles = ['vite.svg']
 		for (const fileName of commonRootFiles) {
 			try {
 				const response = await fetch(`${basePath}/${fileName}`, { method: 'HEAD' })
@@ -193,39 +238,48 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 			const indexResponse = await fetch(`${basePath}/index.html`)
 			if (indexResponse.ok) {
 				const indexContent = await indexResponse.text()
+				console.log(`📄 index.html content:`, indexContent.substring(0, 500) + '...')
 				
 				// Extract all asset references from HTML (href, src attributes)
 				const assetRegex = /(?:href|src)=["']([^"']+)["']/g
 				const matches = [...indexContent.matchAll(assetRegex)]
+				console.log(`🔍 Found ${matches.length} asset matches:`, matches.map(m => m[1]))
 				
 				for (const match of matches) {
 					let assetPath = match[1]
+					console.log(`🔄 Processing asset path: ${assetPath}`)
 					
 					// Skip external URLs
 					if (assetPath.startsWith('http://') || assetPath.startsWith('https://') || assetPath.startsWith('//')) {
+						console.log(`⏭️ Skipping external URL: ${assetPath}`)
 						continue
 					}
 					
 					// Convert relative paths to absolute from the app root
 					if (assetPath.startsWith('./')) {
 						assetPath = assetPath.substring(2) // Remove './'
+						console.log(`🔄 Converted relative path to: ${assetPath}`)
 					}
 					
 					if (!assetPath.startsWith('/')) {
 						assetPath = '/' + assetPath
+						console.log(`🔄 Added leading slash: ${assetPath}`)
 					}
 					
 					// Full path for fetching
 					const fullPath = basePath + assetPath
+					console.log(`🎯 Full asset path: ${fullPath}`)
 					
 					// Check if this asset actually exists
 					try {
 						const assetResponse = await fetch(fullPath, { method: 'HEAD' })
+						console.log(`🔍 Asset check for ${fullPath}:`, { ok: assetResponse.ok, status: assetResponse.status })
 						if (assetResponse.ok) {
 							files.push({ src: fullPath })
+							console.log(`✅ Added asset ${fullPath} to file list`)
 						}
-					} catch {
-						console.warn(`Asset not found: ${fullPath}`)
+					} catch (error) {
+						console.warn(`❌ Asset not found: ${fullPath}`, error)
 					}
 				}
 			}
@@ -238,6 +292,7 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 			self.findIndex(f => f.src === file.src) === index
 		)
 		
+		console.log(`🎯 Final unique file list (${uniqueFiles.length} files):`, uniqueFiles.map(f => f.src))
 		return uniqueFiles
 	}
 
@@ -247,8 +302,8 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 		const mimeTypes: Record<string, string> = {
 			html: 'text/html',
 			css: 'text/css',
-			js: 'application/javascript',
-			mjs: 'application/javascript',
+			js: 'text/javascript',
+			mjs: 'text/javascript',
 			json: 'application/json',
 			svg: 'image/svg+xml',
 			png: 'image/png',
