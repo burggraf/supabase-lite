@@ -390,6 +390,37 @@ async function initializeApp() {
       onUnhandledRequest: 'bypass',
     })
     
+    // Wait for service worker to be fully ready and controlling the page
+    // This ensures MSW intercepts requests before React router processes URLs
+    if ('serviceWorker' in navigator) {
+      let serviceWorkerReady = false
+      let attempts = 0
+      const maxAttempts = 50 // 5 second timeout
+      
+      while (!serviceWorkerReady && attempts < maxAttempts) {
+        const registration = await navigator.serviceWorker.getRegistration()
+        if (registration && registration.active && registration.active.state === 'activated') {
+          // Double-check that the service worker is controlling this client
+          if (navigator.serviceWorker.controller) {
+            serviceWorkerReady = true
+            console.log('✅ MSW service worker is ready and controlling page')
+          } else {
+            // Force the service worker to take control
+            navigator.serviceWorker.controller?.postMessage({ type: 'CLIENT_READY' })
+          }
+        }
+        
+        if (!serviceWorkerReady) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+          attempts++
+        }
+      }
+      
+      if (!serviceWorkerReady) {
+        console.warn('⚠️ MSW service worker not ready after timeout - proceeding anyway')
+      }
+    }
+    
     // Initialize cross-origin API handler for test app communication
     new CrossOriginAPIHandler()
     
