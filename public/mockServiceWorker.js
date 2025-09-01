@@ -94,13 +94,9 @@ addEventListener('message', async function (event) {
 })
 
 addEventListener('fetch', function (event) {
-  // Bypass navigation requests, EXCEPT for app hosting routes
+  // Bypass navigation requests.
   if (event.request.mode === 'navigate') {
-    const url = new URL(event.request.url)
-    // Only intercept /app/* navigation requests for app hosting
-    if (!url.pathname.startsWith('/app/')) {
-      return
-    }
+    return
   }
 
   // Opening the DevTools triggers the "only-if-cached" request
