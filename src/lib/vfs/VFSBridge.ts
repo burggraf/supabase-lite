@@ -625,11 +625,11 @@ export class VFSBridge {
         console.log('🐛 VFS BRIDGE DEBUG - File check:', { 
           mimeType: file.mimeType, 
           hasContent: !!file.content, 
-          isHtml: file.mimeType === 'text/html',
+          isHtml: file.mimeType?.startsWith('text/html'),
           contentPreview: file.content ? file.content.substring(0, 200) : 'NO CONTENT'
         });
         
-        if (file.mimeType === 'text/html' && file.content) {
+        if (file.mimeType?.startsWith('text/html') && file.content) {
           console.log('🐛 VFS BRIDGE - Entering HTML rewrite logic');
           let htmlContent = file.content;
           
