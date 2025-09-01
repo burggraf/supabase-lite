@@ -1498,6 +1498,111 @@ async function simulateEdgeFunctionExecution(
 }
 
 export const handlers = [
+  // ==== SPECIFIC AUTH HANDLERS FIRST (must come before catch-all) ====
+  
+  // Authentication endpoints - Use AuthBridge for all auth operations (consistent approach)
+  http.post('/auth/v1/signup', async ({ request }: any) => {
+    try {
+      console.log('🔐 MSW Browser: Handling signup request')
+      const bodyText = await request.text()
+      let parsedBody
+      try {
+        parsedBody = JSON.parse(bodyText)
+      } catch (e) {
+        parsedBody = {}
+      }
+      console.log('📝 MSW Browser: Parsed body:', parsedBody)
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'signup',
+        method: 'POST',
+        url: new URL(request.url),
+        headers: Object.fromEntries(request.headers.entries()),
+        body: parsedBody
+      })
+      console.log('✅ MSW Browser: Auth response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
+      
+      if (response.error) {
+        return HttpResponse.json(response.error, {
+          status: response.status || 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        })
+      }
+      
+      return HttpResponse.json(response.data, {
+        status: response.status || 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': 'true'
+        }
+      })
+    } catch (error) {
+      console.error('❌ MSW Browser: Auth signup error:', error)
+      return HttpResponse.json(
+        { error: 'internal_server_error', message: 'Authentication service failed' },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        }
+      )
+    }
+  }),
+
+  http.post('/auth/v1/signin', async ({ request }: any) => {
+    try {
+      console.log('🔐 MSW Browser: Handling signin request')
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'signin',
+        method: 'POST',
+        url: new URL(request.url),
+        headers: Object.fromEntries(request.headers.entries()),
+        body: await request.text()
+      })
+      console.log('✅ MSW Browser: Auth response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
+      
+      if (response.error) {
+        return HttpResponse.json(response.error, {
+          status: response.status || 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        })
+      }
+      
+      return HttpResponse.json(response.data, {
+        status: response.status || 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': 'true'
+        }
+      })
+    } catch (error) {
+      console.error('❌ MSW Browser: Auth signin error:', error)
+      return HttpResponse.json(
+        { error: 'internal_server_error', message: 'Authentication service failed' },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        }
+      )
+    }
+  }),
+
   // ==== ORIGINAL ROUTES (use active project) ====
   
   // PostgREST-compatible REST API endpoints with enhanced features
@@ -1631,15 +1736,169 @@ Deno.serve(async (req: Request) => {
   http.post('/rest/v1/rpc/:functionName', withProjectResolution(createRpcHandler())),
   http.post('/:projectId/rest/v1/rpc/:functionName', withProjectResolution(createRpcHandler())),
 
-  // Authentication endpoints - Use AuthBridge for all auth operations (without project resolution for testing)
-  http.post('/auth/v1/signup', createAuthSignupHandler()),
-  http.post('/:projectId/auth/v1/signup', withProjectResolution(createAuthSignupHandler())),
+  // Authentication endpoints - Use AuthBridge for all auth operations (consistent approach)
+  http.post('/auth/v1/signup', async ({ request }: any) => {
+    try {
+      console.log('🔐 MSW Browser: Handling signup request')
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'signup',
+        method: 'POST',
+        url: new URL(request.url),
+        headers: Object.fromEntries(request.headers.entries()),
+        body: await request.text()
+      })
+      console.log('✅ MSW Browser: Auth response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
+      
+      if (response.error) {
+        return HttpResponse.json(response.error, {
+          status: response.status || 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        })
+      }
+      
+      return HttpResponse.json(response.data, {
+        status: response.status || 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': 'true'
+        }
+      })
+    } catch (error) {
+      console.error('❌ MSW Browser: Auth signup error:', error)
+      return HttpResponse.json(
+        { error: 'internal_server_error', message: 'Authentication service failed' },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        }
+      )
+    }
+  }),
+  http.post('/:projectId/auth/v1/signup', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'signup',
+      method: 'POST',
+      url: new URL(request.url),
+      headers: Object.fromEntries(request.headers.entries()),
+      body: await request.text()
+    })
+    return HttpResponse.json(response.data, {
+      status: response.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+      }
+    })
+  })),
 
-  http.post('/auth/v1/signin', createAuthSigninHandler()),
-  http.post('/:projectId/auth/v1/signin', withProjectResolution(createAuthSigninHandler())),
+  http.post('/auth/v1/signin', async ({ request }: any) => {
+    try {
+      console.log('🔐 MSW Browser: Handling signin request')
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'signin',
+        method: 'POST',
+        url: new URL(request.url),
+        headers: Object.fromEntries(request.headers.entries()),
+        body: await request.text()
+      })
+      console.log('✅ MSW Browser: Auth response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
+      
+      if (response.error) {
+        return HttpResponse.json(response.error, {
+          status: response.status || 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        })
+      }
+      
+      return HttpResponse.json(response.data, {
+        status: response.status || 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': 'true'
+        }
+      })
+    } catch (error) {
+      console.error('❌ MSW Browser: Auth signin error:', error)
+      return HttpResponse.json(
+        { error: 'internal_server_error', message: 'Authentication service failed' },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        }
+      )
+    }
+  }),
+  http.post('/:projectId/auth/v1/signin', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'signin',
+      method: 'POST',
+      url: new URL(request.url),
+      headers: Object.fromEntries(request.headers.entries()),
+      body: await request.text()
+    })
+    return HttpResponse.json(response.data, {
+      status: response.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+      }
+    })
+  })),
 
-  http.post('/auth/v1/token', createAuthTokenHandler()),
-  http.post('/:projectId/auth/v1/token', withProjectResolution(createAuthTokenHandler())),
+  http.post('/auth/v1/token', async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'token',
+      method: 'POST',
+      url: new URL(request.url),
+      headers: Object.fromEntries(request.headers.entries()),
+      body: await request.text()
+    })
+    return HttpResponse.json(response.data, {
+      status: response.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+      }
+    })
+  }),
+  http.post('/:projectId/auth/v1/token', withProjectResolution(async ({ request }: any) => {
+    const response = await authBridge.handleAuthRequest({
+      endpoint: 'token',
+      method: 'POST',
+      url: new URL(request.url),
+      headers: Object.fromEntries(request.headers.entries()),
+      body: await request.text()
+    })
+    return HttpResponse.json(response.data, {
+      status: response.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+      }
+    })
+  })),
 
   // OTP endpoints for phone authentication
   http.post('/auth/v1/otp', async ({ request }: any) => {
