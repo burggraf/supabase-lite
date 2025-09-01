@@ -5,11 +5,16 @@ import { AuthTesting } from "./components/AuthTesting"
 import { Settings } from "./components/Settings"
 import SampleApp from "./components/sample-app/SampleApp"
 import EdgeFunctionTest from "./components/EdgeFunctionTest"
+import { HealthBanner } from "./components/HealthBanner"
+import { useHealthCheck } from "./hooks/useHealthCheck"
 
 function App() {
+  const { healthStatus, refetchHealth } = useHealthCheck();
+
   const handleSettingsChange = () => {
     // This callback will be triggered when settings change in the Settings component
     // It can be used to refresh other components if needed
+    refetchHealth(); // Re-run health checks when settings change
   };
 
   return (
@@ -47,6 +52,18 @@ function App() {
 
       {/* Main Content */}
       <div className="py-8">
+        {/* Health Status Banner */}
+        <div className="max-w-7xl mx-auto px-6">
+          <HealthBanner
+            isHealthy={healthStatus.isHealthy}
+            healthError={healthStatus.healthError}
+            hasNorthwindData={healthStatus.hasNorthwindData}
+            northwindError={healthStatus.northwindError}
+            supabaseUrl={healthStatus.supabaseUrl}
+            onRefresh={refetchHealth}
+          />
+        </div>
+        
         <Tabs defaultValue="overview" className="w-full">
           {/* Beautiful Modern Tab Navigation */}
           <div className="mb-8 max-w-7xl mx-auto px-6">
