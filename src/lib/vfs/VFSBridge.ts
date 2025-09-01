@@ -674,6 +674,14 @@ export class VFSBridge {
           
           console.log('🔧 Added base tag and rewrote HTML asset paths for direct file serve:', { appName, baseTag, originalLength: file.content.length, newLength: htmlContent.length });
           
+          console.log('🐛 FINAL HTML DEBUG - Content being served:', {
+            title: htmlContent.match(/<title>(.*?)<\/title>/)?.[1] || 'NO TITLE',
+            hasReactScript: htmlContent.includes('React'),
+            hasViteScript: htmlContent.includes('Vite'),
+            hasSupabaseScript: htmlContent.includes('Supabase'),
+            fullContent: htmlContent
+          });
+          
           return new Response(htmlContent, {
             status: 200,
             headers: {
