@@ -5,6 +5,7 @@
 import { EnhancedSupabaseAPIBridge } from '../../mocks/enhanced-bridge';
 import { vfsDirectHandler } from '../vfs/VFSDirectHandler';
 import { ProxyConnector } from './ProxyConnector';
+import { AuthBridge } from '../auth/AuthBridge';
 
 interface APIRequest {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -26,10 +27,12 @@ export class CrossOriginAPIHandler {
   private apibridge: EnhancedSupabaseAPIBridge;
   private broadcastChannel: BroadcastChannel | null = null;
   private proxyConnector: ProxyConnector;
+  private authBridge: AuthBridge;
 
   constructor() {
     this.apibridge = new EnhancedSupabaseAPIBridge();
     this.proxyConnector = new ProxyConnector();
+    this.authBridge = new AuthBridge();
     this.setupMessageListener();
     this.setupBroadcastChannel();
   }
@@ -114,8 +117,11 @@ export class CrossOriginAPIHandler {
   }
 
   private async handleMessage(event: MessageEvent) {
+    console.log('🔍 CrossOrigin: Received message from:', event.origin, 'Type:', event.data?.type);
+    
     // Allow localhost origins and any HTTPS origin since this is a local-only app
     if (!this.isAllowedOrigin(event.origin)) {
+      console.log('❌ CrossOrigin: Origin not allowed:', event.origin);
       return;
     }
 
@@ -123,8 +129,12 @@ export class CrossOriginAPIHandler {
     
     if (type === 'API_REQUEST') {
       const request: APIRequest = data;
+      console.log('📨 CrossOrigin: Processing API request:', request.method, request.path, 'RequestId:', request.requestId);
+      
       try {
         const response = await this.executeRequest(request);
+        
+        console.log('✅ CrossOrigin: Sending response back to:', event.origin, 'RequestId:', request.requestId, 'Status:', response.status);
         
         // Send response back to requesting origin
         event.source?.postMessage({
@@ -136,6 +146,8 @@ export class CrossOriginAPIHandler {
         }, { targetOrigin: event.origin });
         
       } catch (error: any) {
+        console.log('❌ CrossOrigin: Error processing request:', error.message, 'RequestId:', request.requestId);
+        
         // Send error response
         event.source?.postMessage({
           type: 'API_RESPONSE',
@@ -217,8 +229,47 @@ export class CrossOriginAPIHandler {
         status: result.status,
         headers: result.headers
       };
+    } else if (pathParts[0] === 'auth' && pathParts[1] === 'v1') {
+      // Authentication endpoint - handle directly via AuthBridge
+      console.log('🔐 CrossOrigin: Handling auth request:', request.method, request.path);
+      
+      const endpoint = pathParts[2]; // signup, signin, token, etc.
+      
+      try {
+        const result = await this.authBridge.handleAuthRequest({
+          endpoint,
+          method: request.method,
+          url: new URL(request.path, 'http://localhost'),
+          headers: request.headers || {},
+          body: request.body
+        });
+        
+        console.log('✅ CrossOrigin: Auth response:', { status: result.status, hasData: !!result.data, hasError: !!result.error });
+        
+        if (result.error) {
+          return {
+            data: result.error,
+            status: result.status || 400,
+            headers: result.headers || { 'Content-Type': 'application/json' }
+          };
+        }
+        
+        return {
+          data: result.data,
+          status: result.status || 200,
+          headers: result.headers || { 'Content-Type': 'application/json' }
+        };
+      } catch (error: any) {
+        console.error('❌ CrossOrigin: Auth error:', error);
+        return {
+          data: { error: 'Authentication service failed', message: error.message },
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        };
+      }
     } else {
       // For other endpoints, use fetch to forward to MSW handlers
+      // This should rarely be reached now that we handle auth directly
       try {
         const fetchOptions: RequestInit = {
           method: request.method,

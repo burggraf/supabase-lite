@@ -4,6 +4,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { setBaseUrl, getBaseUrl } from '../lib/api-tests';
+import { setBaseUrl as setAuthBaseUrl } from '../lib/auth-tests';
 import { updateSupabaseClient } from '../lib/supabase';
 
 interface ApiSettingsProps {
@@ -161,6 +162,7 @@ export function ApiSettings({ onSettingsChange }: ApiSettingsProps) {
         }
         
         setBaseUrl(testUrl);
+        setAuthBaseUrl(testUrl); // Also update auth tests base URL
         onSettingsChange();
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -190,6 +192,7 @@ export function ApiSettings({ onSettingsChange }: ApiSettingsProps) {
     
     const newBaseUrl = getCurrentUrl();
     setBaseUrl(newBaseUrl);
+    setAuthBaseUrl(newBaseUrl); // Synchronize auth tests base URL
     
     // Save settings to localStorage
     localStorage.setItem(URL_MODE_KEY, urlMode);

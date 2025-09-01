@@ -445,10 +445,10 @@ const createAuthSignupHandler = () => async ({ request }: any) => {
       headers: {}
     }
 
-    console.log('✅ MSW signup response:', { status: response.status, hasError: !!response.error })
+    console.log('✅ MSW signup response:', { status: response.status, hasError: !!(response as any).error })
 
     return HttpResponse.json(
-      response.error || response.data,
+      (response as any).error || response.data,
       {
         status: response.status,
         headers: {
@@ -683,10 +683,10 @@ const createAuthSigninHandler = () => async ({ request }: any) => {
       headers: {}
     }
 
-    console.log('✅ MSW signin response:', { status: response.status, hasError: !!response.error })
+    console.log('✅ MSW signin response:', { status: response.status, hasError: !!(response as any).error })
 
     return HttpResponse.json(
-      response.error || response.data,
+      (response as any).error || response.data,
       {
         status: response.status,
         headers: {
