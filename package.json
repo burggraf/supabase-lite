@@ -11,7 +11,13 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:coverage:watch": "vitest --coverage --watch",
+    "test:coverage:report": "vitest --coverage --reporter=verbose",
+    "test:integration": "vitest run src/__tests__/integration/",
+    "test:performance": "vitest run src/__tests__/performance/",
+    "test:ci": "vitest run --coverage --reporter=junit --outputFile=test-results.xml",
+    "test:summary": "node scripts/test-summary.js"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.7",

@@ -24,12 +24,17 @@ export default defineConfig({
       ],
       thresholds: {
         global: {
-          branches: 70,
-          functions: 70,
-          lines: 70,
-          statements: 70
+          branches: 75,
+          functions: 80,
+          lines: 75,
+          statements: 75
         }
-      }
+      },
+      include: [
+        'src/**/*.{ts,tsx}'
+      ],
+      all: true,
+      skipFull: false
     },
   },
   resolve: {
