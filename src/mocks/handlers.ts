@@ -1564,7 +1564,7 @@ export const handlers = [
         method: 'POST',
         url: new URL(request.url),
         headers: Object.fromEntries(request.headers.entries()),
-        body: await request.text()
+        body: await request.json()
       })
       console.log('✅ MSW Browser: Auth response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
       
@@ -1591,6 +1591,102 @@ export const handlers = [
       console.error('❌ MSW Browser: Auth signin error:', error)
       return HttpResponse.json(
         { error: 'internal_server_error', message: 'Authentication service failed' },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        }
+      )
+    }
+  }),
+
+  // Session endpoint without project resolution
+  http.get('/auth/v1/session', async ({ request }: any) => {
+    try {
+      console.log('🔐 MSW Browser: Handling session request')
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'session',
+        method: 'GET',
+        url: new URL(request.url),
+        headers: Object.fromEntries(request.headers.entries()),
+        body: null
+      })
+      console.log('✅ MSW Browser: Session response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
+      
+      if (response.error) {
+        return HttpResponse.json(response.error, {
+          status: response.status || 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        })
+      }
+      
+      return HttpResponse.json(response.data, {
+        status: response.status || 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': 'true'
+        }
+      })
+    } catch (error) {
+      console.error('❌ MSW Browser: Session error:', error)
+      return HttpResponse.json(
+        { error: 'internal_server_error', message: 'Session service failed' },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        }
+      )
+    }
+  }),
+
+  // User endpoint without project resolution
+  http.get('/auth/v1/user', async ({ request }: any) => {
+    try {
+      console.log('🔐 MSW Browser: Handling user request')
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'user',
+        method: 'GET',
+        url: new URL(request.url),
+        headers: Object.fromEntries(request.headers.entries()),
+        body: null
+      })
+      console.log('✅ MSW Browser: User response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
+      
+      if (response.error) {
+        return HttpResponse.json(response.error, {
+          status: response.status || 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        })
+      }
+      
+      return HttpResponse.json(response.data, {
+        status: response.status || 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': 'true'
+        }
+      })
+    } catch (error) {
+      console.error('❌ MSW Browser: User error:', error)
+      return HttpResponse.json(
+        { error: 'internal_server_error', message: 'User service failed' },
         { 
           status: 500,
           headers: {
@@ -1745,7 +1841,7 @@ Deno.serve(async (req: Request) => {
         method: 'POST',
         url: new URL(request.url),
         headers: Object.fromEntries(request.headers.entries()),
-        body: await request.text()
+        body: await request.json()
       })
       console.log('✅ MSW Browser: Auth response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
       
@@ -1809,7 +1905,7 @@ Deno.serve(async (req: Request) => {
         method: 'POST',
         url: new URL(request.url),
         headers: Object.fromEntries(request.headers.entries()),
-        body: await request.text()
+        body: await request.json()
       })
       console.log('✅ MSW Browser: Auth response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
       
