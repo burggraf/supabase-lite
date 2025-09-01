@@ -52,7 +52,7 @@ export class Validators {
     // Check for common weak passwords
     const commonPasswords = [
       'password', '123456', '123456789', 'qwerty', 'abc123',
-      'password123', 'admin', 'letmein', 'welcome', 'monkey'
+      'Password123$', 'admin', 'letmein', 'welcome', 'monkey'
     ]
 
     if (commonPasswords.includes(password.toLowerCase())) {
@@ -187,7 +187,7 @@ export class Validators {
    */
   static sanitizeUserMetadata(metadata: Record<string, any>): Record<string, any> {
     const sanitized: Record<string, any> = {}
-    
+
     for (const [key, value] of Object.entries(metadata)) {
       // Remove potentially dangerous keys
       if (['__proto__', 'constructor', 'prototype'].includes(key)) {
@@ -218,7 +218,7 @@ export class Validators {
   static isValidRedirectURL(url: string, allowedDomains: string[] = []): boolean {
     try {
       const parsed = new URL(url)
-      
+
       // Only allow http/https protocols
       if (!['http:', 'https:'].includes(parsed.protocol)) {
         return false
@@ -226,7 +226,7 @@ export class Validators {
 
       // Check against allowed domains if provided
       if (allowedDomains.length > 0) {
-        return allowedDomains.some(domain => 
+        return allowedDomains.some(domain =>
           parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`)
         )
       }

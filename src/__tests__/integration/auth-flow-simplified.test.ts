@@ -25,7 +25,7 @@ vi.mock('../../lib/database/connection', () => ({
           }
           return Promise.resolve({ rows: [] });
         }
-        
+
         if (sql.includes('INSERT INTO auth.users')) {
           // Mock user creation
           return Promise.resolve({
@@ -144,7 +144,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         method: 'POST' as const,
         body: {
           email: 'newuser@example.com',
-          password: 'password123',
+          password: 'Password123$',
           data: {
             firstName: 'New',
             lastName: 'User'
@@ -176,7 +176,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         method: 'POST' as const,
         body: {
           email: 'invalid-email',
-          password: 'password123'
+          password: 'Password123$'
         },
         headers: {
           'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         endpoint: '/auth/v1/signup',
         method: 'POST' as const,
         body: {
-          password: 'password123'
+          password: 'Password123$'
           // Missing email
         },
         headers: {
@@ -420,7 +420,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
       expect(response.status).toBe(200);
       expect(response.data.user_metadata).toEqual({
         firstName: 'Updated',
-        lastName: 'Name', 
+        lastName: 'Name',
         preferences: { theme: 'dark' }
       });
     });
@@ -599,7 +599,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         method: 'POST' as const,
         body: {
           email: 'format-test@example.com',
-          password: 'password123'
+          password: 'Password123$'
         },
         headers: {
           'Content-Type': 'application/json',

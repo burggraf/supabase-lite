@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 // Mock JWTService directly to avoid JOSE library issues in test environment
 vi.mock('../../../lib/auth/core/JWTService', () => {
   console.log('🔧 JWTService mock being applied!')
-  
+
   return {
     JWTService: vi.fn().mockImplementation(() => ({
       getInstance: vi.fn().mockReturnThis(),
@@ -54,7 +54,7 @@ vi.mock('../../../lib/auth/core/JWTService', () => {
 beforeEach(() => {
   // Reset mocks before each test
   vi.clearAllMocks()
-  
+
   // Setup specific mock responses for database operations in tests
   global.mockPGliteInstance.query.mockResolvedValue({ rows: [], affectedRows: 0 })
   global.mockPGliteInstance.exec.mockResolvedValue()
@@ -65,7 +65,7 @@ describe('Supabase Lite API Handlers', () => {
   it('should return health status from /health endpoint', async () => {
     const response = await fetch('/health')
     const data = await response.json()
-    
+
     expect(response.status).toBe(200)
     expect(data).toHaveProperty('status', 'ok')
     expect(data).toHaveProperty('timestamp')
@@ -74,7 +74,7 @@ describe('Supabase Lite API Handlers', () => {
 
   it('should handle REST API GET request for users table', async () => {
     const response = await fetch('/rest/v1/users')
-    
+
     expect(response.status).toBe(200)
     const data = await response.json()
     expect(Array.isArray(data)).toBe(true)
@@ -92,12 +92,12 @@ describe('Supabase Lite API Handlers', () => {
       rows: [mockUser],
       affectedRows: 1
     })
-    
+
     const newUser = {
       email: 'test@example.com',
       name: 'Test User'
     }
-    
+
     const response = await fetch('/rest/v1/users', {
       method: 'POST',
       headers: {
@@ -105,7 +105,7 @@ describe('Supabase Lite API Handlers', () => {
       },
       body: JSON.stringify(newUser)
     })
-    
+
     if (response.status !== 201) {
       console.log('POST response status:', response.status)
       const errorData = await response.json()
@@ -114,7 +114,7 @@ describe('Supabase Lite API Handlers', () => {
     expect(response.status).toBe(201)
     const data = await response.json()
     console.log('POST success data:', data)
-    
+
     // If data is an array, check the first element
     const responseData = Array.isArray(data) ? data[0] : data
     expect(responseData).toHaveProperty('email', 'test@example.com')
@@ -128,12 +128,12 @@ describe('Supabase Lite API Handlers', () => {
       .mockResolvedValueOnce({ rows: [], affectedRows: 0 }) // Check if user exists (should be empty)
       .mockResolvedValueOnce({ rows: [{ id: 1 }], affectedRows: 1 }) // Insert user
       .mockResolvedValueOnce({ rows: [{ id: 1 }], affectedRows: 1 }) // Insert session
-    
+
     const signupData = {
       email: 'user@test.com',
-      password: 'password123'
+      password: 'Password123$'
     }
-    
+
     const response = await fetch('/auth/v1/signup', {
       method: 'POST',
       headers: {
@@ -141,7 +141,7 @@ describe('Supabase Lite API Handlers', () => {
       },
       body: JSON.stringify(signupData)
     })
-    
+
     if (response.status !== 200) {
       const errorData = await response.json()
       console.error('Signup error:', errorData)
@@ -156,18 +156,18 @@ describe('Supabase Lite API Handlers', () => {
 
   it('should handle auth signin request', async () => {
     // Mock database responses for signin
-    const hashedPassword = '$2b$10$.R9eT89SGtgfPu//pw0l/exjhzf3oFBAiTU5SEXyxTslc5z1WW70S' // bcrypt hash of 'password123'
+    const hashedPassword = '$2b$10$.R9eT89SGtgfPu//pw0l/exjhzf3oFBAiTU5SEXyxTslc5z1WW70S' // bcrypt hash of 'Password123$'
     const mockUser = {
       id: 'user-123',
       email: 'signin@test.com',
       encrypted_password: hashedPassword,
       raw_user_meta_data: '{}'
     }
-    
+
     // Setup comprehensive mocks - use implementation to handle different query types
     global.mockPGliteInstance.query.mockImplementation((sql: string) => {
       console.log('🔍 Mock DB Query:', sql.substring(0, 50) + '...')
-      
+
       if (sql.includes('SELECT * FROM auth.users WHERE email')) {
         console.log('📧 Mock: User lookup by email')
         return Promise.resolve({ rows: [mockUser], affectedRows: 1 })
@@ -188,16 +188,16 @@ describe('Supabase Lite API Handlers', () => {
         console.log('🔄 Mock: Create refresh token')
         return Promise.resolve({ rows: [{ token: 'refresh-token-123' }], affectedRows: 1 })
       }
-      
+
       console.log('❓ Mock: Unknown query, returning empty')
       return Promise.resolve({ rows: [], affectedRows: 0 })
     })
-    
+
     const signinData = {
       email: 'signin@test.com',
-      password: 'password123'
+      password: 'Password123$'
     }
-    
+
     const response = await fetch('/auth/v1/signin', {
       method: 'POST',
       headers: {
@@ -205,7 +205,7 @@ describe('Supabase Lite API Handlers', () => {
       },
       body: JSON.stringify(signinData)
     })
-    
+
     expect(response.status).toBe(200)
     const data = await response.json()
     expect(data).toHaveProperty('access_token')
@@ -217,7 +217,7 @@ describe('Supabase Lite API Handlers', () => {
   it('should handle PostgREST query parameters', async () => {
     // Test with select parameter
     const response = await fetch('/rest/v1/users?select=id,email')
-    
+
     expect(response.status).toBe(200)
     const data = await response.json()
     expect(Array.isArray(data)).toBe(true)
@@ -227,7 +227,7 @@ describe('Supabase Lite API Handlers', () => {
     const response = await fetch('/rest/v1/users', {
       method: 'OPTIONS'
     })
-    
+
     expect(response.status).toBe(200)
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*')
     expect(response.headers.get('Access-Control-Allow-Methods')).toContain('GET')

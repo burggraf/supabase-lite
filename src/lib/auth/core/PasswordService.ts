@@ -17,7 +17,7 @@ export class PasswordService {
   private readonly hashFunction = 'SHA-256'
   private readonly keyLength = 256
   private readonly bcryptRounds = 10
-  
+
   // Use Web Crypto API in browser environment, bcrypt in Node.js
   private readonly defaultAlgorithm: PasswordAlgorithm = this.isBrowserEnvironment() ? 'PBKDF2' : 'bcrypt'
 
@@ -109,11 +109,11 @@ export class PasswordService {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
     let result = ''
     const randomArray = crypto.getRandomValues(new Uint8Array(length))
-    
+
     for (let i = 0; i < length; i++) {
       result += chars[randomArray[i] % chars.length]
     }
-    
+
     return result
   }
 
@@ -200,9 +200,9 @@ export class PasswordService {
    * Validate password reset token format
    */
   isValidPasswordResetToken(token: string): boolean {
-    return typeof token === 'string' && 
-           token.length >= 32 && 
-           /^[A-Za-z0-9_-]+$/.test(token)
+    return typeof token === 'string' &&
+      token.length >= 32 &&
+      /^[A-Za-z0-9_-]+$/.test(token)
   }
 
   /**
@@ -240,7 +240,7 @@ export class PasswordService {
     // For simulation, we check against a basic list of common passwords
     const commonPasswords = [
       'password', '123456', '123456789', 'qwerty', 'abc123',
-      'password123', 'admin', 'letmein', 'welcome', 'monkey',
+      'Password123$', 'admin', 'letmein', 'welcome', 'monkey',
       '1234567890', 'dragon', 'rockyou', 'princess', 'football',
       'master', 'jordan', 'superman', 'harley', 'robert'
     ]
@@ -253,7 +253,7 @@ export class PasswordService {
    */
   generateBackupCodes(count: number = 10): string[] {
     const codes: string[] = []
-    
+
     for (let i = 0; i < count; i++) {
       // Generate 8-character alphanumeric codes
       const array = crypto.getRandomValues(new Uint8Array(4))
@@ -263,7 +263,7 @@ export class PasswordService {
       }
       codes.push(code.toUpperCase())
     }
-    
+
     return codes
   }
 
@@ -272,12 +272,12 @@ export class PasswordService {
    */
   async hashBackupCodes(codes: string[]): Promise<{ code: string; hash: string }[]> {
     const hashedCodes: { code: string; hash: string }[] = []
-    
+
     for (const code of codes) {
       const hash = await CryptoUtils.createAuditHash(code)
       hashedCodes.push({ code, hash })
     }
-    
+
     return hashedCodes
   }
 
@@ -296,11 +296,11 @@ export class PasswordService {
     const maxAttempts = 5
     const windowMs = windowMinutes * 60 * 1000
     const now = new Date()
-    
+
     if (attempts >= maxAttempts && (now.getTime() - lastAttempt.getTime()) < windowMs) {
       return true
     }
-    
+
     return false
   }
 

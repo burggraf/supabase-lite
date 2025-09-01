@@ -16,11 +16,11 @@ describe('Sign In Minimal Test', () => {
       initialize: vi.fn(),
       isConnected: vi.fn(() => true)
     }
-    
+
     mockJwtService = {
       initialize: vi.fn()
     }
-    
+
     mockSessionManager = {
       initialize: vi.fn(),
       createSession: vi.fn(() => ({
@@ -30,7 +30,7 @@ describe('Sign In Minimal Test', () => {
         user_id: 'user-123'
       }))
     }
-    
+
     mockPasswordService = {
       verifyPassword: vi.fn(async (password: string, hash: string) => {
         // Test bcrypt verification directly
@@ -60,7 +60,7 @@ describe('Sign In Minimal Test', () => {
       if (sql.includes('SELECT encrypted_password FROM auth.users WHERE id = $1')) {
         return {
           rows: [{
-            encrypted_password: '$2b$10$joIiTSJ/o2vPel8w3RZ2Ae9kyfz159cwX//e6of1IPFRT6bolGsAy' // bcrypt hash for 'password123'
+            encrypted_password: '$2b$10$joIiTSJ/o2vPel8w3RZ2Ae9kyfz159cwX//e6of1IPFRT6bolGsAy' // bcrypt hash for 'Password123$'
           }]
         }
       }
@@ -79,7 +79,7 @@ describe('Sign In Minimal Test', () => {
     // This should not throw a ReferenceError about 'user' being undefined
     const result = await authManager.signIn({
       email: 'test@example.com',
-      password: 'password123'
+      password: 'Password123$'
     })
 
     expect(result).toBeDefined()

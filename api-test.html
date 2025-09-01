@@ -1,17 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Supabase Lite API Test</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        .test-button { margin: 10px; padding: 10px 20px; cursor: pointer; }
-        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; white-space: pre-wrap; }
-        .success { background: #e7f7e7; }
-        .error { background: #ffe7e7; }
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        .test-button {
+            margin: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        .result {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+
+        .success {
+            background: #e7f7e7;
+        }
+
+        .error {
+            background: #ffe7e7;
+        }
     </style>
 </head>
+
 <body>
     <h1>🚀 Supabase Lite API Test</h1>
     <p>This page tests the browser-only Supabase API endpoints using MSW + PGlite.</p>
@@ -31,7 +54,7 @@
         // Note: This page needs to be accessed after visiting the main app first
         // so that MSW Service Worker is already registered and active
         let mswReady = false;
-        
+
         // Check if Service Worker is already registered
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -106,7 +129,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email: 'auth@example.com',
-                        password: 'password123',
+                        password: 'Password123$$',
                         name: 'Auth User'
                     })
                 });
@@ -147,12 +170,13 @@
                 }
             }
         }
-        
+
         // Add instructions to visit main app first
         addResult('Instructions', 'Visit http://localhost:5173/ first to initialize MSW, then return here');
-        
+
         // Start checking for MSW readiness
         setTimeout(waitForMSW, 1000);
     </script>
 </body>
+
 </html>
