@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { getBaseUrl } from '../lib/api-tests';
+import { getStoredAuthToken } from '../lib/auth-tests';
 import type { ApiTest } from '../lib/api-tests';
+import type { AuthTest } from '../lib/auth-tests';
 
 interface RequestDetailsProps {
-  test: ApiTest | null;
+  test: ApiTest | AuthTest | null;
+  isAuthTest?: boolean;
 }
 
-export function RequestDetails({ test }: RequestDetailsProps) {
+export function RequestDetails({ test, isAuthTest = false }: RequestDetailsProps) {
   const [copied, setCopied] = useState(false);
 
   if (!test) {
@@ -33,17 +36,35 @@ export function RequestDetails({ test }: RequestDetailsProps) {
     }
   };
 
-  const generateCurlCommand = (test: ApiTest): string => {
+  const generateCurlCommand = (test: ApiTest | AuthTest): string => {
     const baseUrl = getBaseUrl();
     let curl = `curl -X ${test.method} "${baseUrl}${test.endpoint}"`;
     
     // Add headers
     curl += ` \\\n  -H "Content-Type: application/json"`;
     curl += ` \\\n  -H "Accept: application/json"`;
-    curl += ` \\\n  -H "apikey: test-api-key"`;
+    
+    if (isAuthTest) {
+      const authTest = test as AuthTest;
+      // For auth tests that require authentication, show Authorization header
+      if (authTest.requiresAuth || authTest.adminOnly) {
+        const token = getStoredAuthToken();
+        if (token) {
+          curl += ` \\\n  -H "Authorization: Bearer ${token}"`;
+        } else {
+          curl += ` \\\n  -H "Authorization: Bearer <access_token_from_signin>"`;
+        }
+      } else {
+        // For auth tests that don't require auth (like signin/signup), show apikey
+        curl += ` \\\n  -H "apikey: test-api-key"`;
+      }
+    } else {
+      // For API tests, always show apikey
+      curl += ` \\\n  -H "apikey: test-api-key"`;
+    }
     
     // Add body if present
-    if (test.body && (test.method === 'POST' || test.method === 'PATCH')) {
+    if (test.body && (test.method === 'POST' || test.method === 'PATCH' || test.method === 'PUT')) {
       curl += ` \\\n  -d '${JSON.stringify(test.body)}'`;
     }
     
@@ -92,9 +113,29 @@ export function RequestDetails({ test }: RequestDetailsProps) {
               <div className="text-sm font-mono">
                 <span className="text-gray-600">Accept:</span> application/json
               </div>
-              <div className="text-sm font-mono">
-                <span className="text-gray-600">apikey:</span> test-api-key
-              </div>
+              {isAuthTest ? (
+                (() => {
+                  const authTest = test as AuthTest;
+                  if (authTest.requiresAuth || authTest.adminOnly) {
+                    const token = getStoredAuthToken();
+                    return (
+                      <div className="text-sm font-mono">
+                        <span className="text-gray-600">Authorization:</span> Bearer {token ? `${token.substring(0, 20)}...` : '<access_token_from_signin>'}
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="text-sm font-mono">
+                        <span className="text-gray-600">apikey:</span> test-api-key
+                      </div>
+                    );
+                  }
+                })()
+              ) : (
+                <div className="text-sm font-mono">
+                  <span className="text-gray-600">apikey:</span> test-api-key
+                </div>
+              )}
             </div>
           </div>
 

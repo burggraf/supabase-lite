@@ -348,7 +348,7 @@ export function AuthTesting() {
             <div className="bg-gray-100 px-4 py-2 border-b">
               <h3 className="font-medium text-gray-900">Request Details</h3>
             </div>
-            <RequestDetails test={selectedTest as any} />
+            <RequestDetails test={selectedTest as any} isAuthTest={true} />
           </div>
 
           {/* Response Display */}
