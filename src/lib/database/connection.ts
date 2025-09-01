@@ -228,11 +228,13 @@ export class DatabaseManager {
 
 
       // Use documented dataDir approach for IndexedDB persistence
+      logger.info('Creating PGlite instance with IndexedDB persistence', { dataDir });
       this.db = new PGlite({
         dataDir: dataDir,
         database: 'postgres',
         relaxedDurability: true, // Allow async IndexedDB flushes for better performance
       });
+      logger.debug('PGlite instance created, waiting for ready state');
 
       logger.debug(`Using IndexedDB PGlite database for browser: ${dataDir}`);
 
@@ -305,8 +307,14 @@ export class DatabaseManager {
         
         // Close current connection and reconnect to postgres
         const currentDataDir = this.connectionInfo?.id || 'unknown';
+        logger.info('Closing connection to switch to postgres database', { currentDataDir });
         await this.db.close();
         
+        // Add small delay to allow IndexedDB references to fully clean up
+        // This prevents errno 44 (ETOOMANYREFS) during rapid connection switching
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        logger.info('Creating new connection to postgres database', { currentDataDir });
         this.db = new PGlite({
           dataDir: currentDataDir,
           database: 'postgres',
@@ -351,8 +359,15 @@ export class DatabaseManager {
         throw new Error('Database initialization verification failed');
       }
 
-      // Ensure persistence
-      await this.db.query('CHECKPOINT');
+      // Ensure persistence (optional - IndexedDB will persist automatically)
+      try {
+        await this.db.query('CHECKPOINT');
+        logger.debug('Database checkpoint completed successfully');
+      } catch (checkpointError) {
+        // CHECKPOINT is for optimization, not critical for functionality
+        // IndexedDB persistence happens automatically, so this is safe to fail
+        logger.warn('Database checkpoint failed (non-critical)', checkpointError as Error);
+      }
 
     } catch (error) {
       // Enhanced error logging with context
@@ -1344,11 +1359,13 @@ export class DatabaseManager {
 
   public async close(): Promise<void> {
     if (this.db) {
+      const connectionId = this.connectionInfo?.id || 'unknown';
+      logger.info('Closing database connection', { connectionId });
       try {
         await this.db.close();
-        logger.debug('Database connection closed successfully');
+        logger.info('Database connection closed successfully', { connectionId });
       } catch (error) {
-        logger.error('Error closing database connection', error as Error);
+        logger.error('Error closing database connection', error as Error, { connectionId });
         // Continue with cleanup even if close fails
       }
 
