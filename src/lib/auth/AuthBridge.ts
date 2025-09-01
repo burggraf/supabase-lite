@@ -288,16 +288,31 @@ export class AuthBridge {
       }, 200)
     } else if (request.grant_type === 'refresh_token') {
       // This is a token refresh request
-      const session = await this.authManager.refreshSession(request.refresh_token)
-      
-      return this.createSuccessResponse({
-        access_token: session.access_token,
-        token_type: 'bearer',
-        expires_in: 3600,
-        expires_at: session.expires_at,
-        refresh_token: session.refresh_token,
-        user: this.serializeUser(this.sessionManager.getUser()!)
-      }, 200)
+      try {
+        const session = await this.authManager.refreshSession(request.refresh_token)
+        
+        // Get the current user from the session manager
+        const currentUser = this.sessionManager.getUser()
+        if (!currentUser) {
+          throw new Error('No user found for session refresh')
+        }
+        
+        return this.createSuccessResponse({
+          access_token: session.access_token,
+          token_type: 'bearer',
+          expires_in: 3600,
+          expires_at: session.expires_at,
+          refresh_token: session.refresh_token,
+          user: this.serializeUser(currentUser)
+        }, 200)
+      } catch (error) {
+        console.error('Refresh token error:', error)
+        return this.createErrorResponse(
+          'Invalid refresh token',
+          400,
+          'invalid_grant'
+        )
+      }
     } else {
       return this.createErrorResponse(
         'Invalid grant type. Supported grant types: password, refresh_token',

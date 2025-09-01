@@ -1603,6 +1603,64 @@ export const handlers = [
     }
   }),
 
+  // Token endpoint without project resolution
+  http.post('/auth/v1/token', async ({ request }: any) => {
+    try {
+      console.log('🔐 MSW Browser: Handling token request')
+      const url = new URL(request.url)
+      let body = await request.json()
+      
+      // Support grant_type as query parameter - merge into body if not already present
+      const queryGrantType = url.searchParams.get('grant_type')
+      if (queryGrantType && !body.grant_type) {
+        body = { ...body, grant_type: queryGrantType }
+        console.log('🔐 MSW: Added grant_type from query params:', queryGrantType)
+      }
+      
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'token',
+        method: 'POST',
+        url: url,
+        headers: Object.fromEntries(request.headers.entries()),
+        body: body
+      })
+      console.log('✅ MSW Browser: Token response:', { status: response.status, hasData: !!response.data, hasError: !!response.error })
+      
+      if (response.error) {
+        return HttpResponse.json(response.error, {
+          status: response.status || 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        })
+      }
+      
+      return HttpResponse.json(response.data, {
+        status: response.status || 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': 'true'
+        }
+      })
+    } catch (error) {
+      console.error('❌ MSW Browser: Token error:', error)
+      return HttpResponse.json(
+        { error: 'internal_server_error', message: 'Token service failed' },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        }
+      )
+    }
+  }),
+
   // Session endpoint without project resolution
   http.get('/auth/v1/session', async ({ request }: any) => {
     try {
@@ -1960,24 +2018,6 @@ Deno.serve(async (req: Request) => {
       }
     })
   })),
-
-  http.post('/auth/v1/token', async ({ request }: any) => {
-    const response = await authBridge.handleAuthRequest({
-      endpoint: 'token',
-      method: 'POST',
-      url: new URL(request.url),
-      headers: Object.fromEntries(request.headers.entries()),
-      body: await request.text()
-    })
-    return HttpResponse.json(response.data, {
-      status: response.status,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Credentials': 'true'
-      }
-    })
-  }),
   http.post('/:projectId/auth/v1/token', withProjectResolution(async ({ request }: any) => {
     const response = await authBridge.handleAuthRequest({
       endpoint: 'token',

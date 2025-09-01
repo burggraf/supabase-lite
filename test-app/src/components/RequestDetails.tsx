@@ -65,7 +65,22 @@ export function RequestDetails({ test, isAuthTest = false }: RequestDetailsProps
     
     // Add body if present
     if (test.body && (test.method === 'POST' || test.method === 'PATCH' || test.method === 'PUT')) {
-      curl += ` \\\n  -d '${JSON.stringify(test.body)}'`;
+      let bodyToShow = test.body;
+      
+      // Handle refresh token test specially - show actual stored token if available
+      if (isAuthTest && (test as AuthTest).id === 'refresh-token') {
+        const storedRefreshToken = localStorage.getItem('supabase-refresh-token');
+        if (storedRefreshToken) {
+          bodyToShow = { refresh_token: storedRefreshToken };
+        } else {
+          bodyToShow = { refresh_token: '<refresh_token_from_signin>' };
+        }
+      }
+      
+      // Only add body if it has content (not empty object)
+      if (Object.keys(bodyToShow).length > 0) {
+        curl += ` \\\n  -d '${JSON.stringify(bodyToShow)}'`;
+      }
     }
     
     return curl;
@@ -145,7 +160,18 @@ export function RequestDetails({ test, isAuthTest = false }: RequestDetailsProps
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Request Body</h3>
               <div className="bg-gray-100 p-3 rounded">
                 <pre className="text-sm font-mono whitespace-pre-wrap">
-                  {JSON.stringify(test.body, null, 2)}
+                  {(() => {
+                    // Handle refresh token test specially - show actual stored token if available
+                    if (isAuthTest && (test as AuthTest).id === 'refresh-token') {
+                      const storedRefreshToken = localStorage.getItem('supabase-refresh-token');
+                      if (storedRefreshToken) {
+                        return JSON.stringify({ refresh_token: storedRefreshToken }, null, 2);
+                      } else {
+                        return JSON.stringify({ refresh_token: '<refresh_token_from_signin>' }, null, 2);
+                      }
+                    }
+                    return JSON.stringify(test.body, null, 2);
+                  })()}
                 </pre>
               </div>
             </div>
