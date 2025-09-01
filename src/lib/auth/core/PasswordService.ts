@@ -69,33 +69,37 @@ export class PasswordService {
    */
   async verifyPassword(password: string, hashedPasswordOrHash: HashedPassword | string): Promise<boolean> {
     try {
-      // Handle string hash (bcrypt format) - this is for Supabase compatibility
+      // Handle HashedPassword object (new format)
+      if (typeof hashedPasswordOrHash === 'object' && hashedPasswordOrHash !== null) {
+        const hashedPassword = hashedPasswordOrHash
+        if (hashedPassword.algorithm === 'bcrypt') {
+          if (this.isBrowserEnvironment()) {
+            // In browser, we can't verify bcrypt hashes, so return false
+            console.warn('Cannot verify bcrypt hash in browser environment')
+            return false
+          }
+          return await bcrypt.compare(password, hashedPassword.hash)
+        } else if (hashedPassword.algorithm === 'PBKDF2') {
+          if (!hashedPassword.salt) {
+            throw new Error('Salt is required for PBKDF2 verification')
+          }
+          return await CryptoUtils.verifyPassword(password, hashedPassword.hash, hashedPassword.salt)
+        } else {
+          throw new Error(`Unsupported algorithm: ${hashedPassword.algorithm}`)
+        }
+      }
+
+      // Handle string hash (legacy bcrypt format) - this is for backward compatibility
       if (typeof hashedPasswordOrHash === 'string') {
         if (this.isBrowserEnvironment()) {
           // In browser, we can't verify bcrypt hashes, so return false
-          console.warn('Cannot verify bcrypt hash in browser environment')
+          console.warn('Cannot verify legacy bcrypt hash in browser environment')
           return false
         }
         return await bcrypt.compare(password, hashedPasswordOrHash)
       }
 
-      // Handle HashedPassword object
-      const hashedPassword = hashedPasswordOrHash
-      if (hashedPassword.algorithm === 'bcrypt') {
-        if (this.isBrowserEnvironment()) {
-          // In browser, we can't verify bcrypt hashes, so return false
-          console.warn('Cannot verify bcrypt hash in browser environment')
-          return false
-        }
-        return await bcrypt.compare(password, hashedPassword.hash)
-      } else if (hashedPassword.algorithm === 'PBKDF2') {
-        if (!hashedPassword.salt) {
-          throw new Error('Salt is required for PBKDF2 verification')
-        }
-        return await CryptoUtils.verifyPassword(password, hashedPassword.hash, hashedPassword.salt)
-      } else {
-        throw new Error(`Unsupported algorithm: ${hashedPassword.algorithm}`)
-      }
+      throw new Error('Invalid hashedPasswordOrHash format')
     } catch (error) {
       console.warn('Password verification error:', error)
       return false
