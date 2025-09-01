@@ -43,6 +43,11 @@ export class DatabaseManager {
     return DatabaseManager.instance;
   }
 
+  // Test utility method to reset the singleton instance
+  public static resetInstance(): void {
+    DatabaseManager.instance = null as any;
+  }
+
 
 
   public async initialize(customDataDir?: string): Promise<void> {

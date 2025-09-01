@@ -1,45 +1,53 @@
 # Supabase Lite
 
-A browser-based implementation of the Supabase stack using PGlite as the core PostgreSQL database. Experience the full Supabase development environment running entirely in your browser with no server dependencies.
+A browser-based implementation of the Supabase stack using PGlite as the core PostgreSQL database and Mock Service Worker for the API backend. Experience the full Supabase education and development environment running entirely in your browser with no server dependencies. Supabase Lite is deployed as a static web app with no backend requirements so it works offline.
 
 ## 🚀 Features
 
 ### ✅ Available Now
-- **Dashboard**: Overview of your local database and connection status
-- **SQL Editor**: Full-featured SQL editor with syntax highlighting, query execution, and history
-- **PGlite Integration**: PostgreSQL database running in WebAssembly with IndexedDB persistence
-- **Cross-Origin Proxy**: HTTP proxy server for external API access with 100% Supabase.js compatibility
-- **Edge Functions**: Complete serverless function development environment with:
-  - File explorer with tree view and drag-drop support
-  - Monaco Editor with TypeScript support and multi-file tabs
-  - Local folder synchronization using File System Access API
-  - Deployment panel with environment variables
-  - Developer tools with console logs and performance metrics
-  - Function execution simulation with MSW integration
 
-### 🚧 Coming Soon
-- **Table Editor**: Visual spreadsheet-like interface for data management
-- **Authentication**: Local JWT-based auth simulation
-- **Storage**: File management with IndexedDB backend
-- **Realtime**: WebSocket simulation using BroadcastChannel API
-- **API Documentation**: Auto-generated REST API docs
+- **Dashboard**: Overview of your local database and connection status
+  - **SQL Editor**: Full-featured SQL editor with syntax highlighting, query execution, and history
+  - **Table Editor**: View, filter, search postgres tables, add and edit records
+  - **Database**: Table view, backup/restore databases
+  - **Authentication**: API Keys, usage examples, testing functions
+  - **Storage**: Bucket management, upload and manage files in buckets, generate URLs, download files, stores files in vfs filesystem
+  - **Edge Functions**: Create, deploy, manage, edit edge functions, stores edge functions in vfs filesystem
+  - **App Hosting**: Upload static apps for testing within the same domain (typically https://supabase-lite.com/app/<my-app>)
+  - **API Testing**: Coming soon...
+- **PGlite Integration**: PostgreSQL database running in WebAssembly with IndexedDB persistence
+- **API**: Uses MSW (Mock Service Worker) to provide an API compatible with supabase.js, cURL, or any other http clients on the local machine
+  - **PostgREST**: Extensive PostgREST compatability
+  - **RLS**: Supports authentication and RLS policies
+  - **Auth**: Supports authentication api routes: signup, signin, etc.
+- **supabase-lite CLI**: Standalone CLI tool companion for Supabase Lite
+  - **Cross-Origin Proxy**: HTTP proxy server for external API access with Supabase.js compatibility (allow access to projects stored in https://supabase-lite.com from local projects running on http://localhost, allow access from local system cURL commands, etc.)
+  - **PSQL**: PSQL-compatible command-line tool connects to your postgres databases inside the running instance of Supabase Lite
+  - **Admin Tools**: list-projects, create-project, delete-project allows you to manage projects from scripts, etc.
 
 ## 🛠️ Technology Stack
 
 - **Frontend**: React 19 + TypeScript + Vite
 - **UI**: Tailwind CSS + shadcn/ui components
-- **Database**: PGlite (WebAssembly PostgreSQL)
+- **Database**: PGlite (WebAssembly PostgreSQL) persisted to IndexedDB
 - **Editor**: Monaco Editor (VS Code editor)
-- **Storage**: IndexedDB for persistence
+- **Storage**: IndexedDB vfs for persistence
+- **AppHosting**: IndexedDB vfs for persistence
 
 ## 🏃‍♂️ Quick Start
 
+**FASTEST**: Just visit https://supabase-lite.com in your [Chrome] browser. (Other browsers may work, but only Chrome has been tested.)
+
+### Running Locally
+
 1. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 2. **Start development server**
+
    ```bash
    npm run dev
    ```
@@ -101,42 +109,43 @@ Supabase Lite provides MSW (Mock Service Worker) HTTP middleware that exposes Su
 ### Creating External Test Apps
 
 1. **Create a new directory** for your test application:
+
    ```bash
    mkdir my-supabase-test-app
    cd my-supabase-test-app
    ```
 
 2. **Initialize with package.json**:
+
    ```json
    {
-     "name": "my-supabase-test-app",
-     "type": "module",
-     "scripts": {
-       "dev": "vite"
-     },
-     "dependencies": {
-       "@supabase/supabase-js": "^2.48.1"
-     },
-     "devDependencies": {
-       "vite": "^7.1.2"
-     }
+   	"name": "my-supabase-test-app",
+   	"type": "module",
+   	"scripts": {
+   		"dev": "vite"
+   	},
+   	"dependencies": {
+   		"@supabase/supabase-js": "^2.48.1"
+   	},
+   	"devDependencies": {
+   		"vite": "^7.1.2"
+   	}
    }
    ```
 
 3. **Create your test application**:
+
    ```javascript
    // main.js
    import { createClient } from '@supabase/supabase-js'
 
    const supabase = createClient(
-     'http://localhost:5173',  // Your Supabase Lite URL
-     'your-anon-key-here'      // Any key (not validated in local development)
+   	'http://localhost:5173', // Your Supabase Lite URL
+   	'your-anon-key-here' // Any key (not validated in local development)
    )
 
    // Test your Supabase operations
-   const { data, error } = await supabase
-     .from('products')
-     .select('*')
+   const { data, error } = await supabase.from('products').select('*')
 
    console.log('Data:', data)
    ```
@@ -158,12 +167,14 @@ When running `npm run dev`, Supabase Lite exposes these endpoints:
 ### Example Test App
 
 See the included `test-app/` directory for a comprehensive example that demonstrates:
+
 - Basic CRUD operations
 - Authentication flows
 - Error handling
 - Both local and remote environment switching
 
 To run the example:
+
 ```bash
 cd test-app
 npm install
@@ -190,6 +201,7 @@ This enables full cross-origin API access and 100% Supabase.js compatibility.
 ### Installation & Setup
 
 #### For CLI Users (Automatic)
+
 The Supabase Lite CLI automatically handles proxy setup for deployed instances:
 
 ```bash
@@ -203,22 +215,25 @@ supabase-lite psql --url https://supabase-lite.pages.dev
 #### For Non-CLI Applications (Manual)
 
 1. **Install the proxy globally**:
+
    ```bash
    npm install -g supabase-lite-proxy
    ```
 
 2. **For Production Use** (Recommended):
+
    ```bash
    supabase-lite-proxy start
    ```
-   
+
    This connects to `https://supabase-lite.pages.dev` via PostMessage bridge. No local setup required!
 
 3. **For Development** (when developing Supabase Lite itself):
+
    ```bash
    # In one terminal, start Supabase Lite development server
    npm run dev
-   
+
    # In another terminal, start the proxy
    supabase-lite-proxy start --target http://localhost:5173
    ```
@@ -231,18 +246,16 @@ Once the proxy is running, any external application can connect to Supabase Lite
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
-  'http://localhost:54321',  // Proxy URL (default port)
-  'any-key-works-locally'    // Any key (not validated in local development)
+	'http://localhost:54321', // Proxy URL (default port)
+	'any-key-works-locally' // Any key (not validated in local development)
 )
 
 // Use Supabase.js normally - 100% compatible!
-const { data, error } = await supabase
-  .from('users')
-  .select('*')
+const { data, error } = await supabase.from('users').select('*')
 
 const { data: insertData, error: insertError } = await supabase
-  .from('products')
-  .insert({ name: 'New Product', price: 29.99 })
+	.from('products')
+	.insert({ name: 'New Product', price: 29.99 })
 ```
 
 ### Proxy Commands
@@ -302,17 +315,20 @@ Since this is a pure client-side application, you can deploy it to any static ho
 ## 📋 Roadmap
 
 ### Phase 1 (Current)
+
 - [x] Basic project setup with Vite + React + TypeScript
 - [x] PGlite integration with IndexedDB persistence
 - [x] Dashboard with database status and overview
 - [x] SQL Editor with Monaco Editor and query execution
 
 ### Phase 2 (Next)
+
 - [ ] Table Editor with spreadsheet-like interface
 - [ ] Schema management and visualization
 - [ ] Data import/export functionality
 
 ### Phase 3 (Current)
+
 - [x] **Edge Functions**: Complete serverless development environment
   - [x] File explorer with tree view and CRUD operations
   - [x] Monaco Editor with TypeScript support and auto-complete
@@ -322,6 +338,7 @@ Since this is a pure client-side application, you can deploy it to any static ho
   - [x] Function execution simulation with MSW integration
 
 ### Phase 4 (Next)
+
 - [ ] Authentication service simulation
 - [ ] Storage service with file management
 - [ ] Realtime subscriptions using BroadcastChannel

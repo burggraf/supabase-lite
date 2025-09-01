@@ -11,23 +11,115 @@ declare global {
   }
 }
 
+// Mock the config manager to avoid complex initialization
+vi.mock('../../infrastructure/ConfigManager', () => ({
+  configManager: {
+    getDatabaseConfig: () => ({
+      dataDir: 'idb://supabase_lite_db',
+      connectionTimeout: 30000,
+      maxConnections: 10,
+      queryTimeout: 10000
+    })
+  }
+}))
+
+// Mock the logger to avoid complex logging setup
+vi.mock('../../infrastructure/Logger', () => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  },
+  logQuery: vi.fn(),
+  logError: vi.fn(),
+  logPerformance: vi.fn()
+}))
+
+// Mock the error handler
+vi.mock('../../infrastructure/ErrorHandler', () => ({
+  createDatabaseError: (message: string) => new Error(message)
+}))
+
+// Mock the role simulator
+vi.mock('../roleSimulator', () => ({
+  roleSimulator: {
+    simulateRole: vi.fn().mockResolvedValue(undefined),
+    resetRole: vi.fn().mockResolvedValue(undefined)
+  }
+}))
+
 describe('DatabaseManager', () => {
   let dbManager: DatabaseManager
 
   beforeEach(() => {
-    // Reset the singleton instance
-    ;(DatabaseManager as any).instance = null
+    // Reset the singleton instance using the new method
+    DatabaseManager.resetInstance()
     dbManager = DatabaseManager.getInstance()
     
     // Reset global mocks
     vi.clearAllMocks()
-    global.mockPGliteInstance.query.mockResolvedValue({ rows: [], affectedRows: 0 })
-    global.mockPGliteInstance.exec.mockResolvedValue()
-    global.mockPGliteInstance.close.mockResolvedValue()
+    
+    // Set up default mock responses for database queries
+    global.mockPGliteInstance.query.mockImplementation((sql: string) => {
+      // Mock different responses based on the SQL query
+      if (sql.includes('current_database()')) {
+        return Promise.resolve({ rows: [{ current_database: 'supabase_lite_db' }], affectedRows: 1 })
+      }
+      if (sql.includes('SELECT 1')) {
+        return Promise.resolve({ rows: [{ '?column?': 1 }], affectedRows: 1 })
+      }
+      // Mock schema validation query
+      if (sql.includes('has_auth') && sql.includes('has_storage')) {
+        return Promise.resolve({ 
+          rows: [{ 
+            has_auth: true, 
+            has_storage: true, 
+            has_realtime: true, 
+            has_public: true 
+          }], 
+          affectedRows: 1 
+        })
+      }
+      // Mock table existence checks
+      if (sql.includes('auth.users') && sql.includes('EXISTS')) {
+        return Promise.resolve({ 
+          rows: [{ 
+            has_users: true, 
+            has_identities: true, 
+            has_sessions: true 
+          }], 
+          affectedRows: 1 
+        })
+      }
+      // Mock extension checks
+      if (sql.includes('pg_extension')) {
+        return Promise.resolve({ rows: [{ has_extensions: true }], affectedRows: 1 })
+      }
+      if (sql.includes('pg_namespace') || sql.includes('information_schema')) {
+        return Promise.resolve({ rows: [], affectedRows: 0 })
+      }
+      if (sql.includes('pg_stat_database_conflicts')) {
+        return Promise.resolve({ rows: [], affectedRows: 0 })
+      }
+      if (sql.includes('CHECKPOINT')) {
+        return Promise.resolve({ rows: [], affectedRows: 0 })
+      }
+      // Default response
+      return Promise.resolve({ rows: [], affectedRows: 0 })
+    })
+    
+    global.mockPGliteInstance.exec.mockResolvedValue(undefined)
+    global.mockPGliteInstance.close.mockResolvedValue(undefined)
   })
 
   afterEach(async () => {
-    await dbManager.close()
+    try {
+      await dbManager.close()
+    } catch (error) {
+      // Ignore cleanup errors in tests
+    }
+    DatabaseManager.resetInstance()
   })
 
   describe('Singleton Pattern', () => {
