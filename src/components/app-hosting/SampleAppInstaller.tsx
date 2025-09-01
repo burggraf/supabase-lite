@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { projectManager } from '@/lib/projects/ProjectManager'
 import { vfsManager } from '@/lib/vfs/VFSManager'
-import { CheckCircle, Download, Globe, Sparkles } from 'lucide-react'
+import { CheckCircle, Download, ExternalLink, Globe, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -23,17 +23,19 @@ interface SampleApp {
 	description: string
 	tags: string[]
 	path: string
+	sourceUrl?: string
 }
 
 const SAMPLE_APPS: SampleApp[] = [
 	{
 		id: 'test-app',
 		name: 'test-app',
-		title: 'React + Vite Test App',
+		title: 'API Tester: React + Vite Test App',
 		description:
-			'A sample React application built with Vite and TypeScript. Perfect for testing Supabase integration and demonstrating modern web app features.  NOTE: This app requires that you insall seed data for: Northwind Database.',
-		tags: ['React', 'TypeScript', 'Vite'],
+			'This app is used to test supabase API integrations.  NOTE: This app requires that you insall seed data for: Northwind Database.',
+		tags: ['React', 'TypeScript', 'Vite', 'API'],
 		path: '/apps/test-app',
+		sourceUrl: 'https://github.com/burggraf/supabase-lite/tree/main/test-app',
 	},
 ]
 
@@ -202,18 +204,33 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 							</div>
 						</CardHeader>
 						<CardContent>
-							<div className='flex items-center justify-between'>
-								<div className='flex gap-2'>
-									{app.tags.map((tag) => (
-										<Badge key={tag} variant='secondary' className='text-xs'>
-											{tag}
-										</Badge>
-									))}
+							<div className='space-y-3'>
+								{app.sourceUrl && (
+									<div className='flex items-center gap-2 text-sm text-muted-foreground'>
+										<span className='font-medium'>Source Code:</span>
+										<a
+											href={app.sourceUrl}
+											target='_blank'
+											rel='noopener noreferrer'
+											className='inline-flex items-center gap-1 text-blue-500 hover:text-blue-600 hover:underline'>
+											View on GitHub
+											<ExternalLink className='h-3 w-3' />
+										</a>
+									</div>
+								)}
+								<div className='flex items-center justify-between'>
+									<div className='flex gap-2'>
+										{app.tags.map((tag) => (
+											<Badge key={tag} variant='secondary' className='text-xs'>
+												{tag}
+											</Badge>
+										))}
+									</div>
+									<Button size='sm' onClick={() => handleInstallApp(app)} disabled={isInstalling}>
+										<Download className='h-4 w-4 mr-1' />
+										Install App
+									</Button>
 								</div>
-								<Button size='sm' onClick={() => handleInstallApp(app)} disabled={isInstalling}>
-									<Download className='h-4 w-4 mr-1' />
-									Install App
-								</Button>
 							</div>
 						</CardContent>
 					</Card>
