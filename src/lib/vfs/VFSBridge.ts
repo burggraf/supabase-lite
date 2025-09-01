@@ -668,6 +668,7 @@ export class VFSBridge {
           });
         }
         
+        // For non-HTML files, use regular file serving
         return this.handleFileRequest({
           bucket: 'app',
           path: `${appName}${appPath ? '/' + appPath : '/index.html'}`,
