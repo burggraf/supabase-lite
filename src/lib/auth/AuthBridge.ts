@@ -551,10 +551,21 @@ export class AuthBridge {
   private handleError(error: any): AuthAPIResponse {
     console.error('Auth API error:', error)
     
+    // Handle ValidationError specifically
+    if (error.name === 'ValidationError') {
+      return this.createErrorResponse(
+        error.message,
+        400,
+        'invalid_request'
+      )
+    }
+    
+    // Handle errors with explicit status and code
     if (error.status && error.code) {
       return this.createErrorResponse(error.message, error.status, error.code)
     }
 
+    // Default fallback for unknown errors
     return this.createErrorResponse(
       'Internal server error',
       500,
