@@ -7,18 +7,21 @@ A browser-based implementation of the Supabase stack using PGlite as the core Po
 ### ✅ Complete Supabase Experience in Your Browser
 
 **🏗️ Core Platform**
+
 - **Multi-Project Management**: Create and manage isolated database projects with automatic switching
 - **Browser-First Architecture**: Pure client-side application with no server dependencies - works completely offline
 - **PostgreSQL in Browser**: Full PostgreSQL database powered by PGlite (WebAssembly) with IndexedDB persistence
 - **Performance Optimized**: Built-in query caching, connection pooling, and performance analytics
 
 **📊 Database Management**
+
 - **SQL Editor**: Monaco Editor with syntax highlighting, auto-completion, query execution, and history
 - **Table Editor**: Spreadsheet-like interface with advanced filtering, sorting, and CRUD operations
 - **Schema Management**: Visual table creation, column editing, and relationship management
 - **Data Import/Export**: Support for various data formats with backup and restore functionality
 
 **🔐 Authentication System**
+
 - **Complete Auth Service**: Full GoTrue-compatible authentication with JWT token management
 - **User Management**: Signup, signin, password recovery, email verification, and profile updates
 - **Multi-Factor Authentication**: TOTP-based MFA with QR code generation and verification
@@ -26,12 +29,14 @@ A browser-based implementation of the Supabase stack using PGlite as the core Po
 - **Admin Operations**: User administration, role management, and session control
 
 **🗄️ Storage Service**
+
 - **File Management**: Complete Supabase Storage-compatible service with bucket operations
 - **Secure Access**: Signed URL generation for temporary file access with expiration controls
 - **Upload/Download**: Drag-and-drop file uploads with progress tracking and batch operations
 - **VFS Integration**: Virtual file system with IndexedDB for persistent storage
 
 **⚡ Edge Functions**
+
 - **Serverless Development**: Complete development environment with TypeScript support
 - **Code Editor**: Monaco Editor with IntelliSense, auto-completion, and multi-file management
 - **Local Sync**: File System Access API for bidirectional folder synchronization
@@ -39,24 +44,28 @@ A browser-based implementation of the Supabase stack using PGlite as the core Po
 - **Developer Tools**: Real-time console logs, performance metrics, and debugging tools
 
 **🚀 App Hosting**
+
 - **Static Deployment**: Deploy and serve static web applications with proper MIME type handling
 - **Drag & Drop**: Simple folder upload for instant app deployment
 - **Version Management**: App versioning with rollback capabilities
 - **Domain Routing**: Serve apps on custom paths with proper routing
 
 **🧪 API Testing**
+
 - **Interactive Testing**: Built-in API testing interface for all endpoints
 - **Full HTTP Support**: Test GET, POST, PUT, PATCH, DELETE operations
 - **Authentication Testing**: Validate auth flows and token management
 - **Real-time Inspection**: Live response analysis and debugging
 
 **🔌 API Compatibility**
+
 - **PostgREST Compatible**: Complete PostgREST API with advanced query syntax support
-- **Supabase.js Compatible**: 100% compatibility with existing Supabase.js applications
+- **Supabase.js Compatible**: Extensive compatibility with existing Supabase.js applications
 - **Cross-Origin Ready**: MSW-powered API accessible from external applications
 - **Project Isolation**: Project-specific API routing with complete data separation
 
 **💻 Command Line Interface**
+
 - **PSQL Compatible**: Full-featured command-line database access with meta commands
 - **Project Administration**: Create, list, and delete projects from scripts and automation
 - **SQL Script Execution**: Run complex migrations and batch operations
@@ -172,12 +181,14 @@ src/
 ## 🎯 Use Cases
 
 ### 🚀 Development & Prototyping
+
 - **Rapid Prototyping**: Quickly test database schemas, APIs, and application logic
 - **Local Development**: Full PostgreSQL environment without Docker or server dependencies
 - **Offline Development**: Complete development environment that works offline once loaded
 - **Cross-Platform Testing**: Test applications across different environments and devices
 
 ### 📚 Learning & Education
+
 - **SQL Learning**: Safe environment to practice SQL queries with real PostgreSQL features
 - **Database Concepts**: Teach database design, normalization, and relationship modeling
 - **API Development**: Learn REST API patterns with real PostgREST compatibility
@@ -185,18 +196,21 @@ src/
 - **Serverless Architecture**: Learn Edge Functions and serverless development concepts
 
 ### 🔧 Production Support
+
 - **API Testing**: Comprehensive testing of REST endpoints and authentication flows
-- **Database Migration**: Test schema changes and data migrations before production deployment  
+- **Database Migration**: Test schema changes and data migrations before production deployment
 - **Client Integration**: Test Supabase.js applications against controlled database states
 - **Performance Analysis**: Analyze query performance and optimize database operations
 
 ### 👥 Team Development
+
 - **Shared Development**: Team members can easily share database states and configurations
 - **Demo Environments**: Create consistent demo environments for presentations and testing
 - **Training**: Onboard new team members with pre-configured database examples
 - **Documentation**: Generate API documentation and examples from working schemas
 
 ### 🏢 Enterprise Applications
+
 - **Proof of Concept**: Validate concepts before investing in full infrastructure
 - **Client Demos**: Demonstrate applications to clients without server setup
 - **Training Materials**: Create interactive training environments for users
@@ -268,11 +282,13 @@ Supabase Lite provides MSW (Mock Service Worker) HTTP middleware that exposes Su
 When running `npm run dev`, Supabase Lite exposes a comprehensive API that's fully compatible with Supabase.js:
 
 #### REST API (PostgREST-compatible)
+
 - **Data Operations**: `http://localhost:5173/rest/v1/{table}` (GET, POST, PATCH, DELETE)
 - **RPC Functions**: `http://localhost:5173/rest/v1/rpc/{function_name}` (POST)
 - **Project-specific**: `http://localhost:5173/{projectId}/rest/v1/{table}`
 
 #### Authentication API (GoTrue-compatible)
+
 - **User Authentication**: `http://localhost:5173/auth/v1/{signup,signin,token,logout}`
 - **User Management**: `http://localhost:5173/auth/v1/{user,session,recover}`
 - **Multi-factor Auth**: `http://localhost:5173/auth/v1/factors/*`
@@ -281,25 +297,30 @@ When running `npm run dev`, Supabase Lite exposes a comprehensive API that's ful
 - **Project-specific**: `http://localhost:5173/{projectId}/auth/v1/*`
 
 #### Storage API (Supabase Storage-compatible)
+
 - **Bucket Management**: `http://localhost:5173/storage/v1/bucket/*`
 - **File Operations**: `http://localhost:5173/storage/v1/object/*`
 - **Signed URLs**: Secure file access with expiration
 
 #### Edge Functions API
+
 - **Function Execution**: `http://localhost:5173/functions/v1/{function_name}`
 - **Function Management**: Deploy, update, and manage serverless functions
 
 #### VFS & App Hosting API
+
 - **File System**: Virtual file system for Edge Functions and Storage
 - **App Deployment**: Static app hosting and serving
 - **Signed URLs**: Secure file access and app serving
 
 #### Development & Debug APIs
+
 - **SQL Execution**: `http://localhost:5173/debug/sql` (POST) - Direct SQL queries
 - **Health Check**: `http://localhost:5173/health`
 - **Project Management**: Create, list, and delete projects
 
 #### Multi-Project Support
+
 All APIs support project-specific routing with the pattern:
 `http://localhost:5173/{projectId}/{api_path}`
 
@@ -318,6 +339,7 @@ npm install -g supabase-lite
 ### Key Features
 
 #### 🔗 PSQL-Compatible Database Access
+
 Connect to your browser-based PostgreSQL database from the command line with full PSQL functionality:
 
 ```bash
@@ -332,6 +354,7 @@ supabase-lite psql --url http://localhost:5173/abc123def456
 ```
 
 #### 📊 Project Administration
+
 Manage multiple projects from the command line:
 
 ```bash
@@ -346,6 +369,7 @@ supabase-lite admin delete-project abc123def456 -u http://localhost:5173
 ```
 
 #### 🔄 Automatic Cross-Origin Proxy
+
 The CLI automatically handles connections to deployed HTTPS instances by:
 
 - **Auto-detecting** HTTPS URLs and starting proxy when needed
@@ -354,6 +378,7 @@ The CLI automatically handles connections to deployed HTTPS instances by:
 - **Transparent operation** - no configuration needed
 
 #### 📝 SQL File Execution
+
 Execute complex multi-statement SQL scripts:
 
 ```bash
@@ -365,18 +390,19 @@ supabase-lite psql -u http://localhost:5173 -f migration.sql --continue-on-error
 ```
 
 #### 💻 Interactive SQL Session
+
 Full PSQL-compatible interactive sessions with meta commands:
 
 ```sql
 -- List tables
 \dt
 
--- Describe table structure  
+-- Describe table structure
 \d users
 
 -- Execute complex queries
-SELECT id, email, created_at 
-FROM auth.users 
+SELECT id, email, created_at
+FROM auth.users
 WHERE created_at > NOW() - INTERVAL '7 days'
 ORDER BY created_at DESC;
 ```
@@ -399,12 +425,12 @@ CLI ─HTTP─> Local Instance (Direct)
 CLI ─HTTP─> Proxy Server ─PostMessage─> Browser ─PGlite─> Database (HTTPS)
 ```
 
-
 ## 📋 Roadmap
 
 ### ✅ Completed Features
 
 **Core Platform**
+
 - [x] Browser-based PostgreSQL with PGlite and IndexedDB persistence
 - [x] Multi-project management with isolated databases
 - [x] Comprehensive dashboard with database status and metrics
@@ -414,12 +440,14 @@ CLI ─HTTP─> Proxy Server ─PostMessage─> Browser ─PGlite─> Database (
 - [x] Schema management and visualization
 
 **API Compatibility**
+
 - [x] PostgREST-compatible REST API with full query syntax support
 - [x] Row Level Security (RLS) enforcement
 - [x] Project-specific API routing and isolation
 - [x] Cross-origin API access with MSW integration
 
 **Authentication System**
+
 - [x] Complete GoTrue-compatible authentication service
 - [x] JWT token management and validation
 - [x] User management with signup/signin/recovery flows
@@ -428,6 +456,7 @@ CLI ─HTTP─> Proxy Server ─PostMessage─> Browser ─PGlite─> Database (
 - [x] Admin user operations
 
 **Storage Service**
+
 - [x] Supabase Storage-compatible file management
 - [x] Bucket creation and management with policies
 - [x] File upload/download with drag-and-drop support
@@ -435,6 +464,7 @@ CLI ─HTTP─> Proxy Server ─PostMessage─> Browser ─PGlite─> Database (
 - [x] VFS integration with IndexedDB persistence
 
 **Edge Functions**
+
 - [x] Complete serverless development environment
 - [x] File explorer with tree view and CRUD operations
 - [x] Monaco Editor with TypeScript support and auto-complete
@@ -444,18 +474,21 @@ CLI ─HTTP─> Proxy Server ─PostMessage─> Browser ─PGlite─> Database (
 - [x] Function execution simulation
 
 **App Hosting**
+
 - [x] Static web app deployment and serving
 - [x] Drag-and-drop folder upload for apps
 - [x] App management and versioning
 - [x] File serving with proper MIME types
 
 **API Testing**
+
 - [x] Interactive API testing interface
 - [x] REST endpoint testing with all HTTP methods
 - [x] Authentication endpoint validation
 - [x] Real-time response inspection
 
 **CLI Tool**
+
 - [x] PSQL-compatible command-line interface
 - [x] Project administration (list, create, delete)
 - [x] SQL script execution with error handling
