@@ -614,6 +614,21 @@ export class VFSBridge {
         isAssetRequest: hasFileExtension
       });
       
+      // DEBUG: If file not found, check what files actually exist in the app bucket
+      if (!file) {
+        try {
+          console.log('🐛 DEBUG: File not found, checking what exists in app bucket...');
+          const appFiles = await this.vfsManager.listFiles('app', { recursive: true });
+          console.log('🐛 DEBUG: Files in app bucket:', appFiles?.map(f => f.path) || 'NO FILES');
+          
+          // Also check if the bucket exists at all
+          const buckets = await this.vfsManager.listBuckets();
+          console.log('🐛 DEBUG: Available buckets:', buckets?.map(b => b.name) || 'NO BUCKETS');
+        } catch (debugError) {
+          console.log('🐛 DEBUG: Error checking VFS contents:', debugError);
+        }
+      }
+      
       if (file) {
         console.log('🔍 Serving file via handleFileRequest:', {
           bucket: 'app',
