@@ -136,11 +136,11 @@ export class DatabaseManager {
 
       const switchTime = performance.now() - startTime;
 
-      logger.info('Database switch completed successfully', {
-        fromDataDir: currentDataDir,
-        toDataDir: dataDir,
-        switchTime: `${switchTime.toFixed(1)}ms`
-      });
+      // logger.info('Database switch completed successfully', {
+      //   fromDataDir: currentDataDir,
+      //   toDataDir: dataDir,
+      //   switchTime: `${switchTime.toFixed(1)}ms`
+      // });
 
     } catch (error) {
       console.error('Database switch failed:', error);
@@ -218,7 +218,7 @@ export class DatabaseManager {
   private async doInitialization(customDataDir?: string): Promise<void> {
     try {
       const dbConfig = configManager.getDatabaseConfig();
-      logger.info('Initializing PGlite database', { config: dbConfig, customDataDir });
+      // logger.info('Initializing PGlite database', { config: dbConfig, customDataDir });
 
       // Browser-only IndexedDB-backed PGlite
       const rawDataDir = customDataDir || dbConfig.dataDir;
@@ -228,7 +228,7 @@ export class DatabaseManager {
 
 
       // Use documented dataDir approach for IndexedDB persistence
-      logger.info('Creating PGlite instance with IndexedDB persistence', { dataDir });
+      // logger.info('Creating PGlite instance with IndexedDB persistence', { dataDir });
       this.db = new PGlite({
         dataDir: dataDir,
         database: 'postgres',
@@ -260,10 +260,10 @@ export class DatabaseManager {
       // Schema initialization complete - IndexedDB persistence is automatic
 
       this.isInitialized = true;
-      logger.info('PGlite initialized successfully', {
-        databaseId: this.connectionInfo.id,
-        dataDir: dataDir
-      });
+      // logger.info('PGlite initialized successfully', {
+      //   databaseId: this.connectionInfo.id,
+      //   dataDir: dataDir
+      // });
     } catch (error) {
       const dbConfig = configManager.getDatabaseConfig();
       logError('Database initialization', error as Error, { config: dbConfig });
@@ -278,28 +278,28 @@ export class DatabaseManager {
       // CRITICAL FIX: Check if database is properly initialized by validating ALL required components
       // The original bug was only checking roles, which persist while schemas can be lost
       const isFullyInitialized = await this.validateFullInitialization();
-      logger.info('Database initialization check', { isFullyInitialized });
+      // logger.info('Database initialization check', { isFullyInitialized });
 
       if (isFullyInitialized) {
-        logger.info('Database fully initialized - skipping schema setup to prevent data loss');
+        // logger.info('Database fully initialized - skipping schema setup to prevent data loss');
         return;
       }
 
       // Not initialized - run ALL initialization ONCE
-      logger.info('Initializing new database with Supabase schema');
+      // logger.info('Initializing new database with Supabase schema');
       
       // Ensure we're connected to postgres database before seeding
       const getCurrentDatabase = await this.db.query('SELECT current_database()');
       const currentDbName = getCurrentDatabase.rows[0].current_database;
-      logger.info('Current database before seeding:', currentDbName);
+      // logger.info('Current database before seeding:', currentDbName);
       
       if (currentDbName !== 'postgres') {
-        logger.info(`Currently connected to ${currentDbName}, switching to postgres database`);
+        // logger.info(`Currently connected to ${currentDbName}, switching to postgres database`);
         
         // Create postgres database if it doesn't exist
         try {
           await this.db.exec('CREATE DATABASE postgres');
-          logger.info('Created postgres database');
+          // logger.info('Created postgres database');
         } catch (error) {
           // Database might already exist, that's fine
           logger.debug('Postgres database may already exist or creation failed:', error);
@@ -307,14 +307,14 @@ export class DatabaseManager {
         
         // Close current connection and reconnect to postgres
         const currentDataDir = this.connectionInfo?.id || 'unknown';
-        logger.info('Closing connection to switch to postgres database', { currentDataDir });
+        // logger.info('Closing connection to switch to postgres database', { currentDataDir });
         await this.db.close();
         
         // Add small delay to allow IndexedDB references to fully clean up
         // This prevents errno 44 (ETOOMANYREFS) during rapid connection switching
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        logger.info('Creating new connection to postgres database', { currentDataDir });
+        // logger.info('Creating new connection to postgres database', { currentDataDir });
         this.db = new PGlite({
           dataDir: currentDataDir,
           database: 'postgres',
@@ -325,14 +325,14 @@ export class DatabaseManager {
         
         // Verify we're now on postgres
         const verifyDb = await this.db.query('SELECT current_database()');
-        logger.info('After reconnection, current database:', verifyDb.rows[0].current_database);
+        // logger.info('After reconnection, current database:', verifyDb.rows[0].current_database);
       }
 
       try {
         // 1. Create roles (with error handling for existing roles)
         const rolesSql = await this.loadRolesSql();
         await this.db.exec(rolesSql);
-        logger.info('Roles created successfully');
+        // logger.info('Roles created successfully');
       } catch (roleError: any) {
         if (roleError.message?.includes('already exists')) {
           logger.warn('Some roles already exist, continuing with schema creation');
@@ -344,14 +344,14 @@ export class DatabaseManager {
       // 2. Create schemas, tables, functions
       const seedSql = await this.loadSeedSql();
       await this.db.exec(seedSql);
-      logger.info('Schema and tables created successfully');
+      // logger.info('Schema and tables created successfully');
 
       // 3. Create RLS policies
       const policiesSql = await this.loadPoliciesSql();
       await this.db.exec(policiesSql);
-      logger.info('RLS policies created successfully');
+      // logger.info('RLS policies created successfully');
 
-      logger.info('Database initialization complete');
+      // logger.info('Database initialization complete');
 
       // Verify initialization was successful
       const verifyResult = await this.validateFullInitialization();
@@ -478,7 +478,7 @@ export class DatabaseManager {
       const schemas = schemaCheck.rows[0] as any;
       
       if (!schemas.has_auth || !schemas.has_storage || !schemas.has_realtime || !schemas.has_public) {
-        logger.info('Missing required schemas, database needs initialization', schemas);
+        // logger.info('Missing required schemas, database needs initialization', schemas);
         return false;
       }
 
@@ -498,7 +498,7 @@ export class DatabaseManager {
         return false;
       }
 
-      logger.info('Database validation passed - all schemas and tables present');
+      // logger.info('Database validation passed - all schemas and tables present');
       return true;
     } catch (error) {
       logger.warn('Error during initialization validation, assuming uninitialized', { error });
