@@ -285,6 +285,40 @@ export class DatabaseManager {
 
       // Not initialized - run ALL initialization ONCE
       logger.info('Initializing new database with Supabase schema');
+      
+      // Ensure we're connected to postgres database before seeding
+      const getCurrentDatabase = await this.db.query('SELECT current_database()');
+      const currentDbName = getCurrentDatabase.rows[0].current_database;
+      logger.info('Current database before seeding:', currentDbName);
+      
+      if (currentDbName !== 'postgres') {
+        logger.info(`Currently connected to ${currentDbName}, switching to postgres database`);
+        
+        // Create postgres database if it doesn't exist
+        try {
+          await this.db.exec('CREATE DATABASE postgres');
+          logger.info('Created postgres database');
+        } catch (error) {
+          // Database might already exist, that's fine
+          logger.debug('Postgres database may already exist or creation failed:', error);
+        }
+        
+        // Close current connection and reconnect to postgres
+        const currentDataDir = this.connectionInfo?.id || 'unknown';
+        await this.db.close();
+        
+        this.db = new PGlite({
+          dataDir: currentDataDir,
+          database: 'postgres',
+          relaxedDurability: true,
+        });
+        
+        await this.db.waitReady;
+        
+        // Verify we're now on postgres
+        const verifyDb = await this.db.query('SELECT current_database()');
+        logger.info('After reconnection, current database:', verifyDb.rows[0].current_database);
+      }
 
       try {
         // 1. Create roles (with error handling for existing roles)
