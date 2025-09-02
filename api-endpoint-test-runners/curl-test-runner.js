@@ -122,11 +122,47 @@ const authTestCategories = [
         description: 'Get new access token using refresh token'
       },
       {
+        id: 'signup-phone',
+        name: 'Sign Up with Phone',
+        method: 'POST',
+        endpoint: '/auth/v1/signup',
+        body: {
+          phone: '+1234567890',
+          password: 'Password123$',
+          data: {
+            full_name: 'Test Phone User'
+          }
+        },
+        description: 'Create a new user account with phone number and password'
+      },
+      {
+        id: 'signin-phone',
+        name: 'Sign In with Phone',
+        method: 'POST',
+        endpoint: '/auth/v1/signin',
+        body: {
+          phone: '+1234567890',
+          password: 'Password123$'
+        },
+        description: 'Authenticate user with phone number and password'
+      },
+      {
         id: 'logout',
         name: 'Sign Out',
         method: 'POST',
         endpoint: '/auth/v1/logout',
         description: 'Sign out current user session',
+        requiresAuth: true
+      },
+      {
+        id: 'logout-global',
+        name: 'Sign Out (All Sessions)',
+        method: 'POST',
+        endpoint: '/auth/v1/logout',
+        body: {
+          scope: 'global'
+        },
+        description: 'Sign out user from all sessions',
         requiresAuth: true
       }
     ]
@@ -162,6 +198,28 @@ const authTestCategories = [
         requiresAuth: true
       },
       {
+        id: 'update-user-email',
+        name: 'Update Email Address',
+        method: 'PUT',
+        endpoint: '/auth/v1/user',
+        body: {
+          email: 'newemail@example.com'
+        },
+        description: 'Change user email address (requires confirmation)',
+        requiresAuth: true
+      },
+      {
+        id: 'update-user-phone',
+        name: 'Update Phone Number',
+        method: 'PUT',
+        endpoint: '/auth/v1/user',
+        body: {
+          phone: '+9876543210'
+        },
+        description: 'Change user phone number (requires verification)',
+        requiresAuth: true
+      },
+      {
         id: 'request-password-reset',
         name: 'Request Password Reset',
         method: 'POST',
@@ -170,6 +228,18 @@ const authTestCategories = [
           email: 'test@example.com'
         },
         description: 'Send password reset email to user'
+      },
+      {
+        id: 'confirm-password-reset',
+        name: 'Confirm Password Reset',
+        method: 'POST',
+        endpoint: '/auth/v1/verify',
+        body: {
+          type: 'recovery',
+          token: 'mock-recovery-token',
+          password: 'resetPassword123$'
+        },
+        description: 'Complete password reset with token'
       }
     ]
   },
@@ -198,6 +268,491 @@ const authTestCategories = [
           create_user: false
         },
         description: 'Send one-time password to email'
+      },
+      {
+        id: 'verify-magic-link',
+        name: 'Verify Magic Link Token',
+        method: 'POST',
+        endpoint: '/auth/v1/verify',
+        body: {
+          type: 'magiclink',
+          token: 'mock-magic-token',
+          email: 'test@example.com'
+        },
+        description: 'Complete magic link authentication'
+      },
+      {
+        id: 'otp-phone',
+        name: 'Request OTP (SMS)',
+        method: 'POST',
+        endpoint: '/auth/v1/otp',
+        body: {
+          phone: '+1234567890',
+          create_user: false
+        },
+        description: 'Send one-time password via SMS'
+      },
+      {
+        id: 'verify-otp-email',
+        name: 'Verify OTP (Email)',
+        method: 'POST',
+        endpoint: '/auth/v1/verify',
+        body: {
+          type: 'email',
+          token: '123456',
+          email: 'test@example.com'
+        },
+        description: 'Verify email OTP token'
+      },
+      {
+        id: 'verify-otp-phone',
+        name: 'Verify OTP (Phone)',
+        method: 'POST',
+        endpoint: '/auth/v1/verify',
+        body: {
+          type: 'sms',
+          token: '654321',
+          phone: '+1234567890'
+        },
+        description: 'Verify SMS OTP token'
+      }
+    ]
+  },
+  {
+    id: 'email-verification',
+    name: 'Email & Phone Verification',
+    description: 'Account verification workflows for email and phone confirmation',
+    tests: [
+      {
+        id: 'resend-email-confirmation',
+        name: 'Resend Email Confirmation',
+        method: 'POST',
+        endpoint: '/auth/v1/resend',
+        body: {
+          type: 'signup',
+          email: 'test@example.com'
+        },
+        description: 'Resend email confirmation link'
+      },
+      {
+        id: 'verify-email-token',
+        name: 'Verify Email Token',
+        method: 'POST',
+        endpoint: '/auth/v1/verify',
+        body: {
+          type: 'signup',
+          token: 'mock-confirmation-token',
+          email: 'test@example.com'
+        },
+        description: 'Complete email verification'
+      },
+      {
+        id: 'resend-phone-confirmation',
+        name: 'Resend Phone Confirmation',
+        method: 'POST',
+        endpoint: '/auth/v1/resend',
+        body: {
+          type: 'sms',
+          phone: '+1234567890'
+        },
+        description: 'Resend phone verification SMS'
+      },
+      {
+        id: 'verify-phone-token',
+        name: 'Verify Phone Token',
+        method: 'POST',
+        endpoint: '/auth/v1/verify',
+        body: {
+          type: 'sms',
+          token: '789012',
+          phone: '+1234567890'
+        },
+        description: 'Complete phone number verification'
+      }
+    ]
+  },
+  {
+    id: 'mfa',
+    name: 'Multi-Factor Authentication',
+    description: 'TOTP and SMS-based multi-factor authentication setup and verification',
+    tests: [
+      {
+        id: 'list-mfa-factors',
+        name: 'List MFA Factors',
+        method: 'GET',
+        endpoint: '/auth/v1/factors',
+        description: 'Get all enrolled MFA factors for user',
+        requiresAuth: true
+      },
+      {
+        id: 'enroll-totp-factor',
+        name: 'Enroll TOTP Factor',
+        method: 'POST',
+        endpoint: '/auth/v1/factors',
+        body: {
+          factorType: 'totp',
+          friendly_name: 'My Authenticator App'
+        },
+        description: 'Enroll a new TOTP (authenticator app) factor',
+        requiresAuth: true
+      },
+      {
+        id: 'verify-totp-enrollment',
+        name: 'Verify TOTP Enrollment',
+        method: 'POST',
+        endpoint: '/auth/v1/factors/mock-factor-id/verify',
+        body: {
+          code: '123456'
+        },
+        description: 'Complete TOTP factor enrollment with code',
+        requiresAuth: true
+      },
+      {
+        id: 'enroll-phone-factor',
+        name: 'Enroll Phone Factor',
+        method: 'POST',
+        endpoint: '/auth/v1/factors',
+        body: {
+          factorType: 'phone',
+          phone: '+1234567890'
+        },
+        description: 'Enroll phone number for SMS MFA',
+        requiresAuth: true
+      },
+      {
+        id: 'create-mfa-challenge',
+        name: 'Create MFA Challenge',
+        method: 'POST',
+        endpoint: '/auth/v1/factors/mock-factor-id/challenge',
+        body: {},
+        description: 'Generate MFA challenge for authentication',
+        requiresAuth: true
+      },
+      {
+        id: 'verify-mfa-challenge',
+        name: 'Verify MFA Challenge',
+        method: 'POST',
+        endpoint: '/auth/v1/factors/mock-factor-id/verify',
+        body: {
+          challengeId: 'mock-challenge-id',
+          code: '654321'
+        },
+        description: 'Complete MFA challenge verification',
+        requiresAuth: true
+      },
+      {
+        id: 'unenroll-mfa-factor',
+        name: 'Unenroll MFA Factor',
+        method: 'DELETE',
+        endpoint: '/auth/v1/factors/mock-factor-id',
+        description: 'Remove MFA factor from account',
+        requiresAuth: true
+      }
+    ]
+  },
+  {
+    id: 'oauth-social',
+    name: 'OAuth & Social Login',
+    description: 'Social authentication providers and OAuth flow simulation',
+    tests: [
+      {
+        id: 'oauth-authorize-google',
+        name: 'OAuth Authorize (Google)',
+        method: 'GET',
+        endpoint: '/auth/v1/authorize?provider=google&redirect_to=http://localhost:5176/callback',
+        description: 'Initiate Google OAuth authorization flow'
+      },
+      {
+        id: 'oauth-authorize-github',
+        name: 'OAuth Authorize (GitHub)',
+        method: 'GET',
+        endpoint: '/auth/v1/authorize?provider=github&redirect_to=http://localhost:5176/callback',
+        description: 'Initiate GitHub OAuth authorization flow'
+      },
+      {
+        id: 'oauth-callback',
+        name: 'OAuth Callback',
+        method: 'POST',
+        endpoint: '/auth/v1/callback',
+        body: {
+          provider: 'google',
+          code: 'mock-oauth-code',
+          state: 'mock-state'
+        },
+        description: 'Handle OAuth provider callback'
+      },
+      {
+        id: 'link-identity',
+        name: 'Link Social Identity',
+        method: 'POST',
+        endpoint: '/auth/v1/user/identities',
+        body: {
+          provider: 'github',
+          access_token: 'mock-provider-token'
+        },
+        description: 'Link additional social identity to account',
+        requiresAuth: true
+      },
+      {
+        id: 'unlink-identity',
+        name: 'Unlink Social Identity',
+        method: 'DELETE',
+        endpoint: '/auth/v1/user/identities/mock-identity-id',
+        description: 'Remove linked social identity',
+        requiresAuth: true
+      },
+      {
+        id: 'get-identities',
+        name: 'Get Linked Identities',
+        method: 'GET',
+        endpoint: '/auth/v1/user/identities',
+        description: 'List all linked social identities',
+        requiresAuth: true
+      }
+    ]
+  },
+  {
+    id: 'admin-operations',
+    name: 'Admin Operations',
+    description: 'Administrative user management functions (requires admin privileges)',
+    tests: [
+      {
+        id: 'admin-list-users',
+        name: 'List All Users (Admin)',
+        method: 'GET',
+        endpoint: '/auth/v1/admin/users?page=1&per_page=10',
+        description: 'Get paginated list of all users',
+        requiresAuth: true,
+        adminOnly: true
+      },
+      {
+        id: 'admin-get-user',
+        name: 'Get User by ID (Admin)',
+        method: 'GET',
+        endpoint: '/auth/v1/admin/users/mock-user-id',
+        description: 'Get specific user details by ID',
+        requiresAuth: true,
+        adminOnly: true
+      },
+      {
+        id: 'admin-create-user',
+        name: 'Create User (Admin)',
+        method: 'POST',
+        endpoint: '/auth/v1/admin/users',
+        body: {
+          email: 'admin-created@example.com',
+          password: 'Password123$',
+          email_confirm: true,
+          user_metadata: {
+            full_name: 'Admin Created User'
+          }
+        },
+        description: 'Create new user account as admin',
+        requiresAuth: true,
+        adminOnly: true
+      },
+      {
+        id: 'admin-update-user',
+        name: 'Update User (Admin)',
+        method: 'PUT',
+        endpoint: '/auth/v1/admin/users/mock-user-id',
+        body: {
+          role: 'authenticated',
+          user_metadata: {
+            full_name: 'Updated by Admin'
+          },
+          ban_duration: 'none'
+        },
+        description: 'Update user account as admin',
+        requiresAuth: true,
+        adminOnly: true
+      },
+      {
+        id: 'admin-delete-user',
+        name: 'Delete User (Admin)',
+        method: 'DELETE',
+        endpoint: '/auth/v1/admin/users/mock-user-id',
+        description: 'Permanently delete user account',
+        requiresAuth: true,
+        adminOnly: true
+      },
+      {
+        id: 'admin-generate-invite',
+        name: 'Generate Invite Link',
+        method: 'POST',
+        endpoint: '/auth/v1/admin/generate_link',
+        body: {
+          type: 'invite',
+          email: 'invite@example.com',
+          redirect_to: 'http://localhost:5176/welcome'
+        },
+        description: 'Generate invitation link for new user',
+        requiresAuth: true,
+        adminOnly: true
+      }
+    ]
+  },
+  {
+    id: 'anonymous-auth',
+    name: 'Anonymous Authentication',
+    description: 'Anonymous user sessions and guest authentication',
+    tests: [
+      {
+        id: 'signin-anonymous',
+        name: 'Sign In Anonymously',
+        method: 'POST',
+        endpoint: '/auth/v1/signup',
+        body: {
+          data: {
+            anonymous: true
+          }
+        },
+        description: 'Create anonymous user session'
+      },
+      {
+        id: 'convert-anonymous',
+        name: 'Convert Anonymous to Permanent',
+        method: 'PUT',
+        endpoint: '/auth/v1/user',
+        body: {
+          email: 'converted@example.com',
+          password: 'Password123$'
+        },
+        description: 'Convert anonymous user to permanent account',
+        requiresAuth: true
+      },
+      {
+        id: 'link-anonymous-session',
+        name: 'Link Anonymous Session',
+        method: 'POST',
+        endpoint: '/auth/v1/user/identities',
+        body: {
+          provider: 'email',
+          email: 'existing@example.com'
+        },
+        description: 'Link anonymous session to existing account',
+        requiresAuth: true
+      }
+    ]
+  },
+  {
+    id: 'session-management',
+    name: 'Session Management',
+    description: 'Advanced session handling, device management, and security',
+    tests: [
+      {
+        id: 'list-sessions',
+        name: 'List All Sessions',
+        method: 'GET',
+        endpoint: '/auth/v1/sessions',
+        description: 'Get all active sessions for current user',
+        requiresAuth: true
+      },
+      {
+        id: 'revoke-session',
+        name: 'Revoke Specific Session',
+        method: 'DELETE',
+        endpoint: '/auth/v1/sessions/mock-session-id',
+        description: 'Revoke a specific session by ID',
+        requiresAuth: true
+      },
+      {
+        id: 'revoke-other-sessions',
+        name: 'Revoke Other Sessions',
+        method: 'POST',
+        endpoint: '/auth/v1/logout',
+        body: {
+          scope: 'others'
+        },
+        description: 'Sign out from all other sessions',
+        requiresAuth: true
+      },
+      {
+        id: 'refresh-session',
+        name: 'Refresh Session',
+        method: 'POST',
+        endpoint: '/auth/v1/token?grant_type=refresh_token',
+        body: {
+          refresh_token: 'mock-refresh-token'
+        },
+        description: 'Refresh the current session with refresh token',
+        requiresAuth: true
+      },
+      {
+        id: 'extend-session',
+        name: 'Extend Session',
+        method: 'POST',
+        endpoint: '/auth/v1/token?grant_type=refresh_token',
+        body: {
+          refresh_token: 'stored-refresh-token'
+        },
+        description: 'Extend session before expiry'
+      }
+    ]
+  },
+  {
+    id: 'security-edge-cases',
+    name: 'Security & Edge Cases',
+    description: 'Security testing, rate limiting, and error condition handling',
+    tests: [
+      {
+        id: 'invalid-credentials',
+        name: 'Invalid Credentials',
+        method: 'POST',
+        endpoint: '/auth/v1/signin',
+        body: {
+          email: 'test@example.com',
+          password: 'wrongpassword'
+        },
+        description: 'Test authentication with wrong password (401 error)'
+      },
+      {
+        id: 'malformed-email',
+        name: 'Malformed Email',
+        method: 'POST',
+        endpoint: '/auth/v1/signup',
+        body: {
+          email: 'not-an-email',
+          password: 'Password123$'
+        },
+        description: 'Test signup with invalid email format (422 error)'
+      },
+      {
+        id: 'weak-password',
+        name: 'Weak Password',
+        method: 'POST',
+        endpoint: '/auth/v1/signup',
+        body: {
+          email: 'weak@example.com',
+          password: '123'
+        },
+        description: 'Test password strength validation (422 error)'
+      },
+      {
+        id: 'expired-token',
+        name: 'Expired Token Access',
+        method: 'GET',
+        endpoint: '/auth/v1/user',
+        description: 'Test access with expired JWT token (401 error)',
+        requiresAuth: true
+      },
+      {
+        id: 'invalid-token',
+        name: 'Invalid Token Format',
+        method: 'GET',
+        endpoint: '/auth/v1/user',
+        description: 'Test access with malformed token (401 error)'
+      },
+      {
+        id: 'rate-limit-test',
+        name: 'Rate Limit Test',
+        method: 'POST',
+        endpoint: '/auth/v1/signin',
+        body: {
+          email: 'rate-limit-test@example.com',
+          password: 'Password123$'
+        },
+        description: 'Test authentication rate limiting (429 error after multiple attempts)'
       }
     ]
   }
@@ -291,6 +846,20 @@ const apiTestCategories = [
         method: 'GET',
         endpoint: '/rest/v1/products?discontinued=eq.0&order=unit_price.desc&limit=10',
         description: 'Active products sorted by price (highest first)'
+      },
+      {
+        id: 'multiple-values',
+        name: 'Multiple Values (IN)',
+        method: 'GET',
+        endpoint: '/rest/v1/products?category_id=in.1,2,3',
+        description: 'Products from categories 1, 2, or 3'
+      },
+      {
+        id: 'low-stock',
+        name: 'Low Stock Alert',
+        method: 'GET',
+        endpoint: '/rest/v1/products?units_in_stock=lte.10&discontinued=eq.0',
+        description: 'Find active products with low inventory (≤10 units)'
       }
     ]
   },
@@ -312,6 +881,20 @@ const apiTestCategories = [
         method: 'GET',
         endpoint: '/rest/v1/products?select=product_name,unit_price,categories(category_name)&limit=10',
         description: 'Products with their category names'
+      },
+      {
+        id: 'order-details-full',
+        name: 'Order Details with Products',
+        method: 'GET',
+        endpoint: '/rest/v1/order_details?select=*,orders(order_date),products(product_name,unit_price)&limit=5',
+        description: 'Order line items with product and order information'
+      },
+      {
+        id: 'customer-order-count',
+        name: 'Customers with Order Count',
+        method: 'GET',
+        endpoint: '/rest/v1/customers?select=company_name,contact_name,orders(count)&limit=10',
+        description: 'Customer list with total number of orders'
       }
     ]
   },
@@ -333,6 +916,93 @@ const apiTestCategories = [
         method: 'GET',
         endpoint: '/rest/v1/products?invalid_column=eq.test',
         description: 'Query with non-existent column (400 error)'
+      },
+      {
+        id: 'missing-required-fields',
+        name: 'Missing Required Fields',
+        method: 'POST',
+        endpoint: '/rest/v1/products',
+        body: {
+          unit_price: 25.99
+        },
+        description: 'Create product without required fields (422 error)'
+      },
+      {
+        id: 'invalid-parameter',
+        name: 'Invalid Parameter',
+        method: 'GET',
+        endpoint: '/rest/v1/products?limit=invalid',
+        description: 'Use invalid value for limit parameter (400 error)'
+      }
+    ]
+  },
+  {
+    id: 'pagination',
+    name: 'Pagination & Limits',
+    description: 'Data pagination and result limiting techniques',
+    tests: [
+      {
+        id: 'basic-limit',
+        name: 'Basic Limit',
+        method: 'GET',
+        endpoint: '/rest/v1/products?limit=5',
+        description: 'Get first 5 products'
+      },
+      {
+        id: 'pagination',
+        name: 'Pagination (Offset)',
+        method: 'GET',
+        endpoint: '/rest/v1/products?limit=5&offset=10',
+        description: 'Get products 11-15 (page 3 with 5 per page)'
+      },
+      {
+        id: 'recent-orders',
+        name: 'Recent Orders',
+        method: 'GET',
+        endpoint: '/rest/v1/orders?order=order_date.desc&limit=10',
+        description: 'Get 10 most recent orders'
+      },
+      {
+        id: 'count-only',
+        name: 'Count Only',
+        method: 'HEAD',
+        endpoint: '/rest/v1/products',
+        description: 'Get total product count without data'
+      }
+    ]
+  },
+  {
+    id: 'business-scenarios',
+    name: 'Business Scenarios',
+    description: 'Real-world business queries using Northwind data',
+    tests: [
+      {
+        id: 'monthly-sales',
+        name: 'Monthly Sales Report',
+        method: 'GET',
+        endpoint: '/rest/v1/orders?order_date=gte.1997-01-01&order_date=lt.1997-02-01&select=order_id,order_date,freight',
+        description: 'Orders from January 1997 for sales analysis'
+      },
+      {
+        id: 'vip-customers',
+        name: 'VIP Customers',
+        method: 'GET',
+        endpoint: '/rest/v1/customers?select=*,orders(count)&orders.count=gte.10',
+        description: 'Customers with 10 or more orders'
+      },
+      {
+        id: 'premium-products',
+        name: 'Premium Products',
+        method: 'GET',
+        endpoint: '/rest/v1/products?select=*,categories(category_name)&unit_price=gte.100',
+        description: 'High-value products over $100'
+      },
+      {
+        id: 'employee-territories',
+        name: 'Employee Territories',
+        method: 'GET',
+        endpoint: '/rest/v1/employees?select=first_name,last_name,title,employee_territories(count)',
+        description: 'Employee list with territory assignments'
       }
     ]
   }
@@ -761,101 +1431,126 @@ function generateReport() {
 async function validateEnvironment() {
   console.log('🔍 Running Pre-Flight Checks...');
   
-  // 1. Health Check
-  process.stdout.write('  ⏳ Health Check: ');
+  // Test the actual REST API endpoint that will be used by tests
+  process.stdout.write('  ⏳ API & Database Check: ');
   try {
-    const healthStart = Date.now();
-    const healthResponse = await fetch(`${BASE_URL}/health`, {
+    const apiStart = Date.now();
+    const apiResponse = await fetch(`${BASE_URL}/rest/v1/products?limit=1`, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(10000) // 10 second timeout
-    });
-    
-    const healthTime = Date.now() - healthStart;
-    
-    if (!healthResponse.ok) {
-      // Check if it's a Supabase Lite specific error about browser connection
-      let errorMessage = `${healthResponse.status} ${healthResponse.statusText}`;
-      try {
-        const errorData = await healthResponse.json();
-        if (errorData.error === 'Browser database not connected') {
-          errorMessage = 'Browser database not connected - please open http://localhost:5173 in your browser first';
-        }
-      } catch (e) {
-        // Ignore JSON parsing errors, use default message
-      }
-      
-      console.log(`❌ Failed (${errorMessage})`);
-      return {
-        success: false,
-        error: `Health check failed: ${errorMessage}`
-      };
-    }
-    
-    console.log(`✅ Server responding (${healthTime}ms)`);
-  } catch (error) {
-    console.log(`❌ Failed (${error.message})`);
-    return {
-      success: false,
-      error: `Health check failed: ${error.message}`
-    };
-  }
-  
-  // 2. Database/Northwind Data Check
-  process.stdout.write('  ⏳ Database Check: ');
-  try {
-    const dbStart = Date.now();
-    const dbResponse = await fetch(`${BASE_URL}/debug/sql`, {
-      method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'apikey': 'test-api-key'
       },
-      body: JSON.stringify({
-        sql: 'SELECT COUNT(*) as count FROM products'
-      }),
       signal: AbortSignal.timeout(15000) // 15 second timeout
     });
     
-    const dbTime = Date.now() - dbStart;
+    const apiTime = Date.now() - apiStart;
     
-    if (!dbResponse.ok) {
-      // Check if it's a Supabase Lite specific error about browser connection
-      let errorMessage = `${dbResponse.status} ${dbResponse.statusText}`;
-      try {
-        const errorData = await dbResponse.json();
-        if (errorData.error === 'Browser database not connected') {
-          errorMessage = 'Browser database not connected - please open http://localhost:5173 in your browser first';
+    if (!apiResponse.ok) {
+      console.log(`❌ Failed (${apiResponse.status} ${apiResponse.statusText})`);
+      
+      // Check for WebSocket bridge requirement
+      if (apiResponse.status === 503) {
+        try {
+          const errorResponse = await apiResponse.json();
+          if (errorResponse.error === 'Browser database not connected') {
+            return {
+              success: false,
+              error: 'WebSocket bridge not active: Please open http://localhost:5173 in your browser to initialize the database connection, then run this test.'
+            };
+          }
+        } catch (e) {
+          // Fall through to generic error handling
         }
-      } catch (e) {
-        // Ignore JSON parsing errors, use default message
       }
       
-      console.log(`❌ Failed (${errorMessage})`);
+      // Provide specific guidance based on status code
+      let errorGuidance = '';
+      if (apiResponse.status === 404) {
+        errorGuidance = ' - REST API endpoints may not be configured';
+      } else if (apiResponse.status >= 500) {
+        errorGuidance = ' - Server or database connection issue';
+      }
+      
       return {
         success: false,
-        error: `Database check failed: ${errorMessage}`
+        error: `API check failed: ${apiResponse.status} ${apiResponse.statusText}${errorGuidance}`
       };
     }
     
-    const dbData = await dbResponse.json();
-    const productCount = dbData.data?.[0]?.count || 0;
+    // Validate response contains data
+    let productsData;
+    try {
+      productsData = await apiResponse.json();
+    } catch (error) {
+      console.log('❌ Invalid JSON response');
+      return {
+        success: false,
+        error: 'API check failed: Invalid JSON response from products endpoint'
+      };
+    }
     
-    if (productCount === 0) {
+    // Check if we got products data
+    if (!Array.isArray(productsData)) {
+      console.log('❌ Unexpected response format');
+      return {
+        success: false,
+        error: 'API check failed: Expected array response from products endpoint'
+      };
+    }
+    
+    if (productsData.length === 0) {
       console.log('❌ No products found');
       return {
         success: false,
-        error: 'Database check failed: Products table is empty (0 records). Please load Northwind sample data.'
+        error: 'Database check failed: Products table is empty. Please load Northwind sample data.'
       };
     }
     
-    console.log(`✅ Northwind data loaded (${productCount} products found) (${dbTime}ms)`);
+    console.log(`✅ API responding, Northwind data loaded (${apiTime}ms)`);
   } catch (error) {
     console.log(`❌ Failed (${error.message})`);
+    
+    // Provide specific guidance for common connection issues
+    let errorGuidance = '';
+    if (error.message.includes('ECONNREFUSED')) {
+      errorGuidance = ' - Server not running on specified port';
+    } else if (error.message.includes('timeout')) {
+      errorGuidance = ' - Server response timeout, may be initializing';
+    }
+    
     return {
       success: false,
-      error: `Database check failed: ${error.message}`
+      error: `API check failed: ${error.message}${errorGuidance}`
     };
+  }
+  
+  // Additional quick check: Test a simple products count via REST API
+  process.stdout.write('  ⏳ Data Validation: ');
+  try {
+    const countStart = Date.now();
+    const countResponse = await fetch(`${BASE_URL}/rest/v1/products?select=count()`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'apikey': 'test-api-key'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    const countTime = Date.now() - countStart;
+    
+    if (countResponse.ok) {
+      const countData = await countResponse.json();
+      const productCount = countData[0]?.count || 0;
+      console.log(`✅ ${productCount} products available (${countTime}ms)`);
+    } else {
+      // If count query fails, it's not critical - we already validated basic API access
+      console.log(`⚠️ Count query failed, but basic API is working (${countTime}ms)`);
+    }
+  } catch (error) {
+    // Count validation is optional - don't fail if it doesn't work
+    console.log(`⚠️ Count query failed, but basic API is working`);
   }
   
   console.log('  ✅ Environment Ready!\n');
@@ -876,9 +1571,9 @@ async function main() {
       console.error(`❌ Environment validation failed: ${validation.error}`);
       console.log('\n💡 Please ensure:');
       console.log('  1. Supabase Lite is running (npm run dev)');
-      console.log('  2. Open http://localhost:5173 in your browser to initialize database');
-      console.log('  3. Northwind sample data is loaded');
-      console.log('  4. Database connection is established');
+      console.log('  2. Server is accessible at the specified URL');
+      console.log('  3. Northwind sample data is loaded (products table)');
+      console.log('  4. REST API endpoints are configured and working');
       process.exit(1);
     }
     
