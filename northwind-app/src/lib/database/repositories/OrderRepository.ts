@@ -143,14 +143,14 @@ export class OrderRepository extends BaseRepository<Order> {
    * Find orders with full details (customer, employee, shipper info)
    */
   async findWithDetails(orderId: number): Promise<OrderWithDetails | null> {
-    // Get order with related information using Supabase joins
+    // Get order with related information using correct PostgREST relationship syntax
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .select(`
         *,
-        customers(company_name),
-        employees(first_name, last_name),
-        shippers(company_name)
+        customers!customer_id(company_name),
+        employees!employee_id(first_name, last_name),
+        shippers!ship_via(company_name)
       `)
       .eq('order_id', orderId)
       .single()
@@ -166,7 +166,7 @@ export class OrderRepository extends BaseRepository<Order> {
       .from('order_details')
       .select(`
         *,
-        products(product_name)
+        products!product_id(product_name)
       `)
       .eq('order_id', orderId)
       .order('product_id')
