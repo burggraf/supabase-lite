@@ -279,6 +279,220 @@ export class ProductRepository extends BaseRepository<Product> {
   }
 
   /**
+   * Get inventory valuation and summary
+   */
+  async getInventoryValuation(): Promise<{
+    totalProducts: number
+    totalValue: number
+    averageValue: number
+    lowStockCount: number
+    outOfStockCount: number
+    overstockCount: number
+    totalUnits: number
+  }> {
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('product_id, unit_price, units_in_stock, reorder_level')
+
+    if (error) {
+      throw new Error(`Failed to fetch products for valuation: ${error.message}`)
+    }
+
+    if (!products || products.length === 0) {
+      return {
+        totalProducts: 0,
+        totalValue: 0,
+        averageValue: 0,
+        lowStockCount: 0,
+        outOfStockCount: 0,
+        overstockCount: 0,
+        totalUnits: 0
+      }
+    }
+
+    let totalValue = 0
+    let totalUnits = 0
+    let lowStockCount = 0
+    let outOfStockCount = 0
+    let overstockCount = 0
+
+    products.forEach(product => {
+      const productValue = (product.unit_price || 0) * product.units_in_stock
+      totalValue += productValue
+      totalUnits += product.units_in_stock
+
+      const reorderLevel = product.reorder_level || 10
+
+      if (product.units_in_stock === 0) {
+        outOfStockCount++
+      } else if (product.units_in_stock < reorderLevel) {
+        lowStockCount++
+      } else if (product.units_in_stock > reorderLevel * 3) {
+        overstockCount++
+      }
+    })
+
+    return {
+      totalProducts: products.length,
+      totalValue: Math.round(totalValue),
+      averageValue: Math.round(totalValue / products.length),
+      lowStockCount,
+      outOfStockCount,
+      overstockCount,
+      totalUnits
+    }
+  }
+
+  /**
+   * Get products requiring reorder
+   */
+  async getReorderAlerts(): Promise<Array<{
+    product_id: number
+    product_name: string
+    category_name: string
+    supplier_name: string
+    units_in_stock: number
+    reorder_level: number
+    units_on_order: number
+    unit_price: number
+    suggested_order_quantity: number
+  }>> {
+    const { data: products, error } = await supabase
+      .from('products')
+      .select(`
+        product_id,
+        product_name,
+        units_in_stock,
+        reorder_level,
+        units_on_order,
+        unit_price,
+        category_id,
+        supplier_id
+      `)
+
+    if (error) {
+      throw new Error(`Failed to fetch reorder alerts: ${error.message}`)
+    }
+
+    if (!products) return []
+
+    // Get all categories and suppliers in batch queries
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('category_id, category_name')
+
+    const { data: suppliers } = await supabase
+      .from('suppliers')
+      .select('supplier_id, company_name')
+
+    // Create lookup maps for efficient access
+    const categoryMap = new Map(categories?.map(cat => [cat.category_id, cat.category_name]) || [])
+    const supplierMap = new Map(suppliers?.map(sup => [sup.supplier_id, sup.company_name]) || [])
+
+    // Add category and supplier names to products
+    const productsWithDetails = products.map(product => ({
+      ...product,
+      categoryName: categoryMap.get(product.category_id) || 'Unknown',
+      supplierName: supplierMap.get(product.supplier_id) || 'Unknown'
+    }))
+
+    // Filter products that need reordering and add suggestions
+    return productsWithDetails
+      .filter(product => {
+        const reorderLevel = product.reorder_level || 10
+        const availableStock = product.units_in_stock + (product.units_on_order || 0)
+        return availableStock <= reorderLevel
+      })
+      .map(product => {
+        const reorderLevel = product.reorder_level || 10
+        const suggestedQuantity = Math.max(reorderLevel * 2 - product.units_in_stock, reorderLevel)
+
+        return {
+          product_id: product.product_id,
+          product_name: product.product_name,
+          category_name: product.categoryName,
+          supplier_name: product.supplierName,
+          units_in_stock: product.units_in_stock,
+          reorder_level: reorderLevel,
+          units_on_order: product.units_on_order || 0,
+          unit_price: product.unit_price || 0,
+          suggested_order_quantity: suggestedQuantity
+        }
+      })
+      .sort((a, b) => a.units_in_stock - b.units_in_stock)
+  }
+
+  /**
+   * Get product performance metrics with sales data
+   */
+  async getProductPerformance(limit: number = 20): Promise<Array<{
+    product_id: number
+    product_name: string
+    category_name: string
+    unit_price: number
+    totalRevenue: number
+    totalQuantitySold: number
+    orderCount: number
+    averageDiscount: number
+  }>> {
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('product_id, product_name, unit_price, category_id')
+
+    if (productsError) {
+      throw new Error(`Failed to fetch products: ${productsError.message}`)
+    }
+
+    if (!products) return []
+
+    const productPerformance = await Promise.all(
+      products.map(async (product) => {
+        // Get category name
+        let categoryName = 'Unknown'
+        if (product.category_id) {
+          const { data: category } = await supabase
+            .from('categories')
+            .select('category_name')
+            .eq('category_id', product.category_id)
+            .single()
+          if (category) categoryName = category.category_name
+        }
+
+        // Get sales statistics
+        const salesStats = await this.getProductSalesStats(product.product_id)
+
+        // Get order details for discount calculation
+        const { data: orderDetails, error: detailsError } = await supabase
+          .from('order_details')
+          .select('discount')
+          .eq('product_id', product.product_id)
+
+        let averageDiscount = 0
+        if (!detailsError && orderDetails && orderDetails.length > 0) {
+          const totalDiscount = orderDetails.reduce((sum, detail) => sum + detail.discount, 0)
+          averageDiscount = (totalDiscount / orderDetails.length) * 100
+        }
+
+        return {
+          product_id: product.product_id,
+          product_name: product.product_name,
+          category_name: categoryName,
+          unit_price: product.unit_price || 0,
+          totalRevenue: Math.round(salesStats.totalRevenue),
+          totalQuantitySold: salesStats.totalQuantitySold,
+          orderCount: salesStats.timesOrdered,
+          averageDiscount: Math.round(averageDiscount * 100) / 100
+        }
+      })
+    )
+
+    return productPerformance
+      .filter(item => item.totalRevenue > 0)
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, limit)
+  }
+
+  /**
    * Get product sales statistics using Supabase.js
    */
   async getProductSalesStats(productId: number): Promise<{

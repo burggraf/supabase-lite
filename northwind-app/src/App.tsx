@@ -12,6 +12,7 @@ import { Orders } from '@/pages/orders/Orders'
 import { Products } from '@/pages/products/Products'
 import { Categories } from '@/pages/categories/Categories'
 import { Suppliers } from '@/pages/suppliers/Suppliers'
+import { Reports } from '@/pages/reports/Reports'
 import { NotFound } from '@/pages/NotFound'
 import { ROUTES } from '@/lib/constants'
 import '@/styles/globals.css'
@@ -105,10 +106,7 @@ function AppContent() {
         element={
           <ProtectedRoute>
             <Layout>
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Reports</h1>
-                <p className="text-gray-600 mt-2">Coming in Phase 5</p>
-              </div>
+              <Reports />
             </Layout>
           </ProtectedRoute>
         }

@@ -388,18 +388,10 @@ export class OrderRepository extends BaseRepository<Order> {
     total_revenue: number
     order_count: number
   }>> {
-    // Get order details with products and orders for date filtering
+    // Get order details first
     let query = supabase
       .from('order_details')
-      .select(`
-        product_id,
-        unit_price,
-        quantity,
-        discount,
-        order_id,
-        products(product_name),
-        orders(order_date)
-      `)
+      .select('product_id, unit_price, quantity, discount, order_id')
 
     const { data: orderDetails, error } = await query
 
@@ -411,7 +403,39 @@ export class OrderRepository extends BaseRepository<Order> {
       return []
     }
 
-    // Filter by date range if provided and aggregate data
+    // If date filtering is needed, get orders data separately
+    let validOrderIds: Set<number> | null = null
+    if (from || to) {
+      let ordersQuery = supabase.from('orders').select('order_id, order_date')
+      
+      if (from) {
+        ordersQuery = ordersQuery.gte('order_date', from.toISOString())
+      }
+      if (to) {
+        ordersQuery = ordersQuery.lte('order_date', to.toISOString())
+      }
+
+      const { data: orders, error: ordersError } = await ordersQuery
+      
+      if (ordersError) {
+        throw new Error(`Failed to fetch orders for date filtering: ${ordersError.message}`)
+      }
+      
+      validOrderIds = new Set(orders?.map(o => o.order_id) || [])
+    }
+
+    // Get all products for name lookup
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('product_id, product_name')
+
+    if (productsError) {
+      throw new Error(`Failed to fetch products: ${productsError.message}`)
+    }
+
+    const productMap = new Map(products?.map(p => [p.product_id, p.product_name]) || [])
+
+    // Aggregate data
     const productStats = new Map<number, {
       product_id: number
       product_name: string
@@ -421,16 +445,14 @@ export class OrderRepository extends BaseRepository<Order> {
     }>()
 
     for (const detail of orderDetails) {
-      // Apply date filtering
-      if (from || to) {
-        const orderDate = new Date((detail as any).orders?.order_date)
-        if (from && orderDate < from) continue
-        if (to && orderDate > to) continue
+      // Apply date filtering if needed
+      if (validOrderIds && !validOrderIds.has(detail.order_id)) {
+        continue
       }
 
       const productId = detail.product_id
       const revenue = detail.unit_price * detail.quantity * (1 - detail.discount)
-      const productName = (detail as any).products?.product_name || 'Unknown'
+      const productName = productMap.get(productId) || 'Unknown'
 
       if (!productStats.has(productId)) {
         productStats.set(productId, {

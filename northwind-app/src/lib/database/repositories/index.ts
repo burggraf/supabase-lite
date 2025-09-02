@@ -33,3 +33,14 @@ export type { Supplier } from './SupplierRepository'
 
 export { EmployeeRepository } from './EmployeeRepository'
 export type { Employee } from './EmployeeRepository'
+
+export { AnalyticsRepository } from './AnalyticsRepository'
+export type { 
+  BusinessMetrics,
+  SalesTrendData,
+  TopCustomer,
+  CustomerSegment,
+  InventoryAlert,
+  ProductPerformance,
+  RevenueByCategory
+} from './AnalyticsRepository'

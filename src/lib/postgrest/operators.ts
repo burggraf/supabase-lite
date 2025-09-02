@@ -188,6 +188,23 @@ export function parseOperatorValue(operator: string, value: string): { op: Opera
 
   // Special handling for different operators
   switch (operator) {
+    case 'eq':
+    case 'neq':
+      // Handle boolean values for equality operators
+      // Convert to integers to maintain compatibility with integer boolean columns (0/1)
+      if (value.toLowerCase() === 'true') {
+        parsedValue = 1
+      } else if (value.toLowerCase() === 'false') {
+        parsedValue = 0
+      } else if (value.toLowerCase() === 'null') {
+        parsedValue = null
+      }
+      // For other values, try to parse as number if possible
+      else if (!isNaN(Number(value))) {
+        parsedValue = Number(value)
+      }
+      break
+
     case 'is':
       // Handle special values for IS operator
       if (value.toLowerCase() === 'null') {
@@ -203,7 +220,19 @@ export function parseOperatorValue(operator: string, value: string): { op: Opera
 
     case 'in':
       // Parse comma-separated list for IN operator
-      parsedValue = value.split(',').map(v => v.trim())
+      // Handle PostgREST syntax: in.(value1,value2,value3)
+      let cleanValue = value
+      if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
+        cleanValue = cleanValue.slice(1, -1) // Remove parentheses
+      }
+      parsedValue = cleanValue.split(',').map(v => {
+        const trimmed = v.trim()
+        // Try to parse as number if possible
+        if (!isNaN(Number(trimmed))) {
+          return Number(trimmed)
+        }
+        return trimmed
+      })
       break
 
     case 'cs':

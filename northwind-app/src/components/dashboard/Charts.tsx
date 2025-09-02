@@ -1,7 +1,4 @@
-import React from 'react'
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -18,47 +15,55 @@ import {
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
-// Sample data - in a real app, this would come from your data hooks
-const salesTrendData = [
-  { month: 'Jan', sales: 4000, orders: 24 },
-  { month: 'Feb', sales: 3000, orders: 18 },
-  { month: 'Mar', sales: 5000, orders: 31 },
-  { month: 'Apr', sales: 4500, orders: 28 },
-  { month: 'May', sales: 6000, orders: 37 },
-  { month: 'Jun', sales: 5500, orders: 34 },
-]
-
-const topProductsData = [
-  { name: 'Chai', sales: 850, orders: 45 },
-  { name: 'Chang', sales: 720, orders: 38 },
-  { name: 'Aniseed Syrup', sales: 680, orders: 35 },
-  { name: 'Ikura', sales: 620, orders: 32 },
-  { name: 'Tofu', sales: 580, orders: 29 },
-]
-
-const categoryDistribution = [
-  { name: 'Beverages', value: 12, color: '#3b82f6' },
-  { name: 'Dairy Products', value: 10, color: '#10b981' },
-  { name: 'Seafood', value: 12, color: '#f59e0b' },
-  { name: 'Condiments', value: 12, color: '#ef4444' },
-  { name: 'Grains/Cereals', value: 7, color: '#8b5cf6' },
-  { name: 'Meat/Poultry', value: 6, color: '#ec4899' },
-  { name: 'Produce', value: 5, color: '#14b8a6' },
-  { name: 'Confections', value: 13, color: '#f97316' },
-]
-
-const orderStatusData = [
-  { status: 'Pending', count: 15, color: '#f59e0b' },
-  { status: 'Processing', count: 23, color: '#3b82f6' },
-  { status: 'Shipped', count: 45, color: '#10b981' },
-  { status: 'Delivered', count: 67, color: '#6b7280' },
-]
-
 interface ChartProps {
   className?: string
 }
 
-export function SalesTrendChart({ className }: ChartProps) {
+interface SalesTrendData {
+  period: string
+  sales: number
+  orders: number
+  customers?: number
+}
+
+interface TopProductData {
+  product_name: string
+  total_revenue: number
+  total_quantity: number
+  order_count: number
+}
+
+interface CategoryData {
+  category_name: string
+  revenue: number
+  product_count: number
+  order_count: number
+}
+
+interface OrderStatusData {
+  status: string
+  count: number
+  color: string
+}
+
+export function SalesTrendChart({ 
+  className, 
+  data 
+}: ChartProps & { 
+  data?: SalesTrendData[] 
+}) {
+  // Default data for fallback
+  const defaultData = [
+    { period: 'Jan', sales: 4000, orders: 24 },
+    { period: 'Feb', sales: 3000, orders: 18 },
+    { period: 'Mar', sales: 5000, orders: 31 },
+    { period: 'Apr', sales: 4500, orders: 28 },
+    { period: 'May', sales: 6000, orders: 37 },
+    { period: 'Jun', sales: 5500, orders: 34 },
+  ]
+
+  const chartData = data && data.length > 0 ? data : defaultData
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -67,7 +72,7 @@ export function SalesTrendChart({ className }: ChartProps) {
       <CardContent>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={salesTrendData}>
+            <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -76,7 +81,7 @@ export function SalesTrendChart({ className }: ChartProps) {
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
-                dataKey="month" 
+                dataKey="period" 
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
@@ -114,7 +119,33 @@ export function SalesTrendChart({ className }: ChartProps) {
   )
 }
 
-export function TopProductsChart({ className }: ChartProps) {
+export function TopProductsChart({ 
+  className, 
+  data 
+}: ChartProps & { 
+  data?: TopProductData[] 
+}) {
+  // Default data for fallback
+  const defaultData = [
+    { product_name: 'Chai', total_revenue: 850, total_quantity: 45, order_count: 12 },
+    { product_name: 'Chang', total_revenue: 720, total_quantity: 38, order_count: 10 },
+    { product_name: 'Aniseed Syrup', total_revenue: 680, total_quantity: 35, order_count: 9 },
+    { product_name: 'Ikura', total_revenue: 620, total_quantity: 32, order_count: 8 },
+    { product_name: 'Tofu', total_revenue: 580, total_quantity: 29, order_count: 7 },
+  ]
+
+  const chartData = data && data.length > 0 
+    ? data.slice(0, 5).map(item => ({
+        name: item.product_name,
+        sales: item.total_revenue,
+        orders: item.order_count
+      }))
+    : defaultData.map(item => ({
+        name: item.product_name,
+        sales: item.total_revenue,
+        orders: item.order_count
+      }))
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -123,7 +154,7 @@ export function TopProductsChart({ className }: ChartProps) {
       <CardContent>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={topProductsData} layout="horizontal">
+            <BarChart data={chartData} layout="horizontal">
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 type="number" 
@@ -162,7 +193,35 @@ export function TopProductsChart({ className }: ChartProps) {
   )
 }
 
-export function CategoryDistributionChart({ className }: ChartProps) {
+export function CategoryDistributionChart({ 
+  className, 
+  data 
+}: ChartProps & { 
+  data?: CategoryData[] 
+}) {
+  // Default data for fallback
+  const defaultData = [
+    { category_name: 'Beverages', revenue: 120000, product_count: 12, order_count: 45 },
+    { category_name: 'Dairy Products', revenue: 100000, product_count: 10, order_count: 38 },
+    { category_name: 'Seafood', revenue: 95000, product_count: 12, order_count: 42 },
+    { category_name: 'Condiments', revenue: 85000, product_count: 12, order_count: 35 },
+    { category_name: 'Grains/Cereals', revenue: 70000, product_count: 7, order_count: 28 },
+  ]
+
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+  
+  const chartData = data && data.length > 0 
+    ? data.slice(0, 8).map((item, index) => ({
+        name: item.category_name,
+        value: item.product_count,
+        color: colors[index % colors.length]
+      }))
+    : defaultData.map((item, index) => ({
+        name: item.category_name,
+        value: item.product_count,
+        color: colors[index % colors.length]
+      }))
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -173,7 +232,7 @@ export function CategoryDistributionChart({ className }: ChartProps) {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={categoryDistribution}
+                data={chartData}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -181,12 +240,12 @@ export function CategoryDistributionChart({ className }: ChartProps) {
                 paddingAngle={2}
                 dataKey="value"
               >
-                {categoryDistribution.map((entry, index) => (
+                {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip 
-                formatter={(value: any, name: string) => [value, 'Products']}
+                formatter={(value: any) => [value, 'Products']}
                 labelStyle={{ color: '#374151' }}
                 contentStyle={{ 
                   backgroundColor: 'white', 
@@ -208,7 +267,22 @@ export function CategoryDistributionChart({ className }: ChartProps) {
   )
 }
 
-export function OrderStatusChart({ className }: ChartProps) {
+export function OrderStatusChart({ 
+  className, 
+  data 
+}: ChartProps & { 
+  data?: OrderStatusData[] 
+}) {
+  // Default data for fallback
+  const defaultData = [
+    { status: 'Pending', count: 15, color: '#f59e0b' },
+    { status: 'Processing', count: 23, color: '#3b82f6' },
+    { status: 'Shipped', count: 45, color: '#10b981' },
+    { status: 'Delivered', count: 67, color: '#6b7280' },
+  ]
+
+  const chartData = data && data.length > 0 ? data : defaultData
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -217,7 +291,7 @@ export function OrderStatusChart({ className }: ChartProps) {
       <CardContent>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={orderStatusData}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="status" 
@@ -240,7 +314,7 @@ export function OrderStatusChart({ className }: ChartProps) {
                 }}
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                {orderStatusData.map((entry, index) => (
+                {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Bar>

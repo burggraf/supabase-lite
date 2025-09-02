@@ -89,6 +89,24 @@ export const queryKeys = {
     list: () => [...queryKeys.employees.all, 'list'] as const,
     detail: (id: number) => [...queryKeys.employees.all, id] as const,
   },
+
+  // Analytics queries
+  analytics: {
+    all: ['analytics'] as const,
+    businessMetrics: ['analytics', 'businessMetrics'] as const,
+    salesTrend: ['analytics', 'salesTrend'] as const,
+    topCustomers: ['analytics', 'topCustomers'] as const,
+    customerSegmentation: ['analytics', 'customerSegmentation'] as const,
+    customerLifetimeValue: ['analytics', 'customerLifetimeValue'] as const,
+    customerRetention: ['analytics', 'customerRetention'] as const,
+    inventoryValuation: ['analytics', 'inventoryValuation'] as const,
+    reorderAlerts: ['analytics', 'reorderAlerts'] as const,
+    productPerformance: ['analytics', 'productPerformance'] as const,
+    inventoryAlerts: ['analytics', 'inventoryAlerts'] as const,
+    revenueByCategory: ['analytics', 'revenueByCategory'] as const,
+    orderStats: ['analytics', 'orderStats'] as const,
+    topProducts: ['analytics', 'topProducts'] as const,
+  },
 } as const
 
 // Helper function to invalidate related queries after mutations

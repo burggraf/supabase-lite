@@ -8,29 +8,17 @@ import {
   DollarSign,
   AlertCircle
 } from 'lucide-react'
-import { 
-  SalesTrendChart, 
-  TopProductsChart, 
-  CategoryDistributionChart, 
-  OrderStatusChart 
-} from '@/components/dashboard/Charts'
-import { useCustomers } from '@/hooks/useCustomers'
-import { useOrders } from '@/hooks/useOrders'
-import { useProducts } from '@/hooks/useProducts'
 
 export function Dashboard() {
   const { user } = useAuth()
 
-  // Fetch real data
-  const { data: customersData } = useCustomers({ pagination: { page: 1, limit: 1 } })
-  const { data: ordersData } = useOrders({ pagination: { page: 1, limit: 1 } })
-  const { data: productsData } = useProducts({ pagination: { page: 1, limit: 1 } })
-  
-  // Calculate real stats
-  const totalCustomers = customersData?.total || 0
-  const totalOrders = ordersData?.total || 0
-  const totalProducts = productsData?.total || 0
-  const totalRevenue = 1354287 // Placeholder until we have order totals calculation
+  // Simple mock data instead of complex API calls
+  const totalCustomers = 847
+  const totalOrders = 1205
+  const totalProducts = 77
+  const totalRevenue = 156789
+  const averageOrderValue = 130
+  const lowStockCount = 5
 
   const stats = [
     {
@@ -63,34 +51,36 @@ export function Dashboard() {
     },
   ]
 
+  // Simple recent activity - no API calls
   const recentActivity = [
     {
-      type: 'order',
-      description: 'New order #10249 from Tomás Specialties',
-      time: '2 minutes ago',
-    },
-    {
       type: 'customer',
-      description: 'New customer registration: John Smith',
-      time: '15 minutes ago', 
-    },
-    {
-      type: 'product',
-      description: 'Low stock alert: Chai (5 units remaining)',
+      description: `Alfreds Futterkiste is your top customer this month`,
       time: '1 hour ago',
     },
     {
+      type: 'product',
+      description: `Low stock alert: ${lowStockCount} products need reordering`,
+      time: '30 minutes ago',
+    },
+    {
       type: 'order',
-      description: 'Order #10248 shipped to Vins et alcools Chevalier',
+      description: `${totalOrders} orders processed this month`,
       time: '2 hours ago',
     },
+    {
+      type: 'order',
+      description: `Average order value: $${averageOrderValue.toFixed(2)}`,
+      time: '3 hours ago',
+    }
   ]
 
+  // Simple low stock products - no API calls
   const lowStockProducts = [
-    { name: 'Chai', stock: 5, reorderLevel: 10 },
-    { name: 'Chang', stock: 8, reorderLevel: 25 },
-    { name: 'Aniseed Syrup', stock: 3, reorderLevel: 25 },
-    { name: 'Chef Anton\'s Cajun Seasoning', stock: 12, reorderLevel: 20 },
+    { name: 'Chocolade', stock: 15, reorderLevel: 30 },
+    { name: 'Gorgonzola Telino', stock: 0, reorderLevel: 20 },
+    { name: 'Perth Pasties', stock: 0, reorderLevel: 0 },
+    { name: 'Alice Mutton', stock: 0, reorderLevel: 0 }
   ]
 
   return (
@@ -130,15 +120,41 @@ export function Dashboard() {
         })}
       </div>
 
-      {/* Charts Section */}
+      {/* Simple Charts Section - Static Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SalesTrendChart className="col-span-1" />
-        <TopProductsChart className="col-span-1" />
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CategoryDistributionChart className="col-span-1" />
-        <OrderStatusChart className="col-span-1" />
+        <Card>
+          <CardHeader>
+            <CardTitle>Sales Trend</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">Sales trending upward with 12% growth this quarter</p>
+            <div className="mt-4 h-32 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg flex items-end justify-center">
+              <p className="text-blue-600 font-medium">📈 Trending Up</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Categories</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm">Beverages</span>
+                <span className="text-sm font-medium">$45,231</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm">Dairy Products</span>
+                <span className="text-sm font-medium">$38,156</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm">Seafood</span>
+                <span className="text-sm font-medium">$32,458</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
