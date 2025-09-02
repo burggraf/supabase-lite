@@ -56,6 +56,29 @@ let testResults = {
   client_specific_issues: []
 };
 
+// Console output capture
+let consoleOutput = [];
+const originalLog = console.log;
+const originalError = console.error;
+
+// Override console.log to capture output
+console.log = function(...args) {
+  const message = args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+  ).join(' ');
+  consoleOutput.push(message);
+  originalLog.apply(console, args);
+};
+
+// Override console.error to capture errors
+console.error = function(...args) {
+  const message = 'ERROR: ' + args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+  ).join(' ');
+  consoleOutput.push(message);
+  originalError.apply(console, args);
+};
+
 // Test definitions (same structure as curl runner but mapped to client methods)
 const authTestDefinitions = [
   {
@@ -1488,11 +1511,16 @@ function generateReport() {
   testResults.summary.passed = testResults.authentication.stats.passed + testResults.api.stats.passed;
   testResults.summary.failed = testResults.authentication.stats.failed + testResults.api.stats.failed;
   
-  // Save results to file
+  // Save results to files
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `supabase-client-test-results-${timestamp}.json`;
+  const jsonFilename = `supabase-client-test-results-${timestamp}.json`;
+  const txtFilename = `supabase-client-test-results-${timestamp}.txt`;
   
-  fs.writeFileSync(filename, JSON.stringify(testResults, null, 2));
+  // Save JSON results
+  fs.writeFileSync(jsonFilename, JSON.stringify(testResults, null, 2));
+  
+  // Save console output to TXT file
+  fs.writeFileSync(txtFilename, consoleOutput.join('\n'));
   
   console.log('\n' + '='.repeat(80));
   console.log('📊 SUPABASE CLIENT TEST RESULTS');
@@ -1536,7 +1564,8 @@ function generateReport() {
   }
   
   console.log('');
-  console.log(`💾 Detailed results saved to: ${filename}`);
+  console.log(`💾 Detailed results saved to: ${jsonFilename}`);
+  console.log(`📝 Console output saved to: ${txtFilename}`);
   console.log('');
   console.log('💡 Next Steps:');
   console.log('   1. Compare with curl-test-runner.js results');
