@@ -1899,9 +1899,20 @@ Deno.serve(async (req: Request) => {
         })
       }
     }
-    // Otherwise handle REST requests
-    if (params.service === 'rest' && request.method === 'GET') {
-      return createRestGetHandler()({ params: { table: params.name }, request })
+    // Otherwise handle REST requests (all HTTP methods)
+    if (params.service === 'rest') {
+      switch (request.method) {
+        case 'GET':
+          return createRestGetHandler()({ params: { table: params.name }, request })
+        case 'POST':
+          return createRestPostHandler()({ params: { table: params.name }, request })
+        case 'PATCH':
+          return createRestPatchHandler()({ params: { table: params.name }, request })
+        case 'DELETE':
+          return createRestDeleteHandler()({ params: { table: params.name }, request })
+        default:
+          return new HttpResponse(null, { status: 405 }) // Method Not Allowed
+      }
     }
     // Default fallback
     return new HttpResponse(null, { status: 404 })
