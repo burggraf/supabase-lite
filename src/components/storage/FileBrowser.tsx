@@ -92,84 +92,171 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
     try {
       setIsLoading(true);
       
-      // Get files in current path - construct directory path for bucket + current path
-      const directoryPath = currentPath ? `${bucket.name}/${currentPath}` : bucket.name;
-      const files = await vfsManager.listFiles({
-        directory: directoryPath,
-        recursive: false // Only get files in current directory
-      });
-      
-      // Group files by folder and create folder items
-      const folderMap = new Map<string, VFSFile[]>();
-      const rootFiles: VFSFile[] = [];
-
-      files.forEach(file => {
-        // Remove bucket name from file path to get relative path within bucket
-        let relativePath = file.path.startsWith(bucket.name + '/') 
-          ? file.path.substring(bucket.name.length + 1)
-          : file.path;
-        
-        // If we're in a subfolder, remove the current path prefix
-        if (currentPath && relativePath.startsWith(currentPath + '/')) {
-          relativePath = relativePath.substring(currentPath.length + 1);
-        }
-        
-        const pathParts = relativePath.split('/');
-        
-        if (pathParts.length === 1 && pathParts[0] !== '') {
-          // File is in current directory
-          rootFiles.push(file);
-        } else if (pathParts.length > 1) {
-          // File is in a subfolder
-          const folderName = pathParts[0];
-          if (!folderMap.has(folderName)) {
-            folderMap.set(folderName, []);
-          }
-          folderMap.get(folderName)!.push(file);
-        }
-      });
-
-      // Create browser items
-      const browserItems: BrowserItem[] = [];
-
-      // Add folders
-      folderMap.forEach((files, folderName) => {
-        browserItems.push({
-          type: 'folder',
-          name: folderName,
-          path: currentPath ? `${currentPath}/${folderName}` : folderName,
-          fileCount: files.length
-        });
-      });
-
-      // Add files
-      rootFiles.forEach(file => {
-        browserItems.push({
-          ...file,
-          type: 'file'
-        });
-      });
-
-      // Sort: folders first, then files, both alphabetically
-      browserItems.sort((a, b) => {
-        if (a.type !== b.type) {
-          return a.type === 'folder' ? -1 : 1;
-        }
-        return a.name.localeCompare(b.name);
-      });
-
-      setItems(browserItems);
-      logger.info('Loaded files for bucket', { 
-        bucket: bucket.name, 
-        path: currentPath,
-        count: browserItems.length 
-      });
+      // Special handling for the "app" bucket which contains deployed applications
+      if (bucket.name === 'app') {
+        await loadAppBucketFiles();
+      } else {
+        await loadRegularBucketFiles();
+      }
     } catch (error) {
       logger.error('Failed to load files', error as Error);
       setItems([]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadAppBucketFiles = async () => {
+    // Get files in current path for app bucket
+    const directoryPath = currentPath ? `${bucket.name}/${currentPath}` : bucket.name;
+    const files = await vfsManager.listFiles({
+      directory: directoryPath,
+      recursive: true // Need recursive to find nested app folders
+    });
+    
+    // Group files by folder and create folder items
+    const folderMap = new Map<string, VFSFile[]>();
+    const rootFiles: VFSFile[] = [];
+
+    files.forEach(file => {
+      // Remove bucket name from file path to get relative path within bucket
+      let relativePath = file.path.startsWith(bucket.name + '/') 
+        ? file.path.substring(bucket.name.length + 1)
+        : file.path;
+      
+      // If we're in a subfolder, remove the current path prefix
+      if (currentPath && relativePath.startsWith(currentPath + '/')) {
+        relativePath = relativePath.substring(currentPath.length + 1);
+      }
+      
+      const pathParts = relativePath.split('/');
+      
+      if (pathParts.length === 1 && pathParts[0] !== '') {
+        // File is in current directory
+        rootFiles.push(file);
+      } else if (pathParts.length > 1) {
+        // File is in a subfolder - for app bucket, only count immediate subfolders
+        const folderName = pathParts[0];
+        if (!folderMap.has(folderName)) {
+          folderMap.set(folderName, []);
+        }
+        folderMap.get(folderName)!.push(file);
+      }
+    });
+
+    // Create browser items
+    const browserItems: BrowserItem[] = [];
+
+    // Add folders (app folders in root, or subfolders within apps)
+    folderMap.forEach((files, folderName) => {
+      // Count all files in this folder (including nested ones)
+      const totalFileCount = files.length;
+      browserItems.push({
+        type: 'folder',
+        name: folderName,
+        path: currentPath ? `${currentPath}/${folderName}` : folderName,
+        fileCount: totalFileCount
+      });
+    });
+
+    // Add files
+    rootFiles.forEach(file => {
+      browserItems.push({
+        ...file,
+        type: 'file'
+      });
+    });
+
+    // Sort: folders first, then files, both alphabetically
+    browserItems.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    setItems(browserItems);
+    logger.info('Loaded files for app bucket', { 
+      path: currentPath,
+      count: browserItems.length,
+      folders: folderMap.size,
+      rootFiles: rootFiles.length
+    });
+  };
+
+  const loadRegularBucketFiles = async () => {
+    // Get files in current path - construct directory path for bucket + current path
+    const directoryPath = currentPath ? `${bucket.name}/${currentPath}` : bucket.name;
+    const files = await vfsManager.listFiles({
+      directory: directoryPath,
+      recursive: false // Only get files in current directory
+    });
+    
+    // Group files by folder and create folder items
+    const folderMap = new Map<string, VFSFile[]>();
+    const rootFiles: VFSFile[] = [];
+
+    files.forEach(file => {
+      // Remove bucket name from file path to get relative path within bucket
+      let relativePath = file.path.startsWith(bucket.name + '/') 
+        ? file.path.substring(bucket.name.length + 1)
+        : file.path;
+      
+      // If we're in a subfolder, remove the current path prefix
+      if (currentPath && relativePath.startsWith(currentPath + '/')) {
+        relativePath = relativePath.substring(currentPath.length + 1);
+      }
+      
+      const pathParts = relativePath.split('/');
+      
+      if (pathParts.length === 1 && pathParts[0] !== '') {
+        // File is in current directory
+        rootFiles.push(file);
+      } else if (pathParts.length > 1) {
+        // File is in a subfolder
+        const folderName = pathParts[0];
+        if (!folderMap.has(folderName)) {
+          folderMap.set(folderName, []);
+        }
+        folderMap.get(folderName)!.push(file);
+      }
+    });
+
+    // Create browser items
+    const browserItems: BrowserItem[] = [];
+
+    // Add folders
+    folderMap.forEach((files, folderName) => {
+      browserItems.push({
+        type: 'folder',
+        name: folderName,
+        path: currentPath ? `${currentPath}/${folderName}` : folderName,
+        fileCount: files.length
+      });
+    });
+
+    // Add files
+    rootFiles.forEach(file => {
+      browserItems.push({
+        ...file,
+        type: 'file'
+      });
+    });
+
+    // Sort: folders first, then files, both alphabetically
+    browserItems.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    setItems(browserItems);
+    logger.info('Loaded files for bucket', { 
+      bucket: bucket.name, 
+      path: currentPath,
+      count: browserItems.length 
+    });
   };
 
   const filteredItems = items.filter(item =>
