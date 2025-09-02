@@ -21,6 +21,7 @@ import { Input } from '../ui/input'
 import { Badge } from '../ui/badge'
 import { LoadingSpinner, SkeletonTable } from '../common/LoadingSpinner'
 import { ErrorDisplay } from '../common/ErrorBoundary'
+import { getPaginationMeta } from '@/lib/utils/pagination'
 import type { DataTableProps, ColumnDef, SortConfig } from './types'
 
 export function DataTable<T extends Record<string, any>>({
@@ -362,19 +363,58 @@ export function DataTable<T extends Record<string, any>>({
             </Button>
             
             <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                const pageNum = i + 1
+              {(() => {
+                const paginationMeta = getPaginationMeta(pagination.page, pagination.totalPages, 5)
+                const { range, showStartEllipsis, showEndEllipsis, showFirstPage, showLastPage } = paginationMeta
+                
                 return (
-                  <Button
-                    key={pageNum}
-                    variant={pageNum === pagination.page ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => onPageChange?.(pageNum)}
-                  >
-                    {pageNum}
-                  </Button>
+                  <>
+                    {/* First page */}
+                    {showFirstPage && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onPageChange?.(1)}
+                        >
+                          1
+                        </Button>
+                        {showStartEllipsis && (
+                          <span className="px-2 text-muted-foreground">...</span>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Page range */}
+                    {range.map((pageNum) => (
+                      <Button
+                        key={pageNum}
+                        variant={pageNum === pagination.page ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => onPageChange?.(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    ))}
+                    
+                    {/* Last page */}
+                    {showLastPage && (
+                      <>
+                        {showEndEllipsis && (
+                          <span className="px-2 text-muted-foreground">...</span>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onPageChange?.(pagination.totalPages)}
+                        >
+                          {pagination.totalPages}
+                        </Button>
+                      </>
+                    )}
+                  </>
                 )
-              })}
+              })()}
             </div>
             
             <Button

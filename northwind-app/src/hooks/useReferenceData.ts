@@ -11,7 +11,7 @@ const employeeRepository = new BaseRepository<Employee>('employees', 'employee_i
 // Category hooks
 export function useCategories(options: QueryOptions = {}) {
   return useQuery({
-    queryKey: queryKeys.categories.list(),
+    queryKey: [...queryKeys.categories.list(), options],
     queryFn: () => categoryRepository.findAll(options),
     staleTime: 30 * 60 * 1000, // 30 minutes - categories rarely change
   })
@@ -69,7 +69,7 @@ export function useDeleteCategory() {
 // Supplier hooks
 export function useSuppliers(options: QueryOptions = {}) {
   return useQuery({
-    queryKey: queryKeys.suppliers.list(),
+    queryKey: [...queryKeys.suppliers.list(), options],
     queryFn: () => supplierRepository.findAll(options),
     staleTime: 15 * 60 * 1000, // 15 minutes
   })
@@ -127,7 +127,7 @@ export function useDeleteSupplier() {
 // Employee hooks
 export function useEmployees(options: QueryOptions = {}) {
   return useQuery({
-    queryKey: queryKeys.employees.list(),
+    queryKey: [...queryKeys.employees.list(), options],
     queryFn: () => employeeRepository.findAll({
       ...options,
       sort: options.sort || [{ field: 'last_name', direction: 'ASC' }]
