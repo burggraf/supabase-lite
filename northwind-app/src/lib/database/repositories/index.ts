@@ -25,46 +25,11 @@ export type {
   OrderSearchFilters 
 } from './OrderRepository'
 
-// Additional repository types
-export interface Category {
-  category_id: number
-  category_name: string
-  description?: string
-  picture?: string
-}
+export { CategoryRepository } from './CategoryRepository'
+export type { Category } from './CategoryRepository'
 
-export interface Supplier {
-  supplier_id: number
-  company_name: string
-  contact_name?: string
-  contact_title?: string
-  address?: string
-  city?: string
-  region?: string
-  postal_code?: string
-  country?: string
-  phone?: string
-  fax?: string
-  home_page?: string
-}
+export { SupplierRepository } from './SupplierRepository'
+export type { Supplier } from './SupplierRepository'
 
-export interface Employee {
-  employee_id: number
-  last_name: string
-  first_name: string
-  title?: string
-  title_of_courtesy?: string
-  birth_date?: Date
-  hire_date?: Date
-  address?: string
-  city?: string
-  region?: string
-  postal_code?: string
-  country?: string
-  home_phone?: string
-  extension?: string
-  photo?: string
-  notes?: string
-  reports_to?: number
-  photo_path?: string
-}
+export { EmployeeRepository } from './EmployeeRepository'
+export type { Employee } from './EmployeeRepository'

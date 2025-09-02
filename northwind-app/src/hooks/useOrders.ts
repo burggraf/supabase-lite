@@ -165,7 +165,7 @@ export function useUpdateOrderStatus() {
       freight?: number
     }) => {
       const updateData: Partial<Order> = {}
-      if (shippedDate !== undefined) updateData.shipped_date = shippedDate
+      if (shippedDate !== undefined) updateData.shipped_date = shippedDate || undefined
       if (requiredDate !== undefined) updateData.required_date = requiredDate
       if (shipVia !== undefined) updateData.ship_via = shipVia
       if (freight !== undefined) updateData.freight = freight

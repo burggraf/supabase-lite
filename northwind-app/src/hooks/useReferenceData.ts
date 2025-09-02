@@ -1,12 +1,12 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { BaseRepository, type QueryOptions } from '../lib/database/repositories'
+import { type QueryOptions, CategoryRepository, SupplierRepository, EmployeeRepository } from '../lib/database/repositories'
 import type { Category, Supplier, Employee } from '../lib/database/repositories'
 import { queryKeys, invalidateQueries } from '../lib/query/queryClient'
 
 // Repository instances
-const categoryRepository = new BaseRepository<Category>('categories', 'category_id')
-const supplierRepository = new BaseRepository<Supplier>('suppliers', 'supplier_id')
-const employeeRepository = new BaseRepository<Employee>('employees', 'employee_id')
+const categoryRepository = new CategoryRepository()
+const supplierRepository = new SupplierRepository()
+const employeeRepository = new EmployeeRepository()
 
 // Category hooks
 export function useCategories(options: QueryOptions = {}) {

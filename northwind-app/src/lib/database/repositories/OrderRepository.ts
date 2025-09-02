@@ -143,15 +143,10 @@ export class OrderRepository extends BaseRepository<Order> {
    * Find orders with full details (customer, employee, shipper info)
    */
   async findWithDetails(orderId: number): Promise<OrderWithDetails | null> {
-    // Get order with related information using correct PostgREST relationship syntax
+    // Get basic order data first
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select(`
-        *,
-        customers!customer_id(company_name),
-        employees!employee_id(first_name, last_name),
-        shippers!ship_via(company_name)
-      `)
+      .select('*')
       .eq('order_id', orderId)
       .single()
 
@@ -161,13 +156,47 @@ export class OrderRepository extends BaseRepository<Order> {
 
     if (!orderData) return null
 
-    // Get order details with product information
+    // Fetch related data separately to avoid relationship issues
+    let customerName: string | undefined
+    let employeeName: string | undefined  
+    let shipperName: string | undefined
+
+    // Get customer info
+    if (orderData.customer_id) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('company_name')
+        .eq('customer_id', orderData.customer_id)
+        .single()
+      customerName = customer?.company_name
+    }
+
+    // Get employee info
+    if (orderData.employee_id) {
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('first_name, last_name')
+        .eq('employee_id', orderData.employee_id)
+        .single()
+      if (employee) {
+        employeeName = `${employee.first_name} ${employee.last_name}`
+      }
+    }
+
+    // Get shipper info
+    if (orderData.ship_via) {
+      const { data: shipper } = await supabase
+        .from('shippers')
+        .select('company_name')
+        .eq('shipper_id', orderData.ship_via)
+        .single()
+      shipperName = shipper?.company_name
+    }
+
+    // Get order details
     const { data: orderDetails, error: detailsError } = await supabase
       .from('order_details')
-      .select(`
-        *,
-        products!product_id(product_name)
-      `)
+      .select('*')
       .eq('order_id', orderId)
       .order('product_id')
 
@@ -175,12 +204,28 @@ export class OrderRepository extends BaseRepository<Order> {
       throw new Error(`Failed to fetch order details: ${detailsError.message}`)
     }
 
+    // Get product names for order details
+    let orderDetailsWithProducts: any[] = []
+    if (orderDetails) {
+      for (const detail of orderDetails) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('product_name')
+          .eq('product_id', detail.product_id)
+          .single()
+        
+        orderDetailsWithProducts.push({
+          ...detail,
+          product_name: product?.product_name
+        })
+      }
+    }
+
     // Transform the data and calculate totals
-    const transformedDetails = (orderDetails || []).map((detail: any) => {
+    const transformedDetails = orderDetailsWithProducts.map((detail: any) => {
       const lineTotal = detail.unit_price * detail.quantity * (1 - detail.discount)
       return {
         ...detail,
-        product_name: detail.products?.product_name,
         line_total: lineTotal,
       }
     })
@@ -192,11 +237,9 @@ export class OrderRepository extends BaseRepository<Order> {
       order_date: orderData.order_date ? new Date(orderData.order_date) : undefined,
       required_date: orderData.required_date ? new Date(orderData.required_date) : undefined,
       shipped_date: orderData.shipped_date ? new Date(orderData.shipped_date) : undefined,
-      customer_name: (orderData as any).customers?.company_name,
-      employee_name: (orderData as any).employees 
-        ? `${(orderData as any).employees.first_name} ${(orderData as any).employees.last_name}`
-        : undefined,
-      shipper_name: (orderData as any).shippers?.company_name,
+      customer_name: customerName,
+      employee_name: employeeName,
+      shipper_name: shipperName,
       order_details: transformedDetails,
       total_amount: totalAmount,
     }

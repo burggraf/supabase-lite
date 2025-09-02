@@ -97,8 +97,8 @@ export function OrderForm({
         ship_via: order.ship_via
       })
 
-      if ('order_details' in order && order.order_details) {
-        setOrderDetails(order.order_details.map(detail => ({
+      if ('order_details' in order && order.order_details && Array.isArray(order.order_details)) {
+        setOrderDetails(order.order_details.map((detail: any) => ({
           order_id: order.order_id,
           product_id: detail.product_id,
           unit_price: detail.unit_price,

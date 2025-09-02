@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, ArrowLeft } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Order } from '@/lib/database/repositories'
 import { OrderTable } from '@/components/orders/OrderTable'
 import { OrderDetail } from '@/components/orders/OrderDetail'
