@@ -512,9 +512,14 @@ CLI ─HTTP─> Proxy Server ─PostMessage─> Browser ─PGlite─> Database (
 
 Supabase Lite includes comprehensive test runners that validate 100% API compatibility with the official Supabase API. These tools replicate every test from the test-app's Authentication and API Testing tabs to identify compatibility issues.
 
+### 🎯 Perfect Test Parity Achievement
+
+**Both test runners now execute exactly 87 identical tests** - achieving perfect parity between HTTP-based and Supabase.js client testing approaches.
+
 ### Features
 
-- **Comprehensive Coverage**: Tests 110+ endpoints across authentication and REST API functionality
+- **Perfect Test Parity**: Both runners execute exactly 87 identical tests for consistent validation
+- **Complete Coverage**: All 84 core test-app tests + 3 enhancement tests for comprehensive validation  
 - **Dual Testing Approach**: HTTP-based testing and Supabase.js client library testing
 - **Random User Generation**: Prevents conflicts with existing users during test runs
 - **Detailed Reporting**: JSON reports with compatibility issue analysis and severity levels

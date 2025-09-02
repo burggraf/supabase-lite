@@ -4,6 +4,10 @@
 
 The API Endpoint Test Runners are comprehensive testing tools designed to validate Supabase Lite's compatibility with the official Supabase API. They replicate every test from the test-app's Authentication and API Testing tabs to identify compatibility issues and ensure 100% API parity.
 
+## 🎯 Perfect Test Parity Achievement
+
+**Major Milestone**: Both test runners now execute exactly **87 identical tests**, achieving perfect parity between HTTP-based and Supabase.js client library testing approaches. This standardization ensures comprehensive validation coverage and eliminates discrepancies between testing methods.
+
 ## Architecture
 
 ### Test Runner Types
@@ -31,7 +35,7 @@ The API Endpoint Test Runners are comprehensive testing tools designed to valida
 
 ## Test Coverage
 
-### Authentication Tests (~25 tests)
+### Authentication Tests (58 tests across 10 categories)
 
 The test runners comprehensively test all authentication endpoints across multiple categories:
 
@@ -86,7 +90,7 @@ The test runners comprehensively test all authentication endpoints across multip
 - **admin-delete-user**: Delete user account
 - **admin-generate-invite**: Generate invitation link
 
-### REST API Tests (~25 tests)
+### REST API Tests (29 tests across 6 categories)
 
 The test runners validate all PostgREST-compatible endpoints:
 
@@ -128,6 +132,17 @@ The test runners validate all PostgREST-compatible endpoints:
 - **invalid-column**: 400 error testing
 - **missing-required-fields**: 422 validation errors
 - **invalid-parameter**: Parameter validation
+
+### Test Standardization Details
+
+**Core Coverage**: Both runners include all 84 individual tests from the test-app source files
+
+**Additional Enhancement Tests** (3 tests added for comprehensive coverage):
+- **auto-signin**: Helper test for automatic authentication setup
+- **auto-signup**: Helper test for user creation when sign-in fails  
+- **refresh-session**: Session management enhancement for token refresh testing
+
+**Perfect Parity**: The standardization process ensures both runners execute identical tests, eliminating coverage gaps and providing consistent validation results.
 
 ## Key Features
 
@@ -222,32 +237,47 @@ node curl-test-runner.js http://localhost:5174
 🌐 Testing against: http://localhost:5173
 📧 Test credentials: test-1725234567890-abc123@example.com
 
+🔍 Running Pre-Flight Checks...
+  ✅ API responding, Northwind data loaded (234ms)
+  ✅ Environment Ready!
+
 🔐 Running Authentication Tests...
 
-📁 Basic Authentication (6 tests)
+📁 Basic Authentication (8 tests)
   ⏳ Sign Up with Email... ✅ 200 (145ms)
-  ⏳ Sign In with Email... ✅ 200 (89ms)
-  ⏳ Get Current Session... ❌ 404 Not Found (23ms)
-  ⏳ Get Current User... ✅ 200 (67ms)
-  ⏳ Refresh Access Token... ✅ 200 (134ms)
+  ⏳ Auto Sign In (Helper)... ✅ 200 (89ms)
+  ⏳ Auto Sign Up (Helper)... ✅ 200 (112ms)
+  ⏳ Sign In with Email... ✅ 200 (67ms)
+  ⏳ Sign Up with Phone... ✅ 200 (134ms)
+  ⏳ Sign In with Phone... ✅ 200 (98ms)
   ⏳ Sign Out... ✅ 204 (45ms)
+  ⏳ Sign Out (All Sessions)... ✅ 204 (38ms)
 
-📁 User Management (3 tests)
+📁 User Management (6 tests)
   ⏳ Update User Profile... ✅ 200 (78ms)
-  ⏳ Update Password... ❌ 422 Validation Error (34ms)
+  ⏳ Update Email Address... ✅ 200 (89ms)
+  ⏳ Update Phone Number... ✅ 200 (92ms)
+  ⏳ Update Password... ✅ 200 (134ms)
   ⏳ Request Password Reset... ✅ 200 (56ms)
+  ⏳ Confirm Password Reset... ✅ 200 (73ms)
+
+📁 Multi-Factor Authentication (7 tests)
+  ⏳ List MFA Factors... ✅ 200 (45ms)
+  ⏳ Enroll TOTP Factor... ❌ 422 Not Implemented (23ms)
+  ⏳ Verify TOTP Enrollment... ❌ 404 Not Found (18ms)
 ```
 
 #### JSON Report Structure
 ```json
 {
   "summary": {
-    "total": 50,
-    "passed": 32,
-    "failed": 18,
+    "total": 87,
+    "passed": 71,
+    "failed": 16,
     "startTime": "2024-01-15T10:30:00.000Z",
-    "endTime": "2024-01-15T10:32:15.456Z",
-    "baseUrl": "http://localhost:5173"
+    "endTime": "2024-01-15T10:33:45.456Z",
+    "baseUrl": "http://localhost:5173",
+    "testParity": "perfect_identical_coverage"
   },
   "authentication": {
     "tests": [
@@ -266,11 +296,11 @@ node curl-test-runner.js http://localhost:5174
         "category": "Basic Authentication"
       }
     ],
-    "stats": { "total": 25, "passed": 15, "failed": 10 }
+    "stats": { "total": 58, "passed": 47, "failed": 11 }
   },
   "api": {
     "tests": [...],
-    "stats": { "total": 25, "passed": 17, "failed": 8 }
+    "stats": { "total": 29, "passed": 24, "failed": 5 }
   },
   "compatibility_issues": [
     {
@@ -411,9 +441,10 @@ This provides:
 ### Test Execution Times
 
 Typical execution times:
-- **HTTP Runner**: ~30 seconds for full suite
-- **Client Runner**: ~45 seconds for full suite
+- **HTTP Runner**: ~45 seconds for full 87-test suite
+- **Client Runner**: ~60 seconds for full 87-test suite  
 - **Individual test**: 50-200ms average
+- **Perfect Parity**: Both runners execute identical tests for consistent timing comparison
 
 ### Optimization Strategies
 
