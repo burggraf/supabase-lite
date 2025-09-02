@@ -1451,10 +1451,10 @@ async function runAuthenticationTests() {
     const passed = isSuccessfulResponse(result) && result.status === 200;
     
     if (passed) {
-      console.log(`✅ Success (${result.responseTime}ms)`);
+      console.log(`✅ ${testDef.name}: Success (${result.responseTime}ms)`);
       testResults.authentication.stats.passed++;
     } else {
-      console.log(`❌ ${result.status} ${result.error?.message || 'Unknown error'} (${result.responseTime}ms)`);
+      console.log(`❌ ${testDef.name}: ${result.status} ${result.error?.message || 'Unknown error'} (${result.responseTime}ms)`);
       testResults.authentication.stats.failed++;
       
       // Analyze client-specific issues
@@ -1483,10 +1483,10 @@ async function runAPITests() {
     const passed = isSuccessfulResponse(result) && result.status === 200;
     
     if (passed) {
-      console.log(`✅ Success (${result.responseTime}ms)`);
+      console.log(`✅ ${testDef.name}: Success (${result.responseTime}ms)`);
       testResults.api.stats.passed++;
     } else {
-      console.log(`❌ ${result.status} ${result.error?.message || 'Unknown error'} (${result.responseTime}ms)`);
+      console.log(`❌ ${testDef.name}: ${result.status} ${result.error?.message || 'Unknown error'} (${result.responseTime}ms)`);
       testResults.api.stats.failed++;
       
       // Analyze client-specific issues
