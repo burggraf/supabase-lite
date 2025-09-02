@@ -281,18 +281,20 @@ export class OrderRepository extends BaseRepository<Order> {
       }
     }
 
-    // Get order details for all orders
-    const orderIds = orders.map(order => order.order_id)
+    // Get order details for all orders - fetch individually to avoid query issues
+    let allOrderDetails: any[] = []
     
-    // Use or() method with eq() for each order_id to avoid .in() issues
-    const orConditions = orderIds.map(id => `order_id.eq.${id}`).join(',')
-    const { data: allOrderDetails, error: detailsError } = await supabase
-      .from('order_details')
-      .select('order_id, unit_price, quantity, discount')
-      .or(orConditions)
-
-    if (detailsError) {
-      console.warn('Failed to fetch order details for stats:', detailsError)
+    for (const order of orders) {
+      const { data: details, error: detailsError } = await supabase
+        .from('order_details')
+        .select('order_id, unit_price, quantity, discount')
+        .eq('order_id', order.order_id)
+      
+      if (detailsError) {
+        console.warn(`Failed to fetch details for order ${order.order_id}:`, detailsError)
+      } else if (details) {
+        allOrderDetails.push(...details)
+      }
     }
 
     // Calculate statistics

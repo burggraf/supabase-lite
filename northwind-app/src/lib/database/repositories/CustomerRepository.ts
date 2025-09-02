@@ -177,22 +177,25 @@ export class CustomerRepository extends BaseRepository<Customer> {
         const orderCount = orders?.length || 0
 
         if (orders && orders.length > 0) {
-          // Get order details for this customer's orders
-          const orderIds = orders.map(order => order.order_id)
+          // Get order details for this customer's orders - fetch one by one to avoid .in() issues
+          let orderDetails: any[] = []
           
-          // Use or() method with eq() for each order_id to avoid .in() issues
-          const orConditions = orderIds.map(id => `order_id.eq.${id}`).join(',')
-          const { data: orderDetails, error: detailsError } = await supabase
-            .from('order_details')
-            .select('unit_price, quantity, discount')
-            .or(orConditions)
-
-          if (detailsError) {
-            console.warn(`Failed to fetch order details for customer ${customer.customer_id}:`, detailsError)
-          } else if (orderDetails) {
-            for (const detail of orderDetails) {
-              totalSpent += detail.unit_price * detail.quantity * (1 - detail.discount)
+          for (const order of orders) {
+            const { data: details, error: detailsError } = await supabase
+              .from('order_details')
+              .select('unit_price, quantity, discount')
+              .eq('order_id', order.order_id)
+            
+            if (detailsError) {
+              console.warn(`Failed to fetch details for order ${order.order_id}:`, detailsError)
+            } else if (details) {
+              orderDetails.push(...details)
             }
+          }
+
+          // Calculate total spent from collected order details
+          for (const detail of orderDetails) {
+            totalSpent += detail.unit_price * detail.quantity * (1 - detail.discount)
           }
         }
 
