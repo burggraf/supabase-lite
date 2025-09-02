@@ -1326,10 +1326,10 @@ async function runAuthenticationTests() {
                     (test.id.includes('invalid') || test.id.includes('wrong') || test.id.includes('malformed')) && result.status >= 400;
       
       if (passed) {
-        console.log(`✅ ${result.status} (${result.responseTime}ms)`);
+        console.log(`✅ ${test.name}: ${result.status} (${result.responseTime}ms)`);
         testResults.authentication.stats.passed++;
       } else {
-        console.log(`❌ ${result.status} ${result.statusText} (${result.responseTime}ms)`);
+        console.log(`❌ ${test.name}: ${result.status} ${result.statusText} (${result.responseTime}ms)`);
         testResults.authentication.stats.failed++;
         
         // Analyze compatibility issues
@@ -1366,10 +1366,10 @@ async function runAPITests() {
                     (test.id.includes('not-found') || test.id.includes('invalid') || test.id.includes('missing')) && result.status >= 400;
       
       if (passed) {
-        console.log(`✅ ${result.status} (${result.responseTime}ms)`);
+        console.log(`✅ ${test.name}: ${result.status} (${result.responseTime}ms)`);
         testResults.api.stats.passed++;
       } else {
-        console.log(`❌ ${result.status} ${result.statusText} (${result.responseTime}ms)`);
+        console.log(`❌ ${test.name}: ${result.status} ${result.statusText} (${result.responseTime}ms)`);
         testResults.api.stats.failed++;
         
         // Analyze compatibility issues
