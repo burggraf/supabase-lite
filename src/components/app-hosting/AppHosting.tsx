@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Upload, Folder, ExternalLink, Trash2 } from 'lucide-react';
+import { Globe, Upload, Folder, ExternalLink, Trash2, Settings } from 'lucide-react';
 import { AppDeploymentModal } from './AppDeploymentModal';
 import { SampleAppInstaller } from './SampleAppInstaller';
 import { vfsManager } from '@/lib/vfs/VFSManager';
@@ -186,90 +185,90 @@ export function AppHosting() {
           </Card>
         </div>
 
-        {/* Main Content */}
-        <Tabs defaultValue="apps" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="apps">Deployed Apps</TabsTrigger>
-              <TabsTrigger value="deploy">Deploy New App</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
-            <Button onClick={() => setIsDeployModalOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Deploy App
-            </Button>
-          </div>
-
-          <TabsContent value="apps" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Deployed Applications</CardTitle>
-                <CardDescription>
-                  Manage your hosted static web applications. Each app is accessible at /app/[app-name].
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : deployedApps.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No apps deployed yet</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Deploy your first static web application to get started.
-                    </p>
-                    <Button onClick={() => setIsDeployModalOpen(true)}>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Deploy Your First App
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {deployedApps.map((app) => (
-                      <div
-                        key={app.name}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-4">
-                          <Globe className="h-8 w-8 text-blue-500" />
-                          <div>
-                            <h3 className="font-medium">{app.name}</h3>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                              <span>{app.fileCount} files</span>
-                              <span>{formatFileSize(app.totalSize)}</span>
-                              <span>Updated {formatDate(app.lastUpdated)}</span>
-                            </div>
+        {/* Deployed Applications Section */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Deployed Applications</CardTitle>
+                  <CardDescription>
+                    Manage your hosted static web applications. Each app is accessible at /app/[app-name].
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setIsDeployModalOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Deploy App
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                </div>
+              ) : deployedApps.length === 0 ? (
+                <div className="text-center py-8">
+                  <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No apps deployed yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Deploy your first static web application to get started.
+                  </p>
+                  <Button onClick={() => setIsDeployModalOpen(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Deploy Your First App
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {deployedApps.map((app) => (
+                    <div
+                      key={app.name}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div className="flex items-center gap-4">
+                        <Globe className="h-8 w-8 text-blue-500" />
+                        <div>
+                          <h3 className="font-medium">{app.name}</h3>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                            <span>{app.fileCount} files</span>
+                            <span>{formatFileSize(app.totalSize)}</span>
+                            <span>Updated {formatDate(app.lastUpdated)}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">Active</Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(`/app/${app.name}`, '_blank')}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Preview
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteApp(app.name)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Active</Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(`/app/${app.name}`, '_blank')}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          Preview
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteApp(app.name)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          <TabsContent value="deploy" className="space-y-4">
+          {/* Deploy New App Section */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <Upload className="h-6 w-6" />
+              <h2 className="text-2xl font-bold">Deploy New App</h2>
+            </div>
+            
             {/* Sample Apps Section */}
             <Card>
               <CardHeader>
@@ -283,31 +282,15 @@ export function AppHosting() {
               </CardContent>
             </Card>
 
-            {/* Custom App Upload Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Deploy Your Own App</CardTitle>
-                <CardDescription>
-                  Upload your static web application files from a local folder.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Ready to deploy</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Select a folder containing your built static application (dist/, build/, etc.)
-                  </p>
-                  <Button onClick={() => setIsDeployModalOpen(true)} size="lg">
-                    <Folder className="h-4 w-4 mr-2" />
-                    Select Folder to Deploy
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          </div>
 
-          <TabsContent value="settings" className="space-y-4">
+          {/* Settings Section */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <Settings className="h-6 w-6" />
+              <h2 className="text-2xl font-bold">Settings</h2>
+            </div>
+            
             <Card>
               <CardHeader>
                 <CardTitle>App Hosting Settings</CardTitle>
@@ -337,8 +320,8 @@ export function AppHosting() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
 
         {/* Deploy Modal */}
         <AppDeploymentModal
