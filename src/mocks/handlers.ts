@@ -1661,6 +1661,54 @@ export const handlers = [
     }
   }),
 
+  // Logout endpoint without project resolution
+  http.post('/auth/v1/logout', async ({ request }: any) => {
+    try {
+      console.log('🔐 MSW Browser: Handling logout request')
+      const response = await authBridge.handleAuthRequest({
+        endpoint: 'logout',
+        method: 'POST',
+        url: new URL(request.url),
+        headers: Object.fromEntries(request.headers.entries()),
+        body: await request.json().catch(() => ({}))
+      })
+      console.log('✅ MSW Browser: Logout response:', { status: response.status })
+      
+      if (response.error) {
+        return HttpResponse.json(response.error, {
+          status: response.status || 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        })
+      }
+
+      return HttpResponse.json(response.data, {
+        status: response.status || 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': 'true'
+        }
+      })
+    } catch (error) {
+      console.error('❌ MSW Browser: Logout error:', error)
+      return HttpResponse.json(
+        { error: 'internal_server_error', message: 'Logout service failed' },
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true'
+          }
+        }
+      )
+    }
+  }),
+
   // Session endpoint without project resolution
   http.get('/auth/v1/session', async ({ request }: any) => {
     try {

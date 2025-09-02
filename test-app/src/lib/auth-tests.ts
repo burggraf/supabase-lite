@@ -82,7 +82,17 @@ export function storeAuthData(data: any) {
       localStorage.setItem(AUTH_STORAGE_KEYS.SESSION, JSON.stringify(data.session));
     }
     if (data.user) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(data.user));
+      // Handle case where user might be a string (JWT token) instead of object
+      try {
+        if (typeof data.user === 'string') {
+          console.warn('User data is a string, storing as-is:', data.user.substring(0, 20) + '...');
+          localStorage.setItem(AUTH_STORAGE_KEYS.USER, data.user);
+        } else {
+          localStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(data.user));
+        }
+      } catch (error) {
+        console.error('Error storing user data:', error, data.user);
+      }
     }
   }
 }
@@ -944,28 +954,37 @@ export async function executeAuthTest(test: AuthTest, options: { skipAutoAuth?: 
     let data: any;
     const contentType = response.headers.get('content-type');
 
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-
-      // Store auth data from successful responses
-      if (response.ok && (test.id.includes('signin') || test.id.includes('signup') || test.id.includes('refresh') ||
-        test.id.includes('auto-signin') || test.id.includes('auto-signup'))) {
-        // Handle both direct token format and session format
-        const authData = {
-          access_token: data.access_token || data.session?.access_token,
-          refresh_token: data.refresh_token || data.session?.refresh_token,
-          session: data.session,
-          user: data.user
-        };
-        storeAuthData(authData);
-      }
-
-      // Clear auth data on logout
-      if (response.ok && test.id.includes('logout')) {
-        clearAuthData();
+    // Handle 204 No Content responses (like logout) - they have no body
+    if (response.status === 204) {
+      data = null;
+    } else if (contentType && contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch (error) {
+        // Handle empty JSON responses gracefully
+        console.warn('Failed to parse JSON response, treating as empty:', error);
+        data = null;
       }
     } else {
       data = await response.text();
+    }
+
+    // Store auth data from successful responses
+    if (response.ok && (test.id.includes('signin') || test.id.includes('signup') || test.id.includes('refresh') ||
+      test.id.includes('auto-signin') || test.id.includes('auto-signup'))) {
+      // Handle both direct token format and session format
+      const authData = {
+        access_token: data?.access_token || data?.session?.access_token,
+        refresh_token: data?.refresh_token || data?.session?.refresh_token,
+        session: data?.session,
+        user: data?.user
+      };
+      storeAuthData(authData);
+    }
+
+    // Clear auth data on logout
+    if (response.ok && test.id.includes('logout')) {
+      clearAuthData();
     }
 
     // Convert headers to plain object
