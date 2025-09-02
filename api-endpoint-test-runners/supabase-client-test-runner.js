@@ -1329,17 +1329,17 @@ async function ensureAuthenticated() {
     // Check current session
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      console.log('🔐 Already authenticated');
+      console.log('     🔐 Already authenticated');
       return { success: true };
     }
 
-    console.log('🔐 Authentication required, attempting sign-in...');
+    console.log('     🔐 Authentication required, attempting sign-in...');
 
     // Try signing in first
     const { error: signinError } = await supabase.auth.signInWithPassword(TEST_CREDENTIALS);
     
     if (!signinError) {
-      console.log('✅ Auto sign-in successful');
+      console.log('     ✅ Auto sign-in successful');
       return { success: true };
     }
 
@@ -1353,7 +1353,7 @@ async function ensureAuthenticated() {
     });
 
     if (!signupError) {
-      console.log('✅ Auto sign-up successful');
+      console.log('     ✅ Auto sign-up successful');
       return { success: true };
     }
 
@@ -1450,12 +1450,22 @@ async function runAuthenticationTests() {
     const result = await executeAuthTest(testDef);
     const passed = isSuccessfulResponse(result) && result.status === 200;
     
+    // Clear test result output with proper indentation
+    const statusIcon = passed ? '✅' : '❌';
+    const statusText = passed ? 'Success' : `${result.status} ${result.error?.message || 'Unknown error'}`;
+    
+    console.log(`  ${statusIcon} ${testDef.name}`);
+    console.log(`     → ${statusText} (${result.responseTime}ms)`);
+    
     if (passed) {
-      console.log(`✅ ${testDef.name}: Success (${result.responseTime}ms)`);
       testResults.authentication.stats.passed++;
     } else {
-      console.log(`❌ ${testDef.name}: ${result.status} ${result.error?.message || 'Unknown error'} (${result.responseTime}ms)`);
       testResults.authentication.stats.failed++;
+      
+      // Show additional error details for failed tests
+      if (result.error?.details || result.data) {
+        console.log(`     → Details: ${JSON.stringify(result.error?.details || result.data)}`);
+      }
       
       // Analyze client-specific issues
       const clientIssues = analyzeClientSpecificIssues(result);
@@ -1477,17 +1487,25 @@ async function runAPITests() {
   console.log('\n🔗 Running API Tests (Supabase Client)...\n');
   
   for (const testDef of apiTestDefinitions) {
-    process.stdout.write(`  ⏳ ${testDef.name}... `);
-    
     const result = await executeAPITest(testDef);
     const passed = isSuccessfulResponse(result) && result.status === 200;
     
+    // Clear test result output with proper indentation
+    const statusIcon = passed ? '✅' : '❌';
+    const statusText = passed ? 'Success' : `${result.status} ${result.error?.message || 'Unknown error'}`;
+    
+    console.log(`  ${statusIcon} ${testDef.name}`);
+    console.log(`     → ${statusText} (${result.responseTime}ms)`);
+    
     if (passed) {
-      console.log(`✅ ${testDef.name}: Success (${result.responseTime}ms)`);
       testResults.api.stats.passed++;
     } else {
-      console.log(`❌ ${testDef.name}: ${result.status} ${result.error?.message || 'Unknown error'} (${result.responseTime}ms)`);
       testResults.api.stats.failed++;
+      
+      // Show additional error details for failed tests
+      if (result.error?.details || result.data) {
+        console.log(`     → Details: ${JSON.stringify(result.error?.details || result.data)}`);
+      }
       
       // Analyze client-specific issues
       const clientIssues = analyzeClientSpecificIssues(result);

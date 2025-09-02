@@ -1,5 +1,5 @@
-import { DatabaseManager } from '../../../src/lib/database/connection'
-import type { QueryResult } from '../../../src/types'
+import { DatabaseManager } from './connection'
+import type { QueryResult } from '@/types'
 
 export interface PaginationOptions {
   page: number

@@ -1052,11 +1052,11 @@ function getStatusCategory(status) {
 // Authentication functions
 async function ensureAuthenticated() {
   if (authState.accessToken) {
-    console.log('🔐 Already authenticated');
+    console.log('     🔐 Already authenticated');
     return { success: true };
   }
 
-  console.log('🔐 Authentication required, attempting sign-in...');
+  console.log('     🔐 Authentication required, attempting sign-in...');
 
   // Try signing in first
   try {
@@ -1069,7 +1069,7 @@ async function ensureAuthenticated() {
     }, 'auth');
 
     if (isSuccessfulStatus(signinResult.status)) {
-      console.log('✅ Auto sign-in successful');
+      console.log('     ✅ Auto sign-in successful');
       return { success: true };
     }
 
@@ -1087,7 +1087,7 @@ async function ensureAuthenticated() {
     }, 'auth');
 
     if (isSuccessfulStatus(signupResult.status)) {
-      console.log('✅ Auto sign-up successful');
+      console.log('     ✅ Auto sign-up successful');
       return { success: true };
     }
 
@@ -1319,18 +1319,26 @@ async function runAuthenticationTests() {
     console.log(`📁 ${category.name} (${category.tests.length} tests)`);
     
     for (const test of category.tests) {
-      process.stdout.write(`  ⏳ ${test.name}... `);
-      
       const result = await executeTest(test, 'auth');
       const passed = isSuccessfulStatus(result.status) || 
                     (test.id.includes('invalid') || test.id.includes('wrong') || test.id.includes('malformed')) && result.status >= 400;
       
+      // Clear test result output with proper indentation
+      const statusIcon = passed ? '✅' : '❌';
+      const statusText = result.statusText ? ` ${result.statusText}` : '';
+      
+      console.log(`  ${statusIcon} ${test.name}`);
+      console.log(`     → ${result.status}${statusText} (${result.responseTime}ms)`);
+      
       if (passed) {
-        console.log(`✅ ${test.name}: ${result.status} (${result.responseTime}ms)`);
         testResults.authentication.stats.passed++;
       } else {
-        console.log(`❌ ${test.name}: ${result.status} ${result.statusText} (${result.responseTime}ms)`);
         testResults.authentication.stats.failed++;
+        
+        // Show additional error details for failed tests
+        if (result.data?.error || result.data?.message) {
+          console.log(`     → Error: ${result.data.error || result.data.message}`);
+        }
         
         // Analyze compatibility issues
         const issues = analyzeCompatibilityIssues(result);
@@ -1359,18 +1367,26 @@ async function runAPITests() {
     console.log(`📁 ${category.name} (${category.tests.length} tests)`);
     
     for (const test of category.tests) {
-      process.stdout.write(`  ⏳ ${test.name}... `);
-      
       const result = await executeTest(test, 'api');
       const passed = isSuccessfulStatus(result.status) || 
                     (test.id.includes('not-found') || test.id.includes('invalid') || test.id.includes('missing')) && result.status >= 400;
       
+      // Clear test result output with proper indentation
+      const statusIcon = passed ? '✅' : '❌';
+      const statusText = result.statusText ? ` ${result.statusText}` : '';
+      
+      console.log(`  ${statusIcon} ${test.name}`);
+      console.log(`     → ${result.status}${statusText} (${result.responseTime}ms)`);
+      
       if (passed) {
-        console.log(`✅ ${test.name}: ${result.status} (${result.responseTime}ms)`);
         testResults.api.stats.passed++;
       } else {
-        console.log(`❌ ${test.name}: ${result.status} ${result.statusText} (${result.responseTime}ms)`);
         testResults.api.stats.failed++;
+        
+        // Show additional error details for failed tests
+        if (result.data?.error || result.data?.message) {
+          console.log(`     → Error: ${result.data.error || result.data.message}`);
+        }
         
         // Analyze compatibility issues
         const issues = analyzeCompatibilityIssues(result);

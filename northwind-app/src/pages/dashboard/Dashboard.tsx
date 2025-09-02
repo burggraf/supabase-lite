@@ -8,38 +8,57 @@ import {
   DollarSign,
   AlertCircle
 } from 'lucide-react'
+import { 
+  SalesTrendChart, 
+  TopProductsChart, 
+  CategoryDistributionChart, 
+  OrderStatusChart 
+} from '@/components/dashboard/Charts'
+import { useCustomers } from '@/hooks/useCustomers'
+import { useOrders } from '@/hooks/useOrders'
+import { useProducts } from '@/hooks/useProducts'
 
 export function Dashboard() {
   const { user } = useAuth()
 
-  // Mock data for demonstration
+  // Fetch real data
+  const { data: customersData } = useCustomers({ pagination: { page: 1, limit: 1 } })
+  const { data: ordersData } = useOrders({ pagination: { page: 1, limit: 1 } })
+  const { data: productsData } = useProducts({ pagination: { page: 1, limit: 1 } })
+  
+  // Calculate real stats
+  const totalCustomers = customersData?.total || 0
+  const totalOrders = ordersData?.total || 0
+  const totalProducts = productsData?.total || 0
+  const totalRevenue = 1354287 // Placeholder until we have order totals calculation
+
   const stats = [
     {
       title: 'Total Customers',
-      value: '91',
+      value: totalCustomers.toLocaleString(),
       change: '+2.1%',
-      trend: 'up',
+      trend: 'up' as const,
       icon: Users,
     },
     {
       title: 'Total Orders',
-      value: '830',
+      value: totalOrders.toLocaleString(),
       change: '+4.3%', 
-      trend: 'up',
+      trend: 'up' as const,
       icon: ShoppingCart,
     },
     {
       title: 'Products',
-      value: '77',
+      value: totalProducts.toLocaleString(),
       change: '+1.2%',
-      trend: 'up', 
+      trend: 'up' as const, 
       icon: Package,
     },
     {
       title: 'Revenue',
-      value: '$1,354,287',
+      value: `$${totalRevenue.toLocaleString()}`,
       change: '+8.2%',
-      trend: 'up',
+      trend: 'up' as const,
       icon: DollarSign,
     },
   ]
@@ -109,6 +128,17 @@ export function Dashboard() {
             </Card>
           )
         })}
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SalesTrendChart className="col-span-1" />
+        <TopProductsChart className="col-span-1" />
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CategoryDistributionChart className="col-span-1" />
+        <OrderStatusChart className="col-span-1" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

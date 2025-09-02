@@ -1,4 +1,4 @@
-import { DatabaseManager } from '../../../src/lib/database/connection'
+import { DatabaseManager } from './connection'
 
 export interface MigrationInfo {
   name: string
