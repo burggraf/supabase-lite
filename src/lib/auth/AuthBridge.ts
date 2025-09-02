@@ -130,7 +130,7 @@ export class AuthBridge {
           return await this.handleTokenRefresh(body)
           
         case 'POST logout':
-          return await this.handleSignOut(body)
+          return await this.handleSignOut(body, headers)
           
         // User management
         case 'GET user':
@@ -322,9 +322,18 @@ export class AuthBridge {
     }
   }
 
-  private async handleSignOut(request: any): Promise<AuthAPIResponse> {
-    await this.authManager.signOut(request.scope || 'local')
-    return this.createSuccessResponse(null, 204)
+  private async handleSignOut(request: any, headers: Record<string, string>): Promise<AuthAPIResponse> {
+    try {
+      // Validate auth token and get user context for proper signout
+      this.validateAuthToken(headers)
+      await this.authManager.signOut(request.scope || 'local')
+      return this.createSuccessResponse(null, 204)
+    } catch (error) {
+      console.error('SignOut error:', error)
+      // Even if validation fails, we should still try to clear any session
+      await this.authManager.signOut('local').catch(() => {})
+      return this.createSuccessResponse(null, 204)
+    }
   }
 
   private async handleGetUser(headers: Record<string, string>): Promise<AuthAPIResponse> {
