@@ -757,6 +757,111 @@ function generateReport() {
   console.log('='.repeat(80));
 }
 
+// Pre-flight environment validation
+async function validateEnvironment() {
+  console.log('🔍 Running Pre-Flight Checks...');
+  
+  // 1. Health Check
+  process.stdout.write('  ⏳ Health Check: ');
+  try {
+    const healthStart = Date.now();
+    const healthResponse = await fetch(`${BASE_URL}/health`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(10000) // 10 second timeout
+    });
+    
+    const healthTime = Date.now() - healthStart;
+    
+    if (!healthResponse.ok) {
+      // Check if it's a Supabase Lite specific error about browser connection
+      let errorMessage = `${healthResponse.status} ${healthResponse.statusText}`;
+      try {
+        const errorData = await healthResponse.json();
+        if (errorData.error === 'Browser database not connected') {
+          errorMessage = 'Browser database not connected - please open http://localhost:5173 in your browser first';
+        }
+      } catch (e) {
+        // Ignore JSON parsing errors, use default message
+      }
+      
+      console.log(`❌ Failed (${errorMessage})`);
+      return {
+        success: false,
+        error: `Health check failed: ${errorMessage}`
+      };
+    }
+    
+    console.log(`✅ Server responding (${healthTime}ms)`);
+  } catch (error) {
+    console.log(`❌ Failed (${error.message})`);
+    return {
+      success: false,
+      error: `Health check failed: ${error.message}`
+    };
+  }
+  
+  // 2. Database/Northwind Data Check
+  process.stdout.write('  ⏳ Database Check: ');
+  try {
+    const dbStart = Date.now();
+    const dbResponse = await fetch(`${BASE_URL}/debug/sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        sql: 'SELECT COUNT(*) as count FROM products'
+      }),
+      signal: AbortSignal.timeout(15000) // 15 second timeout
+    });
+    
+    const dbTime = Date.now() - dbStart;
+    
+    if (!dbResponse.ok) {
+      // Check if it's a Supabase Lite specific error about browser connection
+      let errorMessage = `${dbResponse.status} ${dbResponse.statusText}`;
+      try {
+        const errorData = await dbResponse.json();
+        if (errorData.error === 'Browser database not connected') {
+          errorMessage = 'Browser database not connected - please open http://localhost:5173 in your browser first';
+        }
+      } catch (e) {
+        // Ignore JSON parsing errors, use default message
+      }
+      
+      console.log(`❌ Failed (${errorMessage})`);
+      return {
+        success: false,
+        error: `Database check failed: ${errorMessage}`
+      };
+    }
+    
+    const dbData = await dbResponse.json();
+    const productCount = dbData.data?.[0]?.count || 0;
+    
+    if (productCount === 0) {
+      console.log('❌ No products found');
+      return {
+        success: false,
+        error: 'Database check failed: Products table is empty (0 records). Please load Northwind sample data.'
+      };
+    }
+    
+    console.log(`✅ Northwind data loaded (${productCount} products found) (${dbTime}ms)`);
+  } catch (error) {
+    console.log(`❌ Failed (${error.message})`);
+    return {
+      success: false,
+      error: `Database check failed: ${error.message}`
+    };
+  }
+  
+  console.log('  ✅ Environment Ready!\n');
+  return { success: true };
+}
+
 // Main execution
 async function main() {
   console.log('🚀 Supabase Lite Compatibility Test Runner (curl-based)');
@@ -765,6 +870,18 @@ async function main() {
   console.log('');
   
   try {
+    // Run pre-flight validation
+    const validation = await validateEnvironment();
+    if (!validation.success) {
+      console.error(`❌ Environment validation failed: ${validation.error}`);
+      console.log('\n💡 Please ensure:');
+      console.log('  1. Supabase Lite is running (npm run dev)');
+      console.log('  2. Open http://localhost:5173 in your browser to initialize database');
+      console.log('  3. Northwind sample data is loaded');
+      console.log('  4. Database connection is established');
+      process.exit(1);
+    }
+    
     await runAuthenticationTests();
     await runAPITests();
     generateReport();
