@@ -1,0 +1,27 @@
+{
+  "name": "supabase-lite-test-runners",
+  "version": "1.0.0",
+  "description": "Test runners for Supabase Lite compatibility testing",
+  "type": "module",
+  "scripts": {
+    "test:curl": "node curl-test-runner.js",
+    "test:client": "node supabase-client-test-runner.js",
+    "test:both": "npm run test:curl && echo '\n' && npm run test:client",
+    "install:deps": "npm install node-fetch @supabase/supabase-js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "@supabase/supabase-js": "^2.38.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "supabase",
+    "testing",
+    "compatibility",
+    "api"
+  ],
+  "author": "Supabase Lite Team",
+  "license": "MIT"
+}
