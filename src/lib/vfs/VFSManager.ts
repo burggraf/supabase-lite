@@ -517,6 +517,7 @@ export class VFSManager {
       { name: 'public', isPublic: true },
       { name: 'private', isPublic: false },
       { name: 'app', isPublic: true }, // For app deployments
+      { name: 'edge-functions', isPublic: false }, // For Edge Functions
     ];
 
     for (const bucketConfig of defaultBuckets) {
