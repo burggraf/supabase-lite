@@ -70,7 +70,7 @@ const supabaseUrl = isLocalDevelopment
 
 ### Database Schema
 
-The application uses the classic Northwind database schema with the following entities:
+The application uses the classic Northwind database schema with complete sample data from `/public/sql_scripts/northwind.sql`. This includes the following entities:
 
 #### Core Business Entities
 ```sql
@@ -419,18 +419,20 @@ northwind-app/
 - Basic routing structure
 
 #### Phase 2: Core Data Layer (Week 2)
-**Goal**: Implement database operations and core business logic
+**Goal**: Implement database operations and core business logic using existing Northwind data
 
 **Tasks**:
-1. Define TypeScript interfaces for all database entities
-2. Create Supabase service layer with CRUD operations
-3. Implement custom React hooks for data operations
-4. Add error handling and loading states
-5. Set up React Query for data caching and synchronization
-6. Create reusable form components with validation
+1. Define TypeScript interfaces for all database entities ✅ (already in place)
+2. Create database migration system to initialize Northwind schema from `/public/sql_scripts/northwind.sql`
+3. Create Supabase service layer with CRUD operations
+4. Implement custom React hooks for data operations
+5. Add error handling and loading states
+6. Set up React Query for data caching and synchronization
+7. Create reusable form components with validation
 
 **Deliverables**:
-- Complete TypeScript type definitions
+- Complete TypeScript type definitions ✅
+- Database initialization system using existing Northwind data
 - Service layer for all CRUD operations
 - Custom hooks for data management
 - Form validation system

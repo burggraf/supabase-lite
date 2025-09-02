@@ -46,6 +46,11 @@ vi.mock('lucide-react', () => ({
   TrendingUp: vi.fn().mockImplementation(() => null),
   DollarSign: vi.fn().mockImplementation(() => null),
   AlertCircle: vi.fn().mockImplementation(() => null),
+  AlertTriangle: vi.fn().mockImplementation(() => null),
+  RefreshCw: vi.fn().mockImplementation(() => null),
+  Check: vi.fn().mockImplementation(() => null),
+  ChevronDown: vi.fn().mockImplementation(() => null),
+  ChevronUp: vi.fn().mockImplementation(() => null),
 }))
 
 // Global test utilities
