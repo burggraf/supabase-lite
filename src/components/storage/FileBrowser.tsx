@@ -93,9 +93,11 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
     try {
       setIsLoading(true);
       
-      // Special handling for the "app" bucket which contains deployed applications
+      // Special handling for buckets that contain nested structures
       if (bucket.name === 'app') {
         await loadAppBucketFiles();
+      } else if (bucket.name === 'edge-functions') {
+        await loadEdgeFunctionsBucketFiles();
       } else {
         await loadRegularBucketFiles();
       }
@@ -178,6 +180,84 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
 
     setItems(browserItems);
     logger.info('Loaded files for app bucket', { 
+      path: currentPath,
+      count: browserItems.length,
+      folders: folderMap.size,
+      rootFiles: rootFiles.length
+    });
+  };
+
+  const loadEdgeFunctionsBucketFiles = async () => {
+    // Get files in current path for edge-functions bucket
+    const directoryPath = currentPath ? `${bucket.name}/${currentPath}` : bucket.name;
+    const files = await vfsManager.listFiles({
+      directory: directoryPath,
+      recursive: true // Need recursive to find nested function folders
+    });
+    
+    // Group files by folder and create folder items
+    const folderMap = new Map<string, VFSFile[]>();
+    const rootFiles: VFSFile[] = [];
+
+    files.forEach(file => {
+      // Remove bucket name from file path to get relative path within bucket
+      let relativePath = file.path.startsWith(bucket.name + '/') 
+        ? file.path.substring(bucket.name.length + 1)
+        : file.path;
+      
+      // If we're in a subfolder, remove the current path prefix
+      if (currentPath && relativePath.startsWith(currentPath + '/')) {
+        relativePath = relativePath.substring(currentPath.length + 1);
+      }
+      
+      const pathParts = relativePath.split('/');
+      
+      if (pathParts.length === 1 && pathParts[0] !== '') {
+        // File is in current directory
+        rootFiles.push(file);
+      } else if (pathParts.length > 1) {
+        // File is in a subfolder - for edge-functions bucket, only count immediate subfolders
+        const folderName = pathParts[0];
+        if (!folderMap.has(folderName)) {
+          folderMap.set(folderName, []);
+        }
+        folderMap.get(folderName)!.push(file);
+      }
+    });
+
+    // Create browser items
+    const browserItems: BrowserItem[] = [];
+
+    // Add folders (function folders in root, or subfolders within functions)
+    folderMap.forEach((files, folderName) => {
+      // Count all files in this folder (including nested ones)
+      const totalFileCount = files.length;
+      browserItems.push({
+        type: 'folder',
+        name: folderName,
+        path: currentPath ? `${currentPath}/${folderName}` : folderName,
+        fileCount: totalFileCount
+      });
+    });
+
+    // Add files
+    rootFiles.forEach(file => {
+      browserItems.push({
+        ...file,
+        type: 'file'
+      });
+    });
+
+    // Sort: folders first, then files, both alphabetically
+    browserItems.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    setItems(browserItems);
+    logger.info('Loaded files for edge-functions bucket', { 
       path: currentPath,
       count: browserItems.length,
       folders: folderMap.size,
