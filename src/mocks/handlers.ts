@@ -108,6 +108,38 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
   }
 };
 
+const createRestHeadHandler = () => async ({ params, request }: any) => {
+  try {
+    const response = await enhancedBridge.handleRestRequest({
+      table: params.table as string,
+      method: 'HEAD',
+      headers: Object.fromEntries(request.headers.entries()),
+      url: new URL(request.url)
+    })
+    
+    // HEAD requests return no body, only headers
+    return new HttpResponse(null, {
+      status: response.status,
+      headers: {
+        ...response.headers,
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
+        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
+      }
+    })
+  } catch (error: any) {
+    console.error(`❌ MSW: HEAD error for ${params.table}:`, error)
+    
+    return new HttpResponse(null, {
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json; charset=utf-8'
+      }
+    })
+  }
+};
+
 const createRestPostHandler = () => async ({ params, request }: any) => {
   try {
     const body = await request.json()
@@ -125,7 +157,7 @@ const createRestPostHandler = () => async ({ params, request }: any) => {
         ...response.headers,
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-        'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
+        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
       }
     })
   } catch (error: any) {
@@ -164,7 +196,7 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
         ...response.headers,
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-        'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
+        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
       }
     })
   } catch (error: any) {
@@ -201,7 +233,7 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
         ...response.headers,
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-        'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE'
+        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
       }
     })
   } catch (error: any) {
@@ -1904,6 +1936,8 @@ Deno.serve(async (req: Request) => {
       switch (request.method) {
         case 'GET':
           return createRestGetHandler()({ params: { table: params.name }, request })
+        case 'HEAD':
+          return createRestHeadHandler()({ params: { table: params.name }, request })
         case 'POST':
           return createRestPostHandler()({ params: { table: params.name }, request })
         case 'PATCH':
@@ -1941,6 +1975,7 @@ Deno.serve(async (req: Request) => {
   
   // PostgREST-compatible REST API endpoints with project identifier
   http.get('/:projectId/rest/v1/:table', withProjectResolution(createRestGetHandler())),
+  http.head('/:projectId/rest/v1/:table', withProjectResolution(createRestHeadHandler())),
   http.post('/:projectId/rest/v1/:table', withProjectResolution(createRestPostHandler())),
   http.patch('/:projectId/rest/v1/:table', withProjectResolution(createRestPatchHandler())),
   http.delete('/:projectId/rest/v1/:table', withProjectResolution(createRestDeleteHandler())),

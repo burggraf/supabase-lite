@@ -14,7 +14,7 @@ import type { ParsedQuery, FormattedResponse } from '../lib/postgrest'
 
 interface SupabaseRequest {
   table: string
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'RPC'
+  method: 'GET' | 'HEAD' | 'POST' | 'PATCH' | 'DELETE' | 'RPC'
   body?: any
   headers: Record<string, string>
   url: URL
@@ -72,6 +72,13 @@ export class EnhancedSupabaseAPIBridge {
       switch (request.method) {
         case 'GET':
           return await this.handleSelect(request.table, enhancedQuery, context)
+        case 'HEAD':
+          // HEAD requests should return same headers as GET but no body
+          const headResult = await this.handleSelect(request.table, enhancedQuery, context)
+          return {
+            ...headResult,
+            data: null // HEAD returns no body, only headers
+          }
         case 'POST':
           return await this.handleInsert(request.table, enhancedQuery, request.body, context)
         case 'PATCH':
