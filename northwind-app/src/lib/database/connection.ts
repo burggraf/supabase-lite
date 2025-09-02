@@ -1,4 +1,4 @@
-import { PGlite } from '@electric-sql/pglite'
+import { supabase } from '@/lib/supabase'
 
 export interface QueryResult {
   rows: any[]
@@ -9,9 +9,7 @@ export interface QueryResult {
 
 export class DatabaseManager {
   private static instance: DatabaseManager
-  private db: PGlite | null = null
   private isInitialized = false
-  private initializationPromise: Promise<void> | null = null
 
   private constructor() {}
 
@@ -27,136 +25,61 @@ export class DatabaseManager {
       return
     }
 
-    if (this.initializationPromise) {
-      return this.initializationPromise
-    }
-
-    this.initializationPromise = this._initialize()
-    return this.initializationPromise
-  }
-
-  private async _initialize(): Promise<void> {
     try {
-      console.log('🔄 Initializing PGlite database...')
+      console.log('🔄 Testing Supabase connection...')
       
-      this.db = new PGlite({
-        dataDir: 'idb://northwind-business-db',
-        extensions: {
-          // Add any extensions needed
-        }
-      })
+      // Test connection by trying to fetch a simple query
+      const { error } = await supabase
+        .from('customers')
+        .select('customer_id')
+        .limit(1)
 
-      // Test connection
-      await this.db.query('SELECT 1')
+      if (error && error.code !== 'PGRST116') {
+        throw new Error(`Supabase connection test failed: ${error.message}`)
+      }
       
       this.isInitialized = true
-      console.log('✅ Database initialized successfully')
+      console.log('✅ Supabase connection established')
       
     } catch (error) {
-      console.error('❌ Failed to initialize database:', error)
+      console.error('❌ Failed to connect to Supabase:', error)
       throw error
     }
   }
 
-  async query(sql: string, params: any[] = []): Promise<QueryResult> {
-    if (!this.db) {
-      await this.initialize()
-    }
-
-    if (!this.db) {
-      throw new Error('Database not initialized')
-    }
-
-    try {
-      const result = await this.db.query(sql, params)
-      return {
-        rows: result.rows,
-        rowCount: result.affectedRows || result.rows.length,
-        command: sql.trim().split(' ')[0].toUpperCase(),
-        fields: result.fields || []
-      }
-    } catch (error) {
-      console.error('Query error:', error)
-      throw error
-    }
+  // This method should not be used - all queries should go through Supabase.js
+  async query(_sql: string, _params: any[] = []): Promise<QueryResult> {
+    throw new Error('Raw SQL queries are not allowed. Use Supabase client methods instead.')
   }
 
-  async exec(sql: string): Promise<void> {
-    if (!this.db) {
-      await this.initialize()
-    }
-
-    if (!this.db) {
-      throw new Error('Database not initialized')
-    }
-
-    try {
-      await this.db.exec(sql)
-    } catch (error) {
-      console.error('Exec error:', error)
-      throw error
-    }
+  // This method should not be used - all queries should go through Supabase.js
+  async exec(_sql: string): Promise<void> {
+    throw new Error('Raw SQL execution is not allowed. Use Supabase client methods instead.')
   }
 
-  async transaction<T>(fn: () => Promise<T>): Promise<T> {
-    if (!this.db) {
-      await this.initialize()
-    }
-
-    if (!this.db) {
-      throw new Error('Database not initialized')
-    }
-
-    return this.db.transaction(fn)
+  // This method should not be used - transactions should go through Supabase.js
+  async transaction<T>(_fn: () => Promise<T>): Promise<T> {
+    throw new Error('Transactions should be handled through Supabase client methods.')
   }
 
   isConnected(): boolean {
-    return this.isInitialized && this.db !== null
+    return this.isInitialized
   }
 
   async close(): Promise<void> {
-    if (this.db) {
-      await this.db.close()
-      this.db = null
-      this.isInitialized = false
-      this.initializationPromise = null
-    }
+    // Nothing to close with Supabase.js
+    this.isInitialized = false
   }
 
-  // Get database size
+  // Database size is not relevant with Supabase
   async getDatabaseSize(): Promise<number> {
-    if (!this.db) {
-      return 0
-    }
-
-    try {
-      const result = await this.query(`
-        SELECT pg_database_size(current_database()) as size
-      `)
-      return parseInt(result.rows[0]?.size || '0')
-    } catch (error) {
-      console.warn('Could not get database size:', error)
-      return 0
-    }
+    console.warn('Database size is not available with Supabase')
+    return 0
   }
 
-  // List tables
+  // Table listing should use Supabase introspection if needed
   async listTables(): Promise<string[]> {
-    if (!this.db) {
-      return []
-    }
-
-    try {
-      const result = await this.query(`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public'
-        ORDER BY table_name
-      `)
-      return result.rows.map(row => row.table_name)
-    } catch (error) {
-      console.warn('Could not list tables:', error)
-      return []
-    }
+    console.warn('Table listing should be done through Supabase client if needed')
+    return []
   }
 }

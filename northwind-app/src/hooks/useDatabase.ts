@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, createContext, useContext } from 'react'
-import { DatabaseManager } from '../../../src/lib/database/connection'
-import { MigrationRunner } from '../lib/database/MigrationRunner'
-import type { QueryResult } from '../../../src/types'
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react'
+import { supabase } from '@/lib/supabase'
+import type { QueryResult } from '@/types'
 
 interface DatabaseContextType {
   isConnected: boolean
@@ -29,83 +28,57 @@ export function useDatabaseProvider(): DatabaseContextType {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const dbManager = DatabaseManager.getInstance()
-  const migrationRunner = MigrationRunner.getInstance()
-
-  // Initialize database connection and check if Northwind data is available
+  // Initialize Supabase connection
   const initialize = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('🔌 Connecting to database...')
-      await dbManager.initialize()
-      setIsConnected(true)
-      console.log('✅ Database connected')
+      console.log('🔌 Connecting to Supabase...')
+      
+      // Test connection by trying to fetch a simple query
+      const { data, error: testError } = await supabase
+        .from('customers')
+        .select('customer_id')
+        .limit(1)
 
-      // Check if Northwind data is initialized
-      console.log('🔍 Checking Northwind initialization...')
-      const initialized = await migrationRunner.isNorthwindInitialized()
-      setIsInitialized(initialized)
-
-      if (!initialized) {
-        console.log('📥 Northwind data not found, initializing...')
-        await migrationRunner.initializeNorthwindData()
-        setIsInitialized(true)
-        console.log('✅ Northwind data initialized')
-      } else {
-        console.log('✅ Northwind data already available')
+      if (testError && testError.code !== 'PGRST116') {
+        throw new Error(`Connection test failed: ${testError.message}`)
       }
 
+      setIsConnected(true)
+      setIsInitialized(true)
+      console.log('✅ Supabase connection established')
+
     } catch (err: any) {
-      console.error('❌ Database initialization failed:', err)
-      setError(err.message || 'Database initialization failed')
+      console.error('❌ Supabase connection failed:', err)
+      setError(err.message || 'Database connection failed')
       setIsConnected(false)
       setIsInitialized(false)
     } finally {
       setIsLoading(false)
     }
-  }, [dbManager, migrationRunner])
+  }, [])
 
-  // Execute a query
+  // Execute a query (for raw SQL if needed) - should use Supabase RPC instead
   const executeQuery = useCallback(async (sql: string, params?: any[]): Promise<QueryResult> => {
     if (!isConnected) {
       throw new Error('Database not connected')
     }
 
-    try {
-      return await dbManager.query(sql, params)
-    } catch (err: any) {
-      console.error('Query execution failed:', err)
-      throw new Error(`Query failed: ${err.message}`)
-    }
-  }, [dbManager, isConnected])
+    // Raw SQL queries should be converted to Supabase RPC functions or PostgREST operations
+    throw new Error('Raw SQL queries are not allowed. Use Supabase client methods or RPC functions instead.')
+  }, [isConnected])
 
   // Initialize database (can be called manually)
   const initializeDatabase = useCallback(async () => {
     await initialize()
   }, [initialize])
 
-  // Reset database (for development/testing)
+  // Reset database (for development/testing) - not needed with Supabase
   const resetDatabase = useCallback(async () => {
-    if (!isConnected) {
-      throw new Error('Database not connected')
-    }
-
-    setIsLoading(true)
-    try {
-      await migrationRunner.resetDatabase()
-      await migrationRunner.initializeNorthwindData()
-      setIsInitialized(true)
-      console.log('✅ Database reset and reinitialized')
-    } catch (err: any) {
-      console.error('❌ Database reset failed:', err)
-      setError(err.message)
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }, [migrationRunner, isConnected])
+    console.log('Reset not needed with Supabase - data persists in parent instance')
+  }, [])
 
   // Initialize on mount
   useEffect(() => {
@@ -124,3 +97,15 @@ export function useDatabaseProvider(): DatabaseContextType {
 }
 
 export { DatabaseContext }
+
+// DatabaseProvider component
+interface DatabaseProviderProps {
+  children: React.ReactNode
+}
+
+export function DatabaseProvider({ children }: DatabaseProviderProps) {
+  const value = useDatabaseProvider()
+  return (
+    React.createElement(DatabaseContext.Provider, { value }, children)
+  )
+}

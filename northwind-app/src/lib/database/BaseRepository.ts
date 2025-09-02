@@ -1,4 +1,4 @@
-import { DatabaseManager } from './connection'
+import { supabase } from '@/lib/supabase'
 import type { QueryResult } from '@/types'
 
 export interface PaginationOptions {
@@ -35,12 +35,10 @@ export interface RepositoryResult<T> {
 }
 
 export abstract class BaseRepository<T> {
-  protected dbManager: DatabaseManager
   protected tableName: string
   protected primaryKey: string
 
   constructor(tableName: string, primaryKey: string = 'id') {
-    this.dbManager = DatabaseManager.getInstance()
     this.tableName = tableName
     this.primaryKey = primaryKey
   }
@@ -49,94 +47,83 @@ export abstract class BaseRepository<T> {
    * Find a single record by ID
    */
   async findById(id: string | number): Promise<T | null> {
-    const result = await this.dbManager.query(
-      `SELECT * FROM ${this.tableName} WHERE ${this.primaryKey} = $1`,
-      [id]
-    )
-    return result.rows[0] || null
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .select('*')
+      .eq(this.primaryKey, id)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      throw new Error(`Failed to find record: ${error.message}`)
+    }
+
+    return data || null
   }
 
   /**
    * Find all records with optional filtering, sorting, and pagination
    */
   async findAll(options: QueryOptions = {}): Promise<RepositoryResult<T>> {
-    const { pagination, sort, filters, search } = options
+    const { pagination = { page: 1, limit: 20 }, sort, filters, search } = options
     
-    let query = `SELECT * FROM ${this.tableName}`
-    let countQuery = `SELECT COUNT(*) as total FROM ${this.tableName}`
-    const params: any[] = []
-    let paramIndex = 1
+    // Start with base query
+    let query = supabase.from(this.tableName).select('*', { count: 'exact' })
 
-    // Build WHERE clause
-    const whereConditions: string[] = []
-    
-    // Add filters
+    // Apply filters
     if (filters) {
       for (const [field, value] of Object.entries(filters)) {
         if (value !== null && value !== undefined && value !== '') {
           if (Array.isArray(value)) {
-            whereConditions.push(`${field} = ANY($${paramIndex})`)
-            params.push(value)
+            query = query.in(field, value)
           } else if (typeof value === 'string' && value.includes('%')) {
-            whereConditions.push(`${field} ILIKE $${paramIndex}`)
-            params.push(value)
+            query = query.ilike(field, value)
           } else {
-            whereConditions.push(`${field} = $${paramIndex}`)
-            params.push(value)
+            query = query.eq(field, value)
           }
-          paramIndex++
         }
       }
     }
 
-    // Add search
+    // Apply search
     if (search && search.query && search.fields.length > 0) {
-      const searchConditions = search.fields.map(field => 
-        `${field}::text ILIKE $${paramIndex}`
-      ).join(' OR ')
-      whereConditions.push(`(${searchConditions})`)
-      params.push(`%${search.query}%`)
-      paramIndex++
+      // For multiple fields, we'll use or() with individual ilike conditions
+      const searchConditions = search.fields.map(field => `${field}.ilike.%${search.query}%`)
+      if (searchConditions.length === 1) {
+        query = query.ilike(search.fields[0], `%${search.query}%`)
+      } else {
+        query = query.or(searchConditions.join(','))
+      }
     }
 
-    // Apply WHERE clause
-    if (whereConditions.length > 0) {
-      const whereClause = ` WHERE ${whereConditions.join(' AND ')}`
-      query += whereClause
-      countQuery += whereClause
-    }
-
-    // Add sorting
+    // Apply sorting
     if (sort && sort.length > 0) {
-      const sortClauses = sort.map(s => `${s.field} ${s.direction}`).join(', ')
-      query += ` ORDER BY ${sortClauses}`
+      for (const s of sort) {
+        query = query.order(s.field, { ascending: s.direction === 'ASC' })
+      }
     } else {
       // Default sort by primary key
-      query += ` ORDER BY ${this.primaryKey}`
+      query = query.order(this.primaryKey)
     }
 
-    // Add pagination
-    let page = 1
-    let limit = 50
-    if (pagination) {
-      page = pagination.page || 1
-      limit = pagination.limit || 50
-      const offset = pagination.offset || (page - 1) * limit
-      query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
-      params.push(limit, offset)
+    // Apply pagination
+    const page = pagination.page || 1
+    const limit = pagination.limit || 20
+    const offset = (page - 1) * limit
+    
+    query = query.range(offset, offset + limit - 1)
+
+    // Execute query
+    const { data, error, count } = await query
+
+    if (error) {
+      throw new Error(`Failed to fetch records: ${error.message}`)
     }
 
-    // Execute queries
-    const [dataResult, countResult] = await Promise.all([
-      this.dbManager.query(query, params),
-      this.dbManager.query(countQuery, params.slice(0, paramIndex - (pagination ? 2 : 0)))
-    ])
-
-    const total = parseInt(countResult.rows[0].total)
+    const total = count || 0
     const totalPages = Math.ceil(total / limit)
 
     return {
-      data: dataResult.rows,
+      data: data || [],
       total,
       page,
       limit,
@@ -148,107 +135,107 @@ export abstract class BaseRepository<T> {
    * Create a new record
    */
   async create(data: Partial<T>): Promise<T> {
-    const fields = Object.keys(data).filter(key => data[key as keyof T] !== undefined)
-    const values = fields.map(key => data[key as keyof T])
-    const placeholders = fields.map((_, index) => `$${index + 1}`).join(', ')
+    const { data: result, error } = await supabase
+      .from(this.tableName)
+      .insert(data)
+      .select()
+      .single()
 
-    const query = `
-      INSERT INTO ${this.tableName} (${fields.join(', ')})
-      VALUES (${placeholders})
-      RETURNING *
-    `
+    if (error) {
+      throw new Error(`Failed to create record: ${error.message}`)
+    }
 
-    const result = await this.dbManager.query(query, values)
-    return result.rows[0]
+    return result
   }
 
   /**
    * Update a record by ID
    */
   async update(id: string | number, data: Partial<T>): Promise<T | null> {
-    const fields = Object.keys(data).filter(key => data[key as keyof T] !== undefined)
-    const values = fields.map(key => data[key as keyof T])
-    
-    if (fields.length === 0) {
+    if (Object.keys(data).length === 0) {
       return this.findById(id)
     }
 
-    const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ')
-    values.push(id)
+    const { data: result, error } = await supabase
+      .from(this.tableName)
+      .update(data)
+      .eq(this.primaryKey, id)
+      .select()
+      .single()
 
-    const query = `
-      UPDATE ${this.tableName}
-      SET ${setClause}
-      WHERE ${this.primaryKey} = $${fields.length + 1}
-      RETURNING *
-    `
+    if (error && error.code !== 'PGRST116') {
+      throw new Error(`Failed to update record: ${error.message}`)
+    }
 
-    const result = await this.dbManager.query(query, values)
-    return result.rows[0] || null
+    return result || null
   }
 
   /**
    * Delete a record by ID
    */
   async delete(id: string | number): Promise<boolean> {
-    const result = await this.dbManager.query(
-      `DELETE FROM ${this.tableName} WHERE ${this.primaryKey} = $1`,
-      [id]
-    )
-    return result.rowCount > 0
+    const { error } = await supabase
+      .from(this.tableName)
+      .delete()
+      .eq(this.primaryKey, id)
+
+    if (error) {
+      throw new Error(`Failed to delete record: ${error.message}`)
+    }
+
+    return true
   }
 
   /**
    * Count records with optional filters
    */
   async count(filters?: FilterOptions): Promise<number> {
-    let query = `SELECT COUNT(*) as total FROM ${this.tableName}`
-    const params: any[] = []
-    let paramIndex = 1
+    let query = supabase.from(this.tableName).select('*', { count: 'exact', head: true })
 
     if (filters) {
-      const whereConditions: string[] = []
-      
       for (const [field, value] of Object.entries(filters)) {
         if (value !== null && value !== undefined && value !== '') {
-          whereConditions.push(`${field} = $${paramIndex}`)
-          params.push(value)
-          paramIndex++
+          query = query.eq(field, value)
         }
-      }
-
-      if (whereConditions.length > 0) {
-        query += ` WHERE ${whereConditions.join(' AND ')}`
       }
     }
 
-    const result = await this.dbManager.query(query, params)
-    return parseInt(result.rows[0].total)
+    const { count, error } = await query
+
+    if (error) {
+      throw new Error(`Failed to count records: ${error.message}`)
+    }
+
+    return count || 0
   }
 
   /**
    * Check if a record exists by ID
    */
   async exists(id: string | number): Promise<boolean> {
-    const result = await this.dbManager.query(
-      `SELECT 1 FROM ${this.tableName} WHERE ${this.primaryKey} = $1 LIMIT 1`,
-      [id]
-    )
-    return result.rows.length > 0
+    const { data, error } = await supabase
+      .from(this.tableName)
+      .select(this.primaryKey)
+      .eq(this.primaryKey, id)
+      .limit(1)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      throw new Error(`Failed to check existence: ${error.message}`)
+    }
+
+    return !!data
   }
 
   /**
-   * Execute a raw query on this table
+   * Execute a raw SQL query using Supabase RPC
+   * For complex queries that can't be done with PostgREST
    */
   protected async query(sql: string, params?: any[]): Promise<QueryResult> {
-    return this.dbManager.query(sql, params)
-  }
-
-  /**
-   * Execute multiple operations in a transaction
-   */
-  protected async transaction<R>(fn: () => Promise<R>): Promise<R> {
-    return this.dbManager.transaction(fn)
+    // For complex queries, we'll need to use Supabase RPC functions
+    // This is a placeholder - specific implementations should override this method
+    // or convert complex queries to PostgREST equivalents
+    throw new Error('Raw SQL queries should be converted to PostgREST operations or use Supabase RPC functions')
   }
 
   /**

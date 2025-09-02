@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthContext, useAuthProvider } from '@/hooks/useAuth'
+import { DatabaseProvider } from '@/hooks/useDatabase'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { Layout } from '@/components/layout/Layout'
 import { Login } from '@/pages/auth/Login'
@@ -146,9 +147,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider value={authValue}>
-        <Router>
-          <AppContent />
-        </Router>
+        <DatabaseProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </DatabaseProvider>
       </AuthContext.Provider>
     </QueryClientProvider>
   )

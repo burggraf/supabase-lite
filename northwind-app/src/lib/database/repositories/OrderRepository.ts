@@ -1,4 +1,5 @@
 import { BaseRepository, type QueryOptions, type RepositoryResult } from '../BaseRepository'
+import { supabase } from '@/lib/supabase'
 
 export interface Order {
   order_id: number
@@ -53,98 +54,79 @@ export class OrderRepository extends BaseRepository<Order> {
    * Search orders with enhanced filtering
    */
   async searchOrders(options: QueryOptions & { filters?: OrderSearchFilters } = {}): Promise<RepositoryResult<Order>> {
-    const { pagination, sort, filters, search } = options
+    const { pagination = { page: 1, limit: 20 }, sort, filters, search } = options
     
-    let query = `SELECT * FROM ${this.tableName}`
-    let countQuery = `SELECT COUNT(*) as total FROM ${this.tableName}`
-    const params: any[] = []
-    let paramIndex = 1
+    // Start with base query
+    let query = supabase.from(this.tableName).select('*', { count: 'exact' })
 
-    // Build WHERE clause
-    const whereConditions: string[] = []
-    
+    // Apply regular filters
     if (filters) {
       const { date_from, date_to, shipped, ...regularFilters } = filters
 
       // Regular filters
       for (const [field, value] of Object.entries(regularFilters)) {
         if (value !== null && value !== undefined && value !== '') {
-          whereConditions.push(`${field} = $${paramIndex}`)
-          params.push(value)
-          paramIndex++
+          query = query.eq(field, value)
         }
       }
 
       // Date range filters
       if (date_from) {
-        whereConditions.push(`order_date >= $${paramIndex}`)
-        params.push(date_from)
-        paramIndex++
+        query = query.gte('order_date', date_from.toISOString())
       }
 
       if (date_to) {
-        whereConditions.push(`order_date <= $${paramIndex}`)
-        params.push(date_to)
-        paramIndex++
+        query = query.lte('order_date', date_to.toISOString())
       }
 
       // Shipped filter
       if (shipped !== undefined) {
         if (shipped) {
-          whereConditions.push(`shipped_date IS NOT NULL`)
+          query = query.not('shipped_date', 'is', null)
         } else {
-          whereConditions.push(`shipped_date IS NULL`)
+          query = query.is('shipped_date', null)
         }
       }
     }
 
-    // Search
+    // Apply search
     if (search && search.query && search.fields.length > 0) {
-      const searchConditions = search.fields.map(field => 
-        `${field}::text ILIKE $${paramIndex}`
-      ).join(' OR ')
-      whereConditions.push(`(${searchConditions})`)
-      params.push(`%${search.query}%`)
-      paramIndex++
+      const searchConditions = search.fields.map(field => `${field}.ilike.%${search.query}%`)
+      if (searchConditions.length === 1) {
+        query = query.ilike(search.fields[0], `%${search.query}%`)
+      } else {
+        query = query.or(searchConditions.join(','))
+      }
     }
 
-    // Apply WHERE clause
-    if (whereConditions.length > 0) {
-      const whereClause = ` WHERE ${whereConditions.join(' AND ')}`
-      query += whereClause
-      countQuery += whereClause
-    }
-
-    // Add sorting
+    // Apply sorting
     if (sort && sort.length > 0) {
-      const sortClauses = sort.map(s => `${s.field} ${s.direction}`).join(', ')
-      query += ` ORDER BY ${sortClauses}`
+      for (const s of sort) {
+        query = query.order(s.field, { ascending: s.direction === 'ASC' })
+      }
     } else {
-      query += ` ORDER BY ${this.primaryKey} DESC`
+      query = query.order(this.primaryKey, { ascending: false })
     }
 
-    // Add pagination
-    let page = 1
-    let limit = 50
-    if (pagination) {
-      page = pagination.page || 1
-      limit = pagination.limit || 50
-      const offset = pagination.offset || (page - 1) * limit
-      query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
-      params.push(limit, offset)
+    // Apply pagination
+    const page = pagination.page || 1
+    const limit = pagination.limit || 20
+    const offset = (page - 1) * limit
+    
+    query = query.range(offset, offset + limit - 1)
+
+    // Execute query
+    const { data, error, count } = await query
+
+    if (error) {
+      throw new Error(`Failed to search orders: ${error.message}`)
     }
 
-    // Execute queries
-    const [dataResult, countResult] = await Promise.all([
-      this.query(query, params),
-      this.query(countQuery, params.slice(0, paramIndex - (pagination ? 2 : 0)))
-    ])
-
-    const total = parseInt(countResult.rows[0].total)
+    const total = count || 0
     const totalPages = Math.ceil(total / limit)
 
     return {
-      data: dataResult.rows.map(row => ({
+      data: (data || []).map(row => ({
         ...row,
         order_date: row.order_date ? new Date(row.order_date) : undefined,
         required_date: row.required_date ? new Date(row.required_date) : undefined,
@@ -161,47 +143,61 @@ export class OrderRepository extends BaseRepository<Order> {
    * Find orders with full details (customer, employee, shipper info)
    */
   async findWithDetails(orderId: number): Promise<OrderWithDetails | null> {
-    const result = await this.query(`
-      SELECT 
-        o.*,
-        c.company_name as customer_name,
-        (e.first_name || ' ' || e.last_name) as employee_name,
-        s.company_name as shipper_name
-      FROM orders o
-      LEFT JOIN customers c ON o.customer_id = c.customer_id
-      LEFT JOIN employees e ON o.employee_id = e.employee_id
-      LEFT JOIN shippers s ON o.ship_via = s.shipper_id
-      WHERE o.order_id = $1
-    `, [orderId])
+    // Get order with related information using Supabase joins
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        customers(company_name),
+        employees(first_name, last_name),
+        shippers(company_name)
+      `)
+      .eq('order_id', orderId)
+      .single()
 
-    if (result.rows.length === 0) return null
+    if (orderError && orderError.code !== 'PGRST116') {
+      throw new Error(`Failed to fetch order details: ${orderError.message}`)
+    }
 
-    const order = result.rows[0]
+    if (!orderData) return null
 
     // Get order details with product information
-    const detailsResult = await this.query(`
-      SELECT 
-        od.*,
-        p.product_name,
-        (od.unit_price * od.quantity * (1 - od.discount)) as line_total
-      FROM order_details od
-      JOIN products p ON od.product_id = p.product_id
-      WHERE od.order_id = $1
-      ORDER BY od.product_id
-    `, [orderId])
+    const { data: orderDetails, error: detailsError } = await supabase
+      .from('order_details')
+      .select(`
+        *,
+        products(product_name)
+      `)
+      .eq('order_id', orderId)
+      .order('product_id')
 
-    const orderDetails = detailsResult.rows
-    const totalAmount = orderDetails.reduce((sum, detail) => sum + parseFloat(detail.line_total), 0)
+    if (detailsError) {
+      throw new Error(`Failed to fetch order details: ${detailsError.message}`)
+    }
+
+    // Transform the data and calculate totals
+    const transformedDetails = (orderDetails || []).map((detail: any) => {
+      const lineTotal = detail.unit_price * detail.quantity * (1 - detail.discount)
+      return {
+        ...detail,
+        product_name: detail.products?.product_name,
+        line_total: lineTotal,
+      }
+    })
+
+    const totalAmount = transformedDetails.reduce((sum, detail) => sum + detail.line_total, 0)
 
     return {
-      ...order,
-      order_date: order.order_date ? new Date(order.order_date) : undefined,
-      required_date: order.required_date ? new Date(order.required_date) : undefined,
-      shipped_date: order.shipped_date ? new Date(order.shipped_date) : undefined,
-      customer_name: order.customer_name,
-      employee_name: order.employee_name,
-      shipper_name: order.shipper_name,
-      order_details: orderDetails,
+      ...orderData,
+      order_date: orderData.order_date ? new Date(orderData.order_date) : undefined,
+      required_date: orderData.required_date ? new Date(orderData.required_date) : undefined,
+      shipped_date: orderData.shipped_date ? new Date(orderData.shipped_date) : undefined,
+      customer_name: (orderData as any).customers?.company_name,
+      employee_name: (orderData as any).employees 
+        ? `${(orderData as any).employees.first_name} ${(orderData as any).employees.last_name}`
+        : undefined,
+      shipper_name: (orderData as any).shippers?.company_name,
+      order_details: transformedDetails,
       total_amount: totalAmount,
     }
   }
@@ -256,43 +252,71 @@ export class OrderRepository extends BaseRepository<Order> {
     pendingOrders: number
     shippedOrders: number
   }> {
-    let query = `
-      SELECT 
-        COUNT(DISTINCT o.order_id) as total_orders,
-        COALESCE(SUM(od.unit_price * od.quantity * (1 - od.discount)), 0) as total_revenue,
-        COALESCE(AVG(od.unit_price * od.quantity * (1 - od.discount)), 0) as avg_order_value,
-        COUNT(DISTINCT CASE WHEN o.shipped_date IS NULL THEN o.order_id END) as pending_orders,
-        COUNT(DISTINCT CASE WHEN o.shipped_date IS NOT NULL THEN o.order_id END) as shipped_orders
-      FROM orders o
-      LEFT JOIN order_details od ON o.order_id = od.order_id
-    `
-
-    const params: any[] = []
-    const whereConditions: string[] = []
+    // Get orders with optional date filtering
+    let ordersQuery = supabase
+      .from('orders')
+      .select(`
+        order_id,
+        shipped_date,
+        order_details(unit_price, quantity, discount)
+      `)
 
     if (from) {
-      whereConditions.push(`o.order_date >= $${params.length + 1}`)
-      params.push(from)
+      ordersQuery = ordersQuery.gte('order_date', from.toISOString())
     }
 
     if (to) {
-      whereConditions.push(`o.order_date <= $${params.length + 1}`)
-      params.push(to)
+      ordersQuery = ordersQuery.lte('order_date', to.toISOString())
     }
 
-    if (whereConditions.length > 0) {
-      query += ` WHERE ${whereConditions.join(' AND ')}`
+    const { data: orders, error } = await ordersQuery
+
+    if (error) {
+      throw new Error(`Failed to fetch order stats: ${error.message}`)
     }
 
-    const result = await this.query(query, params)
-    const row = result.rows[0]
+    if (!orders || orders.length === 0) {
+      return {
+        totalOrders: 0,
+        totalRevenue: 0,
+        averageOrderValue: 0,
+        pendingOrders: 0,
+        shippedOrders: 0,
+      }
+    }
+
+    // Calculate statistics
+    let totalRevenue = 0
+    let pendingOrders = 0
+    let shippedOrders = 0
+    const orderTotals: number[] = []
+
+    for (const order of orders) {
+      let orderTotal = 0
+      if (order.order_details) {
+        for (const detail of order.order_details) {
+          orderTotal += detail.unit_price * detail.quantity * (1 - detail.discount)
+        }
+      }
+      
+      totalRevenue += orderTotal
+      orderTotals.push(orderTotal)
+      
+      if (order.shipped_date) {
+        shippedOrders++
+      } else {
+        pendingOrders++
+      }
+    }
+
+    const averageOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0
 
     return {
-      totalOrders: parseInt(row?.total_orders || '0'),
-      totalRevenue: parseFloat(row?.total_revenue || '0'),
-      averageOrderValue: parseFloat(row?.avg_order_value || '0'),
-      pendingOrders: parseInt(row?.pending_orders || '0'),
-      shippedOrders: parseInt(row?.shipped_orders || '0'),
+      totalOrders: orders.length,
+      totalRevenue,
+      averageOrderValue,
+      pendingOrders,
+      shippedOrders,
     }
   }
 
@@ -306,50 +330,78 @@ export class OrderRepository extends BaseRepository<Order> {
     total_revenue: number
     order_count: number
   }>> {
-    let query = `
-      SELECT 
-        p.product_id,
-        p.product_name,
-        SUM(od.quantity) as total_quantity,
-        SUM(od.unit_price * od.quantity * (1 - od.discount)) as total_revenue,
-        COUNT(DISTINCT od.order_id) as order_count
-      FROM order_details od
-      JOIN products p ON od.product_id = p.product_id
-      JOIN orders o ON od.order_id = o.order_id
-    `
+    // Get order details with products and orders for date filtering
+    let query = supabase
+      .from('order_details')
+      .select(`
+        product_id,
+        unit_price,
+        quantity,
+        discount,
+        order_id,
+        products(product_name),
+        orders(order_date)
+      `)
 
-    const params: any[] = []
-    const whereConditions: string[] = []
+    const { data: orderDetails, error } = await query
 
-    if (from) {
-      whereConditions.push(`o.order_date >= $${params.length + 1}`)
-      params.push(from)
+    if (error) {
+      throw new Error(`Failed to fetch top selling products: ${error.message}`)
     }
 
-    if (to) {
-      whereConditions.push(`o.order_date <= $${params.length + 1}`)
-      params.push(to)
+    if (!orderDetails || orderDetails.length === 0) {
+      return []
     }
 
-    if (whereConditions.length > 0) {
-      query += ` WHERE ${whereConditions.join(' AND ')}`
+    // Filter by date range if provided and aggregate data
+    const productStats = new Map<number, {
+      product_id: number
+      product_name: string
+      total_quantity: number
+      total_revenue: number
+      order_ids: Set<number>
+    }>()
+
+    for (const detail of orderDetails) {
+      // Apply date filtering
+      if (from || to) {
+        const orderDate = new Date((detail as any).orders?.order_date)
+        if (from && orderDate < from) continue
+        if (to && orderDate > to) continue
+      }
+
+      const productId = detail.product_id
+      const revenue = detail.unit_price * detail.quantity * (1 - detail.discount)
+      const productName = (detail as any).products?.product_name || 'Unknown'
+
+      if (!productStats.has(productId)) {
+        productStats.set(productId, {
+          product_id: productId,
+          product_name: productName,
+          total_quantity: 0,
+          total_revenue: 0,
+          order_ids: new Set(),
+        })
+      }
+
+      const stats = productStats.get(productId)!
+      stats.total_quantity += detail.quantity
+      stats.total_revenue += revenue
+      stats.order_ids.add(detail.order_id)
     }
 
-    query += `
-      GROUP BY p.product_id, p.product_name
-      ORDER BY total_revenue DESC
-      LIMIT $${params.length + 1}
-    `
-    params.push(limit)
+    // Convert to array and sort by revenue
+    const results = Array.from(productStats.values())
+      .map(stats => ({
+        product_id: stats.product_id,
+        product_name: stats.product_name,
+        total_quantity: stats.total_quantity,
+        total_revenue: stats.total_revenue,
+        order_count: stats.order_ids.size,
+      }))
+      .sort((a, b) => b.total_revenue - a.total_revenue)
+      .slice(0, limit)
 
-    const result = await this.query(query, params)
-
-    return result.rows.map(row => ({
-      product_id: row.product_id,
-      product_name: row.product_name,
-      total_quantity: parseInt(row.total_quantity || '0'),
-      total_revenue: parseFloat(row.total_revenue || '0'),
-      order_count: parseInt(row.order_count || '0'),
-    }))
+    return results
   }
 }

@@ -39,10 +39,12 @@ The app implements complete CRUD operations across all Northwind database entiti
 - **Recharts** for data visualization and analytics
 
 #### Data Layer
-- **@supabase/supabase-js** for database and authentication
+- **@supabase/supabase-js** for database and authentication (ONLY method for data access)
 - **React Hook Form** for form management and validation
 - **Zod** for runtime type validation and schema validation
 - **React Query/TanStack Query** for data fetching, caching, and synchronization
+
+**CRITICAL DATA ACCESS REQUIREMENT**: The application MUST use only the Supabase.js library for all database operations. Direct database access methods such as `/debug/sql` endpoints, raw SQL queries, fetch calls to Supabase API endpoints, or any other direct database access are strictly prohibited. All data operations must go through the official Supabase.js client library using PostgREST operations.
 
 #### Development & Testing
 - **TypeScript** for static type checking
@@ -67,6 +69,55 @@ const supabaseUrl = isLocalDevelopment
   ? 'http://localhost:5173'
   : window.location.origin;
 ```
+
+### Data Access Architecture
+
+#### Supabase.js Only Policy
+
+**MANDATORY REQUIREMENT**: All database operations in this application MUST use the Supabase.js client library exclusively. This is a strict architectural decision to ensure:
+
+1. **Type Safety**: Leverage TypeScript definitions and client-side validation
+2. **Security**: Prevent SQL injection and unauthorized database access
+3. **Consistency**: Maintain consistent error handling and response formats
+4. **Performance**: Utilize built-in caching and optimization features
+5. **Maintainability**: Follow established patterns and best practices
+
+**PROHIBITED METHODS**:
+- ❌ Direct HTTP fetch calls to Supabase REST API endpoints
+- ❌ Raw SQL queries via `/debug/sql` or similar endpoints
+- ❌ Direct database connections or drivers
+- ❌ Custom SQL execution functions
+- ❌ Bypassing the Supabase client for any database operation
+
+**APPROVED METHODS**:
+- ✅ `supabase.from('table').select()` for data retrieval
+- ✅ `supabase.from('table').insert()` for data creation
+- ✅ `supabase.from('table').update()` for data modification
+- ✅ `supabase.from('table').delete()` for data deletion
+- ✅ `supabase.rpc('function_name')` for stored procedures
+- ✅ `supabase.auth` methods for authentication operations
+
+#### Implementation Guidelines
+
+```typescript
+// ✅ CORRECT: Using Supabase.js client
+const { data, error } = await supabase
+  .from('customers')
+  .select('*')
+  .eq('country', 'USA')
+  .order('company_name')
+
+// ❌ INCORRECT: Direct API fetch
+const response = await fetch('/rest/v1/customers?country=eq.USA')
+
+// ❌ INCORRECT: Raw SQL endpoint
+const result = await fetch('/debug/sql', {
+  method: 'POST',
+  body: JSON.stringify({ sql: 'SELECT * FROM customers' })
+})
+```
+
+All repository classes, custom hooks, and data services must exclusively use the Supabase.js client methods. Any violation of this requirement will be considered a critical architectural flaw.
 
 ### Database Schema
 
@@ -527,10 +578,14 @@ northwind-app/
 
 #### Data Security
 - **Input Validation**: Server-side validation for all user inputs
-- **SQL Injection Protection**: Parameterized queries via Supabase
+- **SQL Injection Protection**: Parameterized queries via Supabase.js client ONLY
+- **Data Access Control**: MANDATORY use of Supabase.js client library for ALL database operations
+- **API Endpoint Security**: Prohibition of direct REST API calls or raw SQL execution
 - **XSS Prevention**: Content Security Policy, input sanitization
 - **Authentication**: JWT token validation, session management
 - **Authorization**: Role-based access control (RBAC)
+
+**CRITICAL SECURITY REQUIREMENT**: The exclusive use of Supabase.js client library ensures consistent security patterns, prevents SQL injection attacks, and maintains proper authentication context for all database operations. Direct database access methods circumvent these security measures and are strictly forbidden.
 
 #### Privacy Protection
 - **Data Encryption**: HTTPS for all communications

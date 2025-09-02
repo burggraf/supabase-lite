@@ -1,4 +1,5 @@
 import { BaseRepository, type QueryOptions, type RepositoryResult } from '../BaseRepository'
+import { supabase } from '@/lib/supabase'
 
 export interface Customer {
   customer_id: string
@@ -64,7 +65,7 @@ export class CustomerRepository extends BaseRepository<Customer> {
   }
 
   /**
-   * Get customer order statistics
+   * Get customer order statistics using Supabase.js
    */
   async getCustomerOrderStats(customerId: string): Promise<{
     totalOrders: number
@@ -72,59 +73,120 @@ export class CustomerRepository extends BaseRepository<Customer> {
     averageOrderValue: number
     lastOrderDate: Date | null
   }> {
-    const result = await this.query(`
-      SELECT 
-        COUNT(o.order_id) as total_orders,
-        COALESCE(SUM(od.unit_price * od.quantity * (1 - od.discount)), 0) as total_amount,
-        COALESCE(AVG(od.unit_price * od.quantity * (1 - od.discount)), 0) as avg_order_value,
-        MAX(o.order_date) as last_order_date
-      FROM orders o
-      LEFT JOIN order_details od ON o.order_id = od.order_id
-      WHERE o.customer_id = $1
-      GROUP BY o.customer_id
-    `, [customerId])
+    // Get orders for the customer
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select(`
+        order_id,
+        order_date,
+        order_details(unit_price, quantity, discount)
+      `)
+      .eq('customer_id', customerId)
 
-    const row = result.rows[0]
+    if (ordersError) {
+      throw new Error(`Failed to fetch customer order stats: ${ordersError.message}`)
+    }
+
+    if (!orders || orders.length === 0) {
+      return {
+        totalOrders: 0,
+        totalAmount: 0,
+        averageOrderValue: 0,
+        lastOrderDate: null,
+      }
+    }
+
+    // Calculate statistics
+    let totalAmount = 0
+    let lastOrderDate: Date | null = null
+
+    for (const order of orders) {
+      // Calculate order total
+      if (order.order_details) {
+        for (const detail of order.order_details) {
+          totalAmount += detail.unit_price * detail.quantity * (1 - detail.discount)
+        }
+      }
+
+      // Track latest order date
+      if (order.order_date) {
+        const orderDate = new Date(order.order_date)
+        if (!lastOrderDate || orderDate > lastOrderDate) {
+          lastOrderDate = orderDate
+        }
+      }
+    }
+
     return {
-      totalOrders: parseInt(row?.total_orders || '0'),
-      totalAmount: parseFloat(row?.total_amount || '0'),
-      averageOrderValue: parseFloat(row?.avg_order_value || '0'),
-      lastOrderDate: row?.last_order_date ? new Date(row.last_order_date) : null,
+      totalOrders: orders.length,
+      totalAmount,
+      averageOrderValue: orders.length > 0 ? totalAmount / orders.length : 0,
+      lastOrderDate,
     }
   }
 
   /**
-   * Get top customers by order value
+   * Get top customers by order value using Supabase.js
    */
   async getTopCustomers(limit: number = 10): Promise<Array<Customer & { totalSpent: number; orderCount: number }>> {
-    const result = await this.query(`
-      SELECT 
-        c.*,
-        COALESCE(SUM(od.unit_price * od.quantity * (1 - od.discount)), 0) as total_spent,
-        COUNT(DISTINCT o.order_id) as order_count
-      FROM customers c
-      LEFT JOIN orders o ON c.customer_id = o.customer_id
-      LEFT JOIN order_details od ON o.order_id = od.order_id
-      GROUP BY c.customer_id, c.company_name, c.contact_name, c.contact_title, 
-               c.address, c.city, c.region, c.postal_code, c.country, c.phone, c.fax
-      ORDER BY total_spent DESC
-      LIMIT $1
-    `, [limit])
+    // Get all customers
+    const { data: customers, error: customersError } = await supabase
+      .from('customers')
+      .select('*')
 
-    return result.rows.map(row => ({
-      customer_id: row.customer_id,
-      company_name: row.company_name,
-      contact_name: row.contact_name,
-      contact_title: row.contact_title,
-      address: row.address,
-      city: row.city,
-      region: row.region,
-      postal_code: row.postal_code,
-      country: row.country,
-      phone: row.phone,
-      fax: row.fax,
-      totalSpent: parseFloat(row.total_spent || '0'),
-      orderCount: parseInt(row.order_count || '0'),
-    }))
+    if (customersError) {
+      throw new Error(`Failed to fetch customers: ${customersError.message}`)
+    }
+
+    if (!customers || customers.length === 0) {
+      return []
+    }
+
+    // Get customer spending data by calculating totals
+    const customersWithStats = await Promise.all(
+      customers.map(async (customer) => {
+        // Get orders with details for this customer
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select(`
+            order_id,
+            order_details(unit_price, quantity, discount)
+          `)
+          .eq('customer_id', customer.customer_id)
+
+        if (ordersError) {
+          console.warn(`Failed to fetch orders for customer ${customer.customer_id}:`, ordersError)
+          return {
+            ...customer,
+            totalSpent: 0,
+            orderCount: 0,
+          }
+        }
+
+        let totalSpent = 0
+        const orderCount = orders?.length || 0
+
+        if (orders) {
+          for (const order of orders) {
+            if (order.order_details) {
+              for (const detail of order.order_details) {
+                totalSpent += detail.unit_price * detail.quantity * (1 - detail.discount)
+              }
+            }
+          }
+        }
+
+        return {
+          ...customer,
+          totalSpent,
+          orderCount,
+        }
+      })
+    )
+
+    // Sort by totalSpent descending and limit results
+    return customersWithStats
+      .sort((a, b) => b.totalSpent - a.totalSpent)
+      .slice(0, limit)
   }
 }
