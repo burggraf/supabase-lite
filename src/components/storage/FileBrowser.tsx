@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   ChevronRight, 
+  ChevronLeft,
   Home, 
   Upload, 
   MoreVertical, 
@@ -637,39 +638,58 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
       {/* Header */}
       <div className="p-6 border-b">
         <div className="flex items-center justify-between mb-4">
-          {/* Breadcrumb */}
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <button
-                  onClick={() => handleBreadcrumbClick('')}
-                  className="cursor-pointer flex items-center gap-1 transition-colors hover:text-foreground"
-                >
-                  <Home className="h-4 w-4" />
-                  {bucket.name}
-                </button>
-              </BreadcrumbItem>
-              {breadcrumbItems.map((item, index) => (
-                <div key={item.path} className="flex items-center">
-                  <BreadcrumbSeparator>
-                    <ChevronRight className="h-4 w-4" />
-                  </BreadcrumbSeparator>
-                  <BreadcrumbItem>
-                    {index === breadcrumbItems.length - 1 ? (
-                      <BreadcrumbPage>{item.name}</BreadcrumbPage>
-                    ) : (
-                      <button 
-                        onClick={() => handleBreadcrumbClick(item.path)}
-                        className="cursor-pointer transition-colors hover:text-foreground"
-                      >
-                        {item.name}
-                      </button>
-                    )}
-                  </BreadcrumbItem>
-                </div>
-              ))}
-            </BreadcrumbList>
-          </Breadcrumb>
+          <div className="flex items-center gap-2">
+            {/* Back Button - only show when not at root */}
+            {currentPath && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const pathParts = currentPath.split('/');
+                  const parentPath = pathParts.slice(0, -1).join('/');
+                  onPathChange(parentPath);
+                }}
+                className="gap-1"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </Button>
+            )}
+            
+            {/* Breadcrumb */}
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <button
+                    onClick={() => handleBreadcrumbClick('')}
+                    className="cursor-pointer flex items-center gap-1 transition-colors hover:text-foreground"
+                  >
+                    <Home className="h-4 w-4" />
+                    {bucket.name}
+                  </button>
+                </BreadcrumbItem>
+                {breadcrumbItems.map((item, index) => (
+                  <div key={item.path} className="flex items-center">
+                    <BreadcrumbSeparator>
+                      <ChevronRight className="h-4 w-4" />
+                    </BreadcrumbSeparator>
+                    <BreadcrumbItem>
+                      {index === breadcrumbItems.length - 1 ? (
+                        <BreadcrumbPage>{item.name}</BreadcrumbPage>
+                      ) : (
+                        <button 
+                          onClick={() => handleBreadcrumbClick(item.path)}
+                          className="cursor-pointer transition-colors hover:text-foreground"
+                        >
+                          {item.name}
+                        </button>
+                      )}
+                    </BreadcrumbItem>
+                  </div>
+                ))}
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
