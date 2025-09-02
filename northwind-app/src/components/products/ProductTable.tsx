@@ -203,7 +203,7 @@ export function ProductTable({
       action: (products: ProductWithDetails[]) => {
         console.log('Bulk discontinue products:', products)
       },
-      variant: 'secondary' as const,
+      variant: 'default' as const,
     },
   ]
 

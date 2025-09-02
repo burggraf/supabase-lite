@@ -128,7 +128,7 @@ export class MigrationRunner {
 
     } catch (error) {
       console.error('❌ Failed to initialize Northwind database:', error)
-      throw new Error(`Northwind initialization failed: ${error.message}`)
+      throw new Error(`Northwind initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

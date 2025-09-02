@@ -1,4 +1,4 @@
-import React from 'react'
+// import React from 'react'
 import { UseFormReturn } from 'react-hook-form'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -190,7 +190,7 @@ export function FormField(props: FormFieldProps) {
         {hasError && (
           <div className="flex items-center gap-1 text-sm text-red-600">
             <AlertCircle className="h-4 w-4" />
-            {fieldState.message}
+            {typeof fieldState.message === 'string' ? fieldState.message : 'Invalid field'}
           </div>
         )}
       </div>
@@ -213,7 +213,7 @@ export function FormField(props: FormFieldProps) {
       {hasError && (
         <div className="flex items-center gap-1 text-sm text-red-600">
           <AlertCircle className="h-4 w-4" />
-          {fieldState.message}
+          {typeof fieldState.message === 'string' ? fieldState.message : 'Invalid field'}
         </div>
       )}
     </div>

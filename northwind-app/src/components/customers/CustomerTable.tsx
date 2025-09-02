@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { DataTable } from '../data-table/DataTable'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'

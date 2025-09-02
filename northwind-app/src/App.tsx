@@ -142,7 +142,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider value={authValue}>
         <DatabaseProvider>
-          <Router>
+          <Router basename="/app/northwind-app">
             <AppContent />
           </Router>
         </DatabaseProvider>

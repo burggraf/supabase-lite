@@ -1,4 +1,3 @@
-import React from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -64,13 +63,13 @@ export function SupplierForm({
 
   const onSubmitForm = async (data: SupplierFormData) => {
     try {
-      // Clean up empty strings to undefined
+      // Clean up empty strings to undefined, but ensure company_name is always a string
       const cleanData = Object.fromEntries(
         Object.entries(data).map(([key, value]) => [
           key,
-          value === '' ? undefined : value
+          key === 'company_name' ? value : (value === '' ? undefined : value)
         ])
-      )
+      ) as typeof data
       
       await onSubmit(cleanData)
       if (!supplier) {

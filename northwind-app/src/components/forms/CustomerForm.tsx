@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -126,7 +126,7 @@ export function CustomerForm({
           acc[key as keyof CustomerFormData] = value
         } else {
           // Optional fields - convert empty strings to undefined
-          acc[key as keyof CustomerFormData] = value === '' ? undefined : value
+          (acc as any)[key] = value === '' ? undefined : value
         }
         return acc
       }, {} as CustomerFormData)
