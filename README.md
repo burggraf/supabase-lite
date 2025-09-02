@@ -508,6 +508,40 @@ CLI ─HTTP─> Proxy Server ─PostMessage─> Browser ─PGlite─> Database (
 - [ ] **Import/Export Enhancements**: Support for more data formats (CSV, JSON, SQL dumps)
 - [ ] **Backup Scheduling**: Automated backup system with restore points
 
+## 🧪 API Endpoint Test Runners
+
+Supabase Lite includes comprehensive test runners that validate 100% API compatibility with the official Supabase API. These tools replicate every test from the test-app's Authentication and API Testing tabs to identify compatibility issues.
+
+### Features
+
+- **Comprehensive Coverage**: Tests 110+ endpoints across authentication and REST API functionality
+- **Dual Testing Approach**: HTTP-based testing and Supabase.js client library testing
+- **Random User Generation**: Prevents conflicts with existing users during test runs
+- **Detailed Reporting**: JSON reports with compatibility issue analysis and severity levels
+- **Cross-Reference System**: Test IDs match between test-app and runners for easy maintenance
+
+### Quick Start
+
+```bash
+cd api-endpoint-test-runners
+npm install
+
+# Run HTTP-based tests
+node curl-test-runner.js
+
+# Run Supabase client library tests
+node supabase-client-test-runner.js
+
+# Run both for comparison
+npm run test:both
+```
+
+### Documentation
+
+For comprehensive documentation including test coverage, usage examples, CI/CD integration, and troubleshooting guides, see:
+
+**📖 [API Endpoint Test Runners Documentation](docs/API-Endpoint-Test-Runners.md)**
+
 ## 🤝 Contributing
 
 This project is in active development. Contributions are welcome!
