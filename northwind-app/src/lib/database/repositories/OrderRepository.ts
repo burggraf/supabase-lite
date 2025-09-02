@@ -283,10 +283,13 @@ export class OrderRepository extends BaseRepository<Order> {
 
     // Get order details for all orders
     const orderIds = orders.map(order => order.order_id)
+    
+    // Use or() method with eq() for each order_id to avoid .in() issues
+    const orConditions = orderIds.map(id => `order_id.eq.${id}`).join(',')
     const { data: allOrderDetails, error: detailsError } = await supabase
       .from('order_details')
       .select('order_id, unit_price, quantity, discount')
-      .in('order_id', orderIds)
+      .or(orConditions)
 
     if (detailsError) {
       console.warn('Failed to fetch order details for stats:', detailsError)
