@@ -255,11 +255,7 @@ export class OrderRepository extends BaseRepository<Order> {
     // Get orders with optional date filtering
     let ordersQuery = supabase
       .from('orders')
-      .select(`
-        order_id,
-        shipped_date,
-        order_details(unit_price, quantity, discount)
-      `)
+      .select('order_id, shipped_date, order_date')
 
     if (from) {
       ordersQuery = ordersQuery.gte('order_date', from.toISOString())
@@ -285,6 +281,17 @@ export class OrderRepository extends BaseRepository<Order> {
       }
     }
 
+    // Get order details for all orders
+    const orderIds = orders.map(order => order.order_id)
+    const { data: allOrderDetails, error: detailsError } = await supabase
+      .from('order_details')
+      .select('order_id, unit_price, quantity, discount')
+      .in('order_id', orderIds)
+
+    if (detailsError) {
+      console.warn('Failed to fetch order details for stats:', detailsError)
+    }
+
     // Calculate statistics
     let totalRevenue = 0
     let pendingOrders = 0
@@ -293,8 +300,11 @@ export class OrderRepository extends BaseRepository<Order> {
 
     for (const order of orders) {
       let orderTotal = 0
-      if (order.order_details) {
-        for (const detail of order.order_details) {
+      
+      // Calculate order total from details
+      if (allOrderDetails) {
+        const orderDetails = allOrderDetails.filter(detail => detail.order_id === order.order_id)
+        for (const detail of orderDetails) {
           orderTotal += detail.unit_price * detail.quantity * (1 - detail.discount)
         }
       }

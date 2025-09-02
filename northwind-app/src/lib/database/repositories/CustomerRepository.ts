@@ -76,11 +76,7 @@ export class CustomerRepository extends BaseRepository<Customer> {
     // Get orders for the customer
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
-      .select(`
-        order_id,
-        order_date,
-        order_details(unit_price, quantity, discount)
-      `)
+      .select('order_id, order_date')
       .eq('customer_id', customerId)
 
     if (ordersError) {
@@ -96,19 +92,31 @@ export class CustomerRepository extends BaseRepository<Customer> {
       }
     }
 
+    // Get order details for all orders
+    const orderIds = orders.map(order => order.order_id)
+    const { data: orderDetails, error: detailsError } = await supabase
+      .from('order_details')
+      .select('order_id, unit_price, quantity, discount')
+      .in('order_id', orderIds)
+
+    if (detailsError) {
+      console.warn(`Failed to fetch order details for customer ${customerId}:`, detailsError)
+      // Continue with basic stats without amounts
+    }
+
     // Calculate statistics
     let totalAmount = 0
     let lastOrderDate: Date | null = null
 
-    for (const order of orders) {
-      // Calculate order total
-      if (order.order_details) {
-        for (const detail of order.order_details) {
-          totalAmount += detail.unit_price * detail.quantity * (1 - detail.discount)
-        }
+    // Calculate order amounts
+    if (orderDetails) {
+      for (const detail of orderDetails) {
+        totalAmount += detail.unit_price * detail.quantity * (1 - detail.discount)
       }
+    }
 
-      // Track latest order date
+    // Track latest order date
+    for (const order of orders) {
       if (order.order_date) {
         const orderDate = new Date(order.order_date)
         if (!lastOrderDate || orderDate > lastOrderDate) {
@@ -117,10 +125,12 @@ export class CustomerRepository extends BaseRepository<Customer> {
       }
     }
 
+    const averageOrderValue = orders.length > 0 ? totalAmount / orders.length : 0
+
     return {
       totalOrders: orders.length,
       totalAmount,
-      averageOrderValue: orders.length > 0 ? totalAmount / orders.length : 0,
+      averageOrderValue,
       lastOrderDate,
     }
   }
@@ -145,13 +155,10 @@ export class CustomerRepository extends BaseRepository<Customer> {
     // Get customer spending data by calculating totals
     const customersWithStats = await Promise.all(
       customers.map(async (customer) => {
-        // Get orders with details for this customer
+        // Get orders for this customer
         const { data: orders, error: ordersError } = await supabase
           .from('orders')
-          .select(`
-            order_id,
-            order_details(unit_price, quantity, discount)
-          `)
+          .select('order_id')
           .eq('customer_id', customer.customer_id)
 
         if (ordersError) {
@@ -166,12 +173,19 @@ export class CustomerRepository extends BaseRepository<Customer> {
         let totalSpent = 0
         const orderCount = orders?.length || 0
 
-        if (orders) {
-          for (const order of orders) {
-            if (order.order_details) {
-              for (const detail of order.order_details) {
-                totalSpent += detail.unit_price * detail.quantity * (1 - detail.discount)
-              }
+        if (orders && orders.length > 0) {
+          // Get order details for this customer's orders
+          const orderIds = orders.map(order => order.order_id)
+          const { data: orderDetails, error: detailsError } = await supabase
+            .from('order_details')
+            .select('unit_price, quantity, discount')
+            .in('order_id', orderIds)
+
+          if (detailsError) {
+            console.warn(`Failed to fetch order details for customer ${customer.customer_id}:`, detailsError)
+          } else if (orderDetails) {
+            for (const detail of orderDetails) {
+              totalSpent += detail.unit_price * detail.quantity * (1 - detail.discount)
             }
           }
         }
