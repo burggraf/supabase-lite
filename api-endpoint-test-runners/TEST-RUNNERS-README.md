@@ -4,28 +4,38 @@
 
 This directory contains comprehensive test runners that validate Supabase Lite's compatibility with the official Supabase API. The test runners replicate every test from the test-app's Authentication and API Testing tabs to identify compatibility issues.
 
-## Quick Start Guide
+## 🎯 Perfect Test Parity Achievement
+
+**Both test runners now have exactly 87 identical tests** - achieving perfect parity between HTTP-based and Supabase.js client testing approaches. This standardization ensures comprehensive validation from both perspectives.
 
 ## Overview
 
 - **curl-test-runner.js**: Tests all endpoints using raw HTTP calls (node-fetch)
 - **supabase-client-test-runner.js**: Tests same endpoints using @supabase/supabase-js client library
-- Both runners test **110+ endpoints** across authentication and REST API functionality
+- **Both runners test exactly 87 identical endpoints** across authentication and REST API functionality
+- **Complete coverage** of all 84 core tests from test-app + 3 enhancement tests
 
 ## Test Coverage
 
-### Authentication Tests (~25 tests)
-- Basic Authentication: signup, signin, session management, logout
-- User Management: profile updates, password changes, password reset
-- Magic Link & OTP: passwordless authentication methods
-- And more categories from the test-app
+### Authentication Tests (58 tests across 10 categories)
+- **Basic Authentication**: signup, signin, phone auth, session management, logout
+- **User Management**: profile updates, email/phone changes, password management
+- **Magic Link & OTP**: passwordless authentication, email/SMS verification
+- **Email & Phone Verification**: account confirmation workflows
+- **Multi-Factor Authentication**: TOTP, SMS MFA setup and verification
+- **OAuth & Social Login**: Google, GitHub OAuth flows, identity linking
+- **Admin Operations**: user management with service role privileges
+- **Anonymous Authentication**: guest sessions and account conversion
+- **Session Management**: multi-device sessions, token refresh, security
+- **Security & Edge Cases**: rate limiting, validation, error handling
 
-### API Tests (~25 tests)  
-- Basic CRUD Operations: GET, POST, PATCH, DELETE on Northwind tables
-- Advanced Filtering: price ranges, text search, complex filters
-- Relationships & Joins: embedded customer/product data
-- Error Handling: testing edge cases and error responses
-- And more categories from the test-app
+### API Tests (29 tests across 6 categories)  
+- **Basic CRUD Operations**: GET, POST, PATCH, DELETE on Northwind tables
+- **Advanced Filtering**: price ranges, text search, complex filters, IN queries
+- **Relationships & Joins**: embedded customer/product data, multi-level joins
+- **Pagination & Limits**: offset pagination, ordering, count-only queries
+- **Business Scenarios**: sales reports, VIP customers, premium products
+- **Error Handling**: missing tables, invalid columns, validation errors
 
 ## Setup
 
@@ -105,21 +115,23 @@ The test runners automatically identify common compatibility issues:
 ================================================================================
 🌐 Base URL: http://localhost:5173
 📈 Overall Results:
-   Total Tests: 50
-   Passed: 32 (64.0%)
-   Failed: 18 (36.0%)
+   Total Tests: 87
+   Passed: 71 (81.6%)
+   Failed: 16 (18.4%)
 
-🔐 Authentication Tests: 15/25 passed
-🔗 API Tests: 17/25 passed
+🔐 Authentication Tests: 47/58 passed (81.0%)
+🔗 API Tests: 24/29 passed (82.8%)
 
-⚠️  Compatibility Issues Found: 12
-   🔴 High Severity: 5
-   🟡 Medium Severity: 7
+✅ Perfect Test Parity: Both curl and supabase-client runners execute identical tests
+
+⚠️  Compatibility Issues Found: 8
+   🔴 High Severity: 3
+   🟡 Medium Severity: 5
 
 ⚠️  Top Compatibility Issues:
-   1. [get-session] Endpoint GET /auth/v1/session returns 404 - may not be implemented
-   2. [magic-link-signin] Parameter validation error: Invalid email format
-   3. [orders-with-customers] Internal server error - possible implementation issue
+   1. [admin-list-users] Endpoint GET /auth/v1/admin/users returns 404 - admin endpoints need implementation
+   2. [enroll-totp-factor] MFA enrollment not fully implemented
+   3. [oauth-authorize-google] OAuth flow redirection needs configuration
 ```
 
 ## Cross-Reference with Test-App
