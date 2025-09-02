@@ -37,6 +37,15 @@ const SAMPLE_APPS: SampleApp[] = [
 		path: '/apps/test-app',
 		sourceUrl: 'https://github.com/burggraf/supabase-lite/tree/main/test-app',
 	},
+	{
+		id: 'northwind-app',
+		name: 'northwind-app',
+		title: 'Northwind Business',
+		description: 'Northwind Business Application',
+		tags: ['Business', 'Demo'],
+		path: '/apps/northwind-app',
+		sourceUrl: 'https://github.com/burggraf/supabase-lite/tree/main/northwind-app',
+	},
 ]
 
 interface SampleAppInstallerProps {
@@ -104,7 +113,7 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 	const copyPublicAppToVFS = async (appId: string, targetAppName: string) => {
 		// Dynamically discover all files in the source app directory
 		const sourceBasePath = `/apps/${appId}`
-		
+
 		// Get the list of all files by parsing index.html and checking for assets
 		const filesToCopy = await discoverFilesInPublicApp(sourceBasePath)
 
@@ -118,21 +127,22 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 				}
 
 				// Get the content-type header or infer from filename
-				const contentType = response.headers.get('content-type') || getMimeTypeFromFilename(file.src)
-				
+				const contentType =
+					response.headers.get('content-type') || getMimeTypeFromFilename(file.src)
+
 				// Debug JavaScript files specifically
 				const isJsFile = file.src.endsWith('.js') || file.src.endsWith('.mjs')
 				if (isJsFile) {
 					console.log(`🐛 JS FILE DEBUG for ${file.src}:`, {
 						serverContentType: response.headers.get('content-type'),
 						fallbackContentType: getMimeTypeFromFilename(file.src),
-						finalContentType: contentType
+						finalContentType: contentType,
 					})
 				}
-				
+
 				// Determine if file is text or binary based on MIME type
 				const isTextFile = isTextMimeType(contentType)
-				
+
 				if (isJsFile) {
 					console.log(`🐛 JS FILE isTextFile check:`, { contentType, isTextFile })
 				}
@@ -157,36 +167,39 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 
 				// Convert source path to destination path
 				const destPath = file.src.replace(sourceBasePath, `app/${targetAppName}`)
-				
+
 				// CRITICAL: For HTML files, rewrite asset paths BEFORE storing in VFS
 				if (contentType.includes('text/html') && content) {
-					console.log('🔧 SAMPLE INSTALLER: Rewriting HTML asset paths before storing in VFS');
-					console.log('🔧 Original HTML preview:', content.substring(0, 300));
-					
+					console.log('🔧 SAMPLE INSTALLER: Rewriting HTML asset paths before storing in VFS')
+					console.log('🔧 Original HTML preview:', content.substring(0, 300))
+
 					// Add base tag
-					let htmlContent = content;
-					const baseTag = `<base href="/app/${targetAppName}/">`;
+					let htmlContent = content
+					const baseTag = `<base href="/app/${targetAppName}/">`
 					if (!htmlContent.includes('<base')) {
-						htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`);
-						console.log('🔧 SAMPLE INSTALLER: Added base tag');
+						htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`)
+						console.log('🔧 SAMPLE INSTALLER: Added base tag')
 					}
-					
+
 					// Convert absolute paths to relative
-					const originalContent = htmlContent;
+					const originalContent = htmlContent
 					htmlContent = htmlContent
 						.replace(/href="\/assets\//g, `href="assets/`)
 						.replace(/src="\/assets\//g, `src="assets/`)
-						.replace(/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g, `href="$1"`)
-						.replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`);
-					
+						.replace(
+							/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g,
+							`href="$1"`
+						)
+						.replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`)
+
 					console.log('🔧 SAMPLE INSTALLER: HTML rewrite result:', {
 						changed: originalContent !== htmlContent,
 						originalLength: originalContent.length,
 						newLength: htmlContent.length,
-						preview: htmlContent.substring(0, 400)
-					});
-					
-					content = htmlContent; // Use rewritten HTML
+						preview: htmlContent.substring(0, 400),
+					})
+
+					content = htmlContent // Use rewritten HTML
 				}
 
 				// Store in VFS using createFile
@@ -203,13 +216,12 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 				throw new Error(`Failed to copy ${file.src}: ${error}`)
 			}
 		}
-		
 	}
 
 	// Helper function to discover all files in a public app directory
 	const discoverFilesInPublicApp = async (basePath: string): Promise<{ src: string }[]> => {
 		const files: { src: string }[] = []
-		
+
 		// Always try to get index.html first
 		try {
 			const indexResponse = await fetch(`${basePath}/index.html`, { method: 'HEAD' })
@@ -219,7 +231,7 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 		} catch {
 			// Index.html not found, skip
 		}
-		
+
 		// Try common root files (only include vite.svg since that's what actually exists)
 		const commonRootFiles = ['vite.svg']
 		for (const fileName of commonRootFiles) {
@@ -232,48 +244,58 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 				// File doesn't exist, skip
 			}
 		}
-		
+
 		// Parse index.html to discover asset references
 		try {
 			const indexResponse = await fetch(`${basePath}/index.html`)
 			if (indexResponse.ok) {
 				const indexContent = await indexResponse.text()
 				console.log(`📄 index.html content:`, indexContent.substring(0, 500) + '...')
-				
+
 				// Extract all asset references from HTML (href, src attributes)
 				const assetRegex = /(?:href|src)=["']([^"']+)["']/g
 				const matches = [...indexContent.matchAll(assetRegex)]
-				console.log(`🔍 Found ${matches.length} asset matches:`, matches.map(m => m[1]))
-				
+				console.log(
+					`🔍 Found ${matches.length} asset matches:`,
+					matches.map((m) => m[1])
+				)
+
 				for (const match of matches) {
 					let assetPath = match[1]
 					console.log(`🔄 Processing asset path: ${assetPath}`)
-					
+
 					// Skip external URLs
-					if (assetPath.startsWith('http://') || assetPath.startsWith('https://') || assetPath.startsWith('//')) {
+					if (
+						assetPath.startsWith('http://') ||
+						assetPath.startsWith('https://') ||
+						assetPath.startsWith('//')
+					) {
 						console.log(`⏭️ Skipping external URL: ${assetPath}`)
 						continue
 					}
-					
+
 					// Convert relative paths to absolute from the app root
 					if (assetPath.startsWith('./')) {
 						assetPath = assetPath.substring(2) // Remove './'
 						console.log(`🔄 Converted relative path to: ${assetPath}`)
 					}
-					
+
 					if (!assetPath.startsWith('/')) {
 						assetPath = '/' + assetPath
 						console.log(`🔄 Added leading slash: ${assetPath}`)
 					}
-					
+
 					// Full path for fetching
 					const fullPath = basePath + assetPath
 					console.log(`🎯 Full asset path: ${fullPath}`)
-					
+
 					// Check if this asset actually exists
 					try {
 						const assetResponse = await fetch(fullPath, { method: 'HEAD' })
-						console.log(`🔍 Asset check for ${fullPath}:`, { ok: assetResponse.ok, status: assetResponse.status })
+						console.log(`🔍 Asset check for ${fullPath}:`, {
+							ok: assetResponse.ok,
+							status: assetResponse.status,
+						})
 						if (assetResponse.ok) {
 							files.push({ src: fullPath })
 							console.log(`✅ Added asset ${fullPath} to file list`)
@@ -286,13 +308,16 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 		} catch (error) {
 			console.warn('Could not parse index.html for assets:', error)
 		}
-		
+
 		// Remove duplicates
-		const uniqueFiles = files.filter((file, index, self) => 
-			self.findIndex(f => f.src === file.src) === index
+		const uniqueFiles = files.filter(
+			(file, index, self) => self.findIndex((f) => f.src === file.src) === index
 		)
-		
-		console.log(`🎯 Final unique file list (${uniqueFiles.length} files):`, uniqueFiles.map(f => f.src))
+
+		console.log(
+			`🎯 Final unique file list (${uniqueFiles.length} files):`,
+			uniqueFiles.map((f) => f.src)
+		)
 		return uniqueFiles
 	}
 
