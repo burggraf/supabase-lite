@@ -9,6 +9,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { 
   Plus, 
   Search, 
@@ -274,16 +281,17 @@ export function DatabaseWorking() {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium">schema</span>
-              <select 
-                value={selectedSchema}
-                onChange={(e) => setSelectedSchema(e.target.value)}
-                className="border rounded px-3 py-1 text-sm"
-              >
-                <option value="public">public</option>
-                <option value="auth">auth</option>
-                <option value="storage">storage</option>
-                <option value="realtime">realtime</option>
-              </select>
+              <Select value={selectedSchema} onValueChange={setSelectedSchema}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">public</SelectItem>
+                  <SelectItem value="auth">auth</SelectItem>
+                  <SelectItem value="storage">storage</SelectItem>
+                  <SelectItem value="realtime">realtime</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex-1 max-w-sm">
               <div className="relative">

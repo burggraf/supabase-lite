@@ -218,7 +218,7 @@ export function InsertRowDialog({
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting || loading}
-            className="bg-green-600 hover:bg-green-700"
+            className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
           >
             {isSubmitting ? (
               <>
