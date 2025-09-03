@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { CrossOriginAPIHandler } from './lib/api/CrossOriginAPIHandler'
 import { vfsDirectHandler } from './lib/vfs/VFSDirectHandler'
+import { registerServiceWorker } from './sw-register'
 
 // WebSocket bridge client for external API access
 function initializeWebSocketBridge() {
@@ -438,6 +439,9 @@ async function handleAppNavigation(pathname: string) {
 // Start MSW for browser-based API simulation and cross-origin API handler
 async function initializeApp() {
   try {
+    // Register Service Worker for offline support BEFORE everything else
+    await registerServiceWorker()
+    
     // Initialize WebSocket bridge BEFORE MSW to avoid WebSocket override conflicts
     initializeWebSocketBridge()
     
