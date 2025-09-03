@@ -252,16 +252,73 @@ function websocketBridge(): Plugin {
         
         if (isApiRoute) {
           
-          // CRITICAL: Handle /app/* asset requests directly in Vite middleware
-          // Module script loading bypasses MSW, so we need to serve JS/CSS files directly
+          // CRITICAL: Handle /app/* requests directly in Vite middleware
+          // This bypasses the complex WebSocket/MSW system for app hosting
           if (req.url && req.url.startsWith('/app/')) {
-            const isAssetRequest = /\.(js|css|png|jpg|jpeg|gif|webp|svg|woff|woff2|ttf|ico)$/i.test(req.url)
+            console.log('🎯 DIRECT APP SERVING:', { url: req.url })
             
-            if (isAssetRequest) {
-              console.log('🎯 DIRECT ASSET SERVING:', { url: req.url, isAsset: isAssetRequest })
+            try {
+              const fs = await import('fs')
+              const pathModule = await import('path')
               
-              // Try to serve this asset directly from VFS via WebSocket
-              // This bypasses MSW entirely for module scripts
+              // Parse the URL: /app/appName/file/path
+              const urlParts = req.url.split('/').filter(Boolean)
+              if (urlParts.length >= 2 && urlParts[0] === 'app') {
+                const appName = urlParts[1]
+                const filePath = urlParts.slice(2).join('/') || 'index.html'
+                
+                // Only serve asset files directly - let HTML go through MSW/VFS for processing
+                const isAssetFile = filePath !== 'index.html' && /\.(js|css|png|jpg|jpeg|gif|webp|svg|woff|woff2|ttf|ico|json)$/i.test(filePath)
+                
+                if (isAssetFile) {
+                  // Try to serve from public/apps/{appName}/{filePath}
+                  const publicPath = pathModule.join(process.cwd(), 'public', 'apps', appName, filePath)
+                  
+                  console.log('🔍 Trying to serve asset file:', { appName, filePath, publicPath })
+                  
+                  if (fs.existsSync(publicPath)) {
+                    const stats = fs.statSync(publicPath)
+                    if (stats.isFile()) {
+                      console.log('✅ Serving asset file directly from public directory')
+                      
+                      // Determine content type
+                      const ext = pathModule.extname(filePath).toLowerCase()
+                      const mimeTypes: Record<string, string> = {
+                        '.js': 'application/javascript',
+                        '.css': 'text/css',
+                        '.json': 'application/json',
+                        '.png': 'image/png',
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.gif': 'image/gif',
+                        '.svg': 'image/svg+xml',
+                        '.ico': 'image/x-icon',
+                        '.woff': 'font/woff',
+                        '.woff2': 'font/woff2'
+                      }
+                      const contentType = mimeTypes[ext] || 'application/octet-stream'
+                      
+                      // Read and serve the file
+                      const content = fs.readFileSync(publicPath)
+                      
+                      res.writeHead(200, {
+                        'Content-Type': contentType,
+                        'Content-Length': content.length.toString(),
+                        'Access-Control-Allow-Origin': '*',
+                        'X-Served-By': 'vite-direct'
+                      })
+                      res.end(content)
+                      return
+                    }
+                  }
+                  
+                  console.log('❌ Asset file not found, continuing to WebSocket forwarding')
+                } else {
+                  console.log('🌐 HTML request, delegating to MSW/VFS for processing:', { filePath })
+                }
+              }
+            } catch (error) {
+              console.error('❌ Direct serving error:', error)
             }
           }
           

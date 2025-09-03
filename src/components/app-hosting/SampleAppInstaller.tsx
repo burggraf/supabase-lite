@@ -170,36 +170,57 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 
 				// CRITICAL: For HTML files, rewrite asset paths BEFORE storing in VFS
 				if (contentType.includes('text/html') && content) {
-					console.log('🔧 SAMPLE INSTALLER: Rewriting HTML asset paths before storing in VFS')
+					console.log('🔧 SAMPLE INSTALLER: Processing HTML asset paths before storing in VFS')
 					console.log('🔧 Original HTML preview:', content.substring(0, 300))
 
-					// Add base tag
-					let htmlContent = content
-					const baseTag = `<base href="/app/${targetAppName}/">`
-					if (!htmlContent.includes('<base')) {
-						htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`)
-						console.log('🔧 SAMPLE INSTALLER: Added base tag')
-					}
-
-					// Convert absolute paths to relative
-					const originalContent = htmlContent
-					htmlContent = htmlContent
-						.replace(/href="\/assets\//g, `href="assets/`)
-						.replace(/src="\/assets\//g, `src="assets/`)
-						.replace(
-							/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g,
-							`href="$1"`
-						)
-						.replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`)
-
-					console.log('🔧 SAMPLE INSTALLER: HTML rewrite result:', {
-						changed: originalContent !== htmlContent,
-						originalLength: originalContent.length,
-						newLength: htmlContent.length,
-						preview: htmlContent.substring(0, 400),
+					// Check if HTML is already configured for subdirectory deployment
+					const targetBasePath = `/app/${targetAppName}/`
+					const hasCorrectBaseTag = content.includes(`<base href="${targetBasePath}"`)
+					const hasSubdirectoryPaths = content.includes(targetBasePath + 'assets/')
+					
+					console.log('🔧 SAMPLE INSTALLER: HTML configuration check:', {
+						targetBasePath,
+						hasCorrectBaseTag,
+						hasSubdirectoryPaths,
+						needsRewriting: !(hasCorrectBaseTag && hasSubdirectoryPaths)
 					})
 
-					content = htmlContent // Use rewritten HTML
+					let htmlContent = content
+
+					if (hasCorrectBaseTag && hasSubdirectoryPaths) {
+						// HTML is already correctly configured for subdirectory deployment
+						console.log('🔧 SAMPLE INSTALLER: HTML already configured for subdirectory deployment, skipping rewriting')
+					} else {
+						// HTML needs path rewriting for subdirectory deployment
+						console.log('🔧 SAMPLE INSTALLER: Rewriting HTML asset paths for subdirectory deployment')
+
+						// Add base tag if not present
+						const baseTag = `<base href="${targetBasePath}">`
+						if (!htmlContent.includes('<base')) {
+							htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`)
+							console.log('🔧 SAMPLE INSTALLER: Added base tag')
+						}
+
+						// Convert absolute paths to relative
+						const originalContent = htmlContent
+						htmlContent = htmlContent
+							.replace(/href="\/assets\//g, `href="assets/`)
+							.replace(/src="\/assets\//g, `src="assets/`)
+							.replace(
+								/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g,
+								`href="$1"`
+							)
+							.replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`)
+
+						console.log('🔧 SAMPLE INSTALLER: HTML rewrite result:', {
+							changed: originalContent !== htmlContent,
+							originalLength: originalContent.length,
+							newLength: htmlContent.length,
+							preview: htmlContent.substring(0, 400),
+						})
+					}
+
+					content = htmlContent // Use processed HTML
 				}
 
 				// Store in VFS using createFile
