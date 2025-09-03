@@ -1,21 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { Editor } from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Save, 
   X, 
   Plus,
   Code2,
   FileText,
-  RotateCcw,
-  Settings
+  RotateCcw
 } from 'lucide-react';
 import { vfsManager } from '@/lib/vfs/VFSManager';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import type * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor';
 
 interface CodeEditorProps {
   selectedFile: string | null;
@@ -128,10 +127,10 @@ export function CodeEditor({ selectedFile, onFileChange }: CodeEditorProps) {
       const openFile: OpenFile = {
         path: filePath,
         name: fileName,
-        content: file.content,
+        content: file.content || '',
         language,
         isDirty: false,
-        originalContent: file.content
+        originalContent: file.content || ''
       };
 
       const newOpenFiles = [...openFiles, openFile];

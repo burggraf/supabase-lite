@@ -493,7 +493,7 @@ function websocketBridge(): Plugin {
             console.log('✅ WebSocket server closed on bundle close')
           })
         } catch (error) {
-          console.log('⚠️ Error closing WebSocket server on close:', error.message)
+          console.log('⚠️ Error closing WebSocket server on close:', (error as Error).message)
         }
         wss = null
         browserSocket = null

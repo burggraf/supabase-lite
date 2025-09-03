@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { VFSManager } from '../VFSManager.js';
-import type { VFSFile, VFSCreateFileOptions, VFSListOptions, VFSStats } from '../../../types/vfs.js';
+import type { VFSCreateFileOptions } from '../../../types/vfs.js';
 import { VFS_CONFIG } from '../constants.js';
 
 // Mock performance API for browser environment  
@@ -67,7 +67,7 @@ describe('VFSManager', () => {
     });
 
     it('should throw error for invalid project ID', async () => {
-      const newManager = VFSManager.getInstance();
+      const _newManager = VFSManager.getInstance();
       (VFSManager as any).instance = null; // Reset singleton
       const freshManager = VFSManager.getInstance();
       

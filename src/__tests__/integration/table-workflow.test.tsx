@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { App } from '@/App';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import App from '@/App';
 import { DatabaseManager } from '@/lib/database/connection';
 import { ProjectManager } from '@/lib/projects/ProjectManager';
 
@@ -123,7 +124,7 @@ describe('Table Management Workflow Integration', () => {
           success: true
         })
         // Delete row
-        .mockResolvedValueOnse({
+        .mockResolvedValueOnce({
           rows: [],
           success: true
         })

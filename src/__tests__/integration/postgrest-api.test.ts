@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 
 describe('PostgREST API Compatibility', () => {
   const BASE_URL = 'http://localhost:5173';
@@ -214,7 +214,7 @@ describe('PostgREST API Compatibility', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(Array.isArray(data)).toBe(true);
-      data.forEach(product => {
+      data.forEach((product: any) => {
         expect(product.unit_price).toBeGreaterThanOrEqual(20);
       });
     });
@@ -230,7 +230,7 @@ describe('PostgREST API Compatibility', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(Array.isArray(data)).toBe(true);
-      data.forEach(product => {
+      data.forEach((product: any) => {
         expect(product.product_name.toLowerCase()).toContain('chai');
       });
     });

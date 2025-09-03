@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { FunctionsList } from '../FunctionsList';
@@ -31,6 +31,9 @@ describe('FunctionsList', () => {
       id: 'test-project-id',
       name: 'Test Project',
       createdAt: new Date(),
+      databasePath: 'test-db-path',
+      lastAccessed: new Date(),
+      isActive: true,
     });
     mockVfsManager.initialize.mockResolvedValue(undefined);
   });
@@ -90,7 +93,7 @@ describe('FunctionsList', () => {
     ];
 
     it('should display functions list when functions exist', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
 
       render(<FunctionsList {...mockProps} />);
 
@@ -104,7 +107,7 @@ describe('FunctionsList', () => {
     });
 
     it('should call onEditFunction when Edit button is clicked', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
 
       render(<FunctionsList {...mockProps} />);
 
@@ -119,7 +122,7 @@ describe('FunctionsList', () => {
     });
 
     it('should open test modal when Test button is clicked', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
 
       render(<FunctionsList {...mockProps} />);
 
@@ -136,8 +139,8 @@ describe('FunctionsList', () => {
     });
 
     it('should handle function deletion with confirmation', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions);
-      mockVfsManager.deleteFile.mockResolvedValue(undefined);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
+      mockVfsManager.deleteFile.mockResolvedValue(true);
 
       // Mock window.confirm
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -176,7 +179,7 @@ describe('FunctionsList', () => {
     ];
 
     it('should execute function test with proper request', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
 
       // Mock fetch for function execution
       global.fetch = vi.fn().mockResolvedValue({
@@ -217,7 +220,7 @@ describe('FunctionsList', () => {
     });
 
     it('should handle test errors gracefully', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
 
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 

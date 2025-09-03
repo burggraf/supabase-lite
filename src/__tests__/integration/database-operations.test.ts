@@ -592,11 +592,11 @@ describe('Database Operations Integration', () => {
 
     it('should create and use indexes effectively', async () => {
       // Query without index (baseline)
-      const start1 = Date.now();
+      // const start1 = Date.now();
       await dbManager.query(`
         SELECT * FROM test_performance WHERE category = 'Electronics';
       `);
-      const time1 = Date.now() - start1;
+      // const time1 = Date.now() - start1;
 
       // Create index
       await dbManager.exec(`
@@ -656,8 +656,8 @@ describe('Database Operations Integration', () => {
 
       const tables = await dbManager.getTableList();
       expect(Array.isArray(tables)).toBe(true);
-      expect(tables.some(table => table.includes('test_table_1'))).toBe(true);
-      expect(tables.some(table => table.includes('test_table_2'))).toBe(true);
+      expect(tables.some(table => table.name.includes('test_table_1'))).toBe(true);
+      expect(tables.some(table => table.name.includes('test_table_2'))).toBe(true);
 
       // Clean up
       await dbManager.exec('DROP TABLE test_table_1, test_table_2;');

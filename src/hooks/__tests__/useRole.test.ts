@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useRole } from '../useRole';
-import type { DatabaseRole } from '@/lib/database/roleSimulator';
+// import type { DatabaseRole } from '@/lib/database/roleSimulator';
 
 // Mock dependencies
 const mockRoleSimulator = {
@@ -134,7 +134,7 @@ describe('useRole', () => {
       const { result } = renderHook(() => useRole());
 
       act(() => {
-        result.current.setRole(mockAvailableRoles.anon);
+        result.current.setRole(mockAvailableRoles.anon as any);
       });
 
       expect(result.current.currentRole).toEqual(mockAvailableRoles.anon);
@@ -181,7 +181,7 @@ describe('useRole', () => {
       const { result } = renderHook(() => useRole());
 
       act(() => {
-        result.current.setRole(mockAvailableRoles.anon);
+        result.current.setRole(mockAvailableRoles.anon as any);
       });
 
       expect(result.current.error).toBe('Failed to set role');
@@ -228,7 +228,7 @@ describe('useRole', () => {
       const availableRoles1 = result.current.availableRoles;
 
       act(() => {
-        result.current.setRole(mockAvailableRoles.anon);
+        result.current.setRole(mockAvailableRoles.anon as any);
       });
 
       const availableRoles2 = result.current.availableRoles;
@@ -280,7 +280,7 @@ describe('useRole', () => {
       shouldThrow = true;
 
       act(() => {
-        result.current.setRole(mockAvailableRoles.anon);
+        result.current.setRole(mockAvailableRoles.anon as any);
       });
 
       expect(result.current.error).toBe('Failed to set role');
@@ -318,7 +318,7 @@ describe('useRole', () => {
       const { result } = renderHook(() => useRole());
 
       act(() => {
-        result.current.setRole(mockAvailableRoles.anon);
+        result.current.setRole(mockAvailableRoles.anon as any);
       });
 
       expect(result.current.error).toBe('Failed to set role');
@@ -398,7 +398,7 @@ describe('useRole', () => {
       expect(result.current.error).toBe('Failed to load saved role');
 
       act(() => {
-        result.current.setRole(mockAvailableRoles.anon);
+        result.current.setRole(mockAvailableRoles.anon as any);
       });
 
       expect(result.current.error).toBeNull();
@@ -461,7 +461,7 @@ describe('useRole', () => {
       const { result } = renderHook(() => useRole());
 
       act(() => {
-        result.current.setRole(mockAvailableRoles.anon);
+        result.current.setRole(mockAvailableRoles.anon as any);
         result.current.setRole(mockAvailableRoles.authenticated);
         result.current.setRole(mockAvailableRoles.service_role);
       });
@@ -478,9 +478,9 @@ describe('useRole', () => {
       const initialCallCount = mockRoleSimulator.setRole.mock.calls.length;
 
       act(() => {
-        result.current.setRole(mockAvailableRoles.anon);
-        result.current.setRole(mockAvailableRoles.anon);
-        result.current.setRole(mockAvailableRoles.anon);
+        result.current.setRole(mockAvailableRoles.anon as any);
+        result.current.setRole(mockAvailableRoles.anon as any);
+        result.current.setRole(mockAvailableRoles.anon as any);
       });
 
       expect(result.current.currentRole).toEqual(mockAvailableRoles.anon);

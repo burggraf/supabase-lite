@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { AuthBridge } from '../../lib/auth/AuthBridge';
 
 // Mock database manager to avoid initialization issues
@@ -157,7 +157,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(201);
       expect(response.data).toBeDefined();
@@ -185,7 +185,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -204,7 +204,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -223,7 +223,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
   });
@@ -245,7 +245,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data).toBeDefined();
@@ -272,7 +272,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -292,7 +292,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -312,7 +312,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
   });
@@ -330,7 +330,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data).toBeDefined();
@@ -349,7 +349,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -368,7 +368,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data.session).toBeDefined();
@@ -389,7 +389,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/logout')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(204);
     });
@@ -415,7 +415,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data.user_metadata).toEqual({
@@ -440,7 +440,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data).toBeDefined();
@@ -461,7 +461,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
   });
@@ -481,7 +481,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/recover')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data).toBeDefined();
@@ -502,7 +502,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
       };
 
       // Should return 200 for security reasons (don't reveal if email exists)
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
       expect(response.status).toBe(200);
     });
 
@@ -520,7 +520,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/recover')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
   });
@@ -538,7 +538,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -554,7 +554,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/unsupported')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -570,7 +570,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -587,7 +587,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
       };
 
       // The malformed JSON should be handled gracefully
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
   });
@@ -608,7 +608,7 @@ describe('Authentication Flow Integration (Simplified)', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       // Check response structure
       expect(response).toHaveProperty('status');
@@ -636,11 +636,11 @@ describe('Authentication Flow Integration (Simplified)', () => {
       };
 
       try {
-        await authBridge.handleRequest(request);
-        fail('Expected request to throw an error');
+        await authBridge.handleAuthRequest(request);
+        throw new Error('Expected request to throw an error');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        expect(error.message).toBeDefined();
+        expect((error as Error).message).toBeDefined();
       }
     });
   });

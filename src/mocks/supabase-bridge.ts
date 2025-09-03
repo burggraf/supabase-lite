@@ -322,7 +322,7 @@ export class SupabaseAPIBridge {
   }
 
   // Auth-related methods
-  async handleAuth(endpoint: string, method: string, body?: any): Promise<any> {
+  async handleAuth(endpoint: string, _method: string, body?: any): Promise<any> {
     await this.ensureInitialized()
     
     switch (endpoint) {

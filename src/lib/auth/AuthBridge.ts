@@ -90,10 +90,10 @@ export class AuthBridge {
       console.log('AuthBridge: Initialization completed successfully')
     } catch (error) {
       console.error('AuthBridge: Database initialization failed with details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-        cause: error.cause
+        name: (error as Error).name,
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        cause: (error as Error).cause
       })
       throw error  // Don't mask the real error
     }

@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import { IDBFactory, IDBDatabase } from 'fake-indexeddb';
 import { FileStorage } from '../FileStorage.js';
-import type { VFSFile, VFSFileChunk, VFSProjectMetadata } from '../../../types/vfs.js';
+import type { VFSFile, VFSProjectMetadata } from '../../../types/vfs.js';
 import { DEFAULT_VFS_CONFIG, VFS_CONFIG } from '../constants.js';
 
 // Mock performance API for browser environment
