@@ -15,12 +15,14 @@ interface NetworkConnection {
 export interface OnlineStatus {
   isOnline: boolean;
   isOffline: boolean;
-  connectionType?: string;
-  downlink?: number;
-  rtt?: number;
+  connectionType?: string | null;
+  effectiveType?: string | null;
+  downlink?: number | null;
+  rtt?: number | null;
   saveData?: boolean;
   hasServiceWorker: boolean;
   lastUpdated: Date;
+  toggleOfflineMode?: () => void;
 }
 
 /**
@@ -34,6 +36,7 @@ export function useOnlineStatus(): OnlineStatus {
     return true; // Default to online in non-browser environments
   });
 
+  const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(() => new Date());
 
   const [connectionInfo, setConnectionInfo] = useState<NetworkConnection>(() => {
@@ -52,6 +55,11 @@ export function useOnlineStatus(): OnlineStatus {
   const [hasServiceWorker, setHasServiceWorker] = useState<boolean>(() => {
     return 'serviceWorker' in navigator;
   });
+
+  const toggleOfflineMode = () => {
+    setIsOfflineMode(!isOfflineMode);
+    setLastUpdated(new Date());
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -107,14 +115,19 @@ export function useOnlineStatus(): OnlineStatus {
     };
   }, []);
 
+  // Determine effective online status (real online status + offline mode override)
+  const effectiveIsOnline = isOnline && !isOfflineMode;
+
   return {
-    isOnline,
-    isOffline: !isOnline,
-    connectionType: connectionInfo.effectiveType,
-    downlink: connectionInfo.downlink,
-    rtt: connectionInfo.rtt,
-    saveData: connectionInfo.saveData,
+    isOnline: effectiveIsOnline,
+    isOffline: !effectiveIsOnline,
+    connectionType: effectiveIsOnline ? (connectionInfo.effectiveType || 'wifi') : null,
+    effectiveType: effectiveIsOnline ? connectionInfo.effectiveType : null,
+    downlink: effectiveIsOnline ? connectionInfo.downlink : null,
+    rtt: effectiveIsOnline ? connectionInfo.rtt : null,
+    saveData: connectionInfo.saveData || false,
     hasServiceWorker,
-    lastUpdated
+    lastUpdated,
+    toggleOfflineMode
   };
 }
