@@ -62,15 +62,20 @@ describe('DatabaseManager', () => {
     
     // Set up default mock responses for database queries
     global.mockPGliteInstance.query.mockImplementation((sql: string) => {
+      
       // Mock different responses based on the SQL query
       if (sql.includes('current_database()')) {
         return Promise.resolve({ rows: [{ current_database: 'supabase_lite_db' }], affectedRows: 1 })
       }
       if (sql.includes('SELECT 1')) {
+        // Handle both generic SELECT 1 and our specific SELECT 1 as test
+        if (sql.includes('as test')) {
+          return Promise.resolve({ rows: [{ test: 1 }], affectedRows: 1 })
+        }
         return Promise.resolve({ rows: [{ '?column?': 1 }], affectedRows: 1 })
       }
-      // Mock schema validation query
-      if (sql.includes('has_auth') && sql.includes('has_storage')) {
+      // Mock the first schema validation query from validateFullInitialization
+      if (sql.includes('information_schema.schemata') && sql.includes('schema_name')) {
         return Promise.resolve({ 
           rows: [{ 
             has_auth: true, 
@@ -81,13 +86,13 @@ describe('DatabaseManager', () => {
           affectedRows: 1 
         })
       }
-      // Mock table existence checks
-      if (sql.includes('auth.users') && sql.includes('EXISTS')) {
+      // Mock the second table validation query from validateFullInitialization
+      if (sql.includes('information_schema.tables') && sql.includes('table_schema')) {
         return Promise.resolve({ 
           rows: [{ 
-            has_users: true, 
-            has_identities: true, 
-            has_sessions: true 
+            has_auth_users: true,
+            auth_table_count: 6,
+            storage_table_count: 3 
           }], 
           affectedRows: 1 
         })
@@ -96,7 +101,12 @@ describe('DatabaseManager', () => {
       if (sql.includes('pg_extension')) {
         return Promise.resolve({ rows: [{ has_extensions: true }], affectedRows: 1 })
       }
-      if (sql.includes('pg_namespace') || sql.includes('information_schema')) {
+      // Mock information_schema queries that don't match our specific patterns above
+      if (sql.includes('pg_namespace')) {
+        return Promise.resolve({ rows: [], affectedRows: 0 })
+      }
+      // Catch-all for other information_schema queries that don't have specific mocks
+      if (sql.includes('information_schema') && !sql.includes('has_auth')) {
         return Promise.resolve({ rows: [], affectedRows: 0 })
       }
       if (sql.includes('pg_stat_database_conflicts')) {

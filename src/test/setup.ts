@@ -120,6 +120,27 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
   disconnect: vi.fn(),
 }))
 
+// Mock additional DOM APIs required by Radix UI components
+Object.defineProperty(Element.prototype, 'hasPointerCapture', {
+  value: vi.fn().mockReturnValue(false),
+  writable: true
+})
+
+Object.defineProperty(Element.prototype, 'setPointerCapture', {
+  value: vi.fn(),
+  writable: true
+})
+
+Object.defineProperty(Element.prototype, 'releasePointerCapture', {
+  value: vi.fn(),
+  writable: true
+})
+
+Object.defineProperty(Element.prototype, 'scrollIntoView', {
+  value: vi.fn(),
+  writable: true
+})
+
 // Note: fetch is provided by MSW, don't mock it globally
 
 // Global database manager instance mock helpers
