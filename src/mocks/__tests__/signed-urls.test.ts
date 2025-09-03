@@ -406,7 +406,7 @@ describe('Signed URLs Integration Tests', () => {
         const formData = new FormData();
         formData.append('file', new Blob(['malicious content'], { type: 'application/octet-stream' }));
 
-        const uploadResponse = await fetch(`${baseUrl}/${projectId}/storage/v1/object/${bucket}/${dangerousFile}`, {
+        await fetch(`${baseUrl}/${projectId}/storage/v1/object/${bucket}/${dangerousFile}`, {
           method: 'POST',
           body: formData,
         });

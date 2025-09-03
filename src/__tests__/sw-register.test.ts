@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import type { ServiceWorkerManager } from '../lib/offline/ServiceWorkerManager';
-import type { EnvironmentDetector } from '../lib/offline/EnvironmentDetector';
+// ServiceWorkerManager and EnvironmentDetector imports are used in the test setup via dynamic imports
 
 // Mock the dependencies
 vi.mock('../lib/offline/ServiceWorkerManager');

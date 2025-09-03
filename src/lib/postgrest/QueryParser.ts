@@ -1,4 +1,4 @@
-import { POSTGREST_OPERATORS, parseOperatorValue, isLogicalOperator } from './operators'
+import { POSTGREST_OPERATORS, parseOperatorValue } from './operators'
 
 export interface ParsedFilter {
   column: string

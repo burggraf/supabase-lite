@@ -41,7 +41,7 @@ export class FileStorage {
 
     try {
       this.db = await openDB(dbName, VFS_CONFIG.DB_VERSION, {
-        upgrade(db, oldVersion) {
+        upgrade(db: any, oldVersion: number) {
           logger.info('Upgrading VFS database schema', { oldVersion, newVersion: VFS_CONFIG.DB_VERSION });
           
           // Files store
@@ -94,8 +94,8 @@ export class FileStorage {
       logger.info('VFS FileStorage initialized successfully', { projectId });
       
     } catch (error) {
-      logger.error('Failed to initialize VFS FileStorage', error);
-      throw createDatabaseError('Failed to initialize VFS storage', error, { projectId });
+      logger.error('Failed to initialize VFS FileStorage', error as Error);
+      throw createDatabaseError('Failed to initialize VFS storage', error as Error, `projectId: ${projectId}`);
     }
   }
 
@@ -165,8 +165,8 @@ export class FileStorage {
       });
       
     } catch (error) {
-      logger.error('Failed to save file', error, { path: file.path });
-      throw createDatabaseError('Failed to save file', error, { path: file.path });
+      logger.error('Failed to save file', error as Error, { path: file.path });
+      throw createDatabaseError('Failed to save file', error as Error, `path: ${file.path}`);
     }
   }
 
@@ -187,8 +187,8 @@ export class FileStorage {
       return file || null;
       
     } catch (error) {
-      logger.error('Failed to load file', error, { path: normalizedPath });
-      throw createDatabaseError('Failed to load file', error, { path: normalizedPath });
+      logger.error('Failed to load file', error as Error, { path: normalizedPath });
+      throw createDatabaseError('Failed to load file', error as Error, `path: ${normalizedPath}`);
     }
   }
 
@@ -232,8 +232,8 @@ export class FileStorage {
       if (error instanceof Error && error.message.includes('VFS_CHUNK_MISSING')) {
         throw error;
       }
-      logger.error('Failed to load file content', error, { path });
-      throw createDatabaseError('Failed to load file content', error, { path });
+      logger.error('Failed to load file content', error as Error, { path });
+      throw createDatabaseError('Failed to load file content', error as Error, `path: ${path}`);
     }
   }
 
@@ -280,8 +280,8 @@ export class FileStorage {
       });
       
     } catch (error) {
-      logger.error('Failed to delete file', error, { path: normalizedPath });
-      throw createDatabaseError('Failed to delete file', error, { path: normalizedPath });
+      logger.error('Failed to delete file', error as Error, { path: normalizedPath });
+      throw createDatabaseError('Failed to delete file', error as Error, `path: ${normalizedPath}`);
     }
   }
 
@@ -307,7 +307,7 @@ export class FileStorage {
         if (options.recursive) {
           // Get all files and filter by directory prefix
           const allFiles = await store.getAll();
-          files = allFiles.filter(file => 
+          files = allFiles.filter((file: VFSFile) => 
             file.directory === directory || file.directory.startsWith(directory + '/')
           );
         } else {
@@ -366,8 +366,8 @@ export class FileStorage {
       return files.slice(start, end);
       
     } catch (error) {
-      logger.error('Failed to list files', error, options);
-      throw createDatabaseError('Failed to list files', error, options);
+      logger.error('Failed to list files', error as Error, options);
+      throw createDatabaseError('Failed to list files', error as Error, JSON.stringify(options));
     }
   }
 
@@ -406,8 +406,8 @@ export class FileStorage {
       const db = await this.getDatabase();
       await db.put(OBJECT_STORES.CHUNKS, chunk);
     } catch (error) {
-      logger.error('Failed to save chunk', error, { chunkId: chunk.id });
-      throw createDatabaseError('Failed to save chunk', error);
+      logger.error('Failed to save chunk', error as Error, { chunkId: chunk.id });
+      throw createDatabaseError('Failed to save chunk', error as Error, 'chunk save operation');
     }
   }
 
@@ -424,8 +424,8 @@ export class FileStorage {
       const index = db.transaction(OBJECT_STORES.CHUNKS).objectStore(OBJECT_STORES.CHUNKS).index(INDEXES.CHUNKS.BY_FILE_ID);
       return await index.count(fileId);
     } catch (error) {
-      logger.error('Failed to get chunk count', error, { fileId });
-      throw createDatabaseError('Failed to get chunk count', error);
+      logger.error('Failed to get chunk count', error as Error, { fileId });
+      throw createDatabaseError('Failed to get chunk count', error as Error, 'chunk count query');
     }
   }
 
@@ -441,8 +441,8 @@ export class FileStorage {
       const db = await this.getDatabase();
       return await db.count(OBJECT_STORES.CHUNKS);
     } catch (error) {
-      logger.error('Failed to get total chunk count', error);
-      throw createDatabaseError('Failed to get total chunk count', error);
+      logger.error('Failed to get total chunk count', error as Error);
+      throw createDatabaseError('Failed to get total chunk count', error as Error, 'total chunk count query');
     }
   }
 
@@ -467,8 +467,8 @@ export class FileStorage {
       if (error instanceof Error && error.message.includes('VFS_PROJECT_NOT_FOUND')) {
         throw error;
       }
-      logger.error('Failed to get project metadata', error);
-      throw createDatabaseError('Failed to get project metadata', error);
+      logger.error('Failed to get project metadata', error as Error);
+      throw createDatabaseError('Failed to get project metadata', error as Error, 'metadata query');
     }
   }
 
@@ -484,8 +484,8 @@ export class FileStorage {
       const db = await this.getDatabase();
       await db.put(OBJECT_STORES.METADATA, { ...metadata, lastModified: new Date() });
     } catch (error) {
-      logger.error('Failed to update project metadata', error);
-      throw createDatabaseError('Failed to update project metadata', error);
+      logger.error('Failed to update project metadata', error as Error);
+      throw createDatabaseError('Failed to update project metadata', error as Error, 'metadata update');
     }
   }
 
@@ -519,9 +519,9 @@ export class FileStorage {
       const files = await tx.objectStore(OBJECT_STORES.FILES).getAll();
       const validChunkIds = new Set<string>();
       
-      files.forEach(file => {
+      files.forEach((file: VFSFile) => {
         if (file.chunked && file.chunkIds) {
-          file.chunkIds.forEach(chunkId => validChunkIds.add(chunkId));
+          file.chunkIds.forEach((chunkId: string) => validChunkIds.add(chunkId));
         }
       });
       
@@ -544,8 +544,8 @@ export class FileStorage {
       });
       
     } catch (error) {
-      logger.error('Failed to cleanup orphaned chunks', error);
-      throw createDatabaseError('Failed to cleanup orphaned chunks', error);
+      logger.error('Failed to cleanup orphaned chunks', error as Error);
+      throw createDatabaseError('Failed to cleanup orphaned chunks', error as Error, 'orphaned chunks cleanup');
     }
   }
 
@@ -570,8 +570,8 @@ export class FileStorage {
       logger.info('VFS storage cleaned up', { projectId: this.projectId });
       
     } catch (error) {
-      logger.error('Failed to cleanup VFS storage', error);
-      throw createDatabaseError('Failed to cleanup VFS storage', error);
+      logger.error('Failed to cleanup VFS storage', error as Error);
+      throw createDatabaseError('Failed to cleanup VFS storage', error as Error, 'storage cleanup');
     }
   }
 

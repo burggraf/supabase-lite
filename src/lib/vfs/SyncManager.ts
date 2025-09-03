@@ -1,5 +1,5 @@
 import { logger } from '../infrastructure/Logger';
-import { createDatabaseError, createValidationError } from '../infrastructure/ErrorHandler';
+import { createValidationError } from '../infrastructure/ErrorHandler';
 import { vfsManager } from './VFSManager';
 import { projectManager } from '../projects/ProjectManager';
 import type { VFSFile } from '../../types/vfs';
@@ -84,7 +84,7 @@ export class SyncManager {
         mode: 'readwrite'
       });
 
-      logger.info('Folder access granted', { folderName: this.dirHandle.name });
+      logger.info('Folder access granted', { folderName: this.dirHandle?.name });
       return true;
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
@@ -222,7 +222,7 @@ export class SyncManager {
     const files: Array<{ file: File, relativePath: string }> = [];
     
     const scanDirectory = async (dirHandle: FileSystemDirectoryHandle, basePath = ''): Promise<void> => {
-      for await (const [name, handle] of dirHandle.entries()) {
+      for await (const [name, handle] of (dirHandle as any).entries()) {
         const currentPath = basePath ? `${basePath}/${name}` : name;
         
         if (this.shouldIgnoreFile(currentPath)) {
@@ -248,7 +248,10 @@ export class SyncManager {
     const content = await file.text();
     const mimeType = file.type || 'text/plain';
 
-    await vfsManager.createFile(fullPath, content, { mimeType });
+    await vfsManager.createFile(fullPath, { 
+      content,
+      mimeType: mimeType || 'text/plain'
+    });
     logger.debug('File uploaded', { path: fullPath });
   }
 
@@ -273,7 +276,7 @@ export class SyncManager {
       const fileName = pathParts[pathParts.length - 1];
       const fileHandle = await currentHandle.getFileHandle(fileName, { create: true });
       const writable = await fileHandle.createWritable();
-      await writable.write(vfsFile.content);
+      await writable.write(vfsFile.content || '');
       await writable.close();
 
       logger.debug('File downloaded', { path: relativePath });
@@ -351,7 +354,7 @@ export class SyncManager {
       }
 
       // Check for deleted files
-      for (const [path, _] of this.fileSnapshots) {
+      for (const [path] of this.fileSnapshots) {
         const exists = localFiles.some(({ relativePath }) => relativePath === path);
         if (!exists) {
           hasChanges = true;

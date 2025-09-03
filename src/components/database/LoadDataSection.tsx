@@ -1,11 +1,11 @@
 import { useState, useCallback, useRef } from 'react';
-import { Upload, File, Play, X, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, File, Play, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+// import { Input } from '@/components/ui/input';
+// import { Label } from '@/components/ui/label';
 import { useDatabase } from '@/hooks/useDatabase';
 
 interface UploadedFile {
@@ -26,7 +26,7 @@ interface UploadedFile {
 }
 
 export function LoadDataSection() {
-  const { executeScript, executeQuery, isConnected } = useDatabase();
+  const { executeScript, isConnected } = useDatabase();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [processingFile, setProcessingFile] = useState<string | null>(null);

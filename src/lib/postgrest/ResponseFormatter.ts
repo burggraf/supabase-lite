@@ -330,7 +330,7 @@ export class ResponseFormatter {
    */
   static formatRpcResponse(
     result: any,
-    functionName: string
+    _functionName: string
   ): FormattedResponse {
     const headers: Record<string, string> = {
       ...this.getCorsHeaders(),

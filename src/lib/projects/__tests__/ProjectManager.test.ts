@@ -12,7 +12,7 @@ vi.mock('../../../lib/infrastructure/Logger', () => ({
 }));
 
 vi.mock('../../../lib/infrastructure/ErrorHandler', () => ({
-  createDatabaseError: vi.fn((message: string, error: Error) => error)
+  createDatabaseError: vi.fn((_message: string, error: Error) => error)
 }));
 
 describe('ProjectManager', () => {
@@ -43,7 +43,7 @@ describe('ProjectManager', () => {
     const mockIndexedDB = {
       databases: vi.fn(),
       deleteDatabase: vi.fn(),
-    };
+    } as any;
     global.indexedDB = mockIndexedDB;
 
     projectManager = ProjectManager.getInstance();
@@ -461,7 +461,7 @@ describe('ProjectManager', () => {
       
       // Simulate successful deletion
       if (deleteRequest.onsuccess) {
-        deleteRequest.onsuccess();
+        deleteRequest.onsuccess(null as any);
       }
       
       await cleanupPromise;
@@ -510,7 +510,7 @@ describe('ProjectManager', () => {
       
       // Simulate blocked deletion
       if (deleteRequest.onblocked) {
-        deleteRequest.onblocked();
+        deleteRequest.onblocked(null as any);
       }
       
       await expect(cleanupPromise).resolves.not.toThrow();

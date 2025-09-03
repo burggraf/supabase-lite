@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import React from 'react'
+import { render, screen, waitFor } from '@testing-library/react'
+// import React from 'react'
 import { EnhancedOfflineIndicator } from '@/components/ui/EnhancedOfflineIndicator'
 import { OfflineErrorBoundary } from '@/components/ui/OfflineErrorBoundary'
 import { SyncQueue } from '@/lib/offline/SyncQueue'
@@ -98,7 +98,7 @@ describe('Phase 3 Integration Tests', () => {
         toggleOfflineMode: vi.fn()
       })
 
-      const { container } = render(
+      const { container: _container } = render(
         <div>
           <EnhancedOfflineIndicator />
           <OfflineErrorBoundary>
@@ -158,7 +158,7 @@ describe('Phase 3 Integration Tests', () => {
       })
 
       // Mock failing operation
-      const mockOperation = vi.fn().mockRejectedValue(new Error('Network error'))
+      const _mockOperation = vi.fn().mockRejectedValue(new Error('Network error'))
       
       // Enrich error to make it offline-related
       const context = {

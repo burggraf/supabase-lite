@@ -130,7 +130,8 @@ export class ProjectManager {
         await this.cleanupDatabase(project.databasePath);
         logger.info('Project database cleaned up', { projectId, databasePath: project.databasePath });
       } catch (cleanupError) {
-        logger.warn('Failed to cleanup project database', cleanupError as Error, { 
+        logger.warn('Failed to cleanup project database', { 
+          error: cleanupError as Error,
           projectId, 
           databasePath: project.databasePath 
         });
@@ -291,7 +292,7 @@ export class ProjectManager {
         
         // Delete each matching database
         const deletePromises = matchingDatabases.map(db => {
-          return new Promise<void>((resolve, reject) => {
+          return new Promise<void>((resolve, _reject) => {
             if (!db.name) {
               resolve();
               return;
