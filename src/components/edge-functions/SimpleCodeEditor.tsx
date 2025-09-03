@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { vfsManager } from '@/lib/vfs/VFSManager';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { toast } from 'sonner';
-import type * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor';
 
 interface SimpleCodeEditorProps {
   selectedFile: string | null;
