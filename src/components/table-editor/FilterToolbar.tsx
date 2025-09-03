@@ -45,7 +45,7 @@ export function FilterToolbar({
           variant="ghost" 
           size="sm"
           onClick={onOpenFilterDialog}
-          className={hasActiveFilters ? "bg-green-100 text-green-700 hover:bg-green-200" : ""}
+          className={hasActiveFilters ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-800/50" : ""}
         >
           <Filter className="h-4 w-4 mr-2" />
           {hasActiveFilters ? `Filtered by ${filters.length} rule${filters.length > 1 ? 's' : ''}` : 'Filter'}
@@ -59,7 +59,7 @@ export function FilterToolbar({
             <Button 
               size="sm" 
               disabled={!selectedTable || loading}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
             >
               <Plus className="h-4 w-4 mr-2" />
               Insert

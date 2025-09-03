@@ -118,7 +118,7 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading secrets...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading secrets...</div>
       </div>
     );
   }
@@ -128,16 +128,16 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
             Edge Function Secrets
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             Manage the secrets for your project's Edge Functions
           </p>
         </div>
         <Button
           onClick={() => setIsAddingNew(true)}
-          className="bg-green-600 hover:bg-green-700"
+          className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Secret
@@ -152,7 +152,7 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Key
               </label>
               <Input
@@ -163,7 +163,7 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Value
               </label>
               <Input
@@ -175,7 +175,7 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Description (Optional)
               </label>
               <Input
@@ -211,10 +211,10 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
             <div className="text-gray-400 mb-4">
               <Settings className="w-12 h-12 mx-auto" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
               No secrets configured
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
               Environment variables and secrets will appear here once you add them.
             </p>
             <Button
@@ -233,7 +233,7 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center space-x-3">
-                      <code className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
+                      <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 dark:text-gray-100 px-2 py-1 rounded">
                         {secret.key}
                       </code>
                       <Badge variant="secondary" className="text-xs">
@@ -242,11 +242,11 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
                     </div>
                     
                     {secret.description && (
-                      <p className="text-sm text-gray-600">{secret.description}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">{secret.description}</p>
                     )}
                     
                     <div className="flex items-center space-x-3">
-                      <code className="text-sm font-mono bg-gray-50 px-3 py-2 rounded flex-1 max-w-md">
+                      <code className="text-sm font-mono bg-gray-50 dark:bg-gray-800 dark:text-gray-100 px-3 py-2 rounded flex-1 max-w-md">
                         {showValues[secret.id] ? secret.value : maskValue(secret.value)}
                       </code>
                       <Button
@@ -262,7 +262,7 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
                       </Button>
                     </div>
                     
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       Last updated: {formatDate(secret.lastUpdated)}
                     </p>
                   </div>
@@ -279,7 +279,7 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
                       variant="outline"
                       size="sm"
                       onClick={() => handleDeleteSecret(secret.id)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

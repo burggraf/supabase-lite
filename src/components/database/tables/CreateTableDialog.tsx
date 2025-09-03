@@ -376,22 +376,22 @@ export function CreateTableDialog({
               <Badge variant="secondary" className="text-xs px-2 py-0.5">Recommended</Badge>
             </div>
             
-            <p className="text-xs text-gray-600 ml-7">
+            <p className="text-xs text-gray-600 dark:text-gray-300 ml-7">
               Restrict access to your table by enabling RLS and writing Postgres policies.
             </p>
 
             {enableRLS && (
-              <div className="ml-7 p-3 bg-gray-50 border border-gray-200 rounded-md">
+              <div className="ml-7 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md">
                 <div className="flex items-start space-x-2">
                   <Info className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-900">Policies are required to query data</p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Policies are required to query data</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-300">
                       You need to create an access policy before you can query data from this table. Without 
                       a policy, querying this table will return an <strong>empty array</strong> of results. You can create 
                       policies after saving this table.
                     </p>
-                    <button className="inline-flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-800 border border-gray-300 rounded px-2 py-1">
+                    <button className="inline-flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 border border-gray-300 dark:border-gray-600 rounded px-2 py-1">
                       <BookOpen className="h-3 w-3" />
                       <span>Documentation</span>
                     </button>
@@ -412,7 +412,7 @@ export function CreateTableDialog({
               </Label>
             </div>
             
-            <p className="text-xs text-gray-600 ml-7">
+            <p className="text-xs text-gray-600 dark:text-gray-300 ml-7">
               Broadcast changes on this table to authorized subscribers
             </p>
           </div>
@@ -433,7 +433,7 @@ export function CreateTableDialog({
             </div>
 
             {/* Column Headers */}
-            <div className="grid grid-cols-12 gap-2 items-center text-xs text-gray-500 px-3 py-2 bg-gray-50 rounded-t border">
+            <div className="grid grid-cols-12 gap-2 items-center text-xs text-gray-500 dark:text-gray-400 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-t border dark:border-gray-700">
               <div className="col-span-1"></div>
               <div className="col-span-3 flex items-center space-x-1">
                 <span>Name</span>
@@ -451,9 +451,9 @@ export function CreateTableDialog({
             </div>
 
             {/* Column Rows */}
-            <div className="border border-t-0 rounded-b">
+            <div className="border border-t-0 dark:border-gray-700 rounded-b">
               {columns.map((column, index) => (
-                <div key={column.id} className={`${index !== columns.length - 1 ? 'border-b' : ''}`}>
+                <div key={column.id} className={`${index !== columns.length - 1 ? 'border-b dark:border-gray-700' : ''}`}>
                   <ColumnEditor
                     column={column}
                     onUpdate={updateColumn}
@@ -480,7 +480,7 @@ export function CreateTableDialog({
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="mt-4">
-                <pre className="p-3 bg-gray-900 text-green-400 rounded text-xs font-mono overflow-x-auto">
+                <pre className="p-3 bg-gray-900 dark:bg-gray-950 text-green-400 dark:text-green-300 rounded text-xs font-mono overflow-x-auto">
                   {generateSQL() || 'Enter table name to see generated SQL...'}
                 </pre>
               </div>
@@ -504,7 +504,7 @@ export function CreateTableDialog({
           <Button 
             onClick={handleCreate} 
             disabled={loading || !tableName.trim()}
-            className="bg-green-600 hover:bg-green-700 text-white px-4"
+            className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600 px-4"
             size="sm"
           >
             {loading ? 'Creating...' : 'Save'}

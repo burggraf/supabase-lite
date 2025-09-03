@@ -276,20 +276,20 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
       case 'inactive':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800/20 dark:text-gray-400';
       case 'error':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800/20 dark:text-gray-400';
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading functions...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading functions...</div>
       </div>
     );
   }
@@ -299,8 +299,8 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">Edge Functions</h1>
-            <p className="text-gray-600">Deploy edge functions to handle complex business logic</p>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Edge Functions</h1>
+            <p className="text-gray-600 dark:text-gray-300">Deploy edge functions to handle complex business logic</p>
           </div>
           <div className="flex items-center space-x-3">
             <Button variant="outline" size="sm">
@@ -313,7 +313,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
             </Button>
             <Button
               onClick={() => handleCreateFunctionClick()}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
             >
               Deploy a new function
             </Button>
@@ -325,7 +325,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
           <div className="space-y-12">
             {/* Creation Options */}
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
                 Create your first edge function
               </h2>
               <FunctionCreationOptions onCreateFunction={handleCreateFunctionClick} />
@@ -333,7 +333,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
 
             {/* Templates */}
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
                 Start with a template
               </h2>
               <FunctionTemplates onSelectTemplate={handleCreateFunctionClick} />
@@ -342,7 +342,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         ) : (
           // Functions List
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900">Your Functions</h2>
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Your Functions</h2>
             <div className="grid gap-4">
               {functions.map((func) => (
                 <Card key={func.id} className="hover:shadow-md transition-shadow">
@@ -350,17 +350,17 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-medium text-gray-900">
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                             {func.name}
                           </h3>
                           <Badge className={getStatusColor(func.status)}>
                             {func.status}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
                           {func.description}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           Last deployed: {formatDate(func.lastDeployed)}
                         </p>
                       </div>
@@ -385,7 +385,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteFunction(func.id)}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -397,11 +397,11 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
             </div>
 
             {/* Add New Function Button */}
-            <Card className="border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors">
+            <Card className="border-2 border-dashed border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500 transition-colors">
               <CardContent className="p-6">
                 <Button
                   variant="ghost"
-                  className="w-full h-20 text-gray-600 hover:text-gray-900"
+                  className="w-full h-20 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
                   onClick={() => handleCreateFunctionClick()}
                 >
                   <div className="text-center">
@@ -418,9 +418,9 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         {/* Test Modal */}
         {testModal.open && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">Test Function: {testModal.functionName}</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Test Function: {testModal.functionName}</h2>
                 <Button variant="ghost" size="sm" onClick={closeTestModal}>
                   <X className="w-4 h-4" />
                 </Button>
@@ -429,11 +429,11 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
               <div className="p-6 space-y-6">
                 {/* Request Body */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Request Body (JSON)
                   </label>
                   <textarea
-                    className="w-full h-32 p-3 border border-gray-300 rounded-md font-mono text-sm"
+                    className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md font-mono text-sm"
                     value={testModal.requestBody}
                     onChange={(e) => setTestModal(prev => ({ ...prev, requestBody: e.target.value }))}
                     placeholder="Enter JSON request body..."
@@ -445,7 +445,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                   <Button
                     onClick={executeTest}
                     disabled={testModal.loading}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
                   >
                     {testModal.loading ? (
                       <>
@@ -464,12 +464,12 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                 {/* Response */}
                 {(testModal.response || testModal.error) && (
                   <div className="border-t pt-6">
-                    <h3 className="text-lg font-medium mb-4">Response</h3>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Response</h3>
                     
                     {testModal.error ? (
-                      <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                        <div className="text-red-800 font-medium mb-2">Error</div>
-                        <div className="text-red-700 text-sm font-mono">{testModal.error}</div>
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+                        <div className="text-red-800 dark:text-red-400 font-medium mb-2">Error</div>
+                        <div className="text-red-700 dark:text-red-300 text-sm font-mono">{testModal.error}</div>
                       </div>
                     ) : testModal.response ? (
                       <div className="space-y-4">
@@ -481,23 +481,23 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                           }`}>
                             {testModal.response.status} {testModal.response.statusText}
                           </div>
-                          <div className="text-gray-600">
+                          <div className="text-gray-600 dark:text-gray-300">
                             Execution time: {testModal.response.executionTime}ms
                           </div>
                         </div>
 
                         {/* Response Data */}
                         <div>
-                          <div className="text-sm font-medium text-gray-700 mb-2">Response Body</div>
-                          <pre className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm overflow-x-auto">
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Response Body</div>
+                          <pre className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md p-4 text-sm overflow-x-auto">
                             {JSON.stringify(testModal.response.data, null, 2)}
                           </pre>
                         </div>
 
                         {/* Headers */}
                         <div>
-                          <div className="text-sm font-medium text-gray-700 mb-2">Response Headers</div>
-                          <pre className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm overflow-x-auto">
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Response Headers</div>
+                          <pre className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md p-4 text-sm overflow-x-auto">
                             {JSON.stringify(testModal.response.headers, null, 2)}
                           </pre>
                         </div>
@@ -513,9 +513,9 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         {/* Create Function Modal */}
         {createFunctionModal.open && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
               <div className="flex items-center justify-between p-6 border-b">
-                <h2 className="text-xl font-semibold">Create New Function</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Create New Function</h2>
                 <Button variant="ghost" size="sm" onClick={closeCreateFunctionModal}>
                   <X className="w-4 h-4" />
                 </Button>
@@ -523,15 +523,15 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
 
               <div className="p-6 space-y-4">
                 {createFunctionModal.selectedTemplate && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                    <div className="text-sm text-blue-800">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+                    <div className="text-sm text-blue-800 dark:text-blue-300">
                       <strong>Template:</strong> {createFunctionModal.selectedTemplate}
                     </div>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Function Name
                   </label>
                   <input
@@ -542,7 +542,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                       functionName: e.target.value 
                     }))}
                     placeholder="my-function"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         handleCreateFunctionSubmit();
@@ -550,7 +550,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                     }}
                     autoFocus
                   />
-                  <div className="mt-1 text-xs text-gray-500">
+                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     Use lowercase letters, numbers, hyphens, and underscores only
                   </div>
                 </div>
@@ -565,7 +565,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
                   <Button
                     onClick={handleCreateFunctionSubmit}
                     disabled={!createFunctionModal.functionName.trim()}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create Function

@@ -9,6 +9,7 @@ import { Storage } from '@/components/storage/Storage';
 import { AppHosting } from '@/components/app-hosting/AppHosting';
 import { EdgeFunctions } from '@/pages/EdgeFunctions';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
 import { initializeInfrastructure, logger } from '@/lib/infrastructure';
@@ -99,7 +100,7 @@ function App() {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-sm text-muted-foreground">Initializing Supabase Lite...</p>
         </div>
       </div>
@@ -110,12 +111,12 @@ function App() {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="text-center max-w-md">
-          <div className="text-red-600 mb-4">⚠️</div>
+          <div className="text-destructive mb-4">⚠️</div>
           <h2 className="text-xl font-semibold mb-2">Initialization Failed</h2>
           <p className="text-sm text-muted-foreground mb-4">{initError}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
           >
             Retry
           </button>
@@ -204,13 +205,15 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar currentPage={currentPage} onPageChange={navigate} currentProjectName={currentProjectName || undefined} />
-      <div className="flex-1 flex flex-col overflow-auto">
-        {renderCurrentPage()}
+    <ThemeProvider>
+      <div className="flex h-screen bg-background">
+        <Sidebar currentPage={currentPage} onPageChange={navigate} currentProjectName={currentProjectName || undefined} />
+        <div className="flex-1 flex flex-col overflow-auto">
+          {renderCurrentPage()}
+        </div>
+        <Toaster richColors position="top-right" />
       </div>
-      <Toaster richColors position="top-right" />
-    </div>
+    </ThemeProvider>
   );
 }
 
