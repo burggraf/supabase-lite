@@ -185,9 +185,9 @@ export function BackupsSection() {
       {message && (
         <div className={cn(
           "p-4 rounded-lg border",
-          message.type === 'success' && "border-green-200 bg-green-50 text-green-800",
-          message.type === 'error' && "border-red-200 bg-red-50 text-red-800",
-          message.type === 'info' && "border-blue-200 bg-blue-50 text-blue-800"
+          message.type === 'success' && "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300",
+          message.type === 'error' && "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300",
+          message.type === 'info' && "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300"
         )}>
           <div className="flex items-start space-x-2">
             {message.type === 'success' && <CheckCircle className="h-5 w-5 mt-0.5" />}
@@ -264,10 +264,10 @@ export function BackupsSection() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 border rounded-lg bg-yellow-50 border-yellow-200">
+            <div className="p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
               <div className="flex items-start space-x-3">
                 <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                <div className="text-sm text-yellow-800">
+                <div className="text-sm text-yellow-800 dark:text-yellow-300">
                   <p className="font-medium">Important:</p>
                   <p>Restoring will create a new project. Your current data won't be affected.</p>
                 </div>

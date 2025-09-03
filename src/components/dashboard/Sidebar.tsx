@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const iconMap = {
   LayoutDashboard,
@@ -191,13 +192,19 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t">
+      <div className="p-4 border-t space-y-3">
         <div className={cn(
           "flex items-center text-xs text-muted-foreground",
           isExpanded ? "space-x-2" : "justify-center"
         )}>
           <div className="h-2 w-2 bg-green-500 rounded-full flex-shrink-0"></div>
           {isExpanded && <span className="truncate">Connected to PGlite</span>}
+        </div>
+        <div className={cn(
+          "flex items-center",
+          isExpanded ? "justify-start" : "justify-center"
+        )}>
+          <ThemeToggle showLabel={isExpanded} />
         </div>
       </div>
     </div>

@@ -166,7 +166,7 @@ export function SeedDataSection() {
                           <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
                         )}
                         <div>
-                          <p className={`text-sm font-medium ${result.success ? 'text-green-700' : 'text-red-700'}`}>
+                          <p className={`text-sm font-medium ${result.success ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                             {result.success ? 'Success!' : 'Error'}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -187,7 +187,7 @@ export function SeedDataSection() {
       </div>
       
       {!isConnected && (
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
           <CardContent className="pt-6">
             <div className="flex items-center space-x-2 text-yellow-800">
               <Database className="h-5 w-5" />
