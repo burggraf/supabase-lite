@@ -167,7 +167,7 @@ export function useDatabase() {
       
       // Validate the connection immediately - no timing delays needed
       try {
-        const tableList = await dbManager.getTableList();
+        await dbManager.getTableList();
       } catch (tableError) {
         console.error('🔴🔴🔴 Connection validation failed - cannot query tables:', tableError);
         throw new Error('Database switch validation failed - cannot query tables');

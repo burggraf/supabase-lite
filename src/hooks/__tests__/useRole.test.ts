@@ -13,25 +13,33 @@ const mockAvailableRoles = {
     id: 'postgres',
     name: 'postgres',
     permissions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP', 'ALTER'],
-    description: 'Database superuser with full access'
+    description: 'Database superuser with full access',
+    isSuperuser: true,
+    defaultSchemas: ['public', 'auth', 'storage']
   },
   anon: {
     id: 'anon',
     name: 'anon',
     permissions: ['SELECT'],
-    description: 'Anonymous user with read-only access'
+    description: 'Anonymous user with read-only access',
+    isSuperuser: false,
+    defaultSchemas: ['public']
   },
   authenticated: {
     id: 'authenticated',
     name: 'authenticated',
     permissions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-    description: 'Authenticated user with CRUD access'
+    description: 'Authenticated user with CRUD access',
+    isSuperuser: false,
+    defaultSchemas: ['public']
   },
   service_role: {
     id: 'service_role',
     name: 'service_role',
     permissions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP'],
-    description: 'Service role with administrative access'
+    description: 'Service role with administrative access',
+    isSuperuser: true,
+    defaultSchemas: ['public', 'auth', 'storage']
   }
 };
 

@@ -238,7 +238,7 @@ export class CrossOriginAPIHandler {
       try {
         const result = await this.authBridge.handleAuthRequest({
           endpoint,
-          method: request.method,
+          method: request.method === 'PATCH' ? 'PUT' : request.method as 'GET' | 'POST' | 'PUT' | 'DELETE',
           url: new URL(request.path, 'http://localhost'),
           headers: request.headers || {},
           body: request.body
@@ -277,7 +277,7 @@ export class CrossOriginAPIHandler {
         };
         
         // Only add body for methods that support it
-        if (request.body && (request.method === 'POST' || request.method === 'PATCH' || request.method === 'PUT')) {
+        if (request.body && (request.method === 'POST' || request.method === 'PATCH')) {
           fetchOptions.body = JSON.stringify(request.body);
         }
         

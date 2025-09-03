@@ -86,7 +86,7 @@ export const FunctionCreationOptions: React.FC<FunctionCreationOptionsProps> = (
             </p>
           </div>
           <Button
-            onClick={onCreateFunction}
+            onClick={() => onCreateFunction()}
             className="w-full"
             variant="outline"
           >

@@ -108,16 +108,6 @@ export function CreateBucketDialog({
     onOpenChange(false);
   };
 
-  const formatBytes = (bytes: number) => {
-    if (bytes >= 1024 * 1024 * 1024) {
-      return `${bytes / (1024 * 1024 * 1024)} GB`;
-    } else if (bytes >= 1024 * 1024) {
-      return `${bytes / (1024 * 1024)} MB`;
-    } else if (bytes >= 1024) {
-      return `${bytes / 1024} KB`;
-    }
-    return `${bytes} bytes`;
-  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

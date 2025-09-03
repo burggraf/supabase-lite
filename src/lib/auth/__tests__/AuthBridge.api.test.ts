@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs'
 describe('AuthBridge API Compatibility', () => {
   let authBridge: AuthBridge
   let authManager: AuthManager
+  let mockJwtService: any
 
   beforeEach(async () => {
     // Create a test instance with mocked database
@@ -20,7 +21,7 @@ describe('AuthBridge API Compatibility', () => {
     } as any
 
     // Mock other services
-    const mockJwtService = { initialize: vi.fn() } as any
+    mockJwtService = { initialize: vi.fn() } as any
     const mockSessionManager = {
       initialize: vi.fn(),
       createSession: vi.fn(() => ({
