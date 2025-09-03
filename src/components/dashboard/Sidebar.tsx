@@ -208,7 +208,7 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
         )}>
           <EnhancedOfflineIndicator 
             iconOnly={!isExpanded} 
-            showDevToggle={isExpanded} 
+            showOfflineToggle={isExpanded} 
             compact={isExpanded}
           />
         </div>

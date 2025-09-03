@@ -60,21 +60,22 @@ describe('AuthTestPanel', () => {
 	const mockUser: User = {
 		id: 'user-123',
 		email: 'test@example.com',
-		email_confirmed_at: new Date(),
-		created_at: new Date(),
-		updated_at: new Date(),
-		last_sign_in_at: new Date(),
+		created_at: new Date().toISOString(),
+		updated_at: new Date().toISOString(),
+		last_sign_in_at: new Date().toISOString(),
 		user_metadata: {},
 		app_metadata: {},
+		is_anonymous: false
 	}
 
 	const mockSession: Session = {
+		id: 'session-123',
+		user_id: 'user-123',
 		access_token: 'access-token-123',
 		refresh_token: 'refresh-token-123',
-		expires_in: 3600,
 		expires_at: Date.now() + 3600000,
-		token_type: 'bearer',
-		user: mockUser,
+		created_at: new Date().toISOString(),
+		updated_at: new Date().toISOString()
 	}
 
 	const mockApiKeys = {
@@ -208,7 +209,7 @@ describe('AuthTestPanel', () => {
 
 			render(<AuthTestPanel />)
 
-			expect(screen.getByText(mockUser.email)).toBeInTheDocument()
+			expect(screen.getByText(mockUser.email!)).toBeInTheDocument()
 			expect(screen.getByText(mockUser.id)).toBeInTheDocument()
 		})
 
@@ -257,7 +258,7 @@ describe('AuthTestPanel', () => {
 		})
 
 		it('should show loading state during authentication', async () => {
-			let resolveSignIn: (value: any) => void
+			let resolveSignIn: (value: any) => void = () => {}
 			const signInPromise = new Promise((resolve) => {
 				resolveSignIn = resolve
 			})

@@ -26,7 +26,7 @@ export class VFSDirectHandler {
   /**
    * Handle direct VFS file requests bypassing MSW
    */
-  async handleRequest(url: string, method: string, headers: Record<string, string>): Promise<{
+  async handleRequest(url: string, method: string, _headers: Record<string, string>): Promise<{
     status: number;
     headers: Record<string, string>;
     body: ArrayBuffer | string;
@@ -140,13 +140,13 @@ export class VFSDirectHandler {
         
         try {
           // Use VFS manager to load the complete content from chunks
-          const content = await vfsManager.fileStorage.loadFileContent(fullPath);
+          const content = await vfsManager.readFileContent(fullPath) || '';
           console.log('✅ Chunked content loaded:', { contentLength: content.length });
           
           // Handle content based on encoding
           if (file.encoding === 'base64') {
             console.log('🔍 Decoding base64 chunked content');
-            const binaryString = atob(content);
+            const binaryString = atob(content || '');
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
               bytes[i] = binaryString.charCodeAt(i);
@@ -168,7 +168,7 @@ export class VFSDirectHandler {
             // Handle text content
             console.log('📝 Handling chunked text content');
             const encoder = new TextEncoder();
-            const bytes = encoder.encode(content);
+            const bytes = encoder.encode(content || '');
             
             return {
               status: 200,
@@ -199,18 +199,19 @@ export class VFSDirectHandler {
         console.log('File object keys:', Object.keys(file));
         
         // Check if it's stored as a blob URL or has data property
-        if (file.data) {
-          console.log('📦 Found file.data property');
-          return {
-            status: 200,
-            headers: {
-              'Content-Type': file.mimeType,
-              'Content-Length': file.size.toString(),
-              'Access-Control-Allow-Origin': '*'
-            },
-            body: file.data
-          };
-        }
+        // Note: data property is not defined in VFSFile interface
+        // if (file.data) {
+        //   console.log('📦 Found file.data property');
+        //   return {
+        //     status: 200,
+        //     headers: {
+        //       'Content-Type': file.mimeType,
+        //       'Content-Length': file.size.toString(),
+        //       'Access-Control-Allow-Origin': '*'
+        //     },
+        //     body: file.data
+        //   };
+        // }
       }
 
       console.error('❌ File content not available - no content, no data, or zero size');
@@ -221,7 +222,7 @@ export class VFSDirectHandler {
           error: 'File content not available',
           debug: {
             hasContent: !!file.content,
-            hasData: !!file.data,
+            // hasData: !!file.data, // data property not in VFSFile interface
             size: file.size,
             encoding: file.encoding,
             keys: Object.keys(file)

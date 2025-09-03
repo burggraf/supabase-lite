@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { StorageBucket } from '../StorageBucket'
-import { StorageError } from '../StorageError'
+// import { StorageError } from '../StorageError'
 
 describe('StorageBucket', () => {
   let bucket: StorageBucket

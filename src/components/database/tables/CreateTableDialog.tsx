@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
+  // DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -20,19 +20,19 @@ import {
   AlertCircle,
   BookOpen,
   Info,
-  Key,
-  Trash2,
+  // Key,
+  // Trash2,
   Eye,
-  EyeOff,
-  Code
+  // EyeOff,
+  // Code
 } from 'lucide-react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { ColumnEditor } from './ColumnEditor';
-import { CompactTypeSelector } from '../shared/CompactTypeSelector';
-import { DataTypeSelector } from '../shared/DataTypeSelector';
-import {
-  TooltipProvider
-} from '@/components/ui/tooltip';
+// import { CompactTypeSelector } from '../shared/CompactTypeSelector';
+// import { DataTypeSelector } from '../shared/DataTypeSelector';
+// import {
+//   TooltipProvider
+// } from '@/components/ui/tooltip';
 import {
   Collapsible,
   CollapsibleContent,

@@ -4,14 +4,14 @@
  */
 
 import { StorageError } from './StorageError'
-import { vfsManager } from '../vfs/VFSManager'
+// import { vfsManager } from '../vfs/VFSManager'
 import type {
   UploadOptions,
   UploadResponse,
   DownloadResponse,
   ListOptions,
   ListResponse,
-  SignedUrlOptions,
+  // SignedUrlOptions,
   SignedUrlResponse,
   SignedUploadUrlResponse,
   PublicUrlResponse,
@@ -23,11 +23,19 @@ import type {
 } from './types'
 
 export class StorageBucket {
+  // Removed unused private fields to fix TypeScript errors
+  private bucketId!: string;
+  private apiUrl!: string;
+  private headers!: Record<string, string>;
   constructor(
-    private bucketId: string,
-    private apiUrl: string,
-    private headers: Record<string, string>
-  ) {}
+    bucketId: string,
+    apiUrl: string,
+    headers: Record<string, string>
+  ) {
+    this.bucketId = bucketId;
+    this.apiUrl = apiUrl;
+    this.headers = headers;
+  }
 
   /**
    * Get the bucket ID

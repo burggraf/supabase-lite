@@ -136,8 +136,9 @@ function initializeWebSocketBridge() {
             if (message.body && (message.method === 'POST' || message.method === 'PATCH' || message.method === 'PUT')) {
               fetchOptions.body = message.body
               // Only set JSON content-type if not already specified
-              if (!fetchOptions.headers?.['content-type'] && !fetchOptions.headers?.['Content-Type']) {
-                (fetchOptions.headers as any)['Content-Type'] = 'application/json'
+              const headers = fetchOptions.headers as Record<string, string>;
+              if (!headers?.['content-type'] && !headers?.['Content-Type']) {
+                headers['Content-Type'] = 'application/json'
               }
             }
             
@@ -248,11 +249,7 @@ function initializeWebSocketBridge() {
           if (path.startsWith('/vfs/')) {
             try {
               console.log('🔄 Processing VFS-direct request via PostMessage')
-              const vfsResponse = await vfsDirectHandler(path, {
-                method,
-                headers: headers || {},
-                body: body ? JSON.stringify(body) : undefined
-              });
+              const vfsResponse = await vfsDirectHandler.handleRequest(path, method, headers || {});
               
               // Send VFS response back via PostMessage
               const vfsResponseMessage = {
@@ -267,7 +264,7 @@ function initializeWebSocketBridge() {
               
               if (event.source) {
                 console.log('✅ Sending VFS-direct response via PostMessage')
-                event.source.postMessage(vfsResponseMessage, event.origin);
+                event.source.postMessage(vfsResponseMessage, { targetOrigin: event.origin });
               }
               return; // Skip normal fetch processing
               
@@ -287,7 +284,7 @@ function initializeWebSocketBridge() {
               };
               
               if (event.source) {
-                event.source.postMessage(errorResponse, event.origin);
+                event.source.postMessage(errorResponse, { targetOrigin: event.origin });
               }
               return; // Skip normal fetch processing
             }
@@ -305,8 +302,9 @@ function initializeWebSocketBridge() {
           if (body && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
             fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
             // Only set JSON content-type if not already specified
-            if (!fetchOptions.headers?.['content-type'] && !fetchOptions.headers?.['Content-Type']) {
-              (fetchOptions.headers as any)['Content-Type'] = 'application/json'
+            const headers = fetchOptions.headers as Record<string, string>;
+            if (!headers?.['content-type'] && !headers?.['Content-Type']) {
+              headers['Content-Type'] = 'application/json'
             }
           }
           
@@ -346,7 +344,7 @@ function initializeWebSocketBridge() {
               requestId,
               status: response.status
             });
-            event.source.postMessage(responseMessage, event.origin);
+            event.source.postMessage(responseMessage, { targetOrigin: event.origin });
           }
           
         } catch (fetchError: any) {
@@ -370,7 +368,7 @@ function initializeWebSocketBridge() {
           };
           
           if (event.source) {
-            event.source.postMessage(errorResponse, event.origin);
+            event.source.postMessage(errorResponse, { targetOrigin: event.origin });
           }
         }
       }
@@ -400,7 +398,7 @@ function setupAppNavigationInterceptor() {
   })
   
   // Handle browser back/forward navigation to app routes
-  window.addEventListener('popstate', (event) => {
+  window.addEventListener('popstate', (_event) => {
     if (window.location.pathname.startsWith('/app/')) {
       console.log('🔄 Handling popstate to app route:', window.location.pathname)
       handleAppNavigation(window.location.pathname)
@@ -506,7 +504,7 @@ async function waitForMSW() {
           console.log('✅ MSW service worker is ready and controlling page')
         } else {
           // Force the service worker to take control
-          navigator.serviceWorker.controller?.postMessage({ type: 'CLIENT_READY' })
+          registration.active?.postMessage({ type: 'CLIENT_READY' })
         }
       }
       

@@ -618,7 +618,7 @@ export class VFSBridge {
       if (!file) {
         try {
           console.log('🐛 DEBUG: File not found, checking what exists in app bucket...');
-          const appFiles = await this.vfsManager.listFiles('app', { recursive: true });
+          const appFiles = await this.vfsManager.listFiles({ directory: 'app' });
           console.log('🐛 DEBUG: Files in app bucket:', appFiles?.map(f => f.path) || 'NO FILES');
           
           // Also check if the bucket exists at all
@@ -646,7 +646,7 @@ export class VFSBridge {
         
         if (file.mimeType?.startsWith('text/html') && file.content) {
           console.log('🐛 VFS BRIDGE - Checking HTML for subdirectory configuration');
-          let htmlContent = file.content;
+          let htmlContent: string = file.content;
           
           // Check if HTML is already configured for subdirectory deployment
           const targetBasePath = `/app/${appName}/`;
@@ -749,7 +749,7 @@ export class VFSBridge {
       }
 
       // Rewrite asset paths in HTML to be relative to the app
-      let htmlContent = indexFile.content;
+      let htmlContent: string = indexFile.content || '';
       if (indexFile.mimeType === 'text/html') {
         // Add base tag to ensure relative paths resolve correctly
         const baseTag = `<base href="/app/${appName}/">`;
@@ -764,7 +764,7 @@ export class VFSBridge {
           .replace(/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g, `href="$1"`)
           .replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`);
         
-        console.log('🔧 Added base tag and rewrote HTML asset paths for SPA route:', { appName, baseTag, originalLength: indexFile.content.length, newLength: htmlContent.length });
+        console.log('🔧 Added base tag and rewrote HTML asset paths for SPA route:', { appName, baseTag, originalLength: indexFile.content?.length || 0, newLength: htmlContent.length });
       }
 
       // Serve the app's index.html for SPA routing
@@ -1926,28 +1926,28 @@ export class VFSBridge {
   /**
    * Get cache headers for file responses
    */
-  private getCacheHeaders(file: VFSFile): Record<string, string> {
-    const headers: Record<string, string> = {};
+  // private getCacheHeaders(file: VFSFile): Record<string, string> {
+  //   const headers: Record<string, string> = {};
 
-    // ETag based on file hash
-    if (file.hash) {
-      headers['ETag'] = `"${file.hash}"`;
-    }
+  //   // ETag based on file hash
+  //   if (file.hash) {
+  //     headers['ETag'] = `"${file.hash}"`;
+  //   }
 
-    // Last-Modified
-    headers['Last-Modified'] = file.updatedAt.toUTCString();
+  //   // Last-Modified
+  //   headers['Last-Modified'] = file.updatedAt.toUTCString();
 
-    // Cache-Control based on file type
-    if (UTILS.shouldCompress(file.mimeType)) {
-      // Text files: cache for 1 hour
-      headers['Cache-Control'] = 'public, max-age=3600';
-    } else {
-      // Binary files: cache for 1 day
-      headers['Cache-Control'] = 'public, max-age=86400';
-    }
+  //   // Cache-Control based on file type
+  //   if (UTILS.shouldCompress(file.mimeType)) {
+  //     // Text files: cache for 1 hour
+  //     headers['Cache-Control'] = 'public, max-age=3600';
+  //   } else {
+  //     // Binary files: cache for 1 day
+  //     headers['Cache-Control'] = 'public, max-age=86400';
+  //   }
 
-    return headers;
-  }
+  //   return headers;
+  // }
 }
 
 // Export singleton instance

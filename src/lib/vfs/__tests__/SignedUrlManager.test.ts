@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SignedUrlManager } from '../SignedUrlManager';
-import { JWTService } from '../../auth/core/JWTService';
+// import { JWTService } from '../../auth/core/JWTService';
 import type { SignedUrlOptions, SignedUploadUrlOptions } from '../../../types/signed-url';
 
 // Mock the JWTService

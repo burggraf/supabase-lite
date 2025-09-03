@@ -11,7 +11,6 @@ import {
   FileText,
   Code2,
   Trash2,
-  Edit3,
   Copy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -196,9 +195,7 @@ Deno.serve(async (req: Request) => {
 });
 `;
 
-      await vfsManager.createFile(filePath, templateContent, {
-        mimeType: 'text/typescript'
-      });
+      await vfsManager.createFile(filePath, templateContent);
 
       toast.success(`Created ${fileName}`);
       setShowNewFileDialog(false);
@@ -231,9 +228,7 @@ Deno.serve(async (req: Request) => {
       const folderPath = `${parentPath}/${newFolderName.trim()}`;
       const placeholderPath = `${folderPath}/.gitkeep`;
 
-      await vfsManager.createFile(placeholderPath, '', {
-        mimeType: 'text/plain'
-      });
+      await vfsManager.createFile(placeholderPath, '');
 
       toast.success(`Created folder ${newFolderName}`);
       setShowNewFolderDialog(false);

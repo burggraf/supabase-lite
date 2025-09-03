@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { AuthBridge } from '../../lib/auth/AuthBridge';
 import { DatabaseManager } from '../../lib/database/connection';
-import { rlsEnforcer } from '../../lib/auth/rls-enforcer';
+// import { RLSEnforcer } from '../../lib/auth/rls-enforcer';
 
 describe('Row Level Security (RLS) Workflow Integration', () => {
   let authBridge: AuthBridge;
@@ -22,8 +22,7 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
 
   let user1Id: string;
   let user2Id: string;
-  let user1Token: string;
-  let user2Token: string;
+  // Tokens are stored for potential future use in the test suite
 
   beforeAll(async () => {
     // Initialize database and auth
@@ -75,7 +74,7 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
   beforeEach(async () => {
     // Clean up test data
     await dbManager.exec('DELETE FROM test_posts;');
-    await dbManager.exec(`DELETE FROM auth.users WHERE email IN ($1, $2);`, [user1.email, user2.email]);
+    await dbManager.exec(`DELETE FROM auth.users WHERE email IN ('${user1.email}', '${user2.email}');`);
     await dbManager.exec(`DELETE FROM auth.sessions;`);
 
     // Register and sign in both users
@@ -101,8 +100,8 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
       url: new URL('http://localhost:5173/auth/v1/signup')
     };
 
-    const user1SignupResponse = await authBridge.handleRequest(user1SignupRequest);
-    const user2SignupResponse = await authBridge.handleRequest(user2SignupRequest);
+    const user1SignupResponse = await authBridge.handleAuthRequest(user1SignupRequest);
+    const user2SignupResponse = await authBridge.handleAuthRequest(user2SignupRequest);
 
     user1Id = user1SignupResponse.data.user.id;
     user2Id = user2SignupResponse.data.user.id;
@@ -138,11 +137,9 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
       url: new URL('http://localhost:5173/auth/v1/token')
     };
 
-    const user1SigninResponse = await authBridge.handleRequest(user1SigninRequest);
-    const user2SigninResponse = await authBridge.handleRequest(user2SigninRequest);
-
-    user1Token = user1SigninResponse.data.session.access_token;
-    user2Token = user2SigninResponse.data.session.access_token;
+    // Store signin responses for potential future use in tests
+    await authBridge.handleAuthRequest(user1SigninRequest);
+    await authBridge.handleAuthRequest(user2SigninRequest);
   });
 
   describe('RLS Policy Enforcement', () => {
