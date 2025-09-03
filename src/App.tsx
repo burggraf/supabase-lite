@@ -202,11 +202,10 @@ function App() {
                 <div className="mb-6">
                   <h1 className="text-3xl font-bold">Cache Manager</h1>
                   <p className="text-muted-foreground mt-2">
-                    Manage Service Worker caches, monitor performance metrics, and debug offline functionality. 
-                    This is a developer tool for Phase 2 offline capabilities.
+                    Manage Service Worker caches and debug offline functionality.
                   </p>
                 </div>
-                <CacheManager showMetrics={true} autoRefresh={false} />
+                <CacheManager autoRefresh={false} />
               </div>
             </div>
           </ErrorBoundary>

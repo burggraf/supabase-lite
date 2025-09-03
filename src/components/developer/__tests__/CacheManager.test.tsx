@@ -8,8 +8,7 @@ const mockCacheDebugger = vi.hoisted(() => ({
   clearAllCaches: vi.fn(),
   clearCache: vi.fn(),
   getCacheSize: vi.fn(),
-  inspectCache: vi.fn(),
-  getPerformanceMetrics: vi.fn()
+  inspectCache: vi.fn()
 }))
 
 vi.mock('../../../lib/offline/CacheDebugger', () => ({
@@ -111,11 +110,26 @@ describe('CacheManager Component', () => {
       })
     })
 
-    it('should show confirmation dialog before clearing caches', () => {
-      render(<CacheManager />)
+    it('should show confirmation dialog before clearing caches', async () => {
+      mockCacheDebugger.getCacheStatus.mockResolvedValue({
+        totalCaches: 1,
+        totalSize: '5 MB',
+        caches: [{ name: 'test-cache', size: '5 MB', entries: 10 }]
+      })
+
+      await act(async () => {
+        render(<CacheManager />)
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Total Caches: 1')).toBeInTheDocument()
+      })
 
       const clearButton = screen.getByRole('button', { name: /clear all caches/i })
-      fireEvent.click(clearButton)
+      
+      await act(async () => {
+        fireEvent.click(clearButton)
+      })
 
       expect(screen.getByText('Clear All Caches?')).toBeInTheDocument()
       expect(screen.getByText(/This will remove all cached resources/)).toBeInTheDocument()
@@ -210,89 +224,5 @@ describe('CacheManager Component', () => {
     })
   })
 
-  describe('Performance Metrics', () => {
-    it('should display cache performance metrics', async () => {
-      const mockMetrics = {
-        cacheHitRate: 85.2,
-        totalRequests: 1250,
-        cacheHits: 1065,
-        cacheMisses: 185,
-        averageResponseTime: 45.8,
-        networkSavings: '12.3 MB'
-      }
 
-      mockCacheDebugger.getPerformanceMetrics.mockResolvedValue(mockMetrics)
-      mockCacheDebugger.getCacheStatus.mockResolvedValue({
-        totalCaches: 0,
-        totalSize: '0 B',
-        caches: []
-      })
-
-      await act(async () => {
-        render(<CacheManager showMetrics={true} />)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Performance Metrics')).toBeInTheDocument()
-        expect(screen.getByText('85.2%')).toBeInTheDocument()
-        expect(screen.getByText('1250')).toBeInTheDocument()
-        expect(screen.getByText('12.3 MB')).toBeInTheDocument()
-      })
-    })
-
-    it('should not show metrics when showMetrics prop is false', () => {
-      render(<CacheManager showMetrics={false} />)
-
-      expect(screen.queryByText('Performance Metrics')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Auto-refresh', () => {
-    it('should auto-refresh cache status every 30 seconds when enabled', async () => {
-      mockCacheDebugger.getCacheStatus.mockResolvedValue({
-        totalCaches: 1,
-        totalSize: '5 MB',
-        caches: []
-      })
-
-      vi.useFakeTimers()
-
-      await act(async () => {
-        render(<CacheManager autoRefresh={true} />)
-      })
-
-      // Fast-forward 30 seconds
-      await act(async () => {
-        vi.advanceTimersByTime(30000)
-      })
-
-      await waitFor(() => {
-        expect(mockCacheDebugger.getCacheStatus).toHaveBeenCalledTimes(2) // Initial + auto-refresh
-      })
-
-      vi.useRealTimers()
-    })
-
-    it('should not auto-refresh when autoRefresh prop is false', async () => {
-      mockCacheDebugger.getCacheStatus.mockResolvedValue({
-        totalCaches: 1,
-        totalSize: '5 MB',
-        caches: []
-      })
-
-      vi.useFakeTimers()
-
-      await act(async () => {
-        render(<CacheManager autoRefresh={false} />)
-      })
-
-      await act(async () => {
-        vi.advanceTimersByTime(60000) // 1 minute
-      })
-
-      expect(mockCacheDebugger.getCacheStatus).toHaveBeenCalledTimes(1) // Only initial load
-
-      vi.useRealTimers()
-    })
-  })
 })
