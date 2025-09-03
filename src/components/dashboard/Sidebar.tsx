@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { EnhancedOfflineIndicator } from '@/components/ui/EnhancedOfflineIndicator';
 
 const iconMap = {
   LayoutDashboard,
@@ -201,6 +202,16 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
 
       {/* Footer */}
       <div className="p-4 border-t space-y-3">
+        <div className={cn(
+          "flex",
+          isExpanded ? "flex-col space-y-2" : "flex-col items-center space-y-2"
+        )}>
+          <EnhancedOfflineIndicator 
+            iconOnly={!isExpanded} 
+            showDevToggle={isExpanded} 
+            compact={isExpanded}
+          />
+        </div>
         <div className={cn(
           "flex items-center text-xs text-muted-foreground",
           isExpanded ? "space-x-2" : "justify-center"
