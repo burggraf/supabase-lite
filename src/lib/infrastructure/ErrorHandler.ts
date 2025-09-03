@@ -124,25 +124,28 @@ export class InfrastructureErrorHandler implements ErrorHandler {
   }
 
   private convertToInfrastructureError(error: unknown, context?: Record<string, any>): InfrastructureError {
-    // Handle PostgreSQL errors first (before InfrastructureError check) 
-    // because PG errors can have code/message properties that look like InfrastructureErrors
+    // Handle InfrastructureError (already processed) first
+    if (this.isInfrastructureError(error)) {
+      const infraError = error as InfrastructureError;
+      return { 
+        ...infraError, 
+        context: { ...(infraError.context || {}), ...context } 
+      };
+    }
+
+    // Handle PostgreSQL errors  
     if (this.isPGError(error)) {
       return this.mapPGError(error, context);
-    }
-
-    // Handle InfrastructureError (already processed)
-    if (this.isInfrastructureError(error)) {
-      return { ...error, context: { ...error.context, ...context } };
-    }
-
-    // Handle standard Error objects
-    if (error instanceof Error) {
-      return this.mapStandardError(error, context);
     }
 
     // Handle HTTP errors
     if (this.isHTTPError(error)) {
       return this.mapHTTPError(error, context);
+    }
+
+    // Handle standard Error objects (catch-all for Error instances)
+    if ((error as any) instanceof Error) {
+      return this.mapStandardError(error as Error, context);
     }
 
     // Handle string errors
@@ -168,7 +171,8 @@ export class InfrastructureErrorHandler implements ErrorHandler {
       typeof error === 'object' &&
       error !== null &&
       'code' in error &&
-      'message' in error
+      'message' in error &&
+      !(error instanceof Error) // Exclude standard Error objects
     );
   }
 
@@ -216,7 +220,7 @@ export class InfrastructureErrorHandler implements ErrorHandler {
 
   private mapPGError(error: any, context?: Record<string, any>): InfrastructureError {
     const pgCode = error.code;
-    let infraCode = ERROR_CODES.DATABASE_QUERY_FAILED;
+    let infraCode: string = ERROR_CODES.DATABASE_QUERY_FAILED;
     let hint: string | undefined;
 
     // Map PostgreSQL error codes to infrastructure codes

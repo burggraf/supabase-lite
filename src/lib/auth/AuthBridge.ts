@@ -403,7 +403,8 @@ export class AuthBridge {
         return this.createSuccessResponse(null, 200)
       }
 
-      console.log('Valid session found for user:', session.user?.email)
+      const user = this.sessionManager.getUser()
+      console.log('Valid session found for user:', user?.email)
       return this.createSuccessResponse(this.serializeSession(session), 200)
       
     } catch (error) {

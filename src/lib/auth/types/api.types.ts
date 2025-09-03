@@ -169,7 +169,7 @@ export interface AdminUserResponse {
   total: number
 }
 
-export interface AuthError {
+export interface AuthAPIError {
   error: string
   error_description: string
   message: string
@@ -177,7 +177,7 @@ export interface AuthError {
 
 export interface APIResponse<T = any> {
   data?: T
-  error?: AuthError
+  error?: AuthAPIError
   status: number
   statusText: string
 }

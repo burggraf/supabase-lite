@@ -62,7 +62,7 @@ describe('PerformanceMonitor', () => {
     })
 
     it('should end timing operations and calculate duration', () => {
-      mockPerformance.getEntriesByName.mockReturnValue([
+      (mockPerformance.getEntriesByName as any).mockReturnValue([
         { startTime: 1000, duration: 250 }
       ])
 

@@ -100,10 +100,10 @@ export class StorageManager {
         availableSpace,
         usagePercentage,
         usageDetails: {
-          indexedDB: estimate.usageDetails?.indexedDB || 0,
-          caches: estimate.usageDetails?.caches || 0,
-          serviceWorker: estimate.usageDetails?.serviceWorker || 0,
-          other: (estimate.usageDetails?.other || 0)
+          indexedDB: (estimate as any).usageDetails?.indexedDB || 0,
+          caches: (estimate as any).usageDetails?.caches || 0,
+          serviceWorker: (estimate as any).usageDetails?.serviceWorker || 0,
+          other: ((estimate as any).usageDetails?.other || 0)
         },
         isApproachingLimit: usagePercentage >= this.WARNING_THRESHOLD,
         isExceeded: usagePercentage >= this.CRITICAL_THRESHOLD
@@ -157,10 +157,10 @@ export class StorageManager {
       if ('storage' in navigator && navigator.storage.estimate) {
         const estimate = await navigator.storage.estimate();
         stats.totalUsage = estimate.usage || 0;
-        stats.breakdown.indexedDB = estimate.usageDetails?.indexedDB || 0;
-        stats.breakdown.caches = estimate.usageDetails?.caches || 0;
-        stats.breakdown.serviceWorker = estimate.usageDetails?.serviceWorker || 0;
-        stats.breakdown.other = estimate.usageDetails?.other || 0;
+        stats.breakdown.indexedDB = (estimate as any).usageDetails?.indexedDB || 0;
+        stats.breakdown.caches = (estimate as any).usageDetails?.caches || 0;
+        stats.breakdown.serviceWorker = (estimate as any).usageDetails?.serviceWorker || 0;
+        stats.breakdown.other = (estimate as any).usageDetails?.other || 0;
       }
     } catch (error) {
       console.warn('Failed to get storage estimate:', error);
