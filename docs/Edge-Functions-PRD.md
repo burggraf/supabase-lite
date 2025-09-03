@@ -1,528 +1,613 @@
 # Supabase Edge Functions Implementation PRD
 
 **Product Requirements Document**  
-**Version:** 2.2  
-**Date:** August 2025  
-**Status:** ✅ **COMPLETE** - All Core Features Implemented and Tested  
+**Version:** 3.0 - Enhanced Runtime Implementation Plan  
+**Date:** January 2025  
+**Status:** 🔄 **RUNTIME ENHANCEMENT PHASE** - Core Features Complete, Runtime Upgrade In Progress  
 
 ---
 
 ## 1. Executive Summary
 
-This Product Requirements Document (PRD) documents the redesigned Edge Functions implementation for Supabase Lite. The project is being completely redesigned to match the official Supabase Edge Functions interface, providing a cleaner, more intuitive development experience that exactly mirrors Supabase's production UI.
+This Product Requirements Document (PRD) outlines the comprehensive enhancement of the Edge Functions implementation for Supabase Lite, transitioning from a basic string-parsing simulation to a sophisticated TypeScript execution environment that closely mimics the real Supabase Edge Functions experience.
 
-### Project Goals ✅ ACHIEVED
-- **✅ 100% Supabase UI Compatibility**: Exact match to Supabase's Edge Functions interface
-- **✅ Simplified User Experience**: Clean two-view navigation structure
-- **✅ Template-First Approach**: Emphasize function templates for quick starts
-- **✅ Browser-Only Architecture**: Maintains zero server dependencies
-- **✅ Streamlined Development**: Focus on essential features without complexity
+### Project Goals 
+- **✅ 100% Supabase UI Compatibility**: Exact match to Supabase's Edge Functions interface (ACHIEVED)
+- **✅ Simplified User Experience**: Clean two-view navigation structure (ACHIEVED)
+- **✅ Template-First Approach**: Emphasize function templates for quick starts (ACHIEVED)
+- **✅ Browser-Only Architecture**: Maintains zero server dependencies (MAINTAINED)
+- **🔄 ENHANCED RUNTIME**: Real TypeScript execution with Monaco + Web Workers + Enhanced MSW (IN PROGRESS)
+- **🆕 Deno API Simulation**: Browser-compatible Deno runtime polyfills (PLANNED)
+- **🆕 Import Resolution**: Support for ES modules and npm packages (PLANNED)
 
-### Success Metrics ✅ ACHIEVED
-- **✅ UI/UX Match**: 100% visual and interaction parity with Supabase
-- **✅ Template Gallery**: 10 pre-built function templates
-- **✅ Two-View Navigation**: Functions list and editor views
-- **✅ Monaco Editor Integration**: Full TypeScript support maintained
-- **✅ VFS Integration**: Persistent file storage across projects
-
----
-
-## 2. Implementation Status ✅ CORE FEATURES COMPLETE
-
-### 2.1 New UI Architecture ✅ COMPLETE
-
-The interface has been successfully redesigned to match Supabase's official Edge Functions UI:
-
-#### **Two-View Navigation System** ✅ COMPLETE
-1. **Functions List View** (`/edge-functions`) ✅ COMPLETE
-   - Main landing page with function list or empty state
-   - Template gallery with 10 function templates
-   - Three creation methods (Editor, AI Assistant, CLI)
-   - Sidebar navigation (Functions, Secrets)
-   - Function testing with interactive modal
-   - Function management (edit, delete actions)
-
-2. **Function Editor View** (`/edge-functions/[function-name]`) ✅ COMPLETE
-   - Breadcrumb navigation
-   - Simple file tree (left panel)
-   - Monaco Editor (center panel)
-   - Deploy controls (bottom)
-
-### 2.2 Core Components ✅ COMPLETE
-
-#### **EdgeFunctions Page** ✅ COMPLETE
-**File**: `src/pages/EdgeFunctions.tsx`
-- **Purpose**: Route orchestrator for two-view navigation system
-- **Features**:
-  - ✅ Route handling between list and editor views
-  - ✅ State management for current function
-  - ✅ Navigation between views
-  - ✅ Unique function name generation with fallback logic
-  - ✅ Integration with new simplified components
-- **Integration**: Clean routing with breadcrumb navigation
-
-#### **FunctionsList Component** ✅ COMPLETE
-**File**: `src/components/edge-functions/FunctionsList.tsx`
-- **Purpose**: Main functions list view with empty state
-- **Features**:
-  - ✅ List of deployed functions with quick actions
-  - ✅ Empty state with creation options
-  - ✅ Template gallery integration
-  - ✅ Function management (delete, edit)
-  - ✅ **NEW**: Interactive function testing modal with request/response display
-  - ✅ **NEW**: Execution time tracking and error handling
-- **Integration**: Connected to VFS for function storage
-
-#### **FileExplorer Component** ✅ COMPLETE
-**File**: `src/components/edge-functions/FileExplorer.tsx`
-- **Purpose**: Simple file tree for editor view
-- **Features**:
-  - ✅ Basic tree view for current function files
-  - ✅ File selection for editing
-  - ✅ Add file capability
-  - ✅ Simplified without complex CRUD operations
-- **Technical Details**:
-  - ✅ Lightweight tree rendering
-  - ✅ Integration with single-function editing workflow
-
-#### **CodeEditor Component** ✅ COMPLETE
-**File**: `src/components/edge-functions/CodeEditor.tsx`  
-- **Purpose**: Single-file code editing experience
-- **Features**:
-  - ✅ Full Monaco Editor integration maintained
-  - ✅ TypeScript syntax highlighting and IntelliSense
-  - ✅ Single-file focus (no tabs)
-  - ✅ Auto-save functionality with debounce
-  - ✅ File switching via file tree
-- **Technical Implementation**:
-  - ✅ Monaco Editor lazy loading preserved
-  - ✅ Simplified state management for single file
-  - ✅ VFS integration for file operations
-  - ✅ Removed complex tab management
-
-#### **FunctionTemplates Component** ✅ COMPLETE
-**File**: `src/components/edge-functions/FunctionTemplates.tsx`
-- **Purpose**: Template gallery for quick function creation
-- **Features**:
-  - ✅ 10 pre-built function templates
-  - ✅ Template preview and selection
-  - ✅ Direct creation from template
-  - ✅ Template categories and descriptions
-- **Templates Included**:
-  - ✅ Simple Hello World, Supabase Database Access
-  - ✅ Storage Upload, Node API, Express Server
-  - ✅ OpenAI, Stripe Webhook, Email, Image Transform, WebSocket
-
-#### **SecretsManager Component** ✅ COMPLETE
-**File**: `src/components/edge-functions/SecretsManager.tsx`
-- **Purpose**: Environment variables management
-- **Features**:
-  - ✅ Key-value pair management interface
-  - ✅ Secure storage of environment variables
-  - ✅ Project-scoped variable isolation
-  - ✅ Import/export functionality
-- **Integration**: Accessible via sidebar navigation
-
-#### **FunctionCreationOptions Component** ✅ COMPLETE
-**File**: `src/components/edge-functions/FunctionCreationOptions.tsx`
-- **Purpose**: Three creation methods presentation
-- **Features**:
-  - ✅ Via Editor option with description
-  - ✅ AI Assistant integration point (placeholder)
-  - ✅ **NEW**: Complete CLI instructions modal with copy-to-clipboard
-  - ✅ **NEW**: Comprehensive Supabase CLI guide with pro tips
-  - ✅ Visual cards matching Supabase design
-- **Integration**: Part of empty state on functions list view
-
-### 2.3 Deprecated Components ❌ REMOVED
-
-The following components are being removed to match Supabase's cleaner interface:
-
-#### **FolderSync Component** ❌ DEPRECATED
-- **Reason**: Not present in Supabase UI, adds unnecessary complexity
-- **Replacement**: Direct editing with VFS persistence
-
-#### **DevTools Complex Features** ❌ SIMPLIFIED
-- **Reason**: Supabase uses simpler logging approach
-- **Replacement**: Basic function logs accessible from function list
-
-#### **Multi-Tab Interface** ❌ REMOVED
-- **Reason**: Supabase uses single-file editing approach
-- **Replacement**: File tree navigation with single editor
-
-### 2.4 Supporting Infrastructure ✅ MAINTAINED
-
-#### **MSW Handler Integration** ✅ MAINTAINED
-**File**: `src/mocks/handlers.ts`
-- **Purpose**: Function execution and template simulation
-- **Features**: Maintained for deployment and execution simulation
-
-### 2.5 Integration Points ✅ MAINTAINED
-
-#### **VFS Integration** ✅ MAINTAINED
-- Continued integration with Virtual File System
-- Project-scoped function storage
-- Template-based function creation
-- Simplified file operations
-
-#### **Project Management** ✅ MAINTAINED  
-- Multi-project function isolation
-- Project-scoped templates and functions
-- Seamless project switching
-
-### 2.6 New Features Implemented ✅ ADDITIONS
-
-#### **Function Testing System** ✅ NEW
-- Interactive testing modal with request body editor
-- Real-time execution with timing metrics  
-- Response display with status codes and headers
-- Error handling and user feedback
-- Integration with MSW handlers for realistic testing
-
-#### **CLI Integration** ✅ NEW
-- Comprehensive CLI instructions modal
-- Step-by-step Supabase CLI setup guide
-- Copy-to-clipboard functionality for commands
-- Pro tips and best practices
-- Direct links to official documentation
-
-#### **Enhanced Error Handling** ✅ NEW
-- Unique function name generation with fallback
-- File existence checking before creation
-- User-friendly error messages and toasts
-- Graceful handling of edge cases
-
-### 2.7 Known Issues ✅ RESOLVED
-
-#### **Function List Loading** ✅ FIXED
-- ~~Functions created successfully but don't show in list~~
-- ~~VFS directory listing may not properly detect created function directories~~
-- **Root Cause**: VFS directory filter expected exact match (`directory === 'edge-functions'`) but files had nested directories (`edge-functions/function-name`)
-- **Solution**: Replaced VFS directory filtering with manual `file.path.startsWith('edge-functions/')` filtering
-- **Status**: ✅ **COMPLETELY RESOLVED** - All functions now display properly in the list
+### Success Metrics 
+- **✅ UI/UX Match**: 100% visual and interaction parity with Supabase (ACHIEVED)
+- **✅ Template Gallery**: 10 pre-built function templates (ACHIEVED)
+- **✅ Two-View Navigation**: Functions list and editor views (ACHIEVED)
+- **✅ Monaco Editor Integration**: Full TypeScript support maintained (ACHIEVED)
+- **✅ VFS Integration**: Persistent file storage across projects (ACHIEVED)
+- **🔄 Real TypeScript Execution**: Replace string parsing with actual TS compilation (IN PROGRESS)
+- **🔄 Web Worker Isolation**: Secure, isolated function execution environment (PLANNED)
+- **🔄 Async/Await Support**: Full Promise-based execution handling (PLANNED)
 
 ---
 
-## 3. Technical Architecture
+## 2. Current Implementation Analysis
 
-### 3.1 New Component Hierarchy
+### 2.1 Existing Architecture ✅ COMPLETE
 
-#### Functions List View (`/edge-functions`)
-```
-FunctionsList (Main Component)
-├── Sidebar Navigation
-│   ├── Functions (Active)
-│   └── Secrets
-├── Main Content Area
-│   ├── Header (Title + Deploy Button)
-│   ├── Empty State (when no functions)
-│   │   ├── FunctionCreationOptions
-│   │   └── FunctionTemplates
-│   └── Functions List (when functions exist)
-│       └── Function Cards with Actions
-```
+The current system successfully implements the Supabase-compatible UI with full template support and VFS integration:
 
-#### Function Editor View (`/edge-functions/[name]`)
-```
-FunctionEditor (Main Component)
-├── Breadcrumb Navigation
-├── Top Bar
-│   ├── Template Selector
-│   └── AI Assistant Button
-├── Left Panel - Files
-│   ├── FileExplorer (Simplified)
-│   └── Add File Button
-├── Center Panel
-│   └── CodeEditor (Single File)
-└── Bottom Section
-    ├── Function Name Input
-    └── Deploy Button
-```
+#### **Completed Features**
+- **✅ Two-View Navigation System**: Functions list and editor views working perfectly
+- **✅ Template Gallery**: 10 comprehensive function templates available
+- **✅ Monaco Editor Integration**: Full TypeScript editing with IntelliSense
+- **✅ VFS Storage**: Persistent function storage across projects and sessions
+- **✅ MSW Integration**: HTTP request interception for function testing
+- **✅ Function Management**: Create, edit, delete, and test functions
+- **✅ Environment Variables**: Secure secrets management via SecretsManager
 
-### 3.2 Data Flow
+### 2.2 Current Runtime Limitations ❌ NEEDS ENHANCEMENT
 
-```
-User Action → Component State → VFS Manager → IndexedDB
-                                      ↓
-MSW Handlers ← Function Execution ← File Content
-                                      ↓
-Response → Component Update → UI Refresh
-```
+The existing Edge Functions runtime uses a **basic string-parsing simulation** approach:
 
-### 3.3 Storage Architecture
-
-```
-IndexedDB (VFS Storage)
-├── Project A Files
-│   ├── edge-functions/
-│   │   ├── hello/index.ts
-│   │   └── api/users/index.ts
-├── Project B Files
-└── Sync Metadata
-```
-
----
-
-## 4. Feature Specifications
-
-### 4.1 File Management Features
-
-#### File Operations
-- **Create**: New files and folders with template support
-- **Read**: Efficient file loading with caching
-- **Update**: Real-time editing with auto-save
-- **Delete**: Safe deletion with confirmation dialogs
-- **Move/Rename**: Drag-and-drop and context menu operations
-
-#### Search and Navigation
-- **Real-time Search**: Instant filtering as you type
-- **Tree Navigation**: Expand/collapse with state persistence
-- **Quick File Access**: Recent files and favorites
-
-### 4.2 Code Editing Features
-
-#### Monaco Editor Integration
-- **Language Support**: Full TypeScript/JavaScript support
-- **IntelliSense**: Auto-completion and error detection
-- **Syntax Highlighting**: Rich syntax coloring
-- **Code Folding**: Collapsible code blocks
-- **Multi-cursor**: Advanced editing capabilities
-
-#### File Management
-- **Multi-tab Interface**: Work on multiple files simultaneously
-- **Unsaved Changes**: Visual indicators for modified files
-- **Auto-save**: Configurable auto-save with debouncing
-- **Tab Persistence**: Restore tabs on page reload
-
-### 4.3 Synchronization Features
-
-#### Local Folder Sync
-- **Bidirectional Sync**: Changes flow both ways
-- **Conflict Detection**: Automatic conflict identification
-- **Resolution UI**: User-friendly conflict resolution
-- **File Watching**: Real-time change detection
-- **Batch Operations**: Efficient bulk synchronization
-
-#### Sync Configuration
-- **Include/Exclude Patterns**: Filter which files to sync
-- **Sync Direction**: Control sync direction (both, up, down)
-- **Auto-sync**: Automatic synchronization on changes
-
-### 4.4 Deployment Features
-
-#### Environment Management
-- **Variable Editor**: Key-value pair management
-- **Secure Storage**: Environment variables stored securely
-- **Project Scoping**: Variables scoped to projects
-- **Import/Export**: Bulk variable management
-
-#### Deployment History
-- **Version Tracking**: All deployments tracked with timestamps
-- **Rollback Support**: One-click rollback to previous versions
-- **Status Monitoring**: Deployment success/failure tracking
-- **Deployment Logs**: Detailed deployment information
-
-### 4.5 Developer Tools Features
-
-#### Console Monitoring
-- **Real-time Logs**: Live log streaming during function execution
-- **Log Filtering**: Filter by log level and content
-- **Log Search**: Full-text search through log history
-- **Export Logs**: Download logs for offline analysis
-
-#### Performance Monitoring
-- **Execution Metrics**: Function execution time tracking
-- **Memory Usage**: Memory consumption monitoring
-- **Error Tracking**: Automatic error detection and reporting
-- **Performance Graphs**: Visual performance data
-
----
-
-## 5. API Design and Integration
-
-### 5.1 MSW Handler Endpoints
-
-#### Function Execution
-```
-POST /functions/:functionName
-- Request: Function parameters and request body
-- Response: Function output with execution metadata
-- Headers: Execution time, runtime version, function name
-```
-
-#### Function Management
-```
-POST /api/edge-functions/deploy
-- Request: Function name and environment variables
-- Response: Deployment confirmation with deployment ID
-
-GET /api/edge-functions/:functionName/logs
-- Request: Log level and limit parameters
-- Response: Paginated log entries with timestamps
-
-GET /api/edge-functions/:functionName/metrics  
-- Request: Time period for metrics
-- Response: Performance metrics and statistics
-```
-
-### 5.2 VFS Integration
-
-#### File Operations
+#### **How Current System Works**
+Located in `src/mocks/handlers.ts` (line 1347+):
 ```typescript
-// File creation
-await vfsManager.createFile('edge-functions/hello/index.ts', code)
-
-// File reading  
-const file = await vfsManager.readFile('edge-functions/hello/index.ts')
-
-// File listing
-const files = await vfsManager.listFiles({ directory: 'edge-functions' })
+async function simulateEdgeFunctionExecution(
+  functionName: string,
+  code: string,
+  requestBody: unknown
+): Promise<{...}> {
+  // 1. Uses regex to find response patterns in TypeScript code
+  const responseMatch = code.match(/new Response\(JSON\.stringify\((\{[\s\S]*?\})\)/);
+  
+  // 2. Does basic string substitution for variables
+  responseCode = responseCode.replace(/req\.method/g, '"POST"');
+  
+  // 3. Uses eval() to execute extracted object literals
+  response = eval(`(${responseCode})`);
+}
 ```
 
-### 5.3 Project Integration
+#### **Critical Limitations**
+- **❌ No Real TypeScript Compilation**: Uses regex parsing instead of TS compiler
+- **❌ No Async/Await Support**: Cannot handle Promise-based code execution  
+- **❌ Limited Variable Substitution**: Only basic string replacement patterns
+- **❌ No Import Support**: Cannot resolve ES modules or npm packages
+- **❌ No Environment Variables**: Limited integration with Deno.env
+- **❌ Unsafe Execution**: Uses JavaScript eval() with security concerns
+- **❌ Pattern Matching Only**: Only works with specific code patterns
+- **❌ No Error Handling**: Poor error reporting and debugging experience
 
-#### Project Switching
+#### **Example of Current Limitations**
+Current system can only handle simple patterns like:
 ```typescript
-// Automatic project context switching
-await projectManager.switchToProject(projectId)
+// ✅ WORKS - Basic response pattern
+const response = { message: "Hello World" };
+return new Response(JSON.stringify(response));
 
-// All subsequent VFS operations are project-scoped
-const projectFiles = await vfsManager.listFiles()
+// ❌ FAILS - Async/await
+const data = await fetch('https://api.example.com');
+return new Response(JSON.stringify({ data }));
+
+// ❌ FAILS - Imports
+import { serve } from "https://deno.land/std/http/server.ts";
+
+// ❌ FAILS - Complex logic
+if (request.method === 'POST') {
+  const body = await request.json();
+  // Complex processing...
+}
 ```
 
 ---
 
-## 6. Security Considerations
+## 3. Enhanced Runtime Architecture
 
-### 6.1 Code Execution Security
-- **Sandboxed Execution**: All function code runs in isolated context
+### 3.1 Proposed Solution: Monaco + Web Workers + Enhanced MSW
+
+Based on extensive research into browser-based JavaScript runtimes, the optimal solution combines:
+
+1. **Monaco Editor TypeScript Compiler**: Real TS→JS compilation in browser
+2. **Web Workers**: Isolated execution environment for compiled functions  
+3. **Enhanced MSW**: Improved HTTP simulation with proper Request/Response objects
+4. **Deno API Polyfills**: Browser-compatible Deno runtime simulation
+
+### 3.2 Technical Architecture Overview
+
+```mermaid
+graph TB
+    A[User Code in Monaco] --> B[Monaco TS Compiler]
+    B --> C[Compiled JavaScript]
+    C --> D[Web Worker Execution]
+    D --> E[Deno API Polyfills]
+    E --> F[Enhanced MSW]
+    F --> G[Response to UI]
+    
+    H[VFS Storage] --> I[Environment Variables]
+    I --> D
+    
+    J[Import Resolution] --> K[CDN Sources]
+    K --> D
+```
+
+### 3.3 Core Components Architecture
+
+#### **Component 1: Monaco TypeScript Compilation Engine**
+```typescript
+// Real TypeScript compilation instead of string parsing
+async function compileTypeScript(code: string, fileName: string): Promise<string> {
+  const worker = await monaco.languages.typescript.getTypeScriptWorker();
+  const client = await worker(monaco.Uri.file(fileName));
+  
+  const result = await client.getEmitOutput(monaco.Uri.file(fileName).toString());
+  return result.outputFiles[0].text; // Compiled JavaScript
+}
+```
+
+#### **Component 2: Web Worker Execution Environment**
+```typescript
+// Isolated execution in Web Worker
+class EdgeFunctionWorker {
+  private worker: Worker;
+  
+  async executeFunction(compiledJS: string, request: RequestData): Promise<ResponseData> {
+    return new Promise((resolve, reject) => {
+      this.worker.postMessage({
+        code: compiledJS,
+        request: request,
+        env: this.getEnvironmentVariables()
+      });
+      
+      this.worker.onmessage = (event) => {
+        if (event.data.type === 'success') {
+          resolve(event.data.response);
+        } else {
+          reject(new Error(event.data.error));
+        }
+      };
+    });
+  }
+}
+```
+
+#### **Component 3: Deno API Polyfills**
+```typescript
+// Browser-compatible Deno runtime simulation
+const DenoPolyfills = {
+  serve: (handler: Function) => {
+    // Integrate with MSW request handling
+    return { serve: () => mockServerResponse };
+  },
+  
+  env: {
+    get: (key: string) => getEnvironmentVariable(key),
+    set: (key: string, value: string) => setEnvironmentVariable(key, value)
+  },
+  
+  // Additional Deno APIs as needed
+  readTextFile: async (path: string) => await readFromVFS(path),
+  writeTextFile: async (path: string, data: string) => await writeToVFS(path, data)
+};
+```
+
+### 3.4 Enhanced MSW Integration
+
+#### **Improved Function Execution Handler**
+```typescript
+// Enhanced MSW handler with real execution
+http.all('/functions/v1/:functionName', async ({ params, request }: any) => {
+  try {
+    const functionName = params.functionName as string;
+    
+    // 1. Load function code from VFS
+    const functionCode = await vfsManager.readFile(`edge-functions/${functionName}/index.ts`);
+    
+    // 2. Compile TypeScript to JavaScript using Monaco
+    const compiledJS = await compileTypeScript(functionCode.content, functionName);
+    
+    // 3. Execute in Web Worker with Deno polyfills
+    const worker = new EdgeFunctionWorker();
+    const result = await worker.executeFunction(compiledJS, {
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries()),
+      body: await request.json().catch(() => null)
+    });
+    
+    return HttpResponse.json(result.data, {
+      status: result.status || 200,
+      headers: result.headers || {}
+    });
+    
+  } catch (error) {
+    return HttpResponse.json({
+      error: 'Function execution failed',
+      message: error.message,
+      stack: error.stack
+    }, { status: 500 });
+  }
+});
+```
+
+---
+
+## 4. Implementation Roadmap
+
+### 4.1 Phase 1: Real TypeScript Compilation (Quick Win)
+**Estimated Effort**: 1-2 weeks  
+**Complexity**: Low-Medium
+
+#### **Objectives**
+- Replace current string-parsing approach with Monaco's real TypeScript compiler
+- Maintain existing MSW handlers but execute compiled JavaScript
+- Immediate improvement in code execution fidelity
+
+#### **Technical Tasks**
+1. **Create TypeScript Compilation Service**
+   ```typescript
+   // File: src/lib/edge-functions/TypeScriptCompiler.ts
+   export class TypeScriptCompiler {
+     async compile(code: string, fileName: string): Promise<CompilationResult> {
+       // Use Monaco's getEmitOutput for real TS compilation
+     }
+   }
+   ```
+
+2. **Update MSW Handler**
+   ```typescript
+   // Replace simulateEdgeFunctionExecution() in src/mocks/handlers.ts
+   async function executeCompiledFunction(compiledJS: string, requestData: any) {
+     // Execute compiled JavaScript instead of eval() on parsed strings
+   }
+   ```
+
+3. **Add Error Handling**
+   - TypeScript compilation errors
+   - Runtime execution errors  
+   - Proper error propagation to UI
+
+#### **Success Criteria**
+- ✅ Functions compile from TypeScript to JavaScript using Monaco
+- ✅ Basic function execution works with compiled code
+- ✅ Error messages show TypeScript compilation issues
+- ✅ No regression in existing functionality
+
+### 4.2 Phase 2: Web Worker Execution (Major Improvement)
+**Estimated Effort**: 2-3 weeks  
+**Complexity**: Medium
+
+#### **Objectives**
+- Move function execution to Web Workers for proper isolation
+- Implement basic Deno API polyfills (`Deno.serve`, `Deno.env`)
+- Handle async/await and Promise-based execution properly
+
+#### **Technical Tasks**
+1. **Create Edge Function Worker**
+   ```typescript
+   // File: public/edge-function-worker.js
+   self.onmessage = async function(event) {
+     const { code, request, env } = event.data;
+     
+     try {
+       // Set up Deno polyfills
+       self.Deno = createDenoPolyfills(env);
+       
+       // Execute compiled function code
+       const result = await executeInSandbox(code, request);
+       
+       self.postMessage({ type: 'success', result });
+     } catch (error) {
+       self.postMessage({ type: 'error', error: error.message });
+     }
+   };
+   ```
+
+2. **Create Web Worker Manager**
+   ```typescript
+   // File: src/lib/edge-functions/WorkerManager.ts
+   export class EdgeFunctionWorkerManager {
+     private workers: Map<string, Worker> = new Map();
+     
+     async executeFunction(functionName: string, code: string, request: any) {
+       const worker = this.getOrCreateWorker(functionName);
+       return this.executeInWorker(worker, code, request);
+     }
+   }
+   ```
+
+3. **Basic Deno API Polyfills**
+   ```typescript
+   // File: src/lib/edge-functions/DenoPolyfills.ts
+   export function createDenoPolyfills(env: Record<string, string>) {
+     return {
+       serve: (handler: Function) => mockServerIntegration(handler),
+       env: {
+         get: (key: string) => env[key],
+         has: (key: string) => key in env
+       }
+     };
+   }
+   ```
+
+4. **Enhanced Request/Response Objects**
+   - Create proper Request objects matching Deno's API
+   - Support for headers, body parsing, method handling
+   - Response object with status codes and headers
+
+#### **Success Criteria**
+- ✅ Functions execute in isolated Web Workers
+- ✅ Basic async/await support works
+- ✅ Environment variables accessible via Deno.env
+- ✅ Proper error handling and debugging
+- ✅ Request/Response objects match Deno API
+
+### 4.3 Phase 3: Advanced Deno Simulation (Near-Real Experience)
+**Estimated Effort**: 3-4 weeks  
+**Complexity**: Medium-High
+
+#### **Objectives**
+- Implement comprehensive Deno API polyfills
+- Add import resolution from CDN sources (esm.sh, skypack)
+- Support for Deno standard library functions
+- Advanced debugging and development experience
+
+#### **Technical Tasks**
+1. **Import Resolution System**
+   ```typescript
+   // File: src/lib/edge-functions/ImportResolver.ts
+   export class ImportResolver {
+     async resolveImport(specifier: string): Promise<string> {
+       if (specifier.startsWith('https://')) {
+         return await fetchFromCDN(specifier);
+       } else if (specifier.startsWith('npm:')) {
+         return await resolveFromESMSh(specifier);
+       }
+       // Handle other import patterns
+     }
+   }
+   ```
+
+2. **Comprehensive Deno API**
+   ```typescript
+   // File: src/lib/edge-functions/DenoStandardLibrary.ts
+   export const DenoStandardLibrary = {
+     // HTTP server functionality
+     serve: advancedServerPolyfill,
+     
+     // File system operations (VFS-backed)
+     readTextFile: (path: string) => vfsManager.readFile(path),
+     writeTextFile: (path: string, data: string) => vfsManager.writeFile(path, data),
+     
+     // Environment and process
+     env: environmentManager,
+     args: [],
+     
+     // Networking (fetch is already available)
+     // Additional APIs as needed
+   };
+   ```
+
+3. **Advanced Debugging Support**
+   - Source map support for TypeScript debugging
+   - Console.log() redirection from Web Worker to main thread  
+   - Stack trace enhancement for better error reporting
+   - Performance monitoring and execution metrics
+
+4. **Template Enhancement**
+   - Update function templates to use real Deno APIs
+   - Add examples showcasing advanced features
+   - Import resolution examples with popular libraries
+
+#### **Success Criteria**
+- ✅ Import statements work with CDN sources
+- ✅ Deno standard library functions available
+- ✅ Complex async/await patterns supported
+- ✅ Debugging experience comparable to real development
+- ✅ Function templates demonstrate full capabilities
+
+---
+
+## 5. Technical Challenges and Solutions
+
+### 5.1 Import Resolution
+**Challenge**: Edge Functions often import from URLs and npm packages  
+**Solution**: 
+- Use dynamic imports with URL rewriting to CDN sources (esm.sh, skypack)
+- Cache commonly used modules in VFS storage
+- Support for both ES modules and CommonJS patterns
+
+### 5.2 Request/Response Handling
+**Challenge**: Creating realistic Request/Response objects that match Deno's expectations  
+**Solution**:
+- Build proper Request/Response polyfills using Web API standards
+- MessagePort communication between Web Worker and MSW
+- Stream support for large request/response bodies
+
+### 5.3 Environment Variables and Secrets
+**Challenge**: Secure injection of environment variables into Web Worker context  
+**Solution**:
+- Use structured cloning for secure data transfer
+- Integrate with existing SecretsManager component
+- Runtime environment variable updates
+
+### 5.4 Performance and Resource Management
+**Challenge**: Web Worker lifecycle management and memory cleanup  
+**Solution**:
+- Worker pooling for frequently used functions
+- Automatic cleanup after execution timeout
+- Memory monitoring and garbage collection
+
+### 5.5 Error Handling and Debugging
+**Challenge**: Proper error propagation and debugging from Web Workers  
+**Solution**:
+- Enhanced error objects with stack traces
+- Console output redirection using MessageChannel
+- Source map support for TypeScript debugging
+
+---
+
+## 6. Browser Compatibility and Requirements
+
+### 6.1 Enhanced Runtime Requirements
+
+#### **Essential APIs**
+- **Web Workers**: Required for function execution isolation
+- **Monaco Editor**: TypeScript compilation capabilities  
+- **Structured Cloning**: Secure data transfer to workers
+- **Dynamic Imports**: Module resolution support
+
+#### **Optional Enhancements**
+- **SharedArrayBuffer**: For advanced performance features (Chrome-based browsers)
+- **File System Access API**: Enhanced local development integration
+- **Atomics**: For advanced concurrency patterns
+
+### 6.2 Browser Support Matrix
+
+| Browser | Basic Runtime | Advanced Features | Import Resolution |
+|---------|---------------|-------------------|-------------------|
+| Chrome 86+ | ✅ Full | ✅ Full | ✅ Full |
+| Edge 86+ | ✅ Full | ✅ Full | ✅ Full |
+| Firefox 78+ | ✅ Full | ⚠️ Limited* | ✅ Full |
+| Safari 14+ | ✅ Full | ⚠️ Limited* | ✅ Full |
+| Mobile | ✅ Core | ❌ None | ✅ Basic |
+
+*Limited due to SharedArrayBuffer restrictions
+
+---
+
+## 7. Security Considerations
+
+### 7.1 Enhanced Security Model
+- **Web Worker Sandboxing**: Complete isolation from main thread and DOM
+- **Import Validation**: Whitelist approved CDN sources and validate imports
+- **Environment Variable Scoping**: Secure injection with no cross-contamination
+- **Resource Limits**: Execution timeouts and memory limits per function
+- **Code Validation**: Static analysis of function code before execution
+
+### 7.2 Data Protection
+- **Project Isolation**: Enhanced isolation between project function contexts
+- **Secure Storage**: Environment variables encrypted in IndexedDB
 - **No File System Access**: Functions cannot access browser file system
-- **Limited API Access**: Restricted to defined API endpoints
-- **Input Validation**: All user inputs validated and sanitized
-
-### 6.2 Data Protection
-- **Project Isolation**: Files isolated between projects
-- **Secure Storage**: Environment variables encrypted in storage
-- **CORS Protection**: Proper CORS handling for API endpoints
-- **XSS Prevention**: All user content properly escaped
-
-### 6.3 Sync Security
-- **File System API Permissions**: User explicitly grants folder access
-- **Path Validation**: All file paths validated to prevent directory traversal
-- **Content Filtering**: Binary files and sensitive extensions filtered
-- **Atomic Operations**: Sync operations are atomic to prevent corruption
+- **XSS Prevention**: All user content properly sanitized and escaped
 
 ---
 
-## 7. Performance Optimizations
+## 8. Performance Optimizations
 
-### 7.1 File Operations
-- **Lazy Loading**: Monaco Editor loaded on demand
-- **Debounced Auto-save**: Prevents excessive save operations
-- **Efficient Tree Rendering**: Virtual scrolling for large file trees
-- **Caching Strategy**: Intelligent caching of frequently accessed files
+### 8.1 Compilation Performance  
+- **TypeScript Compilation Caching**: Cache compiled JavaScript for unchanged functions
+- **Worker Pool Management**: Reuse workers for multiple function executions
+- **Background Compilation**: Compile functions in background while user edits
 
-### 7.2 Sync Performance
-- **Batch Operations**: Multiple file operations grouped together
-- **Change Detection**: Only changed files are synchronized
-- **Background Sync**: Sync operations run in background workers
-- **Progress Tracking**: Real-time progress updates for user feedback
+### 8.2 Execution Performance
+- **Just-in-Time Compilation**: Compile only when function is executed
+- **Resource Monitoring**: Track memory usage and execution time
+- **Batch Operations**: Group multiple function calls for efficiency
 
-### 7.3 Memory Management
-- **File Content Streaming**: Large files handled in chunks
-- **Tab Cleanup**: Inactive tabs automatically cleaned up
-- **Garbage Collection**: Proper cleanup of event listeners and resources
-- **IndexedDB Optimization**: Efficient database queries and indexes
+### 8.3 Memory Management
+- **Worker Lifecycle**: Automatic cleanup of inactive workers
+- **Code Caching**: Intelligent caching with LRU eviction
+- **Memory Limits**: Prevent memory leaks with execution limits
 
 ---
 
-## 8. Browser Compatibility
+## 9. Migration Strategy
 
-### 8.1 Core Functionality
-- **Chrome/Edge 86+**: Full functionality including File System Access API
-- **Firefox 78+**: All features except local folder sync
-- **Safari 14+**: Core functionality with Monaco Editor support
-- **Mobile Browsers**: Touch-optimized interface with core editing
+### 9.1 Backward Compatibility
+- **Graceful Degradation**: Fall back to string parsing if enhanced runtime fails
+- **Progressive Enhancement**: Enhanced features enabled based on browser capabilities  
+- **Function Template Updates**: Gradually enhance templates to use new capabilities
 
-### 8.2 Progressive Enhancement
-- **File System Access API**: Graceful fallback when unavailable
-- **Monaco Editor**: Fallback to textarea for unsupported browsers
-- **Advanced Features**: Non-critical features degrade gracefully
-- **Touch Support**: Responsive design for tablet and mobile devices
+### 9.2 User Experience During Migration
+- **Transparent Upgrade**: Users see improved functionality without breaking changes
+- **Enhanced Error Messages**: Better error reporting during transition
+- **Performance Indicators**: Show users when enhanced runtime is active
 
 ---
 
-## 9. Testing Strategy ✅ COMPLETE
+## 10. Success Metrics and KPIs
 
-### 9.1 Component Testing
-- **Unit Tests**: Individual component functionality
-- **Integration Tests**: Component interaction testing
-- **E2E Tests**: Complete user workflow testing
-- **Visual Tests**: Screenshot comparison for UI consistency
-
-### 9.2 Functionality Testing
-- **File Operations**: Create, read, update, delete operations
-- **Code Editing**: Monaco Editor integration and functionality
-- **Sync Operations**: Local folder synchronization accuracy
-- **Deployment**: Function deployment and execution testing
-
-### 9.3 Performance Testing
-- **Load Testing**: Large file handling and performance
-- **Memory Testing**: Memory usage under heavy loads
-- **Sync Performance**: Large folder synchronization efficiency
-- **Browser Compatibility**: Cross-browser functionality testing
-
----
-
-## 10. Success Metrics ✅ ACHIEVED
-
-### 10.1 Functional Metrics
-- **✅ 100% Feature Coverage**: All planned features implemented
-- **✅ <100ms Response Time**: File operations under 100ms
-- **✅ 1000+ Files Support**: Tested with large file structures
-- **✅ Zero Security Issues**: Comprehensive security review passed
+### 10.1 Technical Metrics
+- **🎯 100% TypeScript Compilation Success**: All valid TS code compiles correctly
+- **🎯 <200ms Execution Time**: Function execution under 200ms for simple functions
+- **🎯 Async/Await Support**: 100% of Promise-based patterns work correctly
+- **🎯 Import Resolution**: 95% of common import patterns resolve successfully
+- **🎯 Memory Usage**: <50MB memory usage per function execution
 
 ### 10.2 User Experience Metrics
-- **✅ Intuitive Interface**: Professional development environment
-- **✅ Smooth Performance**: No lag during normal operations
-- **✅ Error Handling**: Graceful error handling and recovery
-- **✅ Feature Completeness**: All major IDE features present
+- **🎯 Error Reduction**: 90% reduction in "function failed" errors
+- **🎯 Development Speed**: 50% faster function development and testing
+- **🎯 Feature Coverage**: Support for 90% of common Deno Edge Function patterns
+- **🎯 Debug Experience**: Comprehensive error reporting and stack traces
 
-### 10.3 Integration Metrics
-- **✅ VFS Integration**: Seamless file storage and retrieval
-- **✅ Project Integration**: Perfect multi-project support
-- **✅ MSW Integration**: Realistic function execution simulation
-- **✅ Architecture Consistency**: Follows Supabase Lite patterns
+### 10.3 Quality Metrics
+- **🎯 Zero Security Issues**: No security vulnerabilities in enhanced runtime
+- **🎯 Browser Compatibility**: 100% functionality in supported browsers
+- **🎯 Performance Regression**: No performance degradation from current system
+- **🎯 Test Coverage**: 90% test coverage for new runtime components
 
 ---
 
-## 11. Future Enhancements
+## 11. Alternative Solutions Considered
 
-### 11.1 Potential Improvements
+### 11.1 Full WASM Deno Runtime ❌ Rejected
+**Pros**: Native Deno execution, complete API compatibility  
+**Cons**: Not feasible with current technology (2024), complex implementation, large bundle size  
+**Decision**: Too complex and not production-ready
+
+### 11.2 CodeSandbox Nodebox Integration ❌ Rejected  
+**Pros**: Proven Node.js execution in browser  
+**Cons**: Proprietary solution, expensive licensing, Node.js focused (not Deno)  
+**Decision**: Conflicts with open-source requirements
+
+### 11.3 WASI-Based Runtime ❌ Rejected
+**Pros**: WebAssembly execution, some Deno compatibility possible  
+**Cons**: High complexity, limited browser support, large learning curve  
+**Decision**: Risk/benefit ratio unfavorable
+
+### 11.4 Enhanced String Parsing ❌ Rejected
+**Pros**: Builds on current system, low complexity  
+**Cons**: Fundamental limitations cannot be overcome with parsing approach  
+**Decision**: Insufficient improvement over current limitations
+
+---
+
+## 12. Future Enhancements (Post-v3.0)
+
+### 12.1 Advanced Development Features
 - **Git Integration**: Version control support for function code
 - **Collaborative Editing**: Real-time collaborative code editing
-- **Function Templates**: Pre-built function templates and examples
 - **Advanced Debugging**: Breakpoints and step-through debugging
-- **Package Management**: npm package installation and management
-
-### 11.2 Advanced Features
-- **Function Marketplace**: Sharing and importing functions
-- **Monitoring Dashboard**: Advanced analytics and monitoring
-- **CI/CD Integration**: Automated testing and deployment
+- **Package Management**: Direct npm package installation and management
 - **Function Composition**: Visual function workflow builder
-- **Edge Runtime Simulation**: More realistic Deno runtime simulation
+
+### 12.2 Enterprise Features  
+- **Function Marketplace**: Sharing and importing functions from community
+- **Advanced Monitoring**: Performance analytics and observability
+- **CI/CD Integration**: Automated testing and deployment pipelines
+- **Team Collaboration**: Multi-user development environments
+- **Custom Runtime**: User-defined runtime configurations
 
 ---
 
-## 12. Conclusion
+## 13. Conclusion
 
-The Edge Functions implementation for Supabase Lite has successfully achieved 100% of its goals, delivering a professional-grade serverless function development environment that runs entirely in the browser. The implementation maintains perfect consistency with Supabase Lite's architecture while providing a feature-rich development experience that rivals traditional server-based solutions.
+This Enhanced Runtime Implementation Plan represents a fundamental leap forward in the Edge Functions capability of Supabase Lite. By transitioning from basic string parsing to a sophisticated TypeScript execution environment, we will provide users with a development experience that closely mirrors the real Supabase Edge Functions platform.
 
-### Key Achievements:
-- **Complete Feature Set**: All planned components implemented and tested
-- **Professional Quality**: Monaco Editor integration with full TypeScript support
-- **Innovative Sync**: File System Access API integration for seamless development
-- **Perfect Integration**: Seamless integration with existing VFS and project systems
-- **Zero Dependencies**: Maintains 100% browser-only operation
+### Key Benefits of Enhanced Runtime:
 
-This implementation sets a new standard for browser-based development environments and provides users with a complete, professional toolset for Edge Function development without any server infrastructure requirements.
+**🚀 Real TypeScript Execution**: Replace regex parsing with Monaco's TypeScript compiler  
+**🔒 Secure Isolation**: Web Worker sandboxing for safe code execution  
+**⚡ Async/Await Support**: Full Promise-based programming patterns  
+**📦 Import Resolution**: Support for ES modules and npm packages  
+**🛠 Enhanced Debugging**: Comprehensive error reporting and development tools  
+**🌐 Browser-Only Operation**: Maintains zero server dependencies  
+
+### Implementation Timeline:
+- **Phase 1**: Real TypeScript Compilation (1-2 weeks)
+- **Phase 2**: Web Worker Execution (2-3 weeks)  
+- **Phase 3**: Advanced Deno Simulation (3-4 weeks)
+- **Total Estimated Effort**: 6-9 weeks for complete enhanced runtime
+
+This implementation will establish Supabase Lite as the premier browser-based Edge Functions development environment, providing users with professional-grade tooling that rivals server-based solutions while maintaining the unique advantage of zero infrastructure requirements.
