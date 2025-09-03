@@ -11,6 +11,7 @@ import { EdgeFunctions } from '@/pages/EdgeFunctions';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useRouter } from '@/hooks/useRouter';
+import { CacheManager } from '@/components/developer/CacheManager';
 import { useEffect, useState } from 'react';
 import { initializeInfrastructure, logger } from '@/lib/infrastructure';
 import { projectManager } from '@/lib/projects/ProjectManager';
@@ -189,6 +190,23 @@ function App() {
           <ErrorBoundary>
             <div className="flex-1 p-6 overflow-y-auto min-h-full">
               <APITester />
+            </div>
+          </ErrorBoundary>
+        );
+      case 'cache-manager':
+        return (
+          <ErrorBoundary>
+            <div className="flex-1 p-6 overflow-y-auto min-h-full">
+              <div className="max-w-6xl mx-auto">
+                <div className="mb-6">
+                  <h1 className="text-3xl font-bold">Cache Manager</h1>
+                  <p className="text-muted-foreground mt-2">
+                    Manage Service Worker caches, monitor performance metrics, and debug offline functionality. 
+                    This is a developer tool for Phase 2 offline capabilities.
+                  </p>
+                </div>
+                <CacheManager showMetrics={true} autoRefresh={false} />
+              </div>
             </div>
           </ErrorBoundary>
         );
