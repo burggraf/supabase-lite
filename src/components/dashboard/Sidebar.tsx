@@ -11,7 +11,8 @@ import {
   BookOpen,
   Database,
   Settings,
-  TestTube
+  TestTube,
+  HardDrive
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ const iconMap = {
   Database,
   Settings,
   TestTube,
+  HardDrive,
 };
 
 interface SidebarProps {
@@ -112,6 +114,12 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
       label: 'API Tester',
       icon: 'TestTube' as keyof typeof iconMap,
       badge: null,
+    },
+    {
+      id: 'cache-manager',
+      label: 'Cache Manager',
+      icon: 'HardDrive' as keyof typeof iconMap,
+      badge: 'Dev',
     },
   ];
 
