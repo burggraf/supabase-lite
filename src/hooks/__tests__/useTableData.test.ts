@@ -26,15 +26,15 @@ vi.mock('../useDatabase', () => ({
 
 describe('useTableData', () => {
   const mockTables: TableInfo[] = [
-    { name: 'users', schema: 'public', type: 'table' },
-    { name: 'posts', schema: 'public', type: 'table' },
-    { name: 'logs', schema: 'private', type: 'table' }
+    { name: 'users', schema: 'public', rows: 0 },
+    { name: 'posts', schema: 'public', rows: 0 },
+    { name: 'logs', schema: 'private', rows: 0 }
   ];
 
   const mockColumns: ColumnInfo[] = [
-    { column_name: 'id', data_type: 'integer', is_nullable: false, is_primary_key: true, column_default: null },
-    { column_name: 'email', data_type: 'text', is_nullable: false, is_primary_key: false, column_default: null },
-    { column_name: 'name', data_type: 'text', is_nullable: true, is_primary_key: false, column_default: null }
+    { column_name: 'id', data_type: 'integer', is_nullable: 'NO', is_primary_key: true, column_default: null },
+    { column_name: 'email', data_type: 'text', is_nullable: 'NO', is_primary_key: false, column_default: null },
+    { column_name: 'name', data_type: 'text', is_nullable: 'YES', is_primary_key: false, column_default: null }
   ];
 
   const mockTableData: TableDataResponse = {
@@ -160,7 +160,7 @@ describe('useTableData', () => {
 
       // Change connection ID
       mockUseDatabase.connectionId = 'new-connection-id';
-      const newTables = [{ name: 'new_table', schema: 'public', type: 'table' }];
+      const newTables = [{ name: 'new_table', schema: 'public', rows: 0 }];
       mockDbManager.getTableList.mockResolvedValue(newTables);
 
       rerender();
@@ -394,7 +394,7 @@ describe('useTableData', () => {
       });
 
       const filters: FilterRule[] = [
-        { column: 'email', operator: 'contains', value: 'test' }
+        { column: 'email', operator: 'like', value: 'test' }
       ];
 
       act(() => {
@@ -487,7 +487,7 @@ describe('useTableData', () => {
       // Set pagination and filters
       act(() => {
         result.current.updatePagination({ pageIndex: 2, pageSize: 25 });
-        result.current.setFilters([{ column: 'email', operator: 'contains', value: 'test' }]);
+        result.current.setFilters([{ column: 'email', operator: 'like', value: 'test' }]);
       });
 
       await waitFor(() => {
@@ -581,7 +581,7 @@ describe('useTableData', () => {
         expect(mockDbManager.getTableList).toHaveBeenCalledTimes(1);
       });
 
-      const newTables = [{ name: 'new_table', schema: 'public', type: 'table' }];
+      const newTables = [{ name: 'new_table', schema: 'public', rows: 0 }];
       mockDbManager.getTableList.mockResolvedValueOnce(newTables);
 
       let loadResult: TableInfo[];
@@ -711,7 +711,7 @@ describe('useTableData', () => {
         expect(result.current.tables).toEqual(mockTables); // Previous tables maintained
       });
 
-      const newTables = [{ name: 'new_table', schema: 'public', type: 'table' }];
+      const newTables = [{ name: 'new_table', schema: 'public', rows: 0 }];
       act(() => {
         resolveTableLoad!(newTables);
       });

@@ -284,7 +284,7 @@ export class DatabaseManager {
       await this.db.waitReady;
       // Test basic database functionality
       const testQuery = await this.db.query('SELECT 1 as test');
-      if (!testQuery?.rows?.[0]?.test) {
+      if (!testQuery?.rows?.[0] || (testQuery.rows[0] as any).test !== 1) {
         throw new Error('Database connection test failed');
       }
     } catch (error) {
@@ -307,10 +307,10 @@ export class DatabaseManager {
       
       // Ensure we're connected to postgres database before seeding
       const getCurrentDatabase = await this.db.query('SELECT current_database()');
-      if (!getCurrentDatabase?.rows?.[0]?.current_database) {
+      if (!getCurrentDatabase?.rows?.[0] || !(getCurrentDatabase.rows[0] as any).current_database) {
         throw new Error('Failed to get current database name - database instance may not be properly initialized');
       }
-      const currentDbName = getCurrentDatabase.rows[0].current_database;
+      const currentDbName = (getCurrentDatabase.rows[0] as any).current_database;
       // logger.info('Current database before seeding:', currentDbName);
       
       if (currentDbName !== 'postgres') {
@@ -320,9 +320,10 @@ export class DatabaseManager {
         try {
           await this.db.exec('CREATE DATABASE postgres');
           // logger.info('Created postgres database');
-        } catch (error) {
+        } catch (error: unknown) {
           // Database might already exist, that's fine
-          logger.debug('Postgres database may already exist or creation failed:', error);
+          const err = error as Error
+          logger.debug('Postgres database may already exist or creation failed:', { error: err.message });
         }
         
         // Close current connection and reconnect to postgres
@@ -345,10 +346,10 @@ export class DatabaseManager {
         
         // Verify we're now on postgres
         const verifyDb = await this.db.query('SELECT current_database()');
-        if (!verifyDb?.rows?.[0]?.current_database) {
+        if (!verifyDb?.rows?.[0] || !(verifyDb.rows[0] as any).current_database) {
           throw new Error('Failed to verify database connection after reconnection');
         }
-        // logger.info('After reconnection, current database:', verifyDb.rows[0].current_database);
+        // logger.info('After reconnection, current database:', (verifyDb.rows[0] as any).current_database);
       }
 
       try {
@@ -490,7 +491,7 @@ export class DatabaseManager {
     // Use browser-compatible environment detection
     const isTestEnv = import.meta.env?.MODE === 'test' || 
                       typeof global?.describe !== 'undefined' || 
-                      typeof window?.vitest !== 'undefined';
+                      typeof (window as any)?.vitest !== 'undefined';
     
     if (isTestEnv) {
       return false;
@@ -509,7 +510,7 @@ export class DatabaseManager {
     // In test environment, use simplified validation but only after operations are attempted
     const isTestEnv = import.meta.env?.MODE === 'test' || 
                       typeof global?.describe !== 'undefined' || 
-                      typeof window?.vitest !== 'undefined';
+                      typeof (window as any)?.vitest !== 'undefined';
     
     if (isTestEnv) {
       try {

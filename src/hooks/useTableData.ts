@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { dbManager } from '@/lib/database/connection';
 import { useDatabase } from './useDatabase';
 import type { TableInfo, ColumnInfo, TableDataResponse, FilterRule } from '@/types';
@@ -21,7 +21,7 @@ export function useTableData() {
   // Transition states for optimistic UI
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [previousTables, setPreviousTables] = useState<TableInfo[]>([]);
-  const [lastConnectionId, setLastConnectionId] = useState<string | null>(null);
+  const [_lastConnectionId, _setLastConnectionId] = useState<string | null>(null);
   const [hasLoadedForConnection, setHasLoadedForConnection] = useState<string | null>(null);
 
   // Load available tables

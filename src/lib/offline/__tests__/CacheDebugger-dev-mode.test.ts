@@ -2,7 +2,7 @@
  * Tests for CacheDebugger development mode functionality
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { cacheDebugger, CacheStatus } from '../CacheDebugger'
+import { cacheDebugger, type CacheStatus } from '../CacheDebugger'
 
 describe('CacheDebugger - Development Mode', () => {
   // Mock the Cache API

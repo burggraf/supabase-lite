@@ -57,6 +57,10 @@ export const SimpleCodeEditor: React.FC<SimpleCodeEditorProps> = ({
 
       await vfsManager.initialize(activeProject.id);
       const file = await vfsManager.readFile(filePath);
+      if (!file) {
+        toast.error('File not found');
+        return;
+      }
       const fileContent = file.content || '';
       
       setContent(fileContent);

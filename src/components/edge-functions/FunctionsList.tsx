@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { ExternalLink, Code2, Bot, Terminal, Edit3, Trash2, Play, X, Send, Plus } from 'lucide-react';
+import { ExternalLink, Code2, Edit3, Trash2, Play, X, Send, Plus } from 'lucide-react';
 import { FunctionTemplates } from './FunctionTemplates';
 import { FunctionCreationOptions } from './FunctionCreationOptions';
 import { vfsManager } from '../../lib/vfs/VFSManager';
@@ -26,7 +26,7 @@ interface FunctionsListProps {
 export const FunctionsList: React.FC<FunctionsListProps> = ({
   onCreateFunction,
   onEditFunction,
-  onGoToSecrets,
+  onGoToSecrets: _onGoToSecrets,
 }) => {
   const [functions, setFunctions] = useState<Function[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,7 +103,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         return {
           id: functionName,
           name: functionName,
-          lastDeployed: mainFile?.lastModified?.toISOString() || new Date().toISOString(),
+          lastDeployed: mainFile?.updatedAt?.toISOString() || new Date().toISOString(),
           status: 'active' as const,
           description: `Edge function: ${functionName}`,
         };

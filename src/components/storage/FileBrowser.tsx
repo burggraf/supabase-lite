@@ -7,9 +7,7 @@ import {
   MoreVertical, 
   Download,
   Trash2,
-  Copy,
   Link,
-  Eye,
   File,
   Folder,
   Image,
@@ -23,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Toggle } from '@/components/ui/toggle';
@@ -474,7 +472,7 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
   };
 
 
-  const handlePreviewFile = async (file: VFSFile) => {
+  const _handlePreviewFile = async (file: VFSFile) => {
     try {
       const filePath = getRelativePathInBucket(file);
       
@@ -688,7 +686,7 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
 
     setIsBulkActionLoading(true);
     let successCount = 0;
-    let errorCount = 0;
+    let _errorCount = 0;
 
     try {
       const filePaths = selectedFiles.map(file => getRelativePathInBucket(file));
@@ -697,7 +695,7 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
       if (error) {
         logger.error('Bulk delete failed', error);
         toast.error(`Failed to delete files: ${error.message}`);
-        errorCount = selectedFiles.length;
+        _errorCount = selectedFiles.length;
       } else {
         successCount = selectedFiles.length;
         toast.success(`Deleted ${successCount} file${successCount !== 1 ? 's' : ''}`);
@@ -707,7 +705,7 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
     } catch (error) {
       logger.error('Bulk delete failed', error as Error);
       toast.error('Failed to delete files');
-      errorCount = selectedFiles.length;
+      _errorCount = selectedFiles.length;
     } finally {
       setIsBulkActionLoading(false);
     }
