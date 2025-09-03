@@ -1,7 +1,7 @@
 // VFS Constants and Configuration
 // Following Supabase Lite patterns for configuration management
 
-import type { VFSProjectConfig, VFSErrorCode } from '../../types/vfs.js';
+import type { VFSProjectConfig, VFSErrorCode } from '../../types/vfs';
 
 // Storage Configuration
 export const VFS_CONFIG = {

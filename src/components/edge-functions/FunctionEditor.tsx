@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Card, CardContent } from '../ui/card';
+// Card imports removed - not used in this component
 import { ChevronLeft, ChevronDown, Bot, FileText, Plus } from 'lucide-react';
 import { SimpleCodeEditor } from './SimpleCodeEditor';
 import { vfsManager } from '../../lib/vfs/VFSManager';
@@ -64,7 +64,7 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
     }
   };
 
-  const buildFileTree = (files: any[], basePath: string): FileNode[] => {
+  const buildFileTree = (files: any[], _basePath: string): FileNode[] => {
     const tree: FileNode[] = [];
     
     files.forEach(file => {

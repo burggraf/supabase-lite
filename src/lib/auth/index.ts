@@ -18,7 +18,7 @@ export { Validators, ValidationError } from './utils/validators'
 export { MFAService } from './services/MFAService'
 
 // Service types (to be implemented)
-export type { EmailAuthService } from './services/EmailAuthService'
-export type { PhoneAuthService } from './services/PhoneAuthService'
-export type { OAuthService } from './services/OAuthService'
-export type { AdminService } from './services/AdminService'
+// export type { EmailAuthService } from './services/EmailAuthService'
+// export type { PhoneAuthService } from './services/PhoneAuthService'
+// export type { OAuthService } from './services/OAuthService'
+// export type { AdminService } from './services/AdminService'

@@ -131,16 +131,16 @@ describe('EnhancedOfflineIndicator', () => {
       
       await waitFor(() => {
         expect(screen.getByText('Connection Details')).toBeInTheDocument()
-        expect(screen.getByText((content, element) => {
+        expect(screen.getByText((_content, element) => {
           return element?.textContent === 'Type: wifi'
         })).toBeInTheDocument()
-        expect(screen.getByText((content, element) => {
+        expect(screen.getByText((_content, element) => {
           return element?.textContent === 'Speed: 4g'
         })).toBeInTheDocument()
-        expect(screen.getByText((content, element) => {
+        expect(screen.getByText((_content, element) => {
           return element?.textContent === 'Bandwidth: 10 Mbps'
         })).toBeInTheDocument()
-        expect(screen.getByText((content, element) => {
+        expect(screen.getByText((_content, element) => {
           return element?.textContent === 'Latency: 50ms'
         })).toBeInTheDocument()
       })

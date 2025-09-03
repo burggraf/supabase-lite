@@ -110,7 +110,7 @@ vi.mock('../FilterToolbar', () => ({
 vi.mock('../DataTable', () => ({
   DataTable: ({ 
     data, 
-    columns, 
+    columns: _columns, 
     onRowClick, 
     onPaginationChange,
     pagination,
@@ -153,7 +153,7 @@ vi.mock('../FilterDialog', () => ({
   FilterDialog: ({ 
     isOpen, 
     onClose, 
-    columns, 
+    columns: _columns, 
     onApplyFilters 
   }: { 
     isOpen: boolean;
@@ -179,7 +179,7 @@ vi.mock('../InsertRowDialog', () => ({
   InsertRowDialog: ({ 
     isOpen, 
     onClose, 
-    columns, 
+    columns: _columns, 
     onInsert 
   }: { 
     isOpen: boolean;
@@ -204,7 +204,7 @@ vi.mock('../InsertRowDialog', () => ({
 vi.mock('../RowEditPanel', () => ({
   RowEditPanel: ({ 
     row, 
-    columns, 
+    columns: _columns, 
     onClose, 
     onUpdate 
   }: { 
@@ -457,8 +457,6 @@ describe('TableEditor', () => {
       fireEvent.click(screen.getByTestId('table-row-1'));
       
       // Simulate updating with multiple changes
-      const editPanel = screen.getByTestId('row-edit-panel');
-      const updateButton = screen.getByTestId('update-row');
       
       // Mock the onUpdate call with multiple changes
       await waitFor(async () => {
@@ -504,14 +502,12 @@ describe('TableEditor', () => {
       fireEvent.click(screen.getByTestId('table-row-1'));
       
       // Simulate update with no actual changes (same data)
-      const mockRowSameData = { id: 1, email: 'user1@example.com', name: 'User 1' };
       
       // This would be handled in the actual implementation
       expect(screen.getByTestId('row-edit-panel')).toBeInTheDocument();
     });
 
     it('should handle missing primary key', async () => {
-      const rowWithoutPK = { email: 'test@example.com', name: 'Test' };
       
       render(<TableEditor />);
 
@@ -541,7 +537,7 @@ describe('TableEditor', () => {
 
   describe('Error Handling', () => {
     it('should display data loading error', () => {
-      mockUseTableData.error = 'Failed to load data';
+      (mockUseTableData as any).error = 'Failed to load data';
       
       render(<TableEditor />);
 
@@ -549,7 +545,7 @@ describe('TableEditor', () => {
     });
 
     it('should display mutation error', () => {
-      mockUseTableMutations.error = 'Update failed';
+      (mockUseTableMutations as any).error = 'Update failed';
       
       render(<TableEditor />);
 
@@ -576,10 +572,10 @@ describe('TableEditor', () => {
 
   describe('Edge Cases', () => {
     it('should handle no selected table', () => {
-      mockUseTableData.selectedTable = null;
-      mockUseTableData.selectedSchema = null;
+      (mockUseTableData as any).selectedTable = null;
+      (mockUseTableData as any).selectedSchema = null;
       mockUseTableData.columns = [];
-      mockUseTableData.tableData = [];
+      (mockUseTableData as any).tableData = { rows: [], totalCount: 0 };
       
       render(<TableEditor />);
 
@@ -587,7 +583,7 @@ describe('TableEditor', () => {
     });
 
     it('should handle empty table data', () => {
-      mockUseTableData.tableData = [];
+      (mockUseTableData as any).tableData = { rows: [], totalCount: 0 };
       
       render(<TableEditor />);
 

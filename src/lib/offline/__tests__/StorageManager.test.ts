@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { StorageManager, type QuotaInfo, type StorageStats } from '../StorageManager'
+import { StorageManager } from '../StorageManager'
 
 // Mock navigator.storage
 const mockStorageEstimate = vi.hoisted(() => vi.fn())

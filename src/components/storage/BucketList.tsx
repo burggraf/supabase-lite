@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import { Search, Plus, Settings, ChevronDown, RefreshCw, FolderOpen, Lock, Unlock } from 'lucide-react';
+import { Search, Plus, ChevronDown, RefreshCw, FolderOpen, Lock, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CreateBucketDialog } from './CreateBucketDialog';
 import { cn } from '@/lib/utils';
-import { vfsManager } from '@/lib/vfs/VFSManager';
-import { logger } from '@/lib/infrastructure/Logger';
 import type { VFSBucket } from '@/types/vfs';
 
 interface BucketListProps {
@@ -26,7 +24,7 @@ export function BucketList({
   onSearchChange,
   onBucketSelect,
   onBucketCreated,
-  onBucketDeleted,
+  onBucketDeleted: _onBucketDeleted,
   onRefresh
 }: BucketListProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
