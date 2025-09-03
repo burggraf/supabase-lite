@@ -67,7 +67,7 @@ export async function configureMonacoOffline(): Promise<void> {
 
   // Set up worker environment
   (self as any).MonacoEnvironment = {
-    getWorker(_, label) {
+    getWorker(_: any, label: string) {
       switch (label) {
         case 'json':
           return new workers.json();

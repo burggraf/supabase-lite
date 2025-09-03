@@ -394,7 +394,7 @@ describe('useTableData', () => {
       });
 
       const filters: FilterRule[] = [
-        { column: 'email', operator: 'like', value: 'test' }
+        { id: '1', column: 'email', operator: 'like', value: 'test' }
       ];
 
       act(() => {
@@ -436,8 +436,8 @@ describe('useTableData', () => {
       });
 
       const filters: FilterRule[] = [
-        { column: 'name', operator: 'equals', value: 'John' },
-        { column: 'age', operator: 'greater_than', value: 18 }
+        { id: '1', column: 'name', operator: 'equals', value: 'John' },
+        { id: '2', column: 'age', operator: 'greater_than', value: '18' }
       ];
 
       act(() => {
@@ -487,7 +487,7 @@ describe('useTableData', () => {
       // Set pagination and filters
       act(() => {
         result.current.updatePagination({ pageIndex: 2, pageSize: 25 });
-        result.current.setFilters([{ column: 'email', operator: 'like', value: 'test' }]);
+        result.current.setFilters([{ id: '1', column: 'email', operator: 'like', value: 'test' }]);
       });
 
       await waitFor(() => {

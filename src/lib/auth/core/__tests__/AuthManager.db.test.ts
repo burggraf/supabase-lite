@@ -56,8 +56,27 @@ describe('AuthManager Database Operations', () => {
     authManager['authQuery'] = mockAuthQuery
     authManager['jwtService'] = {
       initialize: vi.fn(),
-      extractClaims: vi.fn()
-    }
+      extractClaims: vi.fn(),
+      generateTokens: vi.fn(),
+      verifyToken: vi.fn(),
+      refreshTokens: vi.fn(),
+      signTokens: vi.fn(),
+      verifyTokenSignature: vi.fn(),
+      generateKeyPair: vi.fn(),
+      getPublicKey: vi.fn(),
+      isTokenValid: vi.fn(),
+      getTokenClaims: vi.fn(),
+      createAccessToken: vi.fn(),
+      createRefreshToken: vi.fn(),
+      validateRefreshToken: vi.fn(),
+      decodeToken: vi.fn(),
+      encodeToken: vi.fn(),
+      extractTokenClaims: vi.fn(),
+      keyPair: null,
+      publicKeyJWK: null,
+      kid: 'test-kid',
+      config: {}
+    } as any
     authManager['sessionManager'] = {
       initialize: vi.fn(),
       createSession: vi.fn(),
@@ -65,10 +84,27 @@ describe('AuthManager Database Operations', () => {
       getUser: vi.fn(),
       updateUser: vi.fn(),
       refreshSession: vi.fn(),
-      signOut: vi.fn()
-    }
+      signOut: vi.fn(),
+      getSessionInfo: vi.fn(),
+      getCurrentUser: vi.fn(),
+      invalidateSession: vi.fn(),
+      clearSession: vi.fn(),
+      isSessionValid: vi.fn(),
+      setAutoRefresh: vi.fn(),
+      storage: null,
+      crossTabSync: null,
+      jwtService: null,
+      currentSession: null,
+      currentUser: null,
+      config: {},
+      refreshTimer: null,
+      crossTabListener: null,
+      initialized: false,
+      logger: null,
+      errorHandler: null
+    } as any
     authManager['passwordService'] = {
-      hashPassword: vi.fn(() => ({
+      hashPassword: vi.fn(() => Promise.resolve({
         hash: 'hashed_password',
         salt: 'salt_value',
         algorithm: 'PBKDF2',
@@ -77,8 +113,28 @@ describe('AuthManager Database Operations', () => {
       verifyPassword: vi.fn(),
       generatePasswordResetToken: vi.fn(() => 'reset_token'),
       isValidPasswordResetToken: vi.fn(),
-      hashForAudit: vi.fn()
-    }
+      hashForAudit: vi.fn(),
+      pbkdf2Iterations: 100000,
+      hashFunction: 'sha256',
+      keyLength: 32,
+      bcryptRounds: 12,
+      algorithm: 'PBKDF2',
+      minIterations: 10000,
+      maxIterations: 1000000,
+      minKeyLength: 16,
+      maxKeyLength: 64,
+      supportedAlgorithms: ['PBKDF2', 'bcrypt'],
+      saltLength: 16,
+      config: {},
+      logger: null,
+      errorHandler: null,
+      initialized: false,
+      isPasswordStrong: vi.fn(),
+      validatePasswordComplexity: vi.fn(),
+      generateSalt: vi.fn(),
+      hashPasswordWithSalt: vi.fn(),
+      comparePasswords: vi.fn()
+    } as any
   })
 
   afterEach(() => {
@@ -140,7 +196,7 @@ describe('AuthManager Database Operations', () => {
       await expect(authManager.signUp(credentials)).resolves.toBeDefined()
 
       // Check that createUserInDB was called with proper null handling
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
+      const createUserCalls = mockDbManager.query.mock.calls.filter((call: any) =>
         call[0].includes('INSERT INTO auth.users')
       )
 
@@ -159,7 +215,7 @@ describe('AuthManager Database Operations', () => {
 
       await authManager.signUp(credentials)
 
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
+      const createUserCalls = mockDbManager.query.mock.calls.filter((call: any) =>
         call[0].includes('INSERT INTO auth.users')
       )
 
@@ -181,7 +237,7 @@ describe('AuthManager Database Operations', () => {
 
       await authManager.signUp(credentials)
 
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
+      const createUserCalls = mockDbManager.query.mock.calls.filter((call: any) =>
         call[0].includes('INSERT INTO auth.users')
       )
 
@@ -266,7 +322,7 @@ describe('AuthManager Database Operations', () => {
       await authManager['getStoredPassword']('user-id')
 
       // All queries should be formatted (no $ parameters)
-      mockDbManager.query.mock.calls.forEach(call => {
+      mockDbManager.query.mock.calls.forEach((call: any) => {
         const query = call[0]
         expect(query).not.toContain('$1')
         expect(query).not.toContain('$2')
@@ -294,7 +350,7 @@ describe('AuthManager Database Operations', () => {
 
       await authManager.signUp(credentials)
 
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
+      const createUserCalls = mockDbManager.query.mock.calls.filter((call: any) =>
         call[0].includes('INSERT INTO auth.users')
       )
 

@@ -172,7 +172,7 @@ export class InfrastructureConfigManager implements ConfigManager {
     const envConfig: Partial<AppConfig> = {};
 
     // Safe environment access
-    const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {};
+    const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {} as any;
 
     // Database config from environment
     if (env.VITE_DB_NAME) {
@@ -369,7 +369,7 @@ export class InfrastructureConfigManager implements ConfigManager {
       if (source.hasOwnProperty(key)) {
         const value = source[key];
         if (value && typeof value === 'object' && !Array.isArray(value)) {
-          result[key] = this.deepMerge(result[key] || {}, value);
+          result[key] = this.deepMerge((result[key] || {}) as any, value);
         } else {
           result[key] = value as T[Extract<keyof T, string>];
         }

@@ -490,7 +490,7 @@ export class DatabaseManager {
     // In test environment, always run initialization to satisfy test expectations
     // Use browser-compatible environment detection
     const isTestEnv = import.meta.env?.MODE === 'test' || 
-                      typeof global?.describe !== 'undefined' || 
+                      typeof (globalThis as any)?.describe !== 'undefined' || 
                       typeof (window as any)?.vitest !== 'undefined';
     
     if (isTestEnv) {
@@ -509,7 +509,7 @@ export class DatabaseManager {
 
     // In test environment, use simplified validation but only after operations are attempted
     const isTestEnv = import.meta.env?.MODE === 'test' || 
-                      typeof global?.describe !== 'undefined' || 
+                      typeof (globalThis as any)?.describe !== 'undefined' || 
                       typeof (window as any)?.vitest !== 'undefined';
     
     if (isTestEnv) {
@@ -517,7 +517,7 @@ export class DatabaseManager {
         // Simple test to ensure database is responsive
         const testResult = await this.db.query('SELECT 1 as test');
         // In test mode, assume database is properly initialized if it responds
-        return testResult?.rows?.[0]?.test === 1;
+        return (testResult?.rows?.[0] as any)?.test === 1;
       } catch {
         return false;
       }

@@ -58,14 +58,14 @@ export class DataExporter {
   async exportProject(projectId?: string, format: ExportFormat = 'json'): Promise<ExportResult> {
     try {
       const project = projectId 
-        ? projectManager.getAllProjects().find(p => p.id === projectId)
+        ? projectManager.getProjects().find((p: any) => p.id === projectId)
         : projectManager.getActiveProject()
 
       if (!project) {
         return { success: false, error: 'Project not found' }
       }
 
-      const tables = await this.dbManager.getTables()
+      const tables = await this.dbManager.getTableList()
       const tableData: Record<string, any[]> = {}
 
       // Export table data
@@ -91,7 +91,7 @@ export class DataExporter {
 
   async exportAllProjects(format: ExportFormat = 'json'): Promise<ExportResult> {
     try {
-      const allProjects = projectManager.getAllProjects()
+      const allProjects = projectManager.getProjects()
       
       if (allProjects.length === 0) {
         return {
@@ -319,7 +319,8 @@ export class DataExporter {
       const tables = data.tables
 
       // Create new project
-      const projectId = await projectManager.createProject(project.name || 'Imported Project')
+      const newProject = await projectManager.createProject(project.name || 'Imported Project')
+      const projectId = newProject.id
 
       // Import table data
       for (const [tableName, rows] of Object.entries(tables as Record<string, any[]>)) {
@@ -348,7 +349,8 @@ export class DataExporter {
   private async importFromSQL(sqlData: string): Promise<ImportResult> {
     try {
       // Create new project
-      const projectId = await projectManager.createProject('Imported SQL Project')
+      const newProject = await projectManager.createProject('Imported SQL Project')
+      const projectId = newProject.id
 
       // Execute SQL statements
       const statements = sqlData
@@ -378,7 +380,8 @@ export class DataExporter {
   private async importFromCSV(csvData: string): Promise<ImportResult> {
     try {
       // Create new project
-      const projectId = await projectManager.createProject('Imported CSV Project')
+      const newProject = await projectManager.createProject('Imported CSV Project')
+      const projectId = newProject.id
 
       // Parse CSV (simplified - would need proper CSV parser)
       const lines = csvData.split('\n').filter(line => line.trim())

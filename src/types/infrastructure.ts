@@ -97,6 +97,12 @@ export interface MigrationManager {
   runMigration(migration: Migration): Promise<MigrationResult>;
   rollbackMigration(version: string): Promise<MigrationResult>;
   runAll(): Promise<MigrationResult[]>;
+  getMigrationStatus(): Promise<{
+    total: number;
+    applied: number;
+    pending: number;
+    lastApplied?: string;
+  }>;
 }
 
 export interface DatabaseSchema {

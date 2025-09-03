@@ -75,12 +75,12 @@ export class MFAService {
     const now = new Date().toISOString()
 
     if (factorType === 'totp') {
-      return await this.enrollTOTPFactor(factorId, currentUser.id, friendlyName, now)
+      return await this.enrollTOTPFactor(factorId, currentUser.id, now, friendlyName)
     } else if (factorType === 'phone') {
       if (!phone || !Validators.isValidPhone(phone)) {
         throw this.createMFAError('Valid phone number required', 400, 'invalid_phone')
       }
-      return await this.enrollPhoneFactor(factorId, currentUser.id, phone, friendlyName, now)
+      return await this.enrollPhoneFactor(factorId, currentUser.id, phone, now, friendlyName)
     }
 
     throw this.createMFAError('Unsupported factor type', 400, 'unsupported_factor_type')
@@ -92,8 +92,8 @@ export class MFAService {
   private async enrollTOTPFactor(
     factorId: string,
     userId: string,
-    friendlyName?: string,
-    createdAt: string
+    createdAt: string,
+    friendlyName?: string
   ): Promise<MFAEnrollmentResult> {
     const secret = CryptoUtils.generateTOTPSecret()
     const issuer = 'Supabase Lite'
@@ -130,8 +130,8 @@ export class MFAService {
     factorId: string,
     userId: string,
     phone: string,
-    friendlyName?: string,
-    createdAt: string
+    createdAt: string,
+    friendlyName?: string
   ): Promise<MFAEnrollmentResult> {
     // Store factor in database
     await this.dbManager.query(`

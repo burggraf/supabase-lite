@@ -233,14 +233,20 @@ describe('StorageManager', () => {
     })
 
     it('should handle missing persistence API', async () => {
-      const originalStorage = global.navigator.storage
-      global.navigator.storage = undefined as any
+      const originalStorage = global.navigator.storage;
+      Object.defineProperty(global.navigator, 'storage', {
+        value: undefined,
+        configurable: true
+      });
 
       const result = await storageManager.requestPersistentStorage()
 
       expect(result).toBe(false)
       
-      global.navigator.storage = originalStorage
+      Object.defineProperty(global.navigator, 'storage', {
+        value: originalStorage,
+        configurable: true
+      });
     })
   })
 

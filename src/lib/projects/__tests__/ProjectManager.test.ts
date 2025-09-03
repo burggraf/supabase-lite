@@ -444,9 +444,9 @@ describe('ProjectManager', () => {
       ]);
       
       const deleteRequest = {
-        onsuccess: null,
-        onerror: null,
-        onblocked: null
+        onsuccess: null as ((event: any) => void) | null,
+        onerror: null as ((event: any) => void) | null,
+        onblocked: null as ((event: any) => void) | null
       };
       
       const mockDeleteDatabase = vi.fn().mockReturnValue(deleteRequest);
@@ -496,9 +496,9 @@ describe('ProjectManager', () => {
       ]);
       
       const deleteRequest = {
-        onsuccess: null,
-        onerror: null,
-        onblocked: null
+        onsuccess: null as ((event: any) => void) | null,
+        onerror: null as ((event: any) => void) | null,
+        onblocked: null as ((event: any) => void) | null
       };
       
       global.indexedDB.databases = mockDatabases;
