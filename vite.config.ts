@@ -512,6 +512,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['@electric-sql/pglite'],
+    include: ['monaco-editor/esm/vs/editor/editor.api'],
     force: true,
   },
   worker: {
@@ -525,6 +526,22 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        // Include Service Worker in build
+        sw: path.resolve(__dirname, 'src/service-worker.ts')
+      },
+      output: {
+        entryFileNames: (chunkInfo) => {
+          // Keep service worker in root for proper registration
+          if (chunkInfo.name === 'sw') {
+            return 'service-worker.js'
+          }
+          return 'assets/[name]-[hash].js'
+        }
+      }
+    }
   },
   server: {
     fs: {
@@ -535,6 +552,11 @@ export default defineConfig({
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'apikey', 'prefer', 'range', 'x-supabase-api-version', 'x-client-info', 'accept-profile', 'content-profile']
+    },
+    hmr: {
+      // Ensure HMR works well with Service Worker
+      overlay: true, // Show overlay for build errors
+      clientPort: 5173 // Explicit client port for HMR
     }
   }
 })
