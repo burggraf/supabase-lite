@@ -645,42 +645,50 @@ export class VFSBridge {
         });
         
         if (file.mimeType?.startsWith('text/html') && file.content) {
-          console.log('🐛 VFS BRIDGE - Entering HTML rewrite logic');
+          console.log('🐛 VFS BRIDGE - Checking HTML for subdirectory configuration');
           let htmlContent = file.content;
           
-          // Add base tag to ensure relative paths resolve correctly
-          const baseTag = `<base href="/app/${appName}/">`;
-          if (!htmlContent.includes('<base')) {
-            htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`);
-            console.log('🐛 VFS BRIDGE - Added base tag');
+          // Check if HTML is already configured for subdirectory deployment
+          const targetBasePath = `/app/${appName}/`;
+          const hasCorrectBaseTag = htmlContent.includes(`<base href="${targetBasePath}"`);
+          const hasSubdirectoryPaths = htmlContent.includes(targetBasePath + 'assets/');
+          
+          console.log('🐛 VFS BRIDGE - HTML configuration check:', {
+            targetBasePath,
+            hasCorrectBaseTag,
+            hasSubdirectoryPaths,
+            needsRewriting: !(hasCorrectBaseTag && hasSubdirectoryPaths)
+          });
+          
+          if (hasCorrectBaseTag && hasSubdirectoryPaths) {
+            // HTML is already correctly configured for subdirectory deployment
+            console.log('🐛 VFS BRIDGE - HTML already configured for subdirectory deployment, skipping rewriting');
           } else {
-            console.log('🐛 VFS BRIDGE - Base tag already exists');
+            // HTML needs path rewriting for subdirectory deployment
+            console.log('🐛 VFS BRIDGE - Rewriting HTML for subdirectory deployment');
+            
+            // Add base tag to ensure relative paths resolve correctly
+            const baseTag = `<base href="${targetBasePath}">`;
+            if (!htmlContent.includes('<base')) {
+              htmlContent = htmlContent.replace('<head>', `<head>\n    ${baseTag}`);
+              console.log('🐛 VFS BRIDGE - Added base tag');
+            }
+            
+            // Convert absolute paths to relative (they'll resolve against the base tag)
+            const originalContent = htmlContent;
+            htmlContent = htmlContent
+              .replace(/href="\/assets\//g, `href="assets/`)
+              .replace(/src="\/assets\//g, `src="assets/`)
+              .replace(/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g, `href="$1"`)
+              .replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`);
+            
+            console.log('🐛 VFS BRIDGE - HTML rewrite result:', {
+              changed: originalContent !== htmlContent,
+              originalLength: originalContent.length,
+              newLength: htmlContent.length,
+              preview: htmlContent.substring(0, 300)
+            });
           }
-          
-          // Convert absolute paths to relative (they'll resolve against the base tag)
-          const originalContent = htmlContent;
-          htmlContent = htmlContent
-            .replace(/href="\/assets\//g, `href="assets/`)
-            .replace(/src="\/assets\//g, `src="assets/`)
-            .replace(/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g, `href="$1"`)
-            .replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`);
-          
-          console.log('🐛 VFS BRIDGE - HTML rewrite result:', {
-            changed: originalContent !== htmlContent,
-            originalLength: originalContent.length,
-            newLength: htmlContent.length,
-            preview: htmlContent.substring(0, 300)
-          });
-          
-          console.log('🔧 Added base tag and rewrote HTML asset paths for direct file serve:', { appName, baseTag, originalLength: file.content.length, newLength: htmlContent.length });
-          
-          console.log('🐛 FINAL HTML DEBUG - Content being served:', {
-            title: htmlContent.match(/<title>(.*?)<\/title>/)?.[1] || 'NO TITLE',
-            hasReactScript: htmlContent.includes('React'),
-            hasViteScript: htmlContent.includes('Vite'),
-            hasSupabaseScript: htmlContent.includes('Supabase'),
-            fullContent: htmlContent
-          });
           
           const response = new Response(htmlContent, {
             status: 200,
@@ -693,11 +701,11 @@ export class VFSBridge {
             }
           });
           
-          console.log('🐛 RESPONSE DEBUG - Created response:', {
-            status: response.status,
-            headers: Object.fromEntries(response.headers.entries()),
-            bodyLength: htmlContent.length,
-            isOk: response.ok
+          console.log('✅ VFS BRIDGE - HTML served successfully:', {
+            appName,
+            contentLength: htmlContent.length,
+            hasCorrectBaseTag,
+            hasSubdirectoryPaths
           });
           
           return response;
