@@ -186,7 +186,7 @@ export function isMonacoConfigured(): boolean {
 /**
  * Get the default editor options for offline use
  */
-export function getOfflineEditorOptions(): monaco.editor.IStandaloneEditorConstructionOptions {
+export function getOfflineEditorOptions(): any {
   return {
     fontSize: 14,
     lineNumbers: 'on',
