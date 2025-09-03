@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useSQLSnippets } from '@/hooks/useSQLSnippets';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Play, Plus, X, Pencil, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { QueryResult, ScriptResult } from '@/types';
@@ -35,6 +36,7 @@ export function SQLEditor() {
   const dragStartHeight = useRef<number>(0);
   
   const { executeQuery, executeScript } = useDatabase();
+  const { monacoTheme } = useTheme();
   const {
     tabs,
     activeTabId,
@@ -217,27 +219,27 @@ export function SQLEditor() {
         {/* Sidebar with Saved Snippets */}
         <div 
           className={cn(
-            "border-r bg-white transition-all duration-300 ease-in-out overflow-hidden",
+            "border-r bg-card transition-all duration-300 ease-in-out overflow-hidden",
             isSidebarCollapsed ? "w-0" : ""
           )}
           style={{ width: isSidebarCollapsed ? '0px' : '260px' }}
         >
           <div className="h-full flex flex-col" style={{ width: '260px' }}>
             <div className="px-4 border-b" style={{height: '38px', display: 'flex', alignItems: 'center'}}>
-              <h3 className="font-medium text-sm text-gray-600 uppercase tracking-wide">
+              <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
                 Saved Snippets
               </h3>
             </div>
             <div className="flex-1 overflow-y-auto">
               {snippets.length === 0 && (
                 <div className="p-4">
-                  <p className="text-sm text-gray-500">No saved snippets yet</p>
+                  <p className="text-sm text-muted-foreground">No saved snippets yet</p>
                 </div>
               )}
               {snippets.map((snippet) => (
                 <div
                   key={snippet.id}
-                  className="px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors group"
+                  className="px-4 py-3 border-b cursor-pointer hover:bg-accent transition-colors group"
                   onClick={() => loadSnippet(snippet.id)}
                 >
                   <div className="flex items-center justify-between">
@@ -265,7 +267,7 @@ export function SQLEditor() {
                           e.stopPropagation();
                           handleSnippetNameEdit(snippet.id, snippet.name);
                         }}
-                        className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
+                        className="opacity-0 group-hover:opacity-100 hover:bg-accent rounded p-1"
                       >
                         <Pencil className="h-3 w-3" />
                       </button>
@@ -274,7 +276,7 @@ export function SQLEditor() {
                           e.stopPropagation();
                           deleteSnippet(snippet.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded p-1"
+                        className="opacity-0 group-hover:opacity-100 hover:bg-accent rounded p-1"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -289,7 +291,7 @@ export function SQLEditor() {
         {/* Editor Panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tabs and Header */}
-          <div className="bg-white">
+          <div className="bg-card">
             <div className="flex items-center px-4" style={{height: '38px'}}>
               <div className="flex items-center min-w-0 flex-1">
                 {/* Sidebar Toggle Button */}
@@ -297,7 +299,7 @@ export function SQLEditor() {
                   variant="ghost"
                   size="sm"
                   onClick={toggleSidebar}
-                  className="h-8 w-8 p-0 mr-2 rounded-t-lg bg-transparent hover:bg-gray-100 flex-shrink-0"
+                  className="h-8 w-8 p-0 mr-2 rounded-t-lg bg-transparent hover:bg-accent flex-shrink-0"
                 >
                   {isSidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                 </Button>
@@ -311,11 +313,11 @@ export function SQLEditor() {
                           <div key={tab.id} className="flex items-center group relative flex-shrink-0">
                             <TabsTrigger 
                               value={tab.id} 
-                              className="relative px-4 py-2 text-sm font-medium border-t border-l border-r border-gray-200 rounded-t-lg bg-gray-50 text-gray-600 hover:bg-gray-100 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:border-b-white data-[state=active]:-mb-px data-[state=active]:z-10 transition-colors whitespace-nowrap"
+                              className="relative px-4 py-2 text-sm font-medium border-t border-l border-r rounded-t-lg bg-muted text-muted-foreground hover:bg-accent data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:border-b-card data-[state=active]:-mb-px data-[state=active]:z-10 transition-colors whitespace-nowrap"
                             >
                               {editingTabId === tab.id ? (
                                 <input
-                                  className="w-24 px-1 py-0 text-xs border rounded bg-white"
+                                  className="w-24 px-1 py-0 text-xs border rounded bg-background"
                                   value={editingTabName}
                                   onChange={(e) => setEditingTabName(e.target.value)}
                                   onBlur={handleTabNameSave}
@@ -338,7 +340,7 @@ export function SQLEditor() {
                             {tabs.length > 1 && (
                               <div
                                 onClick={() => closeTab(tab.id)}
-                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 hover:bg-gray-300 rounded p-0.5 cursor-pointer z-20"
+                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 hover:bg-accent rounded p-0.5 cursor-pointer z-20"
                               >
                                 <X className="h-3 w-3" />
                               </div>
@@ -352,7 +354,7 @@ export function SQLEditor() {
                         variant="ghost"
                         size="sm"
                         onClick={() => createTab()}
-                        className="ml-2 h-8 w-8 p-0 rounded-t-lg bg-transparent hover:bg-gray-100 flex-shrink-0"
+                        className="ml-2 h-8 w-8 p-0 rounded-t-lg bg-transparent hover:bg-accent flex-shrink-0"
                         disabled={tabs.length >= 10}
                       >
                         <Plus className="h-4 w-4" />
@@ -375,7 +377,7 @@ export function SQLEditor() {
               </div>
             </div>
             {/* Border line under tabs */}
-            <div className="border-b border-gray-200"></div>
+            <div className="border-b"></div>
           </div>
 
           {/* SQL Editor Section */}
@@ -388,7 +390,7 @@ export function SQLEditor() {
               defaultLanguage="sql"
               value={getActiveTab()?.query || ''}
               onChange={handleQueryChange}
-              theme="vs-light"
+              theme={monacoTheme}
               onMount={(editor) => {
                 editorRef.current = editor;
                 // Force layout after mount
@@ -414,23 +416,23 @@ export function SQLEditor() {
 
           {/* Resizable Divider */}
           <div 
-            className={`border-t border-b h-2 bg-gray-100 hover:bg-gray-200 cursor-row-resize flex items-center justify-center transition-colors flex-shrink-0 ${
-              isDragging ? 'bg-gray-300' : ''
+            className={`border-t border-b h-2 bg-muted hover:bg-accent cursor-row-resize flex items-center justify-center transition-colors flex-shrink-0 ${
+              isDragging ? 'bg-accent' : ''
             }`}
             onMouseDown={handleMouseDown}
           >
-            <div className="w-8 h-0.5 bg-gray-400 rounded"></div>
+            <div className="w-8 h-0.5 bg-border rounded"></div>
           </div>
 
           {/* Results Panel */}
           <div className="flex-1 overflow-hidden">
             <div className="h-full overflow-y-auto">
             {error && (
-              <div className="p-4 bg-red-50 border-l-4 border-red-400">
+              <div className="p-4 bg-destructive/10 border-l-4 border-destructive">
                 <div className="flex">
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">Query Error</h3>
-                    <div className="mt-2 text-sm text-red-700">
+                    <h3 className="text-sm font-medium text-destructive">Query Error</h3>
+                    <div className="mt-2 text-sm text-destructive">
                       <p>{error}</p>
                     </div>
                   </div>
@@ -454,26 +456,26 @@ export function SQLEditor() {
 
                 {result.rows.length > 0 && (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border border-gray-200 rounded-lg">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full border rounded-lg">
+                      <thead className="bg-muted">
                         <tr>
                           {result.fields.map((field: any, index: number) => (
                             <th
                               key={index}
-                              className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b"
+                              className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider border-b"
                             >
                               {field.name}
                             </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-card divide-y divide-border">
                         {result.rows.map((row: any, rowIndex: number) => (
-                          <tr key={rowIndex} className="hover:bg-gray-50">
+                          <tr key={rowIndex} className="hover:bg-muted/50">
                             {result.fields.map((field: any, colIndex: number) => (
                               <td
                                 key={colIndex}
-                                className="px-4 py-2 text-sm text-gray-900 border-r last:border-r-0"
+                                className="px-4 py-2 text-sm text-foreground border-r last:border-r-0"
                               >
                                 {formatValue(row[field.name])}
                               </td>
@@ -486,7 +488,7 @@ export function SQLEditor() {
                 )}
 
                 {result.rows.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-muted-foreground">
                     <p>Query executed successfully but returned no rows.</p>
                   </div>
                 )}
@@ -529,26 +531,26 @@ export function SQLEditor() {
 
                       {statementResult.rows.length > 0 && (
                         <div className="overflow-x-auto">
-                          <table className="min-w-full border border-gray-200 rounded-lg">
-                            <thead className="bg-gray-50">
+                          <table className="min-w-full border rounded-lg">
+                            <thead className="bg-muted">
                               <tr>
                                 {statementResult.fields.map((field: any, fieldIndex: number) => (
                                   <th
                                     key={fieldIndex}
-                                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b"
+                                    className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider border-b"
                                   >
                                     {field.name}
                                   </th>
                                 ))}
                               </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-card divide-y divide-border">
                               {statementResult.rows.map((row: any, rowIndex: number) => (
-                                <tr key={rowIndex} className="hover:bg-gray-50">
+                                <tr key={rowIndex} className="hover:bg-muted/50">
                                   {statementResult.fields.map((field: any, colIndex: number) => (
                                     <td
                                       key={colIndex}
-                                      className="px-4 py-2 text-sm text-gray-900 border-r last:border-r-0"
+                                      className="px-4 py-2 text-sm text-foreground border-r last:border-r-0"
                                     >
                                       {formatValue(row[field.name])}
                                     </td>
@@ -561,7 +563,7 @@ export function SQLEditor() {
                       )}
 
                       {statementResult.rows.length === 0 && (
-                        <div className="text-center py-4 text-gray-500">
+                        <div className="text-center py-4 text-muted-foreground">
                           <p>Statement executed successfully but returned no rows.</p>
                         </div>
                       )}
@@ -572,7 +574,7 @@ export function SQLEditor() {
             )}
 
             {!result && !scriptResult && !error && !isExecuting && (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex items-center justify-center h-full text-muted-foreground">
                 <div className="text-center">
                   <Play className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p>Run a query to see results</p>

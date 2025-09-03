@@ -132,14 +132,14 @@ export function AppList({ apps, onAppDeleted, onAppUpdated }: AppListProps) {
             <div className="flex items-start justify-between">
               {/* App Info */}
               <div className="flex items-start gap-4 flex-1">
-                <div className="bg-blue-100 p-3 rounded-lg">
-                  <Globe className="h-6 w-6 text-blue-600" />
+                <div className="bg-blue-100 dark:bg-blue-900/20 p-3 rounded-lg">
+                  <Globe className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="text-lg font-semibold truncate">{app.name}</h3>
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                    <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300">
                       Active
                     </Badge>
                   </div>
