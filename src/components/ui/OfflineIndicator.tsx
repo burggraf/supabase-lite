@@ -3,7 +3,6 @@
  * Shows network status, connection quality, and offline capability
  */
 
-import React from 'react';
 import { WifiOff, Wifi, Shield, ShieldAlert } from 'lucide-react';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { cn } from '../../lib/utils';

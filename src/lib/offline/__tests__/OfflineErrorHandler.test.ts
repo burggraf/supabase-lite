@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { OfflineErrorHandler, type OfflineError, type ErrorContext } from '../OfflineErrorHandler'
+import { OfflineErrorHandler, type ErrorContext } from '../OfflineErrorHandler'
 
 // Mock useOnlineStatus hook
 const mockUseOnlineStatus = vi.hoisted(() => vi.fn())

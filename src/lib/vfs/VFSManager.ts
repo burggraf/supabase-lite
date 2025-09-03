@@ -102,9 +102,10 @@ export class VFSManager {
 
       const duration = performance.now() - startTime;
       logger.info('VFS project switch completed', { projectId: targetProjectId, duration });
-    } catch (error) {
-      logger.error('VFS project switch failed', error as Error, { projectId: targetProjectId });
-      throw error;
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error('VFS project switch failed', err, { projectId: targetProjectId });
+      throw err;
     } finally {
       this.isTransitioning = false;
     }
@@ -227,8 +228,9 @@ export class VFSManager {
     
     try {
       return await this.fileStorage.loadFileContent(normalizedPath);
-    } catch (error) {
-      logger.error('Failed to read file content', error as Error, { path: normalizedPath });
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error('Failed to read file content', err, { path: normalizedPath });
       return null;
     }
   }
@@ -570,9 +572,10 @@ export class VFSManager {
       await this.initializeDefaultBuckets();
 
       logger.info('VFS initialized successfully', { projectId });
-    } catch (error) {
-      logger.error('VFS initialization failed', error as Error, { projectId });
-      throw error;
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error('VFS initialization failed', err, { projectId });
+      throw err;
     }
   }
 
@@ -591,8 +594,9 @@ export class VFSManager {
       const db = await this.fileStorage.getDatabase();
       await db.put(OBJECT_STORES.BUCKETS, bucket);
       logger.debug('Bucket saved to storage', { name: bucket.name });
-    } catch (error) {
-      logger.error('Failed to save bucket', error as Error, { name: bucket.name });
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error('Failed to save bucket', err, { name: bucket.name });
       // Don't throw - we can still work with in-memory buckets
     }
   }
@@ -609,8 +613,9 @@ export class VFSManager {
       });
       
       logger.debug('Loaded buckets from storage', { count: buckets.length, projectId: this.currentProjectId });
-    } catch (error) {
-      logger.error('Failed to load buckets', error as Error, { projectId: this.currentProjectId });
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error('Failed to load buckets', err, { projectId: this.currentProjectId });
       // Continue with empty buckets - user can recreate
     }
   }
@@ -620,8 +625,9 @@ export class VFSManager {
       const db = await this.fileStorage.getDatabase();
       await db.delete(OBJECT_STORES.BUCKETS, bucketName);
       logger.debug('Bucket deleted from storage', { name: bucketName });
-    } catch (error) {
-      logger.error('Failed to delete bucket from storage', error as Error, { name: bucketName });
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error('Failed to delete bucket from storage', err, { name: bucketName });
       // Don't throw - bucket is removed from memory anyway
     }
   }

@@ -20,7 +20,7 @@ interface SecretsManagerProps {
 export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => {
   const [secrets, setSecrets] = useState<Secret[]>([]);
   const [showValues, setShowValues] = useState<{ [key: string]: boolean }>({});
-  const [editingSecret, setEditingSecret] = useState<string | null>(null);
+  const [_editingSecret, setEditingSecret] = useState<string | null>(null);
   const [newSecret, setNewSecret] = useState<{ key: string; value: string; description: string }>({
     key: '',
     value: '',
@@ -83,15 +83,6 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
     setIsAddingNew(false);
   };
 
-  const handleUpdateSecret = async (secretId: string, updates: Partial<Secret>) => {
-    const updatedSecrets = secrets.map(secret =>
-      secret.id === secretId
-        ? { ...secret, ...updates, lastUpdated: new Date().toISOString() }
-        : secret
-    );
-    await saveSecrets(updatedSecrets);
-    setEditingSecret(null);
-  };
 
   const handleDeleteSecret = async (secretId: string) => {
     const secret = secrets.find(s => s.id === secretId);

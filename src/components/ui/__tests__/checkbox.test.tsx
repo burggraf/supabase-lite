@@ -1,7 +1,7 @@
+import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
 import { Checkbox } from '../checkbox';
 
 describe('Checkbox Component', () => {
@@ -102,7 +102,7 @@ describe('Checkbox Component', () => {
         return (
           <Checkbox 
             checked={checked} 
-            onCheckedChange={setChecked}
+            onCheckedChange={(value) => setChecked(!!value)}
           />
         );
       };

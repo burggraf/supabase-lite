@@ -1,4 +1,5 @@
 import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
@@ -64,8 +65,8 @@ describe('Textarea Component', () => {
       const textarea = screen.getByDisplayValue('Select this text');
       await user.tripleClick(textarea);
       
-      expect(textarea.selectionStart).toBe(0);
-      expect(textarea.selectionEnd).toBe('Select this text'.length);
+      expect((textarea as HTMLTextAreaElement).selectionStart).toBe(0);
+      expect((textarea as HTMLTextAreaElement).selectionEnd).toBe('Select this text'.length);
     });
 
     it('should handle focus and blur events', async () => {

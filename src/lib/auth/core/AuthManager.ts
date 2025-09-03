@@ -605,6 +605,63 @@ export class AuthManager {
   }
 
 
+  private async storePasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+    // Store password reset token in a temp table or extend users table
+    // For simplicity, we'll extend the audit log to track reset tokens
+    await this.dbManager.query(`
+      INSERT INTO auth.audit_log_entries (id, payload, created_at)
+      VALUES ($1, $2, $3)
+    `, [
+      CryptoUtils.generateUUID(),
+      JSON.stringify({ 
+        event: 'password_reset_token_created',
+        user_id: userId,
+        token: token,
+        expires_at: expiresAt.toISOString()
+      }),
+      new Date().toISOString()
+    ])
+  }
+
+  private async validatePasswordResetToken(token: string): Promise<string | null> {
+    try {
+      const result = await this.dbManager.query(`
+        SELECT payload
+        FROM auth.audit_log_entries
+        WHERE payload->>'event' = 'password_reset_token_created'
+        AND payload->>'token' = $1
+        AND (payload->>'expires_at')::timestamp > NOW()
+        ORDER BY created_at DESC
+        LIMIT 1
+      `, [token])
+
+      if (result.rows.length === 0) {
+        return null
+      }
+
+      const payload = JSON.parse(result.rows[0].payload)
+      return payload.user_id
+    } catch (error) {
+      console.error('Error validating password reset token:', error)
+      return null
+    }
+  }
+
+  private async deletePasswordResetToken(token: string): Promise<void> {
+    // Mark token as used by adding a deletion event
+    await this.dbManager.query(`
+      INSERT INTO auth.audit_log_entries (id, payload, created_at)
+      VALUES ($1, $2, $3)
+    `, [
+      CryptoUtils.generateUUID(),
+      JSON.stringify({ 
+        event: 'password_reset_token_used',
+        token: token
+      }),
+      new Date().toISOString()
+    ])
+  }
+
   private async logAuditEvent(event: string, payload: any): Promise<void> {
     try {
       await this.dbManager.query(`

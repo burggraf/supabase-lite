@@ -23,8 +23,6 @@ Object.defineProperty(global, 'navigator', {
 });
 
 describe('ServiceWorkerManager', () => {
-  let ServiceWorkerManagerClass: typeof ServiceWorkerManager;
-  
   beforeEach(async () => {
     vi.clearAllMocks();
     

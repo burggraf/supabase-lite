@@ -91,8 +91,9 @@ export class CacheDebugger {
         totalSize: this.formatBytes(totalSizeBytes),
         caches: cacheInfos
       }
-    } catch (error) {
-      console.error('Failed to get cache status:', error)
+    } catch (error: unknown) {
+      const err = error as Error
+      console.error('Failed to get cache status:', err)
       throw new Error('Failed to access cache status')
     }
   }
@@ -114,8 +115,9 @@ export class CacheDebugger {
       this.performanceData.clear()
       
       return results.every(result => result)
-    } catch (error) {
-      console.error('Failed to clear all caches:', error)
+    } catch (error: unknown) {
+      const err = error as Error
+      console.error('Failed to clear all caches:', err)
       return false
     }
   }
@@ -135,8 +137,9 @@ export class CacheDebugger {
       this.performanceData.delete(cacheName)
       
       return result
-    } catch (error) {
-      console.error(`Failed to clear cache ${cacheName}:`, error)
+    } catch (error: unknown) {
+      const err = error as Error
+      console.error(`Failed to clear cache ${cacheName}:`, err)
       return false
     }
   }
@@ -164,8 +167,9 @@ export class CacheDebugger {
       }
 
       return totalSize
-    } catch (error) {
-      console.error(`Failed to get cache size for ${cacheName}:`, error)
+    } catch (error: unknown) {
+      const err = error as Error
+      console.error(`Failed to get cache size for ${cacheName}:`, err)
       return 0
     }
   }
@@ -204,8 +208,9 @@ export class CacheDebugger {
         name: cacheName,
         entries: entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       }
-    } catch (error) {
-      console.error(`Failed to inspect cache ${cacheName}:`, error)
+    } catch (error: unknown) {
+      const err = error as Error
+      console.error(`Failed to inspect cache ${cacheName}:`, err)
       return { name: cacheName, entries: [] }
     }
   }
@@ -350,8 +355,9 @@ export class CacheDebugger {
       console.log(`✅ Created development cache '${cacheName}' with ${sampleAssets.length} sample entries`)
       return true
 
-    } catch (error) {
-      console.error(`Failed to create development cache ${cacheName}:`, error)
+    } catch (error: unknown) {
+      const err = error as Error
+      console.error(`Failed to create development cache ${cacheName}:`, err)
       return false
     }
   }
@@ -379,8 +385,9 @@ export class CacheDebugger {
       console.log(`✅ Cleared ${devCaches.length} development caches`)
       return results.every(result => result)
 
-    } catch (error) {
-      console.error('Failed to clear development caches:', error)
+    } catch (error: unknown) {
+      const err = error as Error
+      console.error('Failed to clear development caches:', err)
       return false
     }
   }
@@ -413,8 +420,9 @@ export class CacheDebugger {
         })
         await monacoCache.put(`${currentOrigin}/assets/monaco-editor.css`, monacoResponse)
       }
-    } catch (error) {
-      console.warn('Failed to initialize development mode caches:', error)
+    } catch (error: unknown) {
+      const err = error as Error
+      console.warn('Failed to initialize development mode caches:', err)
     }
   }
 }

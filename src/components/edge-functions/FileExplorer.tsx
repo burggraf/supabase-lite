@@ -195,7 +195,7 @@ Deno.serve(async (req: Request) => {
 });
 `;
 
-      await vfsManager.createFile(filePath, templateContent);
+      await vfsManager.createFile(filePath, { content: templateContent });
 
       toast.success(`Created ${fileName}`);
       setShowNewFileDialog(false);
@@ -228,7 +228,7 @@ Deno.serve(async (req: Request) => {
       const folderPath = `${parentPath}/${newFolderName.trim()}`;
       const placeholderPath = `${folderPath}/.gitkeep`;
 
-      await vfsManager.createFile(placeholderPath, '');
+      await vfsManager.createFile(placeholderPath, { content: '' });
 
       toast.success(`Created folder ${newFolderName}`);
       setShowNewFolderDialog(false);
