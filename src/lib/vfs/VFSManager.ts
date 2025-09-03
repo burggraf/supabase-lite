@@ -15,7 +15,7 @@ import type {
 
 export class VFSManager {
   private static instance: VFSManager;
-  private fileStorage: FileStorage;
+  public fileStorage: FileStorage;
   private currentProjectId: string | null = null;
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;
@@ -127,7 +127,7 @@ export class VFSManager {
     }
 
     const normalizedPath = this.normalizePath(path);
-    const { content = '', mimeType: providedMimeType, compress, originalSize, encoding, metadata } = options;
+    const { content = '', mimeType: providedMimeType, compress, originalSize, encoding, metadata: _metadata } = options;
 
     // Validate file size
     if (content.length > VFS_CONFIG.MAX_FILE_SIZE) {

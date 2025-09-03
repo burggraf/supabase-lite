@@ -1,6 +1,6 @@
 import { DatabaseManager, type SessionContext } from '../lib/database/connection'
 import { logger, logError } from '../lib/infrastructure/Logger'
-import { errorHandler, createAPIError } from '../lib/infrastructure/ErrorHandler'
+import { createAPIError } from '../lib/infrastructure/ErrorHandler'
 import { apiKeyGenerator } from '../lib/auth/api-keys'
 import { RLSEnforcer } from '../lib/auth/rls-enforcer'
 import bcrypt from 'bcryptjs'
@@ -8,7 +8,6 @@ import {
   QueryParser,
   SQLBuilder,
   ResponseFormatter,
-  PostgRESTErrorMapper
 } from '../lib/postgrest'
 import type { ParsedQuery, FormattedResponse } from '../lib/postgrest'
 
@@ -430,7 +429,7 @@ export class EnhancedSupabaseAPIBridge {
   }
 
   // Auth methods remain the same as the original bridge
-  async handleAuth(endpoint: string, method: string, body?: any): Promise<any> {
+  async handleAuth(endpoint: string, _method: string, body?: any): Promise<any> {
     await this.ensureInitialized()
     
     switch (endpoint) {
@@ -587,11 +586,11 @@ export class EnhancedSupabaseAPIBridge {
     // Default mock response for other tables
     return ResponseFormatter.formatSelectResponse([], {
       select: ['*'],
-      count: null,
+      count: undefined,
       filters: [],
-      orderBy: [],
-      limit: null,
-      offset: null
+      order: [],
+      limit: undefined,
+      offset: undefined
     })
   }
 

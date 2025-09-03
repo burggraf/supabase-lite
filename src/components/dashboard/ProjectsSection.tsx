@@ -19,7 +19,7 @@ interface ProjectsSectionProps {
 
 export function ProjectsSection({
   projects,
-  activeProject,
+  activeProject: _activeProject,
   onCreateProject,
   onDeleteProject,
   onSwitchProject,

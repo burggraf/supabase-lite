@@ -31,7 +31,7 @@ Object.defineProperty(global, 'crypto', {
         ])
         return hashForPassword123$.buffer
       }),
-      importKey: vi.fn().mockImplementation(async (format, keyData, algorithm, extractable, keyUsages) => {
+      importKey: vi.fn().mockImplementation(async (_format: string, _keyData: any, algorithm: any, extractable: boolean, keyUsages: string[]) => {
         // Return a mock key object
         return {
           algorithm,
@@ -40,9 +40,9 @@ Object.defineProperty(global, 'crypto', {
           usages: keyUsages
         }
       }),
-      sign: vi.fn().mockImplementation(async (algorithm, key, data) => {
+      sign: vi.fn().mockImplementation(async (_algorithm: any, key: any, data: any) => {
         // Mock signature that varies based on key and data
-        const encoder = new TextEncoder()
+        // const encoder = new TextEncoder()
         const keyStr = JSON.stringify(key)
         const dataStr = new TextDecoder().decode(data)
 
@@ -67,13 +67,13 @@ Object.defineProperty(global, 'crypto', {
           algorithm,
           extractable,
           type: 'private',
-          usages: keyUsages.filter(usage => ['sign'].includes(usage))
+          usages: (keyUsages as string[]).filter((usage: any) => ['sign'].includes(usage))
         }
         const publicKey = {
           algorithm,
           extractable,
           type: 'public',
-          usages: keyUsages.filter(usage => ['verify'].includes(usage))
+          usages: (keyUsages as string[]).filter((usage: any) => ['verify'].includes(usage))
         }
         return { privateKey, publicKey }
       }),
@@ -184,7 +184,7 @@ vi.mock('jose', () => {
         return `${header}.${payload}.${signature}`
       })
     })),
-    jwtVerify: vi.fn().mockImplementation(async (jwt, key, options) => {
+    jwtVerify: vi.fn().mockImplementation(async (jwt: string, _key: any, _options: any) => {
       // Simple mock verification - just decode the JWT
       const parts = jwt.split('.')
       if (parts.length !== 3) {

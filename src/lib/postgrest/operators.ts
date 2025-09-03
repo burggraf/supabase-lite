@@ -193,15 +193,15 @@ export function parseOperatorValue(operator: string, value: string): { op: Opera
       // Handle boolean values for equality operators
       // Convert to integers to maintain compatibility with integer boolean columns (0/1)
       if (value.toLowerCase() === 'true') {
-        parsedValue = 1
+        parsedValue = '1'
       } else if (value.toLowerCase() === 'false') {
-        parsedValue = 0
+        parsedValue = '0'
       } else if (value.toLowerCase() === 'null') {
-        parsedValue = null
+        parsedValue = 'NULL'
       }
       // For other values, try to parse as number if possible
       else if (!isNaN(Number(value))) {
-        parsedValue = Number(value)
+        parsedValue = String(Number(value))
       }
       break
 
@@ -229,10 +229,10 @@ export function parseOperatorValue(operator: string, value: string): { op: Opera
         const trimmed = v.trim()
         // Try to parse as number if possible
         if (!isNaN(Number(trimmed))) {
-          return Number(trimmed)
+          return String(Number(trimmed))
         }
         return trimmed
-      })
+      }).join(',')
       break
 
     case 'cs':
@@ -249,7 +249,7 @@ export function parseOperatorValue(operator: string, value: string): { op: Opera
     case 'ov':
       // Parse array values
       if (value.startsWith('{') && value.endsWith('}')) {
-        parsedValue = value.slice(1, -1).split(',').map(v => v.trim())
+        parsedValue = value.slice(1, -1).split(',').map(v => v.trim()).join(',')
       }
       break
   }

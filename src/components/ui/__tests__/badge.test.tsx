@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { Badge } from '../badge';
 
 describe('Badge Component', () => {
@@ -17,11 +18,12 @@ describe('Badge Component', () => {
     });
 
     it('should render empty badge', () => {
-      render(<Badge></Badge>);
+      const { container } = render(<Badge></Badge>);
       
       // Badge should still be in DOM even if empty
-      const badge = screen.getByRole('generic', { hidden: true }) || document.querySelector('[class*="badge"]');
+      const badge = container.firstElementChild;
       expect(badge).toBeInTheDocument();
+      expect(badge).toHaveClass('inline-flex');
     });
   });
 

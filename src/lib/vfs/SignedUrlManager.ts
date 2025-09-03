@@ -325,14 +325,15 @@ export class SignedUrlManager {
   /**
    * Validate JWT token signature
    */
-  private async validateJWT(token: string): Promise<boolean> {
-    try {
-      await this.jwtService.verifyToken(token);
-      return true;
-    } catch {
-      return false;
-    }
-  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // private async validateJWT(token: string): Promise<boolean> {
+  //   try {
+  //     await this.jwtService.verifyToken(token);
+  //     return true;
+  //   } catch {
+  //     return false;
+  //   }
+  // }
 
   /**
    * Generate unique ID for signed URL

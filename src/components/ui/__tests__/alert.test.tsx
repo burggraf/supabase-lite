@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { Alert, AlertDescription, AlertTitle } from '../alert';
 import { AlertCircle, CheckCircle2, Info, AlertTriangle } from 'lucide-react';
 

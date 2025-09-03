@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { AuthBridge } from '../../lib/auth/AuthBridge';
 import { DatabaseManager } from '../../lib/database/connection';
-import type { User, Session } from '../../lib/auth/types';
 
 describe('Authentication Workflow Integration', () => {
   let authBridge: AuthBridge;
@@ -42,8 +41,8 @@ describe('Authentication Workflow Integration', () => {
   beforeEach(async () => {
     // Clean up any existing test users before each test
     try {
-      await dbManager.exec("DELETE FROM auth.users WHERE email IN ($1, $2)", [testUser.email, testUser2.email]);
-      await dbManager.exec("DELETE FROM auth.sessions WHERE user_id IN (SELECT id FROM auth.users WHERE email IN ($1, $2))", [testUser.email, testUser2.email]);
+      await dbManager.exec(`DELETE FROM auth.users WHERE email IN ('${testUser.email}', '${testUser2.email}')`);
+      await dbManager.exec(`DELETE FROM auth.sessions WHERE user_id IN (SELECT id FROM auth.users WHERE email IN ('${testUser.email}', '${testUser2.email}'))`);
     } catch (error) {
       // Ignore cleanup errors - tables might not exist yet
     }
@@ -66,7 +65,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(201);
       expect(response.data).toBeDefined();
@@ -98,7 +97,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await authBridge.handleRequest(firstRequest);
+      await authBridge.handleAuthRequest(firstRequest);
 
       // Duplicate registration attempt
       const duplicateRequest = {
@@ -110,7 +109,7 @@ describe('Authentication Workflow Integration', () => {
         }
       };
 
-      await expect(authBridge.handleRequest(duplicateRequest))
+      await expect(authBridge.handleAuthRequest(duplicateRequest))
         .rejects.toThrow();
     });
 
@@ -130,7 +129,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -150,7 +149,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
   });
@@ -173,7 +172,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await authBridge.handleRequest(signupRequest);
+      await authBridge.handleAuthRequest(signupRequest);
     });
 
     it('should successfully sign in with correct credentials', async () => {
@@ -192,7 +191,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data).toBeDefined();
@@ -227,7 +226,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -247,7 +246,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
   });
@@ -274,7 +273,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      const signupResponse = await authBridge.handleRequest(signupRequest);
+      await authBridge.handleAuthRequest(signupRequest);
 
       const signinRequest = {
         endpoint: '/auth/v1/token',
@@ -291,7 +290,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      const signinResponse = await authBridge.handleRequest(signinRequest);
+      const signinResponse = await authBridge.handleAuthRequest(signinRequest);
       accessToken = signinResponse.data.session.access_token;
       refreshToken = signinResponse.data.session.refresh_token;
       userId = signinResponse.data.user.id;
@@ -312,7 +311,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data.session).toBeDefined();
@@ -335,7 +334,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data).toBeDefined();
@@ -356,7 +355,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      await expect(authBridge.handleRequest(request))
+      await expect(authBridge.handleAuthRequest(request))
         .rejects.toThrow();
     });
 
@@ -372,7 +371,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/logout')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(204);
 
@@ -395,7 +394,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      await expect(authBridge.handleRequest(userRequest))
+      await expect(authBridge.handleAuthRequest(userRequest))
         .rejects.toThrow();
     });
   });
@@ -421,7 +420,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await authBridge.handleRequest(signupRequest);
+      await authBridge.handleAuthRequest(signupRequest);
 
       const signinRequest = {
         endpoint: '/auth/v1/token',
@@ -438,7 +437,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      const signinResponse = await authBridge.handleRequest(signinRequest);
+      const signinResponse = await authBridge.handleAuthRequest(signinRequest);
       accessToken = signinResponse.data.session.access_token;
       userId = signinResponse.data.user.id;
     });
@@ -467,7 +466,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data.user_metadata).toEqual(updatedData);
@@ -494,7 +493,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
       expect(response.status).toBe(200);
 
       // Verify can sign in with new password
@@ -513,7 +512,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      const signinResponse = await authBridge.handleRequest(signinRequest);
+      const signinResponse = await authBridge.handleAuthRequest(signinRequest);
       expect(signinResponse.status).toBe(200);
 
       // Verify cannot sign in with old password
@@ -526,7 +525,7 @@ describe('Authentication Workflow Integration', () => {
         }
       };
 
-      await expect(authBridge.handleRequest(oldPasswordRequest))
+      await expect(authBridge.handleAuthRequest(oldPasswordRequest))
         .rejects.toThrow();
     });
   });
@@ -549,7 +548,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await authBridge.handleRequest(signupRequest);
+      await authBridge.handleAuthRequest(signupRequest);
     });
 
     it('should initiate password recovery for existing email', async () => {
@@ -566,7 +565,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/recover')
       };
 
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
 
       expect(response.status).toBe(200);
       expect(response.data).toBeDefined();
@@ -589,7 +588,7 @@ describe('Authentication Workflow Integration', () => {
       };
 
       // Should still return 200 for security reasons (don't reveal if email exists)
-      const response = await authBridge.handleRequest(request);
+      const response = await authBridge.handleAuthRequest(request);
       expect(response.status).toBe(200);
     });
   });
@@ -627,8 +626,8 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await authBridge.handleRequest(user1SignupRequest);
-      await authBridge.handleRequest(user2SignupRequest);
+      await authBridge.handleAuthRequest(user1SignupRequest);
+      await authBridge.handleAuthRequest(user2SignupRequest);
 
       // Sign in both users
       const user1SigninRequest = {
@@ -661,8 +660,8 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/token')
       };
 
-      const user1Response = await authBridge.handleRequest(user1SigninRequest);
-      const user2Response = await authBridge.handleRequest(user2SigninRequest);
+      const user1Response = await authBridge.handleAuthRequest(user1SigninRequest);
+      const user2Response = await authBridge.handleAuthRequest(user2SigninRequest);
 
       // Verify both sessions are independent
       expect(user1Response.data.user.email).toBe(testUser.email);
@@ -692,8 +691,8 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/user')
       };
 
-      const user1Profile = await authBridge.handleRequest(user1ProfileRequest);
-      const user2Profile = await authBridge.handleRequest(user2ProfileRequest);
+      const user1Profile = await authBridge.handleAuthRequest(user1ProfileRequest);
+      const user2Profile = await authBridge.handleAuthRequest(user2ProfileRequest);
 
       expect(user1Profile.data.email).toBe(testUser.email);
       expect(user2Profile.data.email).toBe(testUser2.email);
@@ -722,7 +721,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/signup')
       };
 
-      await expect(authBridge.handleRequest(malformedRequest))
+      await expect(authBridge.handleAuthRequest(malformedRequest))
         .rejects.toThrow();
     });
 
@@ -738,7 +737,7 @@ describe('Authentication Workflow Integration', () => {
         url: new URL('http://localhost:5173/auth/v1/unsupported-endpoint')
       };
 
-      await expect(authBridge.handleRequest(unsupportedRequest))
+      await expect(authBridge.handleAuthRequest(unsupportedRequest))
         .rejects.toThrow();
     });
   });
