@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { initializeInfrastructure, logger } from '@/lib/infrastructure';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { CrossOriginAPIHandler } from '@/lib/api/CrossOriginAPIHandler';
+import { WebVMManager } from '@/lib/webvm/WebVMManager';
 import { Toaster } from 'sonner';
 
 function App() {
@@ -41,6 +42,17 @@ function App() {
         
         // Make API handler globally accessible for ProxyConnector
         (window as any).crossOriginAPIHandler = handler;
+        
+        // Auto-start WebVM for PostgREST availability
+        const webvmManager = WebVMManager.getInstance();
+        try {
+          logger.info('Auto-starting WebVM for PostgREST integration...');
+          await webvmManager.start();
+          logger.info('✅ WebVM auto-start completed successfully');
+        } catch (webvmError) {
+          // Log WebVM error but don't fail app initialization
+          logger.error('⚠️ WebVM auto-start failed (app will continue without PostgREST):', webvmError as Error);
+        }
         
         // Only update state if the effect hasn't been cancelled
         if (!isCancelled) {

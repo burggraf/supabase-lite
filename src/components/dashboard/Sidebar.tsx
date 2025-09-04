@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { EnhancedOfflineIndicator } from '@/components/ui/EnhancedOfflineIndicator';
+import { WebVMStatusIndicator } from '@/components/ui/WebVMStatusIndicator';
 
 const iconMap = {
   LayoutDashboard,
@@ -220,6 +221,14 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
             compact={isExpanded}
           />
         </div>
+        
+        {/* WebVM Status Indicator */}
+        <WebVMStatusIndicator 
+          iconOnly={!isExpanded} 
+          compact={isExpanded}
+        />
+        
+        {/* PGlite Status Indicator */}
         <div className={cn(
           "flex items-center text-xs text-muted-foreground",
           isExpanded ? "space-x-2" : "justify-center"
