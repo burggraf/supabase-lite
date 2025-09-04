@@ -39,11 +39,21 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
   }, [functionName]);
 
   // Load template code when template changes
-  const loadTemplate = (templateId: string) => {
+  const loadTemplate = async (templateId: string) => {
     const templateObj = templates.find(t => t.id === templateId);
-    if (templateObj) {
-      setCurrentCode(templateObj.code);
-      toast.success(`Loaded ${templateObj.name} template`);
+    if (templateObj && selectedFile) {
+      try {
+        // Update VFS with template code
+        await vfsManager.updateFile(selectedFile, templateObj.code);
+        setCurrentCode(templateObj.code);
+        toast.success(`Loaded ${templateObj.name} template`);
+      } catch (error) {
+        console.error('Failed to save template to VFS:', error);
+        toast.error('Failed to load template');
+      }
+    } else if (templateObj && !selectedFile) {
+      console.warn('No file selected for template loading');
+      toast.error('Please select a file first');
     }
   };
 
@@ -296,6 +306,7 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
             selectedFile={selectedFile}
             onFileChange={loadFunctionFiles}
             onCodeChange={setCurrentCode}
+            externalContent={currentCode}
           />
         </div>
 

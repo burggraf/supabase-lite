@@ -11,6 +11,7 @@ interface SimpleCodeEditorProps {
   selectedFile: string | null;
   onFileChange?: () => void;
   onCodeChange?: (code: string) => void;
+  externalContent?: string;
 }
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -33,6 +34,7 @@ export const SimpleCodeEditor: React.FC<SimpleCodeEditorProps> = ({
   selectedFile,
   onFileChange,
   onCodeChange,
+  externalContent,
 }) => {
   const [content, setContent] = useState<string>('');
   const [originalContent, setOriginalContent] = useState<string>('');
@@ -50,6 +52,16 @@ export const SimpleCodeEditor: React.FC<SimpleCodeEditorProps> = ({
       setIsDirty(false);
     }
   }, [selectedFile]);
+
+  // Handle external content changes (from template loading)
+  useEffect(() => {
+    if (externalContent !== undefined && externalContent !== content) {
+      setContent(externalContent);
+      setOriginalContent(externalContent);
+      setIsDirty(false);
+      onCodeChange?.(externalContent);
+    }
+  }, [externalContent]);
 
   const loadFile = async (filePath: string) => {
     try {
