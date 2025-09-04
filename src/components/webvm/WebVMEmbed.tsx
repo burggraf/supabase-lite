@@ -82,9 +82,17 @@ export const WebVMEmbed = forwardRef<WebVMEmbedRef, WebVMEmbedProps>(({
 
   // Set up message listener
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Accept messages from local proxy origin (our Vite dev server)
+    const handleMessage = async (event: MessageEvent) => {
+      // Accept messages from local proxy origin (our Vite dev server) or iframe
       if (event.origin === window.location.origin || event.origin === 'https://webvm.io') {
+        
+        // Handle database request messages from WebVM
+        if (event.data.type === 'database-request') {
+          await handleDatabaseRequest(event)
+          return
+        }
+
+        // Pass other messages to parent handler
         onMessage?.(event.data)
       }
     }
@@ -92,6 +100,64 @@ export const WebVMEmbed = forwardRef<WebVMEmbedRef, WebVMEmbedProps>(({
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
   }, [onMessage])
+
+  // Handle database requests from WebVM iframe
+  const handleDatabaseRequest = async (event: MessageEvent) => {
+    const { requestId, request } = event.data
+    
+    try {
+      console.log(`🔄 Processing database request: ${request.method} ${request.path}`)
+      
+      // Make HTTP request to MSW handlers on behalf of WebVM
+      const url = `http://localhost:5173${request.path}`
+      
+      const fetchOptions: RequestInit = {
+        method: request.method,
+        headers: request.headers
+      }
+
+      if (request.body && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
+        fetchOptions.body = request.body
+      }
+
+      const response = await fetch(url, fetchOptions)
+      const responseData = await response.json()
+
+      const databaseResponse = {
+        status: response.status,
+        data: responseData.data || responseData,
+        message: responseData.message,
+        error: response.ok ? undefined : (responseData.error || responseData.message || 'Request failed')
+      }
+
+      // Send response back to WebVM
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({
+          type: 'database-response',
+          requestId,
+          response: databaseResponse
+        }, window.location.origin)
+      }
+
+      console.log(`✅ Database request completed: ${response.status}`)
+
+    } catch (error) {
+      console.error('❌ Database request failed:', error)
+      
+      // Send error response back to WebVM
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({
+          type: 'database-response',
+          requestId,
+          response: {
+            status: 500,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            message: 'Failed to process database request'
+          }
+        }, window.location.origin)
+      }
+    }
+  }
 
   return (
     <div className={`webvm-container relative ${className}`} role="group">

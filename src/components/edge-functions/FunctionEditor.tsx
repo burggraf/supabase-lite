@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronDown, Bot, FileText, Plus } from 'lucide-react';
 import { SimpleCodeEditor } from './SimpleCodeEditor';
 import { vfsManager } from '../../lib/vfs/VFSManager';
 import { projectManager } from '../../lib/projects/ProjectManager';
+import { WebVMManager } from '../../lib/webvm/WebVMManager';
 import { toast } from 'sonner';
 
 interface FunctionEditorProps {
@@ -104,8 +105,48 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
 
   const handleDeploy = async () => {
     try {
-      // TODO: Implement actual deployment
-      toast.success(`Function "${currentFunctionName}" deployed successfully!`);
+      const activeProject = projectManager.getActiveProject();
+      if (!activeProject) {
+        toast.error('No active project found');
+        return;
+      }
+
+      // Get the main function file (index.ts or similar)
+      const mainFilePath = `edge-functions/${currentFunctionName}/index.ts`;
+      
+      try {
+        // Get function code from VFS
+        const file = await vfsManager.readFile(mainFilePath);
+        const functionCode = file?.content;
+        
+        if (!functionCode) {
+          toast.error(`Function file not found at ${mainFilePath}`);
+          return;
+        }
+        
+        // Get WebVMManager and deploy the function
+        const webvmManager = WebVMManager.getInstance();
+        
+        // Check if WebVM is running
+        if (webvmManager.getStatus().state !== 'running') {
+          toast.error('WebVM is not running. Please start WebVM first.');
+          return;
+        }
+        
+        // Deploy to WebVM
+        const deployment = await webvmManager.deployFunction(currentFunctionName, functionCode);
+        
+        if (deployment.success) {
+          toast.success(`Function "${currentFunctionName}" deployed successfully to WebVM!`);
+        } else {
+          toast.error(`Deployment failed: ${deployment.error}`);
+        }
+        
+      } catch (vfsError) {
+        console.error('Failed to read function code:', vfsError);
+        toast.error(`Failed to read function code from ${mainFilePath}`);
+      }
+      
     } catch (error) {
       console.error('Failed to deploy function:', error);
       toast.error('Failed to deploy function');

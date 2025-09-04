@@ -135,3 +135,18 @@ export interface FunctionRemoval {
   functionName: string
   error?: string
 }
+
+// Database Bridge Types
+export interface DatabaseRequest {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  path: string
+  headers: Record<string, string>
+  body?: string
+}
+
+export interface DatabaseResponse {
+  status: number
+  data?: any
+  error?: string
+  message?: string
+}

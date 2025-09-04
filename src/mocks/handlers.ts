@@ -1951,6 +1951,8 @@ Deno.serve(async (req: Request) => {
     // Default fallback
     return new HttpResponse(null, { status: 404 })
   }),
+  http.get('/rest/v1/:table', withProjectResolution(createRestGetHandler())),
+  http.head('/rest/v1/:table', withProjectResolution(createRestHeadHandler())),
   http.post('/rest/v1/:table', withProjectResolution(createRestPostHandler())),
   http.patch('/rest/v1/:table', withProjectResolution(createRestPatchHandler())),
   http.delete('/rest/v1/:table', withProjectResolution(createRestDeleteHandler())),

@@ -7,6 +7,7 @@ import { FunctionTemplates } from './FunctionTemplates';
 import { FunctionCreationOptions } from './FunctionCreationOptions';
 import { vfsManager } from '../../lib/vfs/VFSManager';
 import { projectManager } from '../../lib/projects/ProjectManager';
+import { WebVMManager } from '../../lib/webvm/WebVMManager';
 import { toast } from 'sonner';
 
 interface Function {
@@ -171,7 +172,14 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
         throw new Error('No active project found');
       }
 
-      const projectId = activeProject.id;
+      // Get WebVMManager instance
+      const webvmManager = WebVMManager.getInstance();
+      
+      // Check if WebVM is running
+      if (webvmManager.getStatus().state !== 'running') {
+        throw new Error('WebVM is not running. Please start WebVM first.');
+      }
+
       let requestBody = null;
       
       // Try to parse JSON body
@@ -186,35 +194,62 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
 
       const startTime = performance.now();
       
-      const response = await fetch(`${window.location.origin}/functions/v1/${testModal.functionName}`, {
+      // Use WebVM to invoke the function
+      const response = await webvmManager.invokeFunction(testModal.functionName, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${projectId}`,
-          'apikey': projectId
+          'Authorization': `Bearer ${activeProject.id}`,
         },
-        body: requestBody ? JSON.stringify(requestBody) : undefined
+        body: requestBody ? JSON.stringify(requestBody) : undefined,
+        context: {
+          user: {
+            id: 'test-user',
+            email: 'test@example.com',
+            role: 'authenticated'
+          },
+          project: {
+            id: activeProject.id,
+            name: activeProject.name
+          }
+        }
       });
 
       const endTime = performance.now();
       const executionTime = Math.round(endTime - startTime);
 
-      const responseData = await response.json();
+      // Safely parse response body
+      let responseData = null;
+      if (response.body) {
+        try {
+          // If body is already an object, use it directly
+          if (typeof response.body === 'object') {
+            responseData = response.body;
+          } else if (typeof response.body === 'string') {
+            responseData = JSON.parse(response.body);
+          } else {
+            responseData = { message: String(response.body) };
+          }
+        } catch (e) {
+          // If not valid JSON, treat as plain text
+          responseData = { message: String(response.body) };
+        }
+      }
 
       setTestModal(prev => ({
         ...prev,
         loading: false,
         response: {
           status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries()),
+          statusText: response.status === 200 ? 'OK' : 'Error',
+          headers: response.headers || {},
           data: responseData,
-          executionTime
+          executionTime: response.metrics?.duration || executionTime
         }
       }));
 
-      if (!response.ok) {
-        toast.error(`Function test failed: ${response.status} ${response.statusText}`);
+      if (response.status !== 200) {
+        toast.error(`Function test failed: ${response.status}`);
       } else {
         toast.success(`Function executed successfully in ${executionTime}ms`);
       }
