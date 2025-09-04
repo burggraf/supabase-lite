@@ -5,6 +5,7 @@ import { Input } from '../ui/input';
 import { ChevronLeft, ChevronDown, Bot, FileText, Plus } from 'lucide-react';
 import { SimpleCodeEditor } from './SimpleCodeEditor';
 import NetworkRequirementsAnalyzer from './NetworkRequirementsAnalyzer';
+import { templates } from './FunctionTemplates';
 import { vfsManager } from '../../lib/vfs/VFSManager';
 import { projectManager } from '../../lib/projects/ProjectManager';
 import { WebVMManager } from '../../lib/webvm/WebVMManager';
@@ -36,6 +37,15 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
   useEffect(() => {
     loadFunctionFiles();
   }, [functionName]);
+
+  // Load template code when template changes
+  const loadTemplate = (templateId: string) => {
+    const templateObj = templates.find(t => t.id === templateId);
+    if (templateObj) {
+      setCurrentCode(templateObj.code);
+      toast.success(`Loaded ${templateObj.name} template`);
+    }
+  };
 
   const loadFunctionFiles = async () => {
     try {
@@ -215,7 +225,33 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
               <option value="hello-world">Templates</option>
               <option value="database-access">Database Access</option>
               <option value="storage-upload">Storage Upload</option>
+              <optgroup label="Networking Tests">
+                <option value="external-api-test">🌐 External API Test</option>
+                <option value="network-health-check">🏥 Network Health Check</option>
+                <option value="api-playground">🎮 API Playground</option>
+              </optgroup>
+              <optgroup label="Frameworks & APIs">
+                <option value="node-api">Node Built-in API</option>
+                <option value="express">Express Server</option>
+                <option value="openai-completion">OpenAI Text Completion</option>
+                <option value="stripe-webhook">Stripe Webhook</option>
+                <option value="resend-email">Send Emails</option>
+              </optgroup>
+              <optgroup label="Advanced">
+                <option value="image-transform">Image Transformation</option>
+                <option value="websocket-server">WebSocket Server</option>
+              </optgroup>
             </select>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => loadTemplate(template)}
+              disabled={template === 'hello-world'}
+              className="text-xs"
+            >
+              <FileText className="w-3 w-3 mr-1" />
+              Load Template
+            </Button>
           </div>
           <Button variant="outline" size="sm">
             <Bot className="w-4 h-4 mr-2" />
