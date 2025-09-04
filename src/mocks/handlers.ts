@@ -32,7 +32,7 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
     const resolution = await resolveAndSwitchToProject(url);
     
     if (!resolution.success) {
-      console.error(`❌ MSW: Project resolution failed for ${url.pathname}:`, resolution.error);
+      console.error(`❌ PostgREST: Project resolution failed for ${url.pathname}:`, resolution.error);
       return HttpResponse.json(
         { error: 'Project not found', message: resolution.error },
         { 
@@ -70,37 +70,57 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
   }) as T;
 }
 
-// Helper function to get response headers based on PostgREST status
-const getResponseHeaders = () => {
+// Helper function to check PostgREST availability and return error if not ready
+const checkPostgRESTAvailability = () => {
   const postgrestStatus = webvmManager.getPostgRESTStatus()
-  const baseHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Content-Type': 'application/json'
+  
+  if (!postgrestStatus.running || !postgrestStatus.bridgeConnected) {
+    return {
+      available: false,
+      error: {
+        code: 'WEBVM_NOT_READY',
+        message: 'PostgREST service is not available',
+        details: postgrestStatus.running 
+          ? 'PostgREST is running but bridge is not connected' 
+          : 'PostgREST is not running in WebVM',
+        hint: 'Start the WebVM Runtime from the WebVM page and wait for PostgREST to initialize'
+      }
+    }
   }
   
-  if (postgrestStatus.running && postgrestStatus.bridgeConnected) {
-    // PostgREST is active - add PostgREST-style headers
-    return {
-      ...baseHeaders,
-      'X-Supabase-Backend': 'PostgREST',
-      'X-PostgREST-Version': '12.0.2',
-      'X-PostgREST-Port': postgrestStatus.port?.toString() || '3000',
-      'X-Bridge-Status': 'Connected',
-      'Server': 'PostgREST/12.0.2'
-    }
-  } else {
-    // MSW simulation mode
-    return {
-      ...baseHeaders,
-      'X-Supabase-Backend': 'MSW-Simulation',
-      'X-Simulation-Mode': 'Active',
-      'Server': 'Mock-Service-Worker'
-    }
+  return { available: true }
+}
+
+// Helper function to get PostgREST response headers
+const getPostgRESTHeaders = () => {
+  const postgrestStatus = webvmManager.getPostgRESTStatus()
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Content-Type': 'application/json',
+    'X-Supabase-Backend': 'PostgREST',
+    'X-PostgREST-Version': '12.0.2',
+    'X-PostgREST-Port': postgrestStatus.port?.toString() || '3000',
+    'X-Bridge-Status': 'Connected',
+    'Server': 'PostgREST/12.0.2'
   }
 }
 
 // Helper functions for common REST operations
 const createRestGetHandler = () => async ({ params, request }: any) => {
+  // Check PostgREST availability first
+  const availability = checkPostgRESTAvailability()
+  if (!availability.available) {
+    return HttpResponse.json(availability.error, {
+      status: 503,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+        'X-Supabase-Backend': 'PostgREST',
+        'X-Service-Status': 'Unavailable'
+      }
+    })
+  }
+
   try {
     const response = await enhancedBridge.handleRestRequest({
       table: params.table as string,
@@ -109,18 +129,16 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
       url: new URL(request.url)
     })
     
-    
     return HttpResponse.json(response.data, {
       status: response.status,
       headers: {
         ...response.headers,
-        ...getResponseHeaders()
+        ...getPostgRESTHeaders()
       }
     })
   } catch (error: any) {
-    console.error(`❌ MSW: GET error for ${params.table}:`, error)
+    console.error(`❌ PostgREST: GET error for ${params.table}:`, error)
     
-    // Fallback for unexpected errors (should not happen with Enhanced Bridge)
     return HttpResponse.json(
       { 
         code: 'PGRST100',
@@ -130,16 +148,27 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
       },
       { 
         status: 500,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: getPostgRESTHeaders()
       }
     )
   }
 };
 
 const createRestHeadHandler = () => async ({ params, request }: any) => {
+  // Check PostgREST availability first
+  const availability = checkPostgRESTAvailability()
+  if (!availability.available) {
+    return new HttpResponse(null, {
+      status: 503,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+        'X-Supabase-Backend': 'PostgREST',
+        'X-Service-Status': 'Unavailable'
+      }
+    })
+  }
+
   try {
     const response = await enhancedBridge.handleRestRequest({
       table: params.table as string,
@@ -153,25 +182,36 @@ const createRestHeadHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
-        'Access-Control-Allow-Origin': '*',
+        ...getPostgRESTHeaders(),
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
         'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
       }
     })
   } catch (error: any) {
-    console.error(`❌ MSW: HEAD error for ${params.table}:`, error)
+    console.error(`❌ PostgREST: HEAD error for ${params.table}:`, error)
     
     return new HttpResponse(null, {
       status: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json; charset=utf-8'
-      }
+      headers: getPostgRESTHeaders()
     })
   }
 };
 
 const createRestPostHandler = () => async ({ params, request }: any) => {
+  // Check PostgREST availability first
+  const availability = checkPostgRESTAvailability()
+  if (!availability.available) {
+    return HttpResponse.json(availability.error, {
+      status: 503,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+        'X-Supabase-Backend': 'PostgREST',
+        'X-Service-Status': 'Unavailable'
+      }
+    })
+  }
+
   try {
     const body = await request.json()
     const response = await enhancedBridge.handleRestRequest({
@@ -186,12 +226,12 @@ const createRestPostHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
+        ...getPostgRESTHeaders()
       }
     })
   } catch (error: any) {
+    console.error(`❌ PostgREST: POST error for ${params.table}:`, error)
+    
     return HttpResponse.json(
       { 
         code: 'PGRST100',
@@ -201,16 +241,27 @@ const createRestPostHandler = () => async ({ params, request }: any) => {
       },
       { 
         status: 500,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: getPostgRESTHeaders()
       }
     )
   }
 };
 
 const createRestPatchHandler = () => async ({ params, request }: any) => {
+  // Check PostgREST availability first
+  const availability = checkPostgRESTAvailability()
+  if (!availability.available) {
+    return HttpResponse.json(availability.error, {
+      status: 503,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+        'X-Supabase-Backend': 'PostgREST',
+        'X-Service-Status': 'Unavailable'
+      }
+    })
+  }
+
   try {
     const body = await request.json()
     const response = await enhancedBridge.handleRestRequest({
@@ -225,12 +276,12 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
+        ...getPostgRESTHeaders()
       }
     })
   } catch (error: any) {
+    console.error(`❌ PostgREST: PATCH error for ${params.table}:`, error)
+    
     return HttpResponse.json(
       { 
         code: 'PGRST100',
@@ -240,16 +291,27 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
       },
       { 
         status: 500,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: getPostgRESTHeaders()
       }
     )
   }
 };
 
 const createRestDeleteHandler = () => async ({ params, request }: any) => {
+  // Check PostgREST availability first
+  const availability = checkPostgRESTAvailability()
+  if (!availability.available) {
+    return HttpResponse.json(availability.error, {
+      status: 503,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+        'X-Supabase-Backend': 'PostgREST',
+        'X-Service-Status': 'Unavailable'
+      }
+    })
+  }
+
   try {
     const response = await enhancedBridge.handleRestRequest({
       table: params.table as string,
@@ -262,12 +324,12 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
+        ...getPostgRESTHeaders()
       }
     })
   } catch (error: any) {
+    console.error(`❌ PostgREST: DELETE error for ${params.table}:`, error)
+    
     return HttpResponse.json(
       { 
         code: 'PGRST100',
@@ -277,10 +339,7 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
       },
       { 
         status: 500,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: getPostgRESTHeaders()
       }
     )
   }
@@ -288,6 +347,20 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
 
 // Helper functions for RPC operations
 const createRpcHandler = () => async ({ params, request }: any) => {
+  // Check PostgREST availability first
+  const availability = checkPostgRESTAvailability()
+  if (!availability.available) {
+    return HttpResponse.json(availability.error, {
+      status: 503,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+        'X-Supabase-Backend': 'PostgREST',
+        'X-Service-Status': 'Unavailable'
+      }
+    })
+  }
+
   try {
     const body = await request.json().catch(() => ({}))
     const response = await enhancedBridge.handleRpc(
@@ -299,12 +372,14 @@ const createRpcHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
-        'Access-Control-Allow-Origin': '*',
+        ...getPostgRESTHeaders(),
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
         'Access-Control-Allow-Methods': 'POST'
       }
     })
   } catch (error: any) {
+    console.error(`❌ PostgREST: RPC error for ${params.functionName}:`, error)
+    
     return HttpResponse.json(
       { 
         code: 'PGRST100',
@@ -314,10 +389,7 @@ const createRpcHandler = () => async ({ params, request }: any) => {
       },
       { 
         status: 500,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers: getPostgRESTHeaders()
       }
     )
   }
@@ -1066,7 +1138,7 @@ const createVFSFileGetHandler = () => async ({ params, request, projectInfo }: a
     console.log('✅ MSW: VFS file served', { bucket, path, token: !!token, status: response.status });
     return response;
   } catch (error) {
-    console.error('❌ MSW: VFS file GET error:', error);
+    console.error('❌ PostgREST: VFS file GET error:', error);
     return new HttpResponse(
       JSON.stringify({ error: 'file_request_failed', message: 'Failed to serve file' }),
       {
@@ -1102,7 +1174,7 @@ const createVFSFilePostHandler = () => async ({ params, request, projectInfo }: 
     console.log('✅ MSW: VFS file uploaded', { bucket, path, status: response.status });
     return response;
   } catch (error) {
-    console.error('❌ MSW: VFS file POST error:', error);
+    console.error('❌ PostgREST: VFS file POST error:', error);
     return new HttpResponse(
       JSON.stringify({ error: 'upload_failed', message: 'Failed to upload file' }),
       {
@@ -1136,7 +1208,7 @@ const createVFSFileDeleteHandler = () => async ({ params, request: _request, pro
     console.log('✅ MSW: VFS file deleted', { bucket, path, status: response.status });
     return response;
   } catch (error) {
-    console.error('❌ MSW: VFS file DELETE error:', error);
+    console.error('❌ PostgREST: VFS file DELETE error:', error);
     return new HttpResponse(
       JSON.stringify({ error: 'delete_failed', message: 'Failed to delete file' }),
       {
@@ -1323,7 +1395,7 @@ const createVFSListHandler = () => async ({ params, request, projectInfo }: any)
     console.log('✅ MSW: VFS list completed', { bucket, status: response.status });
     return response;
   } catch (error) {
-    console.error('❌ MSW: VFS list error:', error);
+    console.error('❌ PostgREST: VFS list error:', error);
     return new HttpResponse(
       JSON.stringify({ error: 'list_failed', message: 'Failed to list files' }),
       {

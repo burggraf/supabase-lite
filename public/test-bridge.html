@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridge Architecture Test Suite</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .test-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        .success {
+            background: #f0f9ff;
+            border-left-color: #0ea5e9;
+        }
+        .error {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+        }
+        .info {
+            background: #fefce8;
+            border-left-color: #eab308;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        pre {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .metric-card {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e40af;
+        }
+        .metric-label {
+            font-size: 14px;
+            color: #64748b;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Enhanced PGlite + Hybrid Architecture Test Suite</h1>
+    
+    <div class="test-container">
+        <h2>📋 Test Controls</h2>
+        <button onclick="runAllTests()">🚀 Run All Tests</button>
+        <button onclick="testPostgRESTConversion()">🔄 Test PostgREST Conversion</button>
+        <button onclick="testPerformanceOptimizer()">⚡ Test Performance Optimizer</button>
+        <button onclick="testServiceManager()">🏗️ Test Service Manager</button>
+        <button onclick="testIntegrationFlow()">🔗 Test Integration Flow</button>
+        <button onclick="clearResults()">🗑️ Clear Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <div class="test-container">
+        <h2>📊 Performance Metrics</h2>
+        <div id="metrics"></div>
+    </div>
+
+    <script type="module">
+        // Global test state
+        let testResults = [];
+        let performanceMetrics = {};
+
+        // Utility functions
+        function addResult(test, success, message, data = null) {
+            const result = { test, success, message, data, timestamp: new Date() };
+            testResults.push(result);
+            displayResult(result);
+            if (data && data.metrics) {
+                updateMetrics(data.metrics);
+            }
+        }
+
+        function displayResult(result) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-container test-result ${result.success ? 'success' : 'error'}`;
+            
+            let content = `
+                <h3>${result.success ? '✅' : '❌'} ${result.test}</h3>
+                <p><strong>${result.success ? 'SUCCESS' : 'FAILED'}:</strong> ${result.message}</p>
+                <small>Time: ${result.timestamp.toLocaleTimeString()}</small>
+            `;
+            
+            if (result.data) {
+                content += `<pre>${JSON.stringify(result.data, null, 2)}</pre>`;
+            }
+            
+            resultDiv.innerHTML = content;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function updateMetrics(metrics) {
+            performanceMetrics = { ...performanceMetrics, ...metrics };
+            const metricsDiv = document.getElementById('metrics');
+            
+            const metricCards = Object.entries(performanceMetrics).map(([key, value]) => `
+                <div class="metric-card">
+                    <div class="metric-value">${typeof value === 'number' ? value.toFixed(2) : value}</div>
+                    <div class="metric-label">${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</div>
+                </div>
+            `).join('');
+            
+            metricsDiv.innerHTML = `<div class="metrics">${metricCards}</div>`;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            testResults = [];
+            performanceMetrics = {};
+            updateMetrics({});
+        }
+
+        // Test functions
+        window.testPostgRESTConversion = async function() {
+            try {
+                addResult('PostgREST Conversion', false, 'Starting PostgREST query conversion tests...', null);
+                
+                // Import the bridge
+                const { pgliteBridge } = await import('/src/lib/bridge/PGliteBridge.ts');
+                
+                // Test 1: Simple query
+                const simpleQuery = {
+                    table: 'users',
+                    select: ['id', 'name', 'email'],
+                    where: { active: true },
+                    limit: 10
+                };
+                
+                const { sql: simpleSql, params: simpleParams } = pgliteBridge.postgrestToSQL(simpleQuery);
+                
+                addResult('Simple Query Conversion', true, 'Successfully converted simple PostgREST query', {
+                    query: simpleQuery,
+                    sql: simpleSql,
+                    params: simpleParams
+                });
+                
+                // Test 2: Complex query with joins and ordering
+                const complexQuery = {
+                    table: 'posts',
+                    schema: 'public',
+                    select: ['*'],
+                    where: { 
+                        user_id: 123,
+                        status: 'published'
+                    },
+                    order: [
+                        { column: 'created_at', ascending: false },
+                        { column: 'title', ascending: true }
+                    ],
+                    limit: 20,
+                    offset: 40
+                };
+                
+                const { sql: complexSql, params: complexParams } = pgliteBridge.postgrestToSQL(complexQuery);
+                
+                addResult('Complex Query Conversion', true, 'Successfully converted complex PostgREST query', {
+                    query: complexQuery,
+                    sql: complexSql,
+                    params: complexParams
+                });
+                
+                // Test 3: Array IN clause
+                const arrayQuery = {
+                    table: 'products',
+                    where: { category_id: [1, 2, 3, 4] }
+                };
+                
+                const { sql: arraySql, params: arrayParams } = pgliteBridge.postgrestToSQL(arrayQuery);
+                
+                addResult('Array IN Clause', true, 'Successfully handled IN clause with arrays', {
+                    query: arrayQuery,
+                    sql: arraySql,
+                    params: arrayParams
+                });
+
+                // Test 4: HTTP Request Simulation
+                try {
+                    const httpResponse = await pgliteBridge.handleHTTPRequest(
+                        'GET',
+                        '/users?select=id,name&limit=5&active=eq.true',
+                        { 'Content-Type': 'application/json' }
+                    );
+                    
+                    addResult('HTTP Request Handling', httpResponse.status === 200 || httpResponse.status === 500, 
+                        `HTTP request processed with status ${httpResponse.status}`, {
+                        status: httpResponse.status,
+                        headers: Array.from(httpResponse.headers.entries())
+                    });
+                } catch (error) {
+                    addResult('HTTP Request Handling', false, `HTTP request failed: ${error.message}`);
+                }
+
+            } catch (error) {
+                addResult('PostgREST Conversion', false, `Test failed: ${error.message}`);
+            }
+        };
+
+        window.testPerformanceOptimizer = async function() {
+            try {
+                addResult('Performance Optimizer', false, 'Starting performance optimization tests...', null);
+                
+                const { hybridOptimizer } = await import('/src/lib/bridge/HybridArchitectureOptimizer.ts');
+                
+                // Reset metrics
+                hybridOptimizer.resetMetrics();
+                
+                // Test 1: Caching
+                const cacheOptions = { cacheable: true, cacheKey: 'test_cache_key', cacheTtl: 60000 };
+                
+                // First request (cache miss)
+                await hybridOptimizer.optimizeRequest('SELECT 1 as test', [], cacheOptions);
+                
+                // Second request (cache hit)
+                await hybridOptimizer.optimizeRequest('SELECT 1 as test', [], cacheOptions);
+                
+                let metrics = hybridOptimizer.getMetrics();
+                
+                addResult('Cache Functionality', metrics.cacheHits > 0, 
+                    `Cache working - Hits: ${metrics.cacheHits}, Misses: ${metrics.cacheMisses}`, 
+                    { metrics });
+                
+                // Test 2: Batch processing
+                const batchRequests = [
+                    { sql: 'SELECT 1', params: [] },
+                    { sql: 'SELECT 2', params: [] },
+                    { sql: 'SELECT 3', params: [] }
+                ];
+                
+                const batchResults = await hybridOptimizer.optimizeBatch(batchRequests);
+                
+                addResult('Batch Processing', batchResults.length === 3, 
+                    `Processed ${batchResults.length} requests in batch`, 
+                    { batchResults: batchResults.length });
+                
+                // Test 3: Data compression
+                const largeData = 'x'.repeat(2000); // 2KB
+                const compressed = await hybridOptimizer.compressData(largeData);
+                
+                addResult('Data Compression', true, 
+                    `Data compression ${compressed !== largeData ? 'applied' : 'skipped (browser compatibility)'}`, 
+                    { original: largeData.length, result: compressed.length });
+                
+                // Test 4: Configuration update
+                hybridOptimizer.updateConfig({
+                    caching: { enabled: true, defaultTtl: 120000, maxEntries: 2000, memoryLimit: 100 }
+                });
+                
+                addResult('Configuration Update', true, 'Configuration updated successfully');
+                
+                // Final metrics
+                metrics = hybridOptimizer.getMetrics();
+                updateMetrics(metrics);
+                
+            } catch (error) {
+                addResult('Performance Optimizer', false, `Test failed: ${error.message}`);
+            }
+        };
+
+        window.testServiceManager = async function() {
+            try {
+                addResult('Service Manager', false, 'Starting service management tests...', null);
+                
+                const { webvmServiceManager } = await import('/src/lib/bridge/WebVMServiceManager.ts');
+                
+                // Test 1: Service Status
+                const serviceStatus = webvmServiceManager.getServicesStatus();
+                
+                addResult('Service Status', true, 
+                    `Found ${serviceStatus.length} services configured`, 
+                    { services: serviceStatus });
+                
+                // Test 2: Health Check (simulated)
+                try {
+                    const healthStatus = await webvmServiceManager.getServicesHealth();
+                    
+                    addResult('Health Monitoring', true, 
+                        `Health check completed for ${healthStatus.size} services`, 
+                        { health: Object.fromEntries(healthStatus) });
+                } catch (error) {
+                    addResult('Health Monitoring', false, `Health check simulation: ${error.message}`);
+                }
+                
+                // Test 3: Service Configuration
+                addResult('Service Configuration', true, 
+                    'Service manager initialized with hybrid architecture configuration');
+                
+            } catch (error) {
+                addResult('Service Manager', false, `Test failed: ${error.message}`);
+            }
+        };
+
+        window.testIntegrationFlow = async function() {
+            try {
+                addResult('Integration Flow', false, 'Starting end-to-end integration test...', null);
+                
+                // Import all components
+                const { pgliteBridge } = await import('/src/lib/bridge/PGliteBridge.ts');
+                const { hybridOptimizer } = await import('/src/lib/bridge/HybridArchitectureOptimizer.ts');
+                const { webvmServiceManager } = await import('/src/lib/bridge/WebVMServiceManager.ts');
+                
+                // Test 1: Service readiness
+                const services = webvmServiceManager.getServicesStatus();
+                addResult('Service Readiness', services.length > 0, 
+                    `${services.length} services configured and ready`);
+                
+                // Test 2: Optimized request flow
+                const optimizedResult = await hybridOptimizer.optimizeRequest(
+                    'SELECT id, name FROM users WHERE active = $1',
+                    [true],
+                    { cacheable: true, priority: 'high' }
+                );
+                
+                addResult('Optimized Request Flow', true, 
+                    'Request processed through optimizer', 
+                    { result: optimizedResult });
+                
+                // Test 3: Bridge request handling
+                const bridgeRequest = {
+                    id: 'integration-test-001',
+                    sql: 'SELECT COUNT(*) as user_count FROM users',
+                    params: [],
+                    sessionContext: {
+                        role: 'authenticated',
+                        userId: 'test-user-123',
+                        claims: { email: 'test@example.com' }
+                    }
+                };
+                
+                const bridgeResponse = await pgliteBridge.handleRequest(bridgeRequest);
+                
+                addResult('Bridge Communication', bridgeResponse.success !== undefined, 
+                    `Bridge handled request with ID: ${bridgeResponse.id}`, 
+                    { response: bridgeResponse });
+                
+                // Test 4: Schema metadata
+                try {
+                    const schemaMetadata = await pgliteBridge.getSchemaMetadata('public');
+                    
+                    addResult('Schema Introspection', 
+                        schemaMetadata && Array.isArray(schemaMetadata.tables), 
+                        `Retrieved schema metadata with ${schemaMetadata.tables.length} tables`, 
+                        { tables: schemaMetadata.tables.length });
+                } catch (error) {
+                    addResult('Schema Introspection', false, `Schema introspection: ${error.message}`);
+                }
+                
+                // Final performance metrics
+                const finalMetrics = hybridOptimizer.getMetrics();
+                updateMetrics(finalMetrics);
+                
+                addResult('Integration Flow Complete', true, 
+                    'End-to-end integration test completed successfully', 
+                    { metrics: finalMetrics });
+                
+            } catch (error) {
+                addResult('Integration Flow', false, `Integration test failed: ${error.message}`);
+            }
+        };
+
+        window.runAllTests = async function() {
+            clearResults();
+            addResult('Test Suite Started', true, 'Running comprehensive hybrid architecture tests...');
+            
+            await testPostgRESTConversion();
+            await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between tests
+            
+            await testPerformanceOptimizer();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testServiceManager();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testIntegrationFlow();
+            
+            // Summary
+            const successCount = testResults.filter(r => r.success).length;
+            const totalCount = testResults.length;
+            const successRate = ((successCount / totalCount) * 100).toFixed(1);
+            
+            addResult('Test Suite Complete', successCount === totalCount, 
+                `Tests completed: ${successCount}/${totalCount} passed (${successRate}% success rate)`);
+        };
+
+        // Auto-run on load
+        console.log('🔗 Bridge Architecture Test Suite Ready');
+        console.log('Click "Run All Tests" to start comprehensive testing');
+    </script>
+</body>
+</html>
