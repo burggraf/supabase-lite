@@ -55,11 +55,11 @@ export function WebVM() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden p-6">
-        <div className="h-full max-w-7xl mx-auto">
-          <div className="h-full grid grid-cols-1 xl:grid-cols-4 gap-6">
+      <div className="flex-1 overflow-auto p-6">
+        <div className="min-h-full max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 min-h-full">
             {/* WebVM Container - Main Column */}
-            <div className="xl:col-span-3 flex flex-col h-full">
+            <div className="xl:col-span-3 flex flex-col min-h-[600px]">
               <Tabs defaultValue="status" className="flex flex-col h-full">
                 <div className="flex-shrink-0 mb-4">
                   <TabsList className="grid w-full grid-cols-2">
@@ -68,14 +68,14 @@ export function WebVM() {
                   </TabsList>
                 </div>
                 
-                <TabsContent value="status" className="flex-1 flex flex-col space-y-4">
+                <TabsContent value="status" className="flex-1 flex flex-col space-y-4 min-h-0">
                   {/* Status Controls */}
                   <div className="flex-shrink-0">
                     <WebVMStatus />
                   </div>
                   
                   {/* WebVM Embed */}
-                  <div className="flex-1 min-h-0">
+                  <div className="flex-1 min-h-[400px]">
                     {webvmError ? (
                       <div className="h-full flex items-center justify-center bg-red-50 border border-red-200 rounded-lg">
                         <div className="text-center text-red-600">
@@ -104,16 +104,14 @@ export function WebVM() {
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="networking" className="flex-1">
-                  <div className="h-full overflow-auto">
-                    <TailscaleConfig />
-                  </div>
+                <TabsContent value="networking" className="flex-1 overflow-auto">
+                  <TailscaleConfig />
                 </TabsContent>
               </Tabs>
             </div>
 
             {/* Info Panel */}
-            <div className="xl:col-span-1 space-y-4 overflow-auto">
+            <div className="xl:col-span-1 space-y-4">
               {/* About WebVM */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-blue-900 mb-2">
