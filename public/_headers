@@ -1,6 +1,11 @@
 # Cloudflare Pages headers for Supabase Lite API endpoints
 # Set CORS headers for all API routes to allow external CLI access
 
+# Global headers for SharedArrayBuffer support (required for WebVM)
+/*
+  Cross-Origin-Embedder-Policy: credentialless
+  Cross-Origin-Opener-Policy: same-origin
+
 # Project-specific API routes
 /*/rest/*
   Access-Control-Allow-Origin: *
