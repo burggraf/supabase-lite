@@ -104,7 +104,7 @@ export function WebVM() {
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="networking" className="flex-1 overflow-auto">
+                <TabsContent value="networking" className="overflow-auto">
                   <TailscaleConfig />
                 </TabsContent>
               </Tabs>
