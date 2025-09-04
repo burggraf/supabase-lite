@@ -163,7 +163,19 @@ export const WebVMEmbed = forwardRef<WebVMEmbedRef, WebVMEmbedProps>(({
     <div className={`webvm-container relative ${className}`} role="group">
       {showSabWarning && (
         <div className="absolute top-2 left-2 right-2 bg-yellow-50 border border-yellow-200 rounded p-3 text-yellow-800 text-sm z-20">
-          <strong>Warning:</strong> SharedArrayBuffer is not available. WebVM may not work properly in this browser or configuration.
+          <div className="flex items-start gap-2">
+            <div className="flex-shrink-0 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center text-white text-xs font-bold mt-0.5">!</div>
+            <div className="flex-1">
+              <div className="font-semibold mb-1">SharedArrayBuffer Not Available</div>
+              <div className="text-xs space-y-1">
+                <div>WebVM requires SharedArrayBuffer for optimal performance.</div>
+                <div className="font-medium">If this is a static hosting deployment:</div>
+                <div>• The site may need Cross-Origin headers configured</div>
+                <div>• Contact your hosting provider or check deployment settings</div>
+                <div>• Try accessing the site via HTTPS if using HTTP</div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
       
@@ -185,15 +197,18 @@ export const WebVMEmbed = forwardRef<WebVMEmbedRef, WebVMEmbedProps>(({
           data-testid="error-indicator"
         >
           <div className="text-center text-red-600 px-4">
-            <div className="text-lg font-semibold mb-2">Failed to load WebVM</div>
+            <div className="text-lg font-semibold mb-2">WebVM Failed to Load</div>
             <div className="text-sm mb-3">
-              WebVM requires a modern browser with SharedArrayBuffer support.
+              WebVM requires SharedArrayBuffer support and proper Cross-Origin headers.
             </div>
             <div className="text-xs text-gray-600 space-y-1">
-              <div>• Check your internet connection</div>
-              <div>• Try Chrome, Firefox, or Safari (latest versions)</div>
-              <div>• Ensure JavaScript is enabled</div>
-              <div>• Some corporate networks may block WebAssembly</div>
+              <div><strong>Browser Requirements:</strong></div>
+              <div>• Chrome 92+, Firefox 95+, or Safari 15.2+</div>
+              <div>• JavaScript and WebAssembly enabled</div>
+              <div><strong>Hosting Requirements:</strong></div>
+              <div>• Cross-Origin-Embedder-Policy: credentialless</div>
+              <div>• Cross-Origin-Opener-Policy: same-origin</div>
+              <div>• HTTPS protocol (required for SharedArrayBuffer)</div>
             </div>
           </div>
         </div>
