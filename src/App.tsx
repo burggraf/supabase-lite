@@ -8,6 +8,7 @@ import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
 import { Storage } from '@/components/storage/Storage';
 import { AppHosting } from '@/components/app-hosting/AppHosting';
 import { EdgeFunctions } from '@/pages/EdgeFunctions';
+import { WebVM } from '@/pages/WebVM';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useRouter } from '@/hooks/useRouter';
@@ -183,6 +184,12 @@ function App() {
         return (
           <ErrorBoundary>
             <EdgeFunctions />
+          </ErrorBoundary>
+        );
+      case 'webvm':
+        return (
+          <ErrorBoundary>
+            <WebVM />
           </ErrorBoundary>
         );
       case 'api-test':

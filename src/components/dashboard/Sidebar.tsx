@@ -12,7 +12,8 @@ import {
   Database,
   Settings,
   TestTube,
-  HardDrive
+  HardDrive,
+  Monitor
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +34,7 @@ const iconMap = {
   Settings,
   TestTube,
   HardDrive,
+  Monitor,
 };
 
 interface SidebarProps {
@@ -87,6 +89,12 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
       id: 'edge-functions',
       label: 'Edge Functions',
       icon: 'Code2' as keyof typeof iconMap,
+      badge: null,
+    },
+    {
+      id: 'webvm',
+      label: 'WebVM Runtime',
+      icon: 'Monitor' as keyof typeof iconMap,
       badge: null,
     },
     {
