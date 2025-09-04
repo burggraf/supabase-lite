@@ -4,8 +4,11 @@ import { Input } from '../ui/input';
 // Card imports removed - not used in this component
 import { ChevronLeft, ChevronDown, Bot, FileText, Plus } from 'lucide-react';
 import { SimpleCodeEditor } from './SimpleCodeEditor';
+import NetworkRequirementsAnalyzer from './NetworkRequirementsAnalyzer';
+import { templates } from './FunctionTemplates';
 import { vfsManager } from '../../lib/vfs/VFSManager';
 import { projectManager } from '../../lib/projects/ProjectManager';
+import { WebVMManager } from '../../lib/webvm/WebVMManager';
 import { toast } from 'sonner';
 
 interface FunctionEditorProps {
@@ -29,10 +32,30 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
   const [currentFunctionName, setCurrentFunctionName] = useState(functionName);
   const [template, setTemplate] = useState('hello-world');
   const [loading, setLoading] = useState(true);
+  const [currentCode, setCurrentCode] = useState('');
 
   useEffect(() => {
     loadFunctionFiles();
   }, [functionName]);
+
+  // Load template code when template changes
+  const loadTemplate = async (templateId: string) => {
+    const templateObj = templates.find(t => t.id === templateId);
+    if (templateObj && selectedFile) {
+      try {
+        // Update VFS with template code
+        await vfsManager.updateFile(selectedFile, templateObj.code);
+        setCurrentCode(templateObj.code);
+        toast.success(`Loaded ${templateObj.name} template`);
+      } catch (error) {
+        console.error('Failed to save template to VFS:', error);
+        toast.error('Failed to load template');
+      }
+    } else if (templateObj && !selectedFile) {
+      console.warn('No file selected for template loading');
+      toast.error('Please select a file first');
+    }
+  };
 
   const loadFunctionFiles = async () => {
     try {
@@ -104,8 +127,48 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
 
   const handleDeploy = async () => {
     try {
-      // TODO: Implement actual deployment
-      toast.success(`Function "${currentFunctionName}" deployed successfully!`);
+      const activeProject = projectManager.getActiveProject();
+      if (!activeProject) {
+        toast.error('No active project found');
+        return;
+      }
+
+      // Get the main function file (index.ts or similar)
+      const mainFilePath = `edge-functions/${currentFunctionName}/index.ts`;
+      
+      try {
+        // Get function code from VFS
+        const file = await vfsManager.readFile(mainFilePath);
+        const functionCode = file?.content;
+        
+        if (!functionCode) {
+          toast.error(`Function file not found at ${mainFilePath}`);
+          return;
+        }
+        
+        // Get WebVMManager and deploy the function
+        const webvmManager = WebVMManager.getInstance();
+        
+        // Check if WebVM is running
+        if (webvmManager.getStatus().state !== 'running') {
+          toast.error('WebVM is not running. Please start WebVM first.');
+          return;
+        }
+        
+        // Deploy to WebVM
+        const deployment = await webvmManager.deployFunction(currentFunctionName, functionCode);
+        
+        if (deployment.success) {
+          toast.success(`Function "${currentFunctionName}" deployed successfully to WebVM!`);
+        } else {
+          toast.error(`Deployment failed: ${deployment.error}`);
+        }
+        
+      } catch (vfsError) {
+        console.error('Failed to read function code:', vfsError);
+        toast.error(`Failed to read function code from ${mainFilePath}`);
+      }
+      
     } catch (error) {
       console.error('Failed to deploy function:', error);
       toast.error('Failed to deploy function');
@@ -172,7 +235,33 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
               <option value="hello-world">Templates</option>
               <option value="database-access">Database Access</option>
               <option value="storage-upload">Storage Upload</option>
+              <optgroup label="Networking Tests">
+                <option value="external-api-test">🌐 External API Test</option>
+                <option value="network-health-check">🏥 Network Health Check</option>
+                <option value="api-playground">🎮 API Playground</option>
+              </optgroup>
+              <optgroup label="Frameworks & APIs">
+                <option value="node-api">Node Built-in API</option>
+                <option value="express">Express Server</option>
+                <option value="openai-completion">OpenAI Text Completion</option>
+                <option value="stripe-webhook">Stripe Webhook</option>
+                <option value="resend-email">Send Emails</option>
+              </optgroup>
+              <optgroup label="Advanced">
+                <option value="image-transform">Image Transformation</option>
+                <option value="websocket-server">WebSocket Server</option>
+              </optgroup>
             </select>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => loadTemplate(template)}
+              disabled={template === 'hello-world'}
+              className="text-xs"
+            >
+              <FileText className="w-3 w-3 mr-1" />
+              Load Template
+            </Button>
           </div>
           <Button variant="outline" size="sm">
             <Bot className="w-4 h-4 mr-2" />
@@ -216,7 +305,19 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
           <SimpleCodeEditor
             selectedFile={selectedFile}
             onFileChange={loadFunctionFiles}
+            onCodeChange={setCurrentCode}
+            externalContent={currentCode}
           />
+        </div>
+
+        {/* Right Panel - Network Requirements */}
+        <div className="w-80 border-l border-gray-200 bg-gray-50 overflow-y-auto">
+          <div className="p-4">
+            <NetworkRequirementsAnalyzer
+              functionCode={currentCode}
+              functionName={currentFunctionName}
+            />
+          </div>
         </div>
       </div>
 

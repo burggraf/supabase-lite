@@ -57,6 +57,13 @@ export const NAVIGATION_ITEMS = [
     disabled: false,
   },
   {
+    id: 'webvm',
+    label: 'WebVM Runtime',
+    icon: 'Monitor',
+    path: '/webvm',
+    disabled: false,
+  },
+  {
     id: 'realtime',
     label: 'Realtime',
     icon: 'Zap',

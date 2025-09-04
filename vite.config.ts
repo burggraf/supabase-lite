@@ -233,6 +233,73 @@ function websocketBridge(): Plugin {
         // DEBUG: Log EVERY request that hits Vite middleware
         console.log('🔥 VITE MIDDLEWARE HIT:', req.url, req.method)
         
+        // Handle WebVM proxy requests
+        if (req.url && req.url.startsWith('/webvm-proxy/')) {
+          console.log('🌐 WebVM proxy request:', req.url)
+          try {
+            const targetPath = req.url.replace('/webvm-proxy/', '')
+            
+            // Construct full WebVM.io URL
+            let targetUrl
+            if (!targetPath || targetPath === '') {
+              targetUrl = 'https://webvm.io/'
+            } else if (targetPath.startsWith('https://webvm.io/')) {
+              // Already a full URL
+              targetUrl = targetPath
+            } else {
+              // Relative path, prepend webvm.io base URL
+              targetUrl = `https://webvm.io/${targetPath}`
+            }
+            
+            console.log('🎯 Proxying to:', targetUrl)
+            
+            // Fetch from WebVM.io
+            const response = await fetch(targetUrl)
+            
+            // Handle different content types appropriately
+            let content
+            const contentType = response.headers.get('content-type') || ''
+            if (contentType.includes('text/') || contentType.includes('application/javascript') || contentType.includes('application/json')) {
+              content = await response.text()
+            } else {
+              // For binary content (images, etc.), get as buffer
+              content = Buffer.from(await response.arrayBuffer())
+            }
+            
+            // Serve with cross-origin isolation headers
+            const headers: Record<string, string> = {
+              'Content-Type': response.headers.get('content-type') || 'text/html',
+              'Cross-Origin-Embedder-Policy': 'credentialless',
+              'Cross-Origin-Opener-Policy': 'same-origin',
+              'Access-Control-Allow-Origin': '*',
+              'Cache-Control': 'no-cache'
+            }
+            
+            // Forward other relevant headers
+            const contentLength = response.headers.get('content-length')
+            if (contentLength) {
+              headers['Content-Length'] = contentLength
+            } else if (content instanceof Buffer) {
+              headers['Content-Length'] = content.length.toString()
+            }
+            
+            // Forward cache-related headers from original response
+            const etag = response.headers.get('etag')
+            const lastModified = response.headers.get('last-modified')
+            if (etag) headers['ETag'] = etag
+            if (lastModified) headers['Last-Modified'] = lastModified
+            
+            res.writeHead(response.status || 200, headers)
+            res.end(content)
+            return
+          } catch (error) {
+            console.error('❌ WebVM proxy error:', error)
+            res.writeHead(500, { 'Content-Type': 'text/plain' })
+            res.end('Failed to load WebVM')
+            return
+          }
+        }
+        
         // Check if this is an API route or app hosting route we should handle
         const isApiRoute = req.url && (
           // Standard API routes
@@ -557,6 +624,12 @@ export default defineConfig({
       // Ensure HMR works well with Service Worker
       overlay: true, // Show overlay for build errors
       clientPort: 5173 // Explicit client port for HMR
+    },
+    headers: {
+      // Enable cross-origin isolation for SharedArrayBuffer support (required by WebVM)
+      // Use 'credentialless' instead of 'require-corp' to allow embedding external iframes
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+      'Cross-Origin-Opener-Policy': 'same-origin'
     }
   }
 })

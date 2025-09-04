@@ -141,6 +141,96 @@ Object.defineProperty(Element.prototype, 'scrollIntoView', {
   writable: true
 })
 
+// Mock AbortController for WebVM Database Bridge
+if (typeof global.AbortController === 'undefined') {
+  class MockAbortController {
+    signal = {
+      aborted: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    }
+    
+    abort() {
+      this.signal.aborted = true
+    }
+  }
+  
+  global.AbortController = MockAbortController as any
+}
+
+// Mock parent window and postMessage for WebVM Database Bridge
+const mockParentWindow = {
+  postMessage: vi.fn((message: any, origin: string) => {
+    // Simulate the parent window handling database requests
+    if (message.type === 'database-request') {
+      setTimeout(async () => {
+        try {
+          // Simulate HTTP request to MSW handlers
+          const url = `http://localhost:5173${message.request.path}`
+          
+          console.log(`📦 Mock Parent Window: Processing ${message.request.method} ${url}`)
+          console.log(`📦 Mock Parent Window: Headers:`, message.request.headers)
+          
+          const fetchOptions: RequestInit = {
+            method: message.request.method,
+            headers: message.request.headers
+          }
+
+          if (message.request.body && ['POST', 'PUT', 'PATCH'].includes(message.request.method)) {
+            fetchOptions.body = message.request.body
+            console.log(`📦 Mock Parent Window: Body:`, message.request.body)
+          }
+
+          // Use the global fetch (which is intercepted by MSW)
+          const response = await fetch(url, fetchOptions)
+          
+          console.log(`📦 Mock Parent Window: Response status ${response.status}`)
+          
+          const responseData = await response.json()
+
+          const databaseResponse = {
+            status: response.status,
+            data: responseData.data || responseData,
+            message: responseData.message,
+            error: response.ok ? undefined : (responseData.error || responseData.message || 'Request failed')
+          }
+
+          // Send response back via window message event
+          window.dispatchEvent(new MessageEvent('message', {
+            data: {
+              type: 'database-response',
+              requestId: message.requestId,
+              response: databaseResponse
+            },
+            origin: origin
+          }))
+
+        } catch (error) {
+          // Send error response back
+          window.dispatchEvent(new MessageEvent('message', {
+            data: {
+              type: 'database-response',
+              requestId: message.requestId,
+              response: {
+                status: 500,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                message: 'Failed to process database request'
+              }
+            },
+            origin: origin
+          }))
+        }
+      }, 10) // Small delay to simulate async behavior
+    }
+  })
+}
+
+Object.defineProperty(window, 'parent', {
+  value: mockParentWindow,
+  writable: true
+})
+
 // Note: fetch is provided by MSW, don't mock it globally
 
 // Global database manager instance mock helpers
