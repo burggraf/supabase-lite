@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { FunctionsList } from '@/components/edge-functions/FunctionsList';
 import { SecretsManager } from '@/components/edge-functions/SecretsManager';
 import { FunctionEditor } from '@/components/edge-functions/FunctionEditor';
-import TailscaleConfig from '@/components/edge-functions/TailscaleConfig';
 import { templates } from '@/components/edge-functions/FunctionTemplates';
 import { vfsManager } from '@/lib/vfs/VFSManager';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { toast } from 'sonner';
 
 export function EdgeFunctions() {
-  const [currentView, setCurrentView] = useState<'functions' | 'secrets' | 'networking'>('functions');
+  const [currentView, setCurrentView] = useState<'functions' | 'secrets'>('functions');
   const [currentFunctionName, setCurrentFunctionName] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -169,11 +168,6 @@ Deno.serve(async (req: Request) => {
     setIsCreating(false);
   };
 
-  const handleGoToNetworking = () => {
-    setCurrentView('networking');
-    setCurrentFunctionName(null);
-    setIsCreating(false);
-  };
 
   return (
     <div className="flex h-full">
@@ -203,16 +197,6 @@ Deno.serve(async (req: Request) => {
           >
             Secrets
           </div>
-          <div 
-            className={`text-sm px-3 py-2 cursor-pointer rounded-md ${
-              currentView === 'networking' 
-                ? 'font-medium text-gray-900 bg-gray-200' 
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-            onClick={handleGoToNetworking}
-          >
-            Networking
-          </div>
         </div>
       </div>
 
@@ -229,12 +213,8 @@ Deno.serve(async (req: Request) => {
             onEditFunction={handleEditFunction}
             onGoToSecrets={handleGoToSecrets}
           />
-        ) : currentView === 'secrets' ? (
-          <SecretsManager projectId={projectManager.getActiveProject()?.id} />
         ) : (
-          <div className="p-6">
-            <TailscaleConfig />
-          </div>
+          <SecretsManager projectId={projectManager.getActiveProject()?.id} />
         )}
       </div>
     </div>

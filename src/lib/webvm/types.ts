@@ -40,7 +40,7 @@ export interface WebVMStatus {
   }
   network: {
     connected: boolean
-    tailscaleStatus: 'connected' | 'disconnected' | 'connecting'
+    tailscaleStatus: 'connected' | 'disconnected' | 'connecting' | 'error'
   }
   functions: {
     deployed: string[]             // Function names
@@ -131,7 +131,7 @@ export interface WebVMMetrics {
 
 // Event Types
 export interface WebVMEvent {
-  type: 'started' | 'stopped' | 'error' | 'function-deployed' | 'function-removed' | 'function-executed'
+  type: 'started' | 'stopped' | 'error' | 'function-deployed' | 'function-removed' | 'function-executed' | 'postgrest-ready' | 'postgrest-installed' | 'networking-ready'
   timestamp: Date
   data: Record<string, unknown>
 }

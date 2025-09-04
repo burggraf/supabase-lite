@@ -5,8 +5,10 @@
  */
 
 import { useState, useRef, useCallback } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { WebVMStatus } from '@/components/webvm/WebVMStatus'
 import { WebVMEmbed, WebVMEmbedRef } from '@/components/webvm/WebVMEmbed'
+import TailscaleConfig from '@/components/edge-functions/TailscaleConfig'
 import { WebVMManager } from '@/lib/webvm/WebVMManager'
 
 export function WebVM() {
@@ -58,39 +60,56 @@ export function WebVM() {
           <div className="h-full grid grid-cols-1 xl:grid-cols-4 gap-6">
             {/* WebVM Container - Main Column */}
             <div className="xl:col-span-3 flex flex-col h-full">
-              {/* Status Controls */}
-              <div className="flex-shrink-0 mb-4">
-                <WebVMStatus />
-              </div>
-              
-              {/* WebVM Embed */}
-              <div className="flex-1 min-h-0">
-                {webvmError ? (
-                  <div className="h-full flex items-center justify-center bg-red-50 border border-red-200 rounded-lg">
-                    <div className="text-center text-red-600">
-                      <div className="text-lg font-semibold mb-2">WebVM Load Error</div>
-                      <div className="text-sm">{webvmError}</div>
-                      <button 
-                        onClick={() => window.location.reload()} 
-                        className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                      >
-                        Reload Page
-                      </button>
-                    </div>
+              <Tabs defaultValue="status" className="flex flex-col h-full">
+                <div className="flex-shrink-0 mb-4">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="status">WebVM Status</TabsTrigger>
+                    <TabsTrigger value="networking">Networking</TabsTrigger>
+                  </TabsList>
+                </div>
+                
+                <TabsContent value="status" className="flex-1 flex flex-col space-y-4">
+                  {/* Status Controls */}
+                  <div className="flex-shrink-0">
+                    <WebVMStatus />
                   </div>
-                ) : (
-                  <WebVMEmbed 
-                    ref={webvmRef}
-                    width="100%" 
-                    height="100%" 
-                    variant="debian"
-                    className="h-full"
-                    onLoad={handleWebVMLoad}
-                    onError={handleWebVMError}
-                    onMessage={handleWebVMMessage}
-                  />
-                )}
-              </div>
+                  
+                  {/* WebVM Embed */}
+                  <div className="flex-1 min-h-0">
+                    {webvmError ? (
+                      <div className="h-full flex items-center justify-center bg-red-50 border border-red-200 rounded-lg">
+                        <div className="text-center text-red-600">
+                          <div className="text-lg font-semibold mb-2">WebVM Load Error</div>
+                          <div className="text-sm">{webvmError}</div>
+                          <button 
+                            onClick={() => window.location.reload()} 
+                            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                          >
+                            Reload Page
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <WebVMEmbed 
+                        ref={webvmRef}
+                        width="100%" 
+                        height="100%" 
+                        variant="debian"
+                        className="h-full"
+                        onLoad={handleWebVMLoad}
+                        onError={handleWebVMError}
+                        onMessage={handleWebVMMessage}
+                      />
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="networking" className="flex-1">
+                  <div className="h-full overflow-auto">
+                    <TailscaleConfig />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
 
             {/* Info Panel */}
@@ -127,7 +146,7 @@ export function WebVM() {
                   </li>
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                    Network connectivity via Tailscale
+                    Network connectivity (see Networking tab)
                   </li>
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
@@ -152,10 +171,14 @@ export function WebVM() {
                   </li>
                   <li className="flex gap-2">
                     <span className="text-gray-400">3.</span>
-                    <span>Install Deno and Supabase Edge Runtime</span>
+                    <span>Configure networking in Networking tab (optional)</span>
                   </li>
                   <li className="flex gap-2">
                     <span className="text-gray-400">4.</span>
+                    <span>Install Deno and Supabase Edge Runtime</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-gray-400">5.</span>
                     <span>Deploy and test your Edge Functions</span>
                   </li>
                 </ol>

@@ -430,6 +430,9 @@ export class WebVMManager extends SimpleEventEmitter {
         })
         
         console.log('✅ PostgREST runtime ready and connected to PGlite bridge')
+        
+        // Auto-start Tailscale networking if auth key is available
+        await this.autoStartNetworking()
       }, 1000) // PostgREST starts 1 second after installation
       
       this.emit('postgrest-installed', {
@@ -440,6 +443,47 @@ export class WebVMManager extends SimpleEventEmitter {
       
       console.log('✅ PostgREST installed in WebVM')
     }, 3000) // PostgREST installation takes 3 seconds (after Deno)
+  }
+
+  /**
+   * Automatically start Tailscale networking if auth key is available
+   */
+  private async autoStartNetworking(): Promise<void> {
+    try {
+      // Check if Tailscale is configured
+      const config = tailscaleService.loadConfig()
+      if (!config || !config.authKey) {
+        console.log('⚠️  No Tailscale auth key found, skipping networking startup')
+        return
+      }
+
+      console.log('🔧 Tailscale auth key found, starting networking automatically...')
+      
+      // Attempt to connect
+      const success = await tailscaleService.connect()
+      if (success) {
+        console.log('✅ Tailscale networking started successfully')
+        this.status.network.connected = true
+        this.status.network.tailscaleStatus = 'connected'
+        
+        // Emit networking ready event
+        this.emit('networking-ready', {
+          type: 'networking-ready',
+          timestamp: new Date(),
+          data: {
+            status: tailscaleService.getStatus()
+          }
+        } as WebVMEvent)
+      } else {
+        console.log('❌ Failed to start Tailscale networking automatically')
+        this.status.network.connected = false
+        this.status.network.tailscaleStatus = 'error'
+      }
+    } catch (error) {
+      console.error('❌ Error during automatic networking startup:', error)
+      this.status.network.connected = false
+      this.status.network.tailscaleStatus = 'error'
+    }
   }
 
   /**
