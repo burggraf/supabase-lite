@@ -7,6 +7,7 @@
  */
 
 import { WebVMSupabaseClient } from './WebVMSupabaseClient'
+import { tailscaleService } from './WebVMTailscaleService'
 import type { 
   FunctionInvocation, 
   FunctionResponse, 
@@ -62,6 +63,38 @@ export class WebVMFunctionExecutor {
     const startTime = Date.now()
 
     try {
+      // Check network requirements before execution
+      const networkRequirements = tailscaleService.analyzeNetworkRequirements(functionCode)
+      const needsNetworking = networkRequirements.length > 0
+      const hasNetworking = tailscaleService.isNetworkingAvailable()
+      
+      if (needsNetworking && !hasNetworking) {
+        const requirementsList = networkRequirements.map(req => `- ${req.description}`).join('\n')
+        
+        return {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            error: 'NetworkingUnavailable',
+            message: 'This function requires external networking but Tailscale is not connected.',
+            details: 'The following network operations were detected in your function code:',
+            requirements: networkRequirements,
+            solution: 'Configure Tailscale networking in the Edge Functions settings to enable external API access.'
+          }),
+          logs: [
+            'Function execution blocked - external networking required',
+            'Detected network requirements:',
+            requirementsList,
+            'Configure Tailscale to enable external networking'
+          ],
+          metrics: {
+            duration: Date.now() - startTime,
+            memory: 0,
+            cpu: 0
+          }
+        }
+      }
+      
       // Set up authentication context if present
       if (invocation.headers['Authorization']) {
         this.supabaseClient.setAuth(invocation.headers['Authorization'])

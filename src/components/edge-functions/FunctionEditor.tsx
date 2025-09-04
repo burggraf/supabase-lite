@@ -4,6 +4,7 @@ import { Input } from '../ui/input';
 // Card imports removed - not used in this component
 import { ChevronLeft, ChevronDown, Bot, FileText, Plus } from 'lucide-react';
 import { SimpleCodeEditor } from './SimpleCodeEditor';
+import NetworkRequirementsAnalyzer from './NetworkRequirementsAnalyzer';
 import { vfsManager } from '../../lib/vfs/VFSManager';
 import { projectManager } from '../../lib/projects/ProjectManager';
 import { WebVMManager } from '../../lib/webvm/WebVMManager';
@@ -30,6 +31,7 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
   const [currentFunctionName, setCurrentFunctionName] = useState(functionName);
   const [template, setTemplate] = useState('hello-world');
   const [loading, setLoading] = useState(true);
+  const [currentCode, setCurrentCode] = useState('');
 
   useEffect(() => {
     loadFunctionFiles();
@@ -257,7 +259,18 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
           <SimpleCodeEditor
             selectedFile={selectedFile}
             onFileChange={loadFunctionFiles}
+            onCodeChange={setCurrentCode}
           />
+        </div>
+
+        {/* Right Panel - Network Requirements */}
+        <div className="w-80 border-l border-gray-200 bg-gray-50 overflow-y-auto">
+          <div className="p-4">
+            <NetworkRequirementsAnalyzer
+              functionCode={currentCode}
+              functionName={currentFunctionName}
+            />
+          </div>
         </div>
       </div>
 

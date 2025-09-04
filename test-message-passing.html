@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test WebVM Message Passing Bridge</title>
+</head>
+<body>
+    <h1>WebVM Message Passing Bridge Test</h1>
+    <button id="testButton">Test Database Connection</button>
+    <div id="results"></div>
+
+    <script>
+        // Simulate what happens inside WebVM
+        async function testDatabaseBridge() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Testing message passing bridge...</p>';
+
+            try {
+                // Create a test database request (what WebVMDatabaseBridge would send)
+                const requestId = `test-${Date.now()}`;
+                const messageRequest = {
+                    type: 'database-request',
+                    requestId,
+                    request: {
+                        method: 'GET',
+                        path: '/rest/v1/profiles?select=id,username,avatar_url&limit=5',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                };
+
+                // Set up response listener
+                const responsePromise = new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Request timeout'));
+                    }, 5000);
+
+                    const messageHandler = (event) => {
+                        if (event.data.type === 'database-response' && event.data.requestId === requestId) {
+                            clearTimeout(timeout);
+                            window.removeEventListener('message', messageHandler);
+                            resolve(event.data.response);
+                        }
+                    };
+
+                    window.addEventListener('message', messageHandler);
+                });
+
+                // Send message to parent (in this case, self)
+                window.postMessage(messageRequest, window.location.origin);
+
+                // Wait for response
+                const response = await responsePromise;
+                
+                results.innerHTML = `
+                    <h3>✅ Message Passing Bridge Test Results:</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong> ${JSON.stringify(response, null, 2)}</p>
+                    <p><strong>Result:</strong> ${response.status === 200 ? 'SUCCESS' : 'FAILED'}</p>
+                `;
+
+            } catch (error) {
+                results.innerHTML = `
+                    <h3>❌ Test Failed:</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        }
+
+        // Set up mock parent window message handler (simulating WebVMEmbed)
+        window.addEventListener('message', async (event) => {
+            if (event.data.type === 'database-request') {
+                const { requestId, request } = event.data;
+                
+                try {
+                    console.log(`Processing database request: ${request.method} ${request.path}`);
+                    
+                    // Make actual HTTP request to test server
+                    const url = `http://localhost:5174${request.path}`;
+                    const response = await fetch(url, {
+                        method: request.method,
+                        headers: request.headers
+                    });
+                    
+                    const responseData = await response.json();
+                    
+                    // Send response back
+                    window.postMessage({
+                        type: 'database-response',
+                        requestId,
+                        response: {
+                            status: response.status,
+                            data: responseData.data || responseData,
+                            message: responseData.message,
+                            error: response.ok ? undefined : (responseData.error || 'Request failed')
+                        }
+                    }, window.location.origin);
+
+                } catch (error) {
+                    // Send error response
+                    window.postMessage({
+                        type: 'database-response',
+                        requestId,
+                        response: {
+                            status: 500,
+                            error: error.message,
+                            message: 'Failed to process database request'
+                        }
+                    }, window.location.origin);
+                }
+            }
+        });
+
+        // Attach event listener
+        document.getElementById('testButton').addEventListener('click', testDatabaseBridge);
+    </script>
+</body>
+</html>

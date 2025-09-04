@@ -19,6 +19,7 @@ import {
 import type { WebVMEmbedRef } from '@/components/webvm/WebVMEmbed'
 import { WebVMFunctionExecutor } from './WebVMFunctionExecutor'
 import { projectManager } from '../projects/ProjectManager'
+import { tailscaleService } from './WebVMTailscaleService'
 
 /**
  * Simple browser-compatible event emitter
@@ -250,6 +251,7 @@ export class WebVMManager extends SimpleEventEmitter {
         this.startTime = Date.now()
         this.status.uptime = 0
         this.status.network.connected = true
+        this.status.network.tailscaleStatus = tailscaleService.isNetworkingAvailable() ? 'connected' : 'disconnected'
         this.status.resources.memory.total = this.config.memory
         this.status.resources.memory.used = '128M'
         this.status.resources.cpu.cores = this.config.cpu
@@ -372,6 +374,21 @@ export class WebVMManager extends SimpleEventEmitter {
   }
 
   /**
+   * Check if function requires external networking
+   */
+  checkNetworkRequirements(code: string): { needsNetworking: boolean; available: boolean; requirements: any[] } {
+    const requirements = tailscaleService.analyzeNetworkRequirements(code)
+    const needsNetworking = requirements.length > 0
+    const available = !needsNetworking || tailscaleService.isNetworkingAvailable()
+    
+    return {
+      needsNetworking,
+      available,
+      requirements
+    }
+  }
+
+  /**
    * Deploy function to WebVM Deno runtime
    */
   async deployFunction(functionName: string, code: string): Promise<FunctionDeployment> {
@@ -385,6 +402,12 @@ export class WebVMManager extends SimpleEventEmitter {
         codeSize: code.length,
         compilationTime: null
       }
+    }
+
+    // Check network requirements and warn if needed
+    const networkCheck = this.checkNetworkRequirements(code)
+    if (networkCheck.needsNetworking && !networkCheck.available) {
+      console.warn(`Function '${functionName}' requires external networking but Tailscale is not connected. Function will deploy but may fail at runtime.`)
     }
 
     if (!this.functionExecutor) {

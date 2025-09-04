@@ -10,6 +10,7 @@ import * as monaco from 'monaco-editor';
 interface SimpleCodeEditorProps {
   selectedFile: string | null;
   onFileChange?: () => void;
+  onCodeChange?: (code: string) => void;
 }
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -31,6 +32,7 @@ const getLanguageFromFileName = (fileName: string): string => {
 export const SimpleCodeEditor: React.FC<SimpleCodeEditorProps> = ({
   selectedFile,
   onFileChange,
+  onCodeChange,
 }) => {
   const [content, setContent] = useState<string>('');
   const [originalContent, setOriginalContent] = useState<string>('');
@@ -66,6 +68,9 @@ export const SimpleCodeEditor: React.FC<SimpleCodeEditorProps> = ({
       setContent(fileContent);
       setOriginalContent(fileContent);
       setIsDirty(false);
+      
+      // Notify parent of initial code content for network analysis
+      onCodeChange?.(fileContent);
     } catch (error) {
       console.error('Failed to load file:', error);
       toast.error('Failed to load file');
@@ -102,6 +107,9 @@ export const SimpleCodeEditor: React.FC<SimpleCodeEditorProps> = ({
     
     const dirty = newContent !== originalContent;
     setIsDirty(dirty);
+
+    // Notify parent of code change for network analysis
+    onCodeChange?.(newContent);
 
     // Auto-save after 2 seconds of inactivity
     if (saveTimeoutRef.current) {

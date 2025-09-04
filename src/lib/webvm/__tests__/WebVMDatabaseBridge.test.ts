@@ -296,7 +296,7 @@ describe('WebVMDatabaseBridge', () => {
     it('should transform Supabase client requests to HTTP format', () => {
       const supabaseRequest = {
         table: 'users',
-        method: 'select',
+        method: 'select' as const,
         filters: [
           { column: 'age', operator: 'gte', value: 18 },
           { column: 'status', operator: 'eq', value: 'active' }
@@ -313,7 +313,7 @@ describe('WebVMDatabaseBridge', () => {
     it('should handle complex PostgREST queries', () => {
       const complexRequest = {
         table: 'posts',
-        method: 'select',
+        method: 'select' as const,
         select: ['title', 'author(name)', 'tags(name)'],
         filters: [
           { column: 'published_at', operator: 'gte', value: '2023-01-01' },

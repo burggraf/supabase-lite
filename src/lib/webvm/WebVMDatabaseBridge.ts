@@ -105,7 +105,7 @@ export class WebVMDatabaseBridge {
 
     return new Promise((resolve, reject) => {
       // Set up timeout
-      const timeoutId = setTimeout(() => {
+      const timeoutId = window.setTimeout(() => {
         this.cleanupMessageListener(requestId)
         console.error('❌ WebVM Database Bridge: Request timeout')
         resolve({
@@ -118,7 +118,7 @@ export class WebVMDatabaseBridge {
       // Set up response listener
       const messageHandler = (event: MessageEvent) => {
         if (event.data.type === 'database-response' && event.data.requestId === requestId) {
-          clearTimeout(timeoutId)
+          window.clearTimeout(timeoutId)
           this.cleanupMessageListener(requestId)
           
           const response = event.data.response as DatabaseResponse

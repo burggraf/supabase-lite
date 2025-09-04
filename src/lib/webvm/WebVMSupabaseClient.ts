@@ -87,16 +87,18 @@ class WebVMPostgrestQueryBuilder<T> implements PostgrestQueryBuilder<T> {
   private isSingle: boolean = false
   private countOption: 'exact' | 'planned' | 'estimated' | null = null
   private prefer: string[] = []
+  private apikey: string | null = null
 
   constructor(
     tableName: string, 
     bridge: WebVMDatabaseBridge, 
     auth: string | null = null,
-    private apikey: string | null = null
+    apikey: string | null = null
   ) {
     this.tableName = tableName
     this.bridge = bridge
     this.auth = auth
+    this.apikey = apikey
   }
 
   select(columns: string = '*', options?: { count?: 'exact' | 'planned' | 'estimated' }): PostgrestQueryBuilder<T> {
