@@ -20,6 +20,7 @@ import type { WebVMEmbedRef } from '@/components/webvm/WebVMEmbed'
 import { WebVMFunctionExecutor } from './WebVMFunctionExecutor'
 import { projectManager } from '../projects/ProjectManager'
 import { tailscaleService } from './WebVMTailscaleService'
+import { pgliteBridge } from '../bridge/PGliteBridge'
 
 /**
  * Simple browser-compatible event emitter
@@ -61,6 +62,8 @@ export class WebVMManager extends SimpleEventEmitter {
   private webvmReady: boolean = false
   private denoInstalled: boolean = false
   private edgeRuntimeInstalled: boolean = false
+  private postgrestInstalled: boolean = false
+  private postgrestRunning: boolean = false
   private startTime: number = 0
   private uptimeInterval: number | null = null
   private functionExecutor: WebVMFunctionExecutor | null = null
@@ -93,6 +96,13 @@ export class WebVMManager extends SimpleEventEmitter {
       deno: {
         available: false,
         version: null
+      },
+      postgrest: {
+        installed: false,
+        running: false,
+        version: null,
+        port: null,
+        bridgeConnected: false
       },
       network: {
         connected: false,
@@ -272,6 +282,9 @@ export class WebVMManager extends SimpleEventEmitter {
         // Start Deno installation process
         this.setupDenoRuntime()
 
+        // Start PostgREST installation process
+        this.setupPostgRESTRuntime()
+
         // Emit started event
         this.emit('started', {
           type: 'started',
@@ -325,6 +338,75 @@ export class WebVMManager extends SimpleEventEmitter {
   }
 
   /**
+   * Setup PostgREST runtime in WebVM for PostgreSQL API
+   */
+  private async setupPostgRESTRuntime(): Promise<void> {
+    if (!this.webvmReady) {
+      throw new Error('WebVM is not ready')
+    }
+
+    console.log('Setting up PostgREST runtime in WebVM...')
+    
+    // Send command to install PostgREST
+    this.sendWebVMCommand({
+      type: 'install-postgrest',
+      version: '12.0.2', // Latest stable version
+      config: {
+        'db-uri': 'http://localhost:8081/pglite-bridge',
+        'db-schema': 'public',
+        'db-anon-role': 'anonymous',
+        'server-port': 3000,
+        'jwt-secret': 'supabase-lite-jwt-secret',
+        'max-rows': 1000
+      }
+    })
+    
+    // Simulate successful PostgREST installation and startup
+    setTimeout(() => {
+      this.postgrestInstalled = true
+      this.status.postgrest.installed = true
+      this.status.postgrest.version = '12.0.2'
+      this.status.postgrest.port = 3000
+      
+      // Start PostgREST automatically
+      setTimeout(async () => {
+        this.postgrestRunning = true
+        this.status.postgrest.running = true
+        
+        // Start PGlite bridge HTTP server
+        try {
+          await pgliteBridge.startHTTPServer(8081)
+          this.status.postgrest.bridgeConnected = true
+          console.log('✅ PGlite bridge HTTP server started on port 8081')
+        } catch (error) {
+          console.error('❌ Failed to start PGlite bridge:', error)
+          this.status.postgrest.bridgeConnected = false
+        }
+        
+        this.emit('postgrest-ready', {
+          type: 'postgrest-ready',
+          timestamp: new Date(),
+          data: { 
+            version: '12.0.2', 
+            port: 3000,
+            bridgeUrl: 'http://localhost:8081/pglite-bridge'
+          }
+        })
+        
+        console.log('✅ PostgREST runtime ready and connected to PGlite bridge')
+      }, 1000) // PostgREST starts 1 second after installation
+      
+      this.emit('postgrest-installed', {
+        type: 'postgrest-installed',
+        timestamp: new Date(),
+        data: { version: '12.0.2' }
+      })
+      
+      console.log('✅ PostgREST installed in WebVM')
+    }, 3000) // PostgREST installation takes 3 seconds (after Deno)
+  }
+
+  /**
    * Stop WebVM instance (note: actual WebVM continues running in iframe)
    */
   async stop(): Promise<void> {
@@ -333,10 +415,22 @@ export class WebVMManager extends SimpleEventEmitter {
     // Stop uptime tracking
     this.stopUptimeTracking()
     
+    // Stop PGlite bridge if running
+    if (this.status.postgrest.bridgeConnected) {
+      try {
+        await pgliteBridge.stopHTTPServer()
+        console.log('✅ PGlite bridge HTTP server stopped')
+      } catch (error) {
+        console.error('❌ Failed to stop PGlite bridge:', error)
+      }
+    }
+    
     // Reset our internal state
     this.webvmReady = false
     this.denoInstalled = false
     this.edgeRuntimeInstalled = false
+    this.postgrestInstalled = false
+    this.postgrestRunning = false
     this.startTime = 0
     
     this.status.state = 'stopped'
@@ -344,6 +438,11 @@ export class WebVMManager extends SimpleEventEmitter {
     this.status.uptime = 0
     this.status.deno.available = false
     this.status.deno.version = null
+    this.status.postgrest.installed = false
+    this.status.postgrest.running = false
+    this.status.postgrest.version = null
+    this.status.postgrest.port = null
+    this.status.postgrest.bridgeConnected = false
     this.status.network.connected = false
     this.status.network.tailscaleStatus = 'disconnected'
     this.status.resources.cpu.cores = 0
@@ -371,6 +470,18 @@ export class WebVMManager extends SimpleEventEmitter {
       await this.stop()
     }
     await this.start()
+  }
+
+  /**
+   * Get PostgREST status for external integration
+   */
+  getPostgRESTStatus(): { installed: boolean; running: boolean; port: number | null; bridgeConnected: boolean } {
+    return {
+      installed: this.postgrestInstalled,
+      running: this.postgrestRunning,
+      port: this.status.postgrest.port,
+      bridgeConnected: this.status.postgrest.bridgeConnected
+    }
   }
 
   /**

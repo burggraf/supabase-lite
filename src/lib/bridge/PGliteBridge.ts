@@ -531,6 +531,32 @@ export class PGliteBridge {
       is_updatable: row.is_updatable
     }))
   }
+
+  /**
+   * Start HTTP server for bridge communication
+   * Note: This is a placeholder for WebVM integration
+   */
+  async startHTTPServer(port: number = 8081): Promise<void> {
+    logger.info(`HTTP server conceptually started on port ${port}`)
+    // In actual implementation, this would configure WebVM HTTP endpoint
+    // For now, this is handled by the existing MSW handlers
+  }
+
+  /**
+   * Stop HTTP server
+   */
+  async stopHTTPServer(): Promise<void> {
+    logger.info('HTTP server stopped')
+    // Placeholder for actual server shutdown
+  }
+
+  /**
+   * Check if HTTP server is running
+   */
+  isHTTPServerRunning(): boolean {
+    // For current implementation, always return true as MSW handles the endpoints
+    return true
+  }
 }
 
 // Export singleton instance

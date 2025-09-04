@@ -243,6 +243,24 @@ export function WebVMStatus() {
                 </div>
               )}
 
+              {/* PostgREST Runtime */}
+              {status.postgrest.installed && (
+                <div className="flex items-center gap-2 text-sm">
+                  <HardDrive size={16} className={status.postgrest.running ? "text-green-600" : "text-yellow-600"} />
+                  <span>PostgREST {status.postgrest.version}</span>
+                  {status.postgrest.running && (
+                    <Badge variant="outline" className="text-xs">
+                      :{status.postgrest.port}
+                    </Badge>
+                  )}
+                  {status.postgrest.bridgeConnected && (
+                    <Badge variant="outline" className="text-xs text-green-700">
+                      Bridge Connected
+                    </Badge>
+                  )}
+                </div>
+              )}
+
               {/* Functions */}
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium">{status.functions.total} functions deployed</span>

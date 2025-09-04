@@ -73,6 +73,13 @@ describe('WebVM Types', () => {
           available: true,
           version: '1.40.0'
         },
+        postgrest: {
+          installed: true,
+          running: true,
+          version: '12.0.2',
+          port: 3000,
+          bridgeConnected: true
+        },
         network: {
           connected: true,
           tailscaleStatus: 'connected'
@@ -114,6 +121,13 @@ describe('WebVM Types', () => {
         deno: {
           available: false,
           version: null
+        },
+        postgrest: {
+          installed: false,
+          running: false,
+          version: null,
+          port: null,
+          bridgeConnected: false
         },
         network: {
           connected: false,

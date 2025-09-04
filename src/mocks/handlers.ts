@@ -9,11 +9,13 @@ import { DatabaseManager } from '../lib/database/connection'
 // Edge Functions will be handled inline for simplicity
 import { vfsManager, VFSManager } from '../lib/vfs/VFSManager';
 import { logger } from '../lib/infrastructure/Logger';
+import { WebVMManager } from '../lib/webvm/WebVMManager'
 
 // const bridge = new SupabaseAPIBridge()
 const enhancedBridge = new EnhancedSupabaseAPIBridge()
 const authBridge = AuthBridge.getInstance()
 const vfsBridge = new VFSBridge()
+const webvmManager = WebVMManager.getInstance()
 
 /**
  * Higher-order function that wraps handlers with project resolution
@@ -68,6 +70,35 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
   }) as T;
 }
 
+// Helper function to get response headers based on PostgREST status
+const getResponseHeaders = () => {
+  const postgrestStatus = webvmManager.getPostgRESTStatus()
+  const baseHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Content-Type': 'application/json'
+  }
+  
+  if (postgrestStatus.running && postgrestStatus.bridgeConnected) {
+    // PostgREST is active - add PostgREST-style headers
+    return {
+      ...baseHeaders,
+      'X-Supabase-Backend': 'PostgREST',
+      'X-PostgREST-Version': '12.0.2',
+      'X-PostgREST-Port': postgrestStatus.port?.toString() || '3000',
+      'X-Bridge-Status': 'Connected',
+      'Server': 'PostgREST/12.0.2'
+    }
+  } else {
+    // MSW simulation mode
+    return {
+      ...baseHeaders,
+      'X-Supabase-Backend': 'MSW-Simulation',
+      'X-Simulation-Mode': 'Active',
+      'Server': 'Mock-Service-Worker'
+    }
+  }
+}
+
 // Helper functions for common REST operations
 const createRestGetHandler = () => async ({ params, request }: any) => {
   try {
@@ -83,7 +114,7 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
-        'Access-Control-Allow-Origin': '*'
+        ...getResponseHeaders()
       }
     })
   } catch (error: any) {

@@ -31,6 +31,13 @@ export interface WebVMStatus {
     available: boolean
     version: string | null
   }
+  postgrest: {
+    installed: boolean
+    running: boolean
+    version: string | null
+    port: number | null
+    bridgeConnected: boolean
+  }
   network: {
     connected: boolean
     tailscaleStatus: 'connected' | 'disconnected' | 'connecting'
