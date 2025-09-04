@@ -169,10 +169,40 @@ export class WebVMManager extends SimpleEventEmitter {
 
   /**
    * Register WebVM embed component for real WebVM integration
+   * If WebVM is running in deferred mode, this will transition to full mode
    */
   registerWebVMEmbed(embedRef: WebVMEmbedRef): void {
     this.webvmEmbed = embedRef
     console.log('WebVM embed registered with manager')
+    
+    // If we're currently running in deferred mode, transition to full mode
+    if (this.status.state === 'running' && !this.webvmReady) {
+      console.log('Transitioning from deferred mode to full WebVM integration...')
+      this.transitionToFullMode()
+    }
+  }
+
+  /**
+   * Transition from deferred mode to full WebVM integration
+   */
+  private transitionToFullMode(): void {
+    if (!this.webvmEmbed) {
+      console.warn('Cannot transition to full mode: WebVM embed not available')
+      return
+    }
+
+    console.log('Transitioning WebVM from deferred to full integration mode...')
+    
+    // Send any pending commands that were deferred
+    this.sendWebVMCommand({
+      type: 'sync-state',
+      status: this.status
+    })
+    
+    // Update ready state
+    this.webvmReady = true
+    
+    console.log('✅ Successfully transitioned to full WebVM integration mode')
   }
 
   /**
@@ -236,16 +266,22 @@ export class WebVMManager extends SimpleEventEmitter {
 
   /**
    * Start WebVM instance and setup Deno Edge Runtime
+   * @param deferred - If true, starts without requiring embed registration (headless mode)
    */
-  async start(): Promise<void> {
+  async start(deferred: boolean = false): Promise<void> {
     // Set starting state
     this.status.state = 'starting'
     this.status.ready = false
     this.status.error = null
     
     try {
-      if (!this.webvmEmbed) {
+      if (!this.webvmEmbed && !deferred) {
         throw new Error('WebVM embed not registered. Please reload the page.')
+      }
+
+      // In deferred mode, we start the runtime simulation without embed
+      if (deferred && !this.webvmEmbed) {
+        console.log('Starting WebVM in deferred mode (without embed)...')
       }
 
       console.log('Starting WebVM initialization...')

@@ -43,11 +43,11 @@ function App() {
         // Make API handler globally accessible for ProxyConnector
         (window as any).crossOriginAPIHandler = handler;
         
-        // Auto-start WebVM for PostgREST availability
+        // Auto-start WebVM for PostgREST availability (deferred mode - no embed required)
         const webvmManager = WebVMManager.getInstance();
         try {
           logger.info('Auto-starting WebVM for PostgREST integration...');
-          await webvmManager.start();
+          await webvmManager.start(true); // Use deferred mode
           logger.info('✅ WebVM auto-start completed successfully');
         } catch (webvmError) {
           // Log WebVM error but don't fail app initialization
