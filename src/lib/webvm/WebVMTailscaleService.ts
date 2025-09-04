@@ -240,11 +240,61 @@ export class WebVMTailscaleService {
    */
   getSetupInstructions(): string[] {
     return [
-      '1. Sign up for Tailscale at https://tailscale.com',
-      '2. Generate an auth key from the Tailscale admin console',
-      '3. Configure the auth key in Edge Functions settings',
-      '4. Start WebVM with Tailscale networking enabled',
-      '5. Your functions will have full internet access via Tailscale VPN'
+      '1. Sign up for Tailscale at https://tailscale.com (free for personal use)',
+      '2. Go to the Tailscale admin console at https://login.tailscale.com/admin',
+      '3. Navigate to Settings → Keys in the left sidebar',
+      '4. Click "Generate auth key" button',
+      '5. Configure key settings: Enable "Reusable", set expiration (90 days recommended)',
+      '6. Optionally add tags like "webvm" or "edge-functions" for organization',
+      '7. Click "Generate key" and copy the generated auth key',
+      '8. Paste the auth key into the setup form above',
+      '9. Click "Save Configuration" to store your settings',
+      '10. Click "Connect" to establish VPN connection for Edge Functions'
+    ]
+  }
+
+  /**
+   * Get detailed auth key generation instructions
+   */
+  getAuthKeyInstructions(): { step: number; title: string; description: string; important?: string }[] {
+    return [
+      {
+        step: 1,
+        title: "Access Tailscale Admin Console",
+        description: "Go to https://login.tailscale.com/admin and sign in to your Tailscale account"
+      },
+      {
+        step: 2,
+        title: "Navigate to Keys Section",
+        description: "In the admin console, click on 'Settings' in the left sidebar, then select 'Keys'"
+      },
+      {
+        step: 3,
+        title: "Generate New Auth Key",
+        description: "Click the 'Generate auth key' button to create a new authentication key"
+      },
+      {
+        step: 4,
+        title: "Configure Key Settings",
+        description: "Enable 'Reusable' option to allow the key to be used multiple times. Set an appropriate expiration time (90 days is recommended for development).",
+        important: "Make sure 'Reusable' is checked - this allows WebVM to reconnect using the same key"
+      },
+      {
+        step: 5,
+        title: "Add Tags (Optional)",
+        description: "Add descriptive tags like 'webvm', 'edge-functions', or 'development' to help organize your devices in the Tailscale network"
+      },
+      {
+        step: 6,
+        title: "Generate and Copy Key",
+        description: "Click 'Generate key' and immediately copy the generated auth key. This key will only be shown once.",
+        important: "Save this key securely - it cannot be viewed again after closing the dialog"
+      },
+      {
+        step: 7,
+        title: "Enter Key in Configuration",
+        description: "Paste the auth key into the 'Tailscale Auth Key' field in the Setup tab above"
+      }
     ]
   }
 

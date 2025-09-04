@@ -13,6 +13,20 @@ describe('WebVMTailscaleService', () => {
   beforeEach(() => {
     // Clear localStorage before each test
     localStorage.clear()
+    
+    // Set up localStorage mock with proper storage behavior
+    const storage: Record<string, string> = {}
+    vi.mocked(localStorage.getItem).mockImplementation((key: string) => storage[key] ?? null)
+    vi.mocked(localStorage.setItem).mockImplementation((key: string, value: string) => {
+      storage[key] = value
+    })
+    vi.mocked(localStorage.removeItem).mockImplementation((key: string) => {
+      delete storage[key]
+    })
+    vi.mocked(localStorage.clear).mockImplementation(() => {
+      Object.keys(storage).forEach(key => delete storage[key])
+    })
+    
     service = new WebVMTailscaleService()
   })
 
@@ -46,6 +60,7 @@ describe('WebVMTailscaleService', () => {
       // Verify it's stored in localStorage
       const storedValue = localStorage.getItem('webvm-tailscale-config')
       expect(storedValue).not.toBeNull()
+      expect(storedValue).not.toBe('undefined')
       expect(JSON.parse(storedValue!)).toEqual(config)
       
       // Test loading from existing localStorage state
@@ -250,10 +265,25 @@ describe('WebVMTailscaleService', () => {
     it('should provide setup instructions', () => {
       const instructions = service.getSetupInstructions()
       
-      expect(instructions).toHaveLength(5)
+      expect(instructions).toHaveLength(10)
       expect(instructions[0]).toContain('Sign up for Tailscale')
-      expect(instructions[1]).toContain('Generate an auth key')
-      expect(instructions[4]).toContain('full internet access via Tailscale VPN')
+      expect(instructions[1]).toContain('Go to the Tailscale admin console')
+      expect(instructions[9]).toContain('Connect')
+    })
+
+    it('should provide detailed auth key instructions', () => {
+      const instructions = service.getAuthKeyInstructions()
+      
+      expect(instructions).toHaveLength(7)
+      expect(instructions[0].step).toBe(1)
+      expect(instructions[0].title).toBe('Access Tailscale Admin Console')
+      expect(instructions[0].description).toContain('https://login.tailscale.com/admin')
+      
+      expect(instructions[3].important).toBeDefined()
+      expect(instructions[3].important).toContain('Reusable')
+      
+      expect(instructions[5].important).toBeDefined()
+      expect(instructions[5].important).toContain('cannot be viewed again')
     })
   })
 })
