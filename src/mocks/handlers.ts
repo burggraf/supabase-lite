@@ -1431,7 +1431,7 @@ async function simulateEdgeFunctionExecution(
         ]
       };
     }
-    else if (functionName === 'external-api-test' || code.includes('external API test')) {
+    else if (functionName === 'external-api-test' || code.includes('external API connectivity') || code.includes('jsonplaceholder.typicode.com')) {
       // Mock external API test results
       response = {
         test: {
@@ -1464,7 +1464,7 @@ async function simulateEdgeFunctionExecution(
         }
       };
     }
-    else if (functionName === 'api-playground' || code.includes('API playground')) {
+    else if (functionName === 'api-playground' || code.includes('API Playground') || code.includes('Interactive function for testing various external APIs')) {
       // Mock API playground results
       response = {
         playground: {

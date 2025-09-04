@@ -410,7 +410,7 @@ export class WebVMFunctionExecutor {
       };
     }
     
-    if (functionName === 'external-api-test' || functionCode.includes('external API test')) {
+    if (functionName === 'external-api-test' || functionCode.includes('external API connectivity') || functionCode.includes('jsonplaceholder.typicode.com')) {
       // Mock external API test results
       const mockResponse = {
         test: {
@@ -454,7 +454,7 @@ export class WebVMFunctionExecutor {
       };
     }
     
-    if (functionName === 'api-playground' || functionCode.includes('API playground')) {
+    if (functionName === 'api-playground' || functionCode.includes('API Playground') || functionCode.includes('Interactive function for testing various external APIs')) {
       // Mock API playground results
       const mockResponse = {
         playground: {
