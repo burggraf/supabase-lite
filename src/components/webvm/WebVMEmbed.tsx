@@ -108,12 +108,15 @@ export const WebVMEmbed = forwardRef<WebVMEmbedRef, WebVMEmbedProps>(({
     try {
       console.log(`🔄 Processing database request: ${request.method} ${request.path}`)
       
-      // Make HTTP request to MSW handlers on behalf of WebVM
+      // Make HTTP request bypassing MSW to avoid circular calls
       const url = `http://localhost:5173${request.path}`
       
       const fetchOptions: RequestInit = {
         method: request.method,
-        headers: request.headers
+        headers: {
+          ...request.headers,
+          'X-WebVM-Direct': 'true' // Flag to bypass MSW PostgREST handlers
+        }
       }
 
       if (request.body && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
