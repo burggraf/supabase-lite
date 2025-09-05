@@ -166,28 +166,28 @@ export const testCategories: TestCategory[] = [
         id: 'orders-with-customers',
         name: 'Orders with Customer Details',
         method: 'GET',
-        endpoint: '/rest/v1/orders?select=*,customers(customer_id,company_name,contact_name)&limit=5',
+        endpoint: '/rest/v1/orders?select=*,customers!customer_id(customer_id,company_name,contact_name)&limit=5',
         description: 'Get orders with embedded customer information'
       },
       {
         id: 'products-with-categories',
         name: 'Products with Categories',
         method: 'GET',
-        endpoint: '/rest/v1/products?select=product_name,unit_price,categories(category_name)&limit=10',
+        endpoint: '/rest/v1/products?select=product_name,unit_price,categories!category_id(category_name)&limit=10',
         description: 'Products with their category names'
       },
       {
         id: 'order-details-full',
         name: 'Order Details with Products',
         method: 'GET',
-        endpoint: '/rest/v1/order_details?select=*,orders(order_date),products(product_name,unit_price)&limit=5',
+        endpoint: '/rest/v1/order_details?select=*,orders!order_id(order_date),products!product_id(product_name,unit_price)&limit=5',
         description: 'Order line items with product and order information'
       },
       {
         id: 'customer-order-count',
         name: 'Customers with Order Count',
         method: 'GET',
-        endpoint: '/rest/v1/customers?select=company_name,contact_name,orders(count)&limit=10',
+        endpoint: '/rest/v1/customers?select=company_name,contact_name,orders!customer_id(count)&limit=10',
         description: 'Customer list with total number of orders'
       }
     ]
@@ -243,14 +243,14 @@ export const testCategories: TestCategory[] = [
         id: 'vip-customers',
         name: 'VIP Customers',
         method: 'GET',
-        endpoint: '/rest/v1/customers?select=*,orders(count)&orders.count=gte.10',
+        endpoint: '/rest/v1/customers?select=*,orders!customer_id(count)&orders.count=gte.10',
         description: 'Customers with 10 or more orders'
       },
       {
         id: 'premium-products',
         name: 'Premium Products',
         method: 'GET',
-        endpoint: '/rest/v1/products?select=*,categories(category_name)&unit_price=gte.100',
+        endpoint: '/rest/v1/products?select=*,categories!category_id(category_name)&unit_price=gte.100',
         description: 'High-value products over $100'
       },
       {
