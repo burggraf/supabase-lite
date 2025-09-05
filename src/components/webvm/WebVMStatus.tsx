@@ -279,6 +279,29 @@ export function WebVMStatus() {
                 </div>
               )}
 
+              {/* Envoy Proxy */}
+              {status.envoy.installed && (
+                <div className="flex items-center gap-2 text-sm">
+                  <HardDrive size={16} className={status.envoy.running ? "text-green-600" : "text-yellow-600"} />
+                  <span>Envoy Proxy {status.envoy.version}</span>
+                  {status.envoy.running && (
+                    <Badge variant="outline" className="text-xs">
+                      :{status.envoy.port}
+                    </Badge>
+                  )}
+                  {status.envoy.adminPort && (
+                    <Badge variant="outline" className="text-xs text-purple-700">
+                      Admin :{status.envoy.adminPort}
+                    </Badge>
+                  )}
+                  {status.envoy.routingActive && (
+                    <Badge variant="outline" className="text-xs text-green-700">
+                      Routing Active
+                    </Badge>
+                  )}
+                </div>
+              )}
+
               {/* Functions */}
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium">{status.functions.total} functions deployed</span>

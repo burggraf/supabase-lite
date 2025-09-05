@@ -21,6 +21,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { EnhancedOfflineIndicator } from '@/components/ui/EnhancedOfflineIndicator';
 import { WebVMStatusIndicator } from '@/components/ui/WebVMStatusIndicator';
 import { EdgeRuntimeStatusIndicator } from '@/components/ui/EdgeRuntimeStatusIndicator';
+import { EnvoyStatusIndicator } from '@/components/ui/EnvoyStatusIndicator';
 
 const iconMap = {
   LayoutDashboard,
@@ -231,6 +232,12 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
         
         {/* Edge Runtime Status Indicator */}
         <EdgeRuntimeStatusIndicator 
+          iconOnly={!isExpanded} 
+          compact={isExpanded}
+        />
+        
+        {/* Envoy Status Indicator */}
+        <EnvoyStatusIndicator 
           iconOnly={!isExpanded} 
           compact={isExpanded}
         />

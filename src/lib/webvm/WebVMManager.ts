@@ -64,6 +64,8 @@ export class WebVMManager extends SimpleEventEmitter {
   private edgeRuntimeInstalled: boolean = false
   private postgrestInstalled: boolean = false
   private postgrestRunning: boolean = false
+  private envoyInstalled: boolean = false
+  private envoyRunning: boolean = false
   private startTime: number = 0
   private uptimeInterval: number | null = null
   private functionExecutor: WebVMFunctionExecutor | null = null
@@ -110,6 +112,14 @@ export class WebVMManager extends SimpleEventEmitter {
         denoVersion: null,
         runtimeVersion: null,
         port: null
+      },
+      envoy: {
+        installed: false,
+        running: false,
+        version: null,
+        port: null,
+        adminPort: null,
+        routingActive: false
       },
       network: {
         connected: false,
@@ -441,6 +451,9 @@ export class WebVMManager extends SimpleEventEmitter {
         // Setup Edge Functions runtime
         await this.setupEdgeRuntime()
         
+        // Setup Envoy Proxy for API routing
+        await this.setupEnvoy()
+        
         // Auto-start Tailscale networking if auth key is available
         await this.autoStartNetworking()
       }, 1000) // PostgREST starts 1 second after installation
@@ -513,6 +526,70 @@ export class WebVMManager extends SimpleEventEmitter {
   }
 
   /**
+   * Setup Envoy Proxy for API routing
+   */
+  private async setupEnvoy(): Promise<void> {
+    if (!this.webvmReady) {
+      throw new Error('WebVM is not ready')
+    }
+
+    console.log('Setting up Envoy Proxy for API routing in WebVM...')
+    
+    // Send command to install Envoy
+    this.sendWebVMCommand({
+      type: 'install-envoy',
+      version: '1.28.0',
+      config: {
+        'proxy-port': 8080,
+        'admin-port': 8081,
+        'routes': [
+          { 'match': '/rest/v1/*', 'target': 'localhost:3000' },    // PostgREST
+          { 'match': '/auth/v1/*', 'target': 'localhost:5173' },    // Auth service (MSW)  
+          { 'match': '/storage/v1/*', 'target': 'localhost:5173' }, // Storage service (MSW)
+          { 'match': '/functions/v1/*', 'target': 'localhost:8000' } // Edge Functions
+        ]
+      }
+    })
+    
+    // Simulate successful Envoy installation and startup
+    setTimeout(() => {
+      this.envoyInstalled = true
+      this.status.envoy.installed = true
+      this.status.envoy.version = '1.28.0'
+      this.status.envoy.port = 8080
+      this.status.envoy.adminPort = 8081
+      
+      // Start Envoy automatically
+      setTimeout(() => {
+        this.envoyRunning = true
+        this.status.envoy.running = true
+        this.status.envoy.routingActive = true
+        
+        this.emit('envoy-ready', {
+          type: 'envoy-ready',
+          timestamp: new Date(),
+          data: { 
+            version: '1.28.0',
+            port: 8080,
+            adminPort: 8081,
+            routes: ['rest', 'auth', 'storage', 'functions']
+          }
+        })
+        
+        console.log('✅ Envoy Proxy ready for API routing')
+      }, 1000) // Envoy starts 1 second after installation
+      
+      this.emit('envoy-installed', {
+        type: 'envoy-installed',
+        timestamp: new Date(),
+        data: { version: '1.28.0', port: 8080, adminPort: 8081 }
+      })
+      
+      console.log('✅ Envoy Proxy installed in WebVM')
+    }, 2000) // Envoy installation takes 2 seconds (after Edge Runtime)
+  }
+
+  /**
    * Automatically start Tailscale networking if auth key is available
    */
   private async autoStartNetworking(): Promise<void> {
@@ -578,6 +655,8 @@ export class WebVMManager extends SimpleEventEmitter {
     this.edgeRuntimeInstalled = false
     this.postgrestInstalled = false
     this.postgrestRunning = false
+    this.envoyInstalled = false
+    this.envoyRunning = false
     this.startTime = 0
     
     this.status.state = 'stopped'

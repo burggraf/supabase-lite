@@ -45,6 +45,14 @@ export interface WebVMStatus {
     runtimeVersion: string | null
     port: number | null
   }
+  envoy: {
+    installed: boolean
+    running: boolean
+    version: string | null
+    port: number | null
+    adminPort: number | null
+    routingActive: boolean
+  }
   network: {
     connected: boolean
     tailscaleStatus: 'connected' | 'disconnected' | 'connecting' | 'error'
@@ -138,7 +146,7 @@ export interface WebVMMetrics {
 
 // Event Types
 export interface WebVMEvent {
-  type: 'started' | 'stopped' | 'error' | 'function-deployed' | 'function-removed' | 'function-executed' | 'postgrest-ready' | 'postgrest-installed' | 'edge-runtime-ready' | 'edge-runtime-installed' | 'networking-ready'
+  type: 'started' | 'stopped' | 'error' | 'function-deployed' | 'function-removed' | 'function-executed' | 'postgrest-ready' | 'postgrest-installed' | 'edge-runtime-ready' | 'edge-runtime-installed' | 'envoy-ready' | 'envoy-installed' | 'networking-ready'
   timestamp: Date
   data: Record<string, unknown>
 }
