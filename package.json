@@ -16,7 +16,12 @@
     "test:coverage:report": "vitest --coverage --reporter=verbose",
     "test:integration": "vitest run src/__tests__/integration/",
     "test:performance": "vitest run src/__tests__/performance/",
-    "test:ci": "vitest run --coverage --reporter=junit --outputFile=test-results.xml",
+    "test:ci": "vitest run --coverage --reporter=junit --outputFile=test-results.xml --max-concurrency=3",
+    "test:ci:memory-safe": "node --max-old-space-size=8192 ./node_modules/vitest/vitest.mjs run --coverage --reporter=junit --outputFile=test-results.xml --max-concurrency=1",
+    "test:ci:sequential": "vitest run --coverage --reporter=junit --outputFile=test-results.xml --no-threads --run --sequence.concurrent=false",
+    "test:unit": "vitest run --exclude=src/__tests__/integration/**",
+    "test:unit:ci": "vitest run --exclude=src/__tests__/integration/** --coverage --reporter=junit --outputFile=test-results-unit.xml",
+    "test:integration:ci": "vitest run src/__tests__/integration/ --reporter=junit --outputFile=test-results-integration.xml",
     "test:summary": "node scripts/test-summary.js"
   },
   "dependencies": {

@@ -9,6 +9,7 @@ on:
 jobs:
   test-main-app:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     steps:
     - uses: actions/checkout@v4
@@ -25,8 +26,13 @@ jobs:
     - name: Run linter
       run: npm run lint
     
-    - name: Run tests with coverage
-      run: npm run test:ci
+    - name: Run tests with coverage (memory-safe)
+      run: |
+        # Try memory-safe first, fallback to sequential if it fails
+        npm run test:ci:memory-safe || npm run test:ci:sequential
+      env:
+        NODE_OPTIONS: "--max_old_space_size=8192"
+        DEBUG_MEMORY: "false"
     
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
@@ -41,7 +47,10 @@ jobs:
       if: always()
       with:
         name: test-results-main
-        path: test-results.xml
+        path: |
+          test-results.xml
+          test-results-unit.xml
+          test-results-integration.xml
     
     - name: Upload coverage report
       uses: actions/upload-artifact@v4
@@ -52,6 +61,7 @@ jobs:
 
   test-supabase-lite-package:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     
     steps:
     - uses: actions/checkout@v4
@@ -71,9 +81,11 @@ jobs:
       working-directory: packages/supabase-lite
       run: npm run build
     
-    - name: Run tests with coverage
+    - name: Run tests with coverage (supabase-lite package)
       working-directory: packages/supabase-lite
       run: npm run test:ci
+      env:
+        NODE_OPTIONS: "--max_old_space_size=4096"
     
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
@@ -100,6 +112,7 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     needs: [test-main-app]
+    timeout-minutes: 15
     
     steps:
     - uses: actions/checkout@v4
@@ -113,11 +126,15 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Run integration tests
-      run: npm run test:integration
+    - name: Run integration tests (sequential)
+      run: npm run test:integration:ci
+      env:
+        NODE_OPTIONS: "--max_old_space_size=4096"
     
-    - name: Run performance tests
+    - name: Run performance tests (sequential)
       run: npm run test:performance
+      env:
+        NODE_OPTIONS: "--max_old_space_size=4096"
 
   coverage-report:
     runs-on: ubuntu-latest

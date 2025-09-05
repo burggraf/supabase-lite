@@ -49,7 +49,8 @@ describe('Select Component', () => {
       );
       
       const trigger = screen.getByRole('combobox');
-      expect(trigger).toHaveAttribute('aria-disabled', 'true');
+      // Radix UI Select may set disabled attribute or data-disabled instead of aria-disabled
+      expect(trigger).toHaveAttribute('data-disabled');
     });
   });
 

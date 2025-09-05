@@ -3,18 +3,59 @@ import { afterEach, beforeEach, beforeAll, afterAll, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import { server } from '../mocks/server'
 
-// Start server before all tests
-beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }))
+// Memory cleanup utilities
+function forceGarbageCollection() {
+  if (global.gc) {
+    global.gc()
+  }
+}
 
-// Reset handlers after each test (important for test isolation)
-afterEach(() => {
-  server.resetHandlers()
-  cleanup()
-  vi.clearAllMocks()
+function clearModuleCache() {
+  // Clear any module cache that might be holding references
+  if (typeof jest !== 'undefined' && jest.resetModules) {
+    jest.resetModules()
+  }
+}
+
+// Start server before all tests with optimized settings
+beforeAll(() => {
+  server.listen({
+    onUnhandledRequest: 'bypass',
+    quiet: true // Reduce logging overhead
+  })
 })
 
-// Clean up after the tests are finished
-afterAll(() => server.close())
+// Enhanced cleanup after each test
+afterEach(() => {
+  // Reset MSW handlers first
+  server.resetHandlers()
+  
+  // Clean up React Testing Library
+  cleanup()
+  
+  // Clear all mocks
+  vi.clearAllMocks()
+  
+  // Clear any timers
+  vi.clearAllTimers()
+  
+  // Force garbage collection if available (for memory-intensive tests)
+  if (process.env.NODE_ENV === 'test' && global.gc) {
+    forceGarbageCollection()
+  }
+})
+
+// Comprehensive cleanup after all tests
+afterAll(async () => {
+  // Close MSW server
+  server.close()
+  
+  // Clear module cache
+  clearModuleCache()
+  
+  // Final garbage collection
+  forceGarbageCollection()
+})
 
 // Mock crypto.randomUUID if not available
 Object.defineProperty(global, 'crypto', {
@@ -294,16 +335,50 @@ vi.mock('jose', () => {
   }
 })
 
-// Reset database manager instance before each test
-beforeEach(() => {
+// Enhanced database manager cleanup
+beforeEach(async () => {
   // Clear any cached database manager instance
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { DatabaseManager } = require('../lib/database/connection')
     if (DatabaseManager && DatabaseManager.instance) {
+      // Properly close existing connection before clearing
+      try {
+        await DatabaseManager.instance.close()
+      } catch (_closeError) {
+        // Ignore close errors during cleanup
+      }
       DatabaseManager.instance = null
     }
   } catch (_error) {
     // Module might not exist yet, ignore
   }
+  
+  // Clear any auth bridge instances
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AuthBridge } = require('../lib/auth/AuthBridge')
+    if (AuthBridge && AuthBridge.instance) {
+      AuthBridge.instance = null
+    }
+  } catch (_error) {
+    // Module might not exist yet, ignore
+  }
 })
+
+// Memory monitoring for debugging
+if (process.env.DEBUG_MEMORY === 'true') {
+  let testCount = 0
+  
+  afterEach(() => {
+    testCount++
+    if (testCount % 10 === 0) {
+      const memUsage = process.memoryUsage()
+      console.log(`[Memory Debug] After ${testCount} tests:`, {
+        rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`,
+        heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`
+      })
+    }
+  })
+}
