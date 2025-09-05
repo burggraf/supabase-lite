@@ -1,7 +1,7 @@
 /**
- * WebVM Status Indicator Component
+ * Edge Runtime Status Indicator Component
  * 
- * Displays WebVM connection status in the sidebar with auto-updating status
+ * Displays Edge Functions Runtime status in the sidebar with auto-updating status
  */
 
 import { useState, useEffect } from 'react';
@@ -9,12 +9,12 @@ import { cn } from '@/lib/utils';
 import { WebVMManager } from '@/lib/webvm/WebVMManager';
 import { WebVMStatus } from '@/lib/webvm/types';
 
-interface WebVMStatusIndicatorProps {
+interface EdgeRuntimeStatusIndicatorProps {
   iconOnly?: boolean;
   compact?: boolean;
 }
 
-export function WebVMStatusIndicator({ iconOnly = false, compact = false }: WebVMStatusIndicatorProps) {
+export function EdgeRuntimeStatusIndicator({ iconOnly = false, compact = false }: EdgeRuntimeStatusIndicatorProps) {
   const [status, setStatus] = useState<WebVMStatus | null>(null);
   const [webvmManager] = useState(() => WebVMManager.getInstance());
 
@@ -28,14 +28,14 @@ export function WebVMStatusIndicator({ iconOnly = false, compact = false }: WebV
     // Initial status update
     updateStatus();
 
-    // Set up event listeners for WebVM state changes
-    const handleWebVMReady = () => updateStatus();
-    const handlePostgRESTReady = () => updateStatus();
+    // Set up event listeners for Edge Runtime state changes
+    const handleEdgeRuntimeReady = () => updateStatus();
+    const handleEdgeRuntimeInstalled = () => updateStatus();
     const handleStarted = () => updateStatus();
     const handleStopped = () => updateStatus();
 
-    webvmManager.on('webvm-ready', handleWebVMReady);
-    webvmManager.on('postgrest-ready', handlePostgRESTReady);
+    webvmManager.on('edge-runtime-ready', handleEdgeRuntimeReady);
+    webvmManager.on('edge-runtime-installed', handleEdgeRuntimeInstalled);
     webvmManager.on('started', handleStarted);
     webvmManager.on('stopped', handleStopped);
 
@@ -43,8 +43,8 @@ export function WebVMStatusIndicator({ iconOnly = false, compact = false }: WebV
     const interval = setInterval(updateStatus, 2000);
 
     return () => {
-      webvmManager.off('webvm-ready', handleWebVMReady);
-      webvmManager.off('postgrest-ready', handlePostgRESTReady);
+      webvmManager.off('edge-runtime-ready', handleEdgeRuntimeReady);
+      webvmManager.off('edge-runtime-installed', handleEdgeRuntimeInstalled);
       webvmManager.off('started', handleStarted);
       webvmManager.off('stopped', handleStopped);
       clearInterval(interval);
@@ -55,43 +55,49 @@ export function WebVMStatusIndicator({ iconOnly = false, compact = false }: WebV
     return null;
   }
 
-  // Determine status color and text based on WebVM and PostgREST state
+  // Determine status color and text based on Edge Runtime state
   const getStatusInfo = () => {
-    if (status.state === 'running' && status.postgrest.running && status.postgrest.bridgeConnected) {
+    if (status.state === 'running' && status.edgeRuntime.running) {
       return {
         color: 'bg-green-500',
-        text: 'PostgREST Ready',
-        detailed: 'WebVM running, PostgREST connected'
+        text: 'Edge Runtime Ready',
+        detailed: `Edge Runtime ${status.edgeRuntime.runtimeVersion} with Deno ${status.edgeRuntime.denoVersion} running on port ${status.edgeRuntime.port}`
       };
-    } else if (status.state === 'running' && status.postgrest.installed && !status.postgrest.running) {
+    } else if (status.state === 'running' && status.edgeRuntime.installed && !status.edgeRuntime.running) {
       return {
         color: 'bg-yellow-500',
-        text: 'PostgREST Starting',
-        detailed: 'WebVM running, PostgREST initializing'
+        text: 'Edge Runtime Starting',
+        detailed: 'Edge Runtime installed, starting up'
+      };
+    } else if (status.state === 'running' && status.postgrest.running && !status.edgeRuntime.installed) {
+      return {
+        color: 'bg-blue-500',
+        text: 'Edge Runtime Installing',
+        detailed: 'Installing Edge Runtime'
       };
     } else if (status.state === 'running') {
       return {
-        color: 'bg-blue-500',
-        text: 'WebVM Running',
-        detailed: 'WebVM active, PostgREST installing'
+        color: 'bg-gray-400',
+        text: 'Edge Runtime Waiting',
+        detailed: 'Waiting for prerequisites (WebVM + PostgREST)'
       };
     } else if (status.state === 'starting') {
       return {
-        color: 'bg-yellow-500',
-        text: 'WebVM Starting',
+        color: 'bg-gray-400',
+        text: 'Edge Runtime Waiting',
         detailed: 'WebVM initializing'
       };
     } else if (status.state === 'error') {
       return {
         color: 'bg-red-500',
-        text: 'WebVM Error',
-        detailed: status.error || 'WebVM failed to start'
+        text: 'Edge Runtime Error',
+        detailed: 'WebVM error affecting Edge Runtime'
       };
     } else {
       return {
         color: 'bg-gray-500',
-        text: 'WebVM Stopped',
-        detailed: 'WebVM not running'
+        text: 'Edge Runtime Stopped',
+        detailed: 'WebVM stopped'
       };
     }
   };
