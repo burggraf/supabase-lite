@@ -106,12 +106,11 @@ describe('Infrastructure module', () => {
 
   describe('Infrastructure health check', () => {
     it('should return healthy status when all components are working', async () => {
-      vi.spyOn(infrastructure.migrationManager, 'getMigrationStatus').mockResolvedValue({
-        total: 3,
-        applied: 3,
-        pending: 0,
-        lastApplied: '003',
-      });
+      vi.spyOn(infrastructure.migrationManager, 'getMigrations').mockResolvedValue([
+        { id: '001', name: 'Initial', applied: true },
+        { id: '002', name: 'Auth', applied: true },
+        { id: '003', name: 'Storage', applied: true },
+      ] as any);
 
       const health = await checkInfrastructureHealth();
 
@@ -125,12 +124,11 @@ describe('Infrastructure module', () => {
 
     it('should return degraded status when some components have issues', async () => {
       vi.spyOn(infrastructure.dbManager, 'getDatabaseSize').mockRejectedValue(new Error('Size error'));
-      vi.spyOn(infrastructure.migrationManager, 'getMigrationStatus').mockResolvedValue({
-        total: 3,
-        applied: 3,
-        pending: 0,
-        lastApplied: '003',
-      });
+      vi.spyOn(infrastructure.migrationManager, 'getMigrations').mockResolvedValue([
+        { id: '001', name: 'Initial', applied: true },
+        { id: '002', name: 'Auth', applied: true },
+        { id: '003', name: 'Storage', applied: true },
+      ] as any);
 
       const health = await checkInfrastructureHealth();
 
@@ -148,7 +146,7 @@ describe('Infrastructure module', () => {
     });
 
     it('should handle migration status errors', async () => {
-      vi.spyOn(infrastructure.migrationManager, 'getMigrationStatus').mockRejectedValue(new Error('Migration error'));
+      vi.spyOn(infrastructure.migrationManager, 'getMigrations').mockRejectedValue(new Error('Migration error'));
 
       const health = await checkInfrastructureHealth();
 

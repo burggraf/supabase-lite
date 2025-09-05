@@ -55,7 +55,7 @@ export class ServiceWorkerManager {
     }
 
     const registration = await navigator.serviceWorker.getRegistration();
-    return registration !== null && registration.active !== null;
+    return registration !== null && registration !== undefined && registration.active !== null;
   }
 
   /**

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AuthTestPanel } from '../AuthTestPanel'
-import type { User, Session } from '@/lib/auth/types'
+import type { User, Session } from '@/lib/auth/types/auth.types'
 
 // Mock dependencies
 const mockAuthManager = {

@@ -132,7 +132,9 @@ export function OfflineBackup({
 
   const saveWithDownloadAPI = (data: any, _size: number) => {
     const content = selectedFormat === 'json' ? JSON.stringify(data, null, 2) : data
-    const blob = new Blob([content], { type: fileTypeMap[selectedFormat].accept[Object.keys(fileTypeMap[selectedFormat].accept)[0]][0] })
+    const acceptKeys = Object.keys(fileTypeMap[selectedFormat].accept)
+    const mimeType = acceptKeys[0] as keyof typeof fileTypeMap[typeof selectedFormat]['accept']
+    const blob = new Blob([content], { type: fileTypeMap[selectedFormat].accept[mimeType][0] })
     const url = URL.createObjectURL(blob)
     
     const a = document.createElement('a')

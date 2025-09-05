@@ -5,7 +5,11 @@ import type { DatabaseManager } from '../../database/connection'
  * for PGlite compatibility while preventing SQL injection
  */
 export class DatabaseQueryBuilder {
-  constructor(private dbManager: DatabaseManager) {}
+  private dbManager: DatabaseManager;
+
+  constructor(dbManager: DatabaseManager) {
+    this.dbManager = dbManager;
+  }
 
   /**
    * Execute a parameterized query safely

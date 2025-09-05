@@ -58,14 +58,14 @@ export class DataExporter {
   async exportProject(projectId?: string, format: ExportFormat = 'json'): Promise<ExportResult> {
     try {
       const project = projectId 
-        ? projectManager.getAllProjects().find(p => p.id === projectId)
+        ? projectManager.getProjects().find((p: any) => p.id === projectId)
         : projectManager.getActiveProject()
 
       if (!project) {
         return { success: false, error: 'Project not found' }
       }
 
-      const tables = await this.dbManager.getTables()
+      const tables = await this.dbManager.getTableList()
       const tableData: Record<string, any[]> = {}
 
       // Export table data
@@ -91,7 +91,7 @@ export class DataExporter {
 
   async exportAllProjects(format: ExportFormat = 'json'): Promise<ExportResult> {
     try {
-      const allProjects = projectManager.getAllProjects()
+      const allProjects = projectManager.getProjects()
       
       if (allProjects.length === 0) {
         return {
@@ -339,7 +339,7 @@ export class DataExporter {
         }
       }
 
-      return { success: true, projectId }
+      return { success: true, projectId: (projectId as any)?.name || projectId }
     } catch (error) {
       return { success: false, error: (error as Error).message }
     }
@@ -369,7 +369,7 @@ export class DataExporter {
         }
       }
 
-      return { success: true, projectId }
+      return { success: true, projectId: (projectId as any)?.name || projectId }
     } catch (error) {
       return { success: false, error: (error as Error).message }
     }
@@ -403,7 +403,7 @@ export class DataExporter {
         }
       }
 
-      return { success: true, projectId }
+      return { success: true, projectId: (projectId as any)?.name || projectId }
     } catch (error) {
       return { success: false, error: (error as Error).message }
     }

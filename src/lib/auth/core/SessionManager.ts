@@ -1,5 +1,5 @@
-import type { Session, RefreshToken, User, AuthChangeEvent, AuthEventListener } from '../types'
-import type { TokenPair } from '../types'
+import type { Session, RefreshToken, User, AuthChangeEvent, AuthEventListener } from '../types/auth.types'
+import type { TokenPair } from '../types/jwt.types'
 import { AuthStorage, CrossTabSync } from '../utils/storage'
 import { CryptoUtils } from '../utils/crypto'
 import { JWTService } from './JWTService'

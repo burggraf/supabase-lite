@@ -14,9 +14,9 @@ import type {
   MFAEnrollRequest,
   MFAVerifyRequest,
   MFAChallengeRequest,
-  AuthError
-} from './types'
-import type { AuthError as AuthErrorType } from './types'
+  AuthError,
+  AuthAPIResponse
+} from './types/api-responses'
 
 export interface AuthAPIRequest {
   endpoint: string
@@ -24,13 +24,6 @@ export interface AuthAPIRequest {
   body?: any
   headers: Record<string, string>
   url: URL
-}
-
-export interface AuthAPIResponse {
-  data?: any
-  error?: AuthError
-  status: number
-  headers: Record<string, string>
 }
 
 export class AuthBridge {
@@ -403,7 +396,8 @@ export class AuthBridge {
         return this.createSuccessResponse(null, 200)
       }
 
-      console.log('Valid session found for user:', session.user?.email)
+      const currentUser = this.sessionManager.getUser()
+      console.log('Valid session found for user:', currentUser?.email)
       return this.createSuccessResponse(this.serializeSession(session), 200)
       
     } catch (error) {
@@ -548,6 +542,7 @@ export class AuthBridge {
     return {
       data,
       status,
+      statusText: 'OK',
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
@@ -566,6 +561,7 @@ export class AuthBridge {
     return {
       error,
       status,
+      statusText: 'Error',
       headers: {
         'Content-Type': 'application/json'
       }
@@ -597,10 +593,11 @@ export class AuthBridge {
     )
   }
 
-  private createAuthError(message: string, status: number, code: string): AuthErrorType {
-    const error = new Error(message) as AuthErrorType
-    error.status = status
-    error.code = code
-    return error
+  private createAuthError(message: string, status: number, code: string): AuthError {
+    return {
+      error: code,
+      error_description: `HTTP ${status}: ${message}`,
+      message: message
+    }
   }
 }

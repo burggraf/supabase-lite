@@ -5,5 +5,9 @@
  * with the Supabase.js client library in a local development environment.
  */
 
-export * from './FunctionsClient'
-export * from './integration'
+export { FunctionsClient, createFunctionsClient } from './FunctionsClient'
+export { 
+  createFunctionsClient as createFunctionsClientIntegration,
+  addFunctionsToClient, 
+  getFunctionsClientOptions 
+} from './integration'

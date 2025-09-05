@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify, importJWK, exportJWK } from 'jose'
-import type { JWTPayload, JWTHeader, JWTSigningKey, JWKS, TokenPair } from '../types'
-import type { User, Session } from '../types'
+import type { JWTPayload, JWTHeader, JWTSigningKey, JWKS, TokenPair } from '../types/jwt.types'
+import type { User, Session } from '../types/auth.types'
 import { CryptoUtils } from '../utils/crypto'
 
 export interface JWTConfig {

@@ -461,7 +461,7 @@ describe('ProjectManager', () => {
       
       // Simulate successful deletion
       if (deleteRequest.onsuccess) {
-        deleteRequest.onsuccess(null as any);
+        (deleteRequest.onsuccess as any)({ target: { result: null } });
       }
       
       await cleanupPromise;
@@ -510,7 +510,7 @@ describe('ProjectManager', () => {
       
       // Simulate blocked deletion
       if (deleteRequest.onblocked) {
-        deleteRequest.onblocked(null as any);
+        (deleteRequest.onblocked as any)({ target: { result: null } });
       }
       
       await expect(cleanupPromise).resolves.not.toThrow();
