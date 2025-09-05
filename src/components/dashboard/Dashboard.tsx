@@ -34,8 +34,8 @@ export function Dashboard() {
           setIsProjectsLoading(true);
           const defaultProject = await projectManager.createProject('My First Project');
           
-          // Switch to the new project's database
-          await switchToProject(defaultProject.databasePath);
+          // Let useDatabase hook handle initialization when it detects the active project
+          // This prevents race condition between Dashboard and useDatabase initialization
           
           // Update state
           setProjects(projectManager.getProjects());
