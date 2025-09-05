@@ -38,6 +38,13 @@ export interface WebVMStatus {
     port: number | null
     bridgeConnected: boolean
   }
+  edgeRuntime: {
+    installed: boolean
+    running: boolean
+    denoVersion: string | null
+    runtimeVersion: string | null
+    port: number | null
+  }
   network: {
     connected: boolean
     tailscaleStatus: 'connected' | 'disconnected' | 'connecting' | 'error'
@@ -131,7 +138,7 @@ export interface WebVMMetrics {
 
 // Event Types
 export interface WebVMEvent {
-  type: 'started' | 'stopped' | 'error' | 'function-deployed' | 'function-removed' | 'function-executed' | 'postgrest-ready' | 'postgrest-installed' | 'networking-ready'
+  type: 'started' | 'stopped' | 'error' | 'function-deployed' | 'function-removed' | 'function-executed' | 'postgrest-ready' | 'postgrest-installed' | 'edge-runtime-ready' | 'edge-runtime-installed' | 'networking-ready'
   timestamp: Date
   data: Record<string, unknown>
 }

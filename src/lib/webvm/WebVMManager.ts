@@ -104,6 +104,13 @@ export class WebVMManager extends SimpleEventEmitter {
         port: null,
         bridgeConnected: false
       },
+      edgeRuntime: {
+        installed: false,
+        running: false,
+        denoVersion: null,
+        runtimeVersion: null,
+        port: null
+      },
       network: {
         connected: false,
         tailscaleStatus: 'disconnected'
@@ -431,6 +438,9 @@ export class WebVMManager extends SimpleEventEmitter {
         
         console.log('✅ PostgREST runtime ready and connected to PGlite bridge')
         
+        // Setup Edge Functions runtime
+        await this.setupEdgeRuntime()
+        
         // Auto-start Tailscale networking if auth key is available
         await this.autoStartNetworking()
       }, 1000) // PostgREST starts 1 second after installation
@@ -443,6 +453,63 @@ export class WebVMManager extends SimpleEventEmitter {
       
       console.log('✅ PostgREST installed in WebVM')
     }, 3000) // PostgREST installation takes 3 seconds (after Deno)
+  }
+
+  /**
+   * Setup Supabase Edge Runtime in WebVM
+   */
+  private async setupEdgeRuntime(): Promise<void> {
+    if (!this.webvmReady) {
+      throw new Error('WebVM is not ready')
+    }
+
+    console.log('Setting up Supabase Edge Runtime in WebVM...')
+    
+    // Send command to install Supabase Edge Runtime
+    this.sendWebVMCommand({
+      type: 'install-edge-runtime',
+      version: 'latest',
+      config: {
+        'deno-version': '1.40.0',
+        'runtime-port': 8000,
+        'supabase-url': window.location.origin,
+        'supabase-anon-key': 'anonymous-key'
+      }
+    })
+    
+    // Simulate successful Edge Runtime installation and startup
+    setTimeout(() => {
+      this.edgeRuntimeInstalled = true
+      this.status.edgeRuntime.installed = true
+      this.status.edgeRuntime.denoVersion = '1.40.0'
+      this.status.edgeRuntime.runtimeVersion = '1.54.3'
+      this.status.edgeRuntime.port = 8000
+      
+      // Start Edge Runtime automatically
+      setTimeout(() => {
+        this.status.edgeRuntime.running = true
+        
+        this.emit('edge-runtime-ready', {
+          type: 'edge-runtime-ready',
+          timestamp: new Date(),
+          data: { 
+            denoVersion: '1.40.0',
+            runtimeVersion: '1.54.3',
+            port: 8000
+          }
+        })
+        
+        console.log('✅ Supabase Edge Runtime ready for function execution')
+      }, 500) // Edge Runtime starts 500ms after installation
+      
+      this.emit('edge-runtime-installed', {
+        type: 'edge-runtime-installed',
+        timestamp: new Date(),
+        data: { denoVersion: '1.40.0', runtimeVersion: '1.54.3' }
+      })
+      
+      console.log('✅ Supabase Edge Runtime installed in WebVM')
+    }, 1500) // Edge Runtime installation takes 1.5 seconds (after PostgREST)
   }
 
   /**

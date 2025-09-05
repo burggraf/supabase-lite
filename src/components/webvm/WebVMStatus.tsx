@@ -261,6 +261,24 @@ export function WebVMStatus() {
                 </div>
               )}
 
+              {/* Edge Functions Runtime */}
+              {status.edgeRuntime.installed && (
+                <div className="flex items-center gap-2 text-sm">
+                  <HardDrive size={16} className={status.edgeRuntime.running ? "text-green-600" : "text-yellow-600"} />
+                  <span>Edge Runtime {status.edgeRuntime.runtimeVersion}</span>
+                  {status.edgeRuntime.running && (
+                    <Badge variant="outline" className="text-xs">
+                      :{status.edgeRuntime.port}
+                    </Badge>
+                  )}
+                  {status.edgeRuntime.denoVersion && (
+                    <Badge variant="outline" className="text-xs text-blue-700">
+                      Deno {status.edgeRuntime.denoVersion}
+                    </Badge>
+                  )}
+                </div>
+              )}
+
               {/* Functions */}
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium">{status.functions.total} functions deployed</span>
