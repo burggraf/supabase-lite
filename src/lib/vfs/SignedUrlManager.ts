@@ -325,7 +325,7 @@ export class SignedUrlManager {
   /**
    * Validate JWT token signature
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   // private async validateJWT(token: string): Promise<boolean> {
   //   try {
   //     await this.jwtService.verifyToken(token);

@@ -1362,7 +1362,7 @@ async function simulateEdgeFunctionExecution(
     await new Promise(resolve => setTimeout(resolve, Math.random() * 80 + 20));
     
     let response: any;
-    let status = 200;
+    const status = 200;
     
     // Try to extract response patterns from the actual code
     try {
