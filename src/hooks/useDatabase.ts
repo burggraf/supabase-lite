@@ -42,7 +42,7 @@ export function useDatabase() {
       setIsConnecting(false);
       isConnectingRef.current = false;
     }
-  }, []); // Remove circular dependencies!
+  }, [connectionId, isConnected]); // Include state dependencies
 
   // Single useEffect to handle database initialization
   useEffect(() => {
@@ -65,7 +65,7 @@ export function useDatabase() {
       // Don't initialize with default database - wait for project creation
       // The Dashboard component will handle creating the first project and calling switchToProject
     }
-  }, []); // Only run once on mount
+  }, [connectionId, initialize, isConnected, isConnecting]); // Dependencies for proper re-execution
 
   const executeQuery = useCallback(async (sql: string): Promise<QueryResult> => {
     

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   ChevronRight, 
   ChevronLeft,
@@ -83,11 +83,7 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
   });
   const storageBucket = storageClient.from(bucket.name);
 
-  useEffect(() => {
-    loadFiles();
-  }, [bucket.name, currentPath]);
-
-  const loadFiles = async () => {
+  const loadFiles = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -105,7 +101,11 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bucket.name, currentPath]);
+
+  useEffect(() => {
+    loadFiles();
+  }, [bucket.name, currentPath, loadFiles]);
 
   const loadAppBucketFiles = async () => {
     // Get files in current path for app bucket

@@ -23,7 +23,7 @@ describe('Database Operations Integration', () => {
     try {
       await dbManager.exec('DROP TABLE IF EXISTS test_products CASCADE;');
       await dbManager.exec('DROP TABLE IF EXISTS test_categories CASCADE;');
-    } catch (error) {
+    } catch (_error) {
       // Ignore cleanup errors
     }
   });
@@ -450,7 +450,7 @@ describe('Database Operations Integration', () => {
         `, [accountAId]);
 
         await dbManager.exec('COMMIT;');
-      } catch (error) {
+      } catch (_error) {
         await dbManager.exec('ROLLBACK;');
       }
 

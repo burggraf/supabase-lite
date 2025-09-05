@@ -43,7 +43,7 @@ describe('Authentication Workflow Integration', () => {
     try {
       await dbManager.exec(`DELETE FROM auth.users WHERE email IN ('${testUser.email}', '${testUser2.email}')`);
       await dbManager.exec(`DELETE FROM auth.sessions WHERE user_id IN (SELECT id FROM auth.users WHERE email IN ('${testUser.email}', '${testUser2.email}'))`);
-    } catch (error) {
+    } catch (_error) {
       // Ignore cleanup errors - tables might not exist yet
     }
   });

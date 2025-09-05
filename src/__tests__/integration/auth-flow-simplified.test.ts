@@ -7,7 +7,7 @@ vi.mock('../../lib/database/connection', () => ({
     getInstance: () => ({
       initialize: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
-      query: vi.fn().mockImplementation((sql: string, params?: any[]) => {
+      query: vi.fn().mockImplementation((sql: string, params?: (string | number | boolean | null)[]) => {
         // Mock different query responses based on SQL
         if (sql.includes('SELECT * FROM auth.users WHERE email')) {
           // Mock user lookup - return empty for non-existent users
@@ -32,7 +32,7 @@ vi.mock('../../lib/database/connection', () => ({
             rows: [{
               id: 'user-456',
               email: params?.[0] || 'test@example.com',
-              user_metadata: params?.[4] ? JSON.parse(params[4]) : {},
+              user_metadata: params?.[4] ? JSON.parse(String(params[4])) : {},
               created_at: new Date().toISOString()
             }]
           });
@@ -75,7 +75,7 @@ vi.mock('../../lib/database/connection', () => ({
             rows: [{
               id: 'user-123',
               email: 'existing@example.com',
-              user_metadata: params?.[0] ? JSON.parse(params[0]) : {},
+              user_metadata: params?.[0] ? JSON.parse(String(params[0])) : {},
               updated_at: new Date().toISOString()
             }]
           });

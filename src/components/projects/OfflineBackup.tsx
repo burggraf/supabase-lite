@@ -75,6 +75,35 @@ export function OfflineBackup({
     return `${name}-${timestamp}.${format}`
   }, [exportAll])
 
+  const saveWithFileSystemAPI = async (data: any, _size: number) => {
+    const filename = generateFileName(selectedFormat)
+    const fileHandle = await (window as any).showSaveFilePicker({
+      suggestedName: filename,
+      types: [fileTypeMap[selectedFormat]]
+    })
+
+    const writable = await fileHandle.createWritable()
+    const content = selectedFormat === 'json' ? JSON.stringify(data, null, 2) : data
+    await writable.write(content)
+    await writable.close()
+  }
+
+  const saveWithDownloadAPI = (data: any, _size: number) => {
+    const content = selectedFormat === 'json' ? JSON.stringify(data, null, 2) : data
+    const acceptKeys = Object.keys(fileTypeMap[selectedFormat].accept)
+    const mimeType = acceptKeys[0] as keyof typeof fileTypeMap[typeof selectedFormat]['accept']
+    const blob = new Blob([content], { type: fileTypeMap[selectedFormat].accept[mimeType][0] })
+    const url = URL.createObjectURL(blob)
+    
+    const a = document.createElement('a')
+    a.href = url
+    a.download = generateFileName(selectedFormat)
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   const handleExport = useCallback(async () => {
     try {
       setStatus({ type: 'exporting', message: 'Preparing export...', progress: 0 })
@@ -115,35 +144,36 @@ export function OfflineBackup({
         details: (error as Error).message
       })
     }
-  }, [selectedFormat, selectedProject, exportAll, supportsFileSystem, onExportComplete, dataExporter, formatBytes, generateFileName])
+  }, [selectedFormat, selectedProject, exportAll, supportsFileSystem, onExportComplete, dataExporter, formatBytes, generateFileName, saveWithDownloadAPI, saveWithFileSystemAPI])
 
-  const saveWithFileSystemAPI = async (data: any, _size: number) => {
-    const filename = generateFileName(selectedFormat)
-    const fileHandle = await (window as any).showSaveFilePicker({
-      suggestedName: filename,
-      types: [fileTypeMap[selectedFormat]]
+  const processImportFile = async (file: File) => {
+    setStatus({ type: 'importing', message: 'Reading file...', progress: 25 })
+
+    const content = selectedFormat === 'json' 
+      ? JSON.parse(await file.text())
+      : await file.text()
+
+    setStatus({ type: 'importing', message: 'Validating data...', progress: 50 })
+
+    const validation = await dataExporter.validateImportData(content, selectedFormat)
+    if (!validation.valid) {
+      throw new Error(`Validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    setStatus({ type: 'importing', message: 'Importing project...', progress: 75 })
+
+    const result = await dataExporter.importProject(content, selectedFormat)
+    if (!result.success) {
+      throw new Error(result.error!)
+    }
+
+    setStatus({
+      type: 'success',
+      message: 'Import completed successfully',
+      details: `Project imported with ID: ${result.projectId}`
     })
 
-    const writable = await fileHandle.createWritable()
-    const content = selectedFormat === 'json' ? JSON.stringify(data, null, 2) : data
-    await writable.write(content)
-    await writable.close()
-  }
-
-  const saveWithDownloadAPI = (data: any, _size: number) => {
-    const content = selectedFormat === 'json' ? JSON.stringify(data, null, 2) : data
-    const acceptKeys = Object.keys(fileTypeMap[selectedFormat].accept)
-    const mimeType = acceptKeys[0] as keyof typeof fileTypeMap[typeof selectedFormat]['accept']
-    const blob = new Blob([content], { type: fileTypeMap[selectedFormat].accept[mimeType][0] })
-    const url = URL.createObjectURL(blob)
-    
-    const a = document.createElement('a')
-    a.href = url
-    a.download = generateFileName(selectedFormat)
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    onImportComplete?.(result.projectId!)
   }
 
   const handleImport = useCallback(async () => {
@@ -187,37 +217,7 @@ export function OfflineBackup({
         details: (error as Error).message
       })
     }
-  }, [selectedFormat, supportsFileSystem])
-
-  const processImportFile = async (file: File) => {
-    setStatus({ type: 'importing', message: 'Reading file...', progress: 25 })
-
-    const content = selectedFormat === 'json' 
-      ? JSON.parse(await file.text())
-      : await file.text()
-
-    setStatus({ type: 'importing', message: 'Validating data...', progress: 50 })
-
-    const validation = await dataExporter.validateImportData(content, selectedFormat)
-    if (!validation.valid) {
-      throw new Error(`Validation failed: ${validation.errors.join(', ')}`)
-    }
-
-    setStatus({ type: 'importing', message: 'Importing project...', progress: 75 })
-
-    const result = await dataExporter.importProject(content, selectedFormat)
-    if (!result.success) {
-      throw new Error(result.error!)
-    }
-
-    setStatus({
-      type: 'success',
-      message: 'Import completed successfully',
-      details: `Project imported with ID: ${result.projectId}`
-    })
-
-    onImportComplete?.(result.projectId!)
-  }
+  }, [selectedFormat, supportsFileSystem, processImportFile])
 
   const getStatusIcon = () => {
     switch (status.type) {

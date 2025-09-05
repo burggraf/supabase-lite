@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BucketList } from './BucketList';
 import { FileBrowser } from './FileBrowser';
 import { vfsManager } from '@/lib/vfs/VFSManager';
@@ -13,11 +13,7 @@ export function Storage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadBuckets();
-  }, []);
-
-  const loadBuckets = async () => {
+  const loadBuckets = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -44,7 +40,11 @@ export function Storage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedBucket]);
+
+  useEffect(() => {
+    loadBuckets();
+  }, [loadBuckets]);
 
   const handleBucketSelect = (bucket: VFSBucket) => {
     setSelectedBucket(bucket);

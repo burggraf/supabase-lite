@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -29,11 +29,7 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadSecrets();
-  }, [projectId]);
-
-  const loadSecrets = async () => {
+  const loadSecrets = useCallback(async () => {
     try {
       setLoading(true);
       // Load secrets from localStorage (project-scoped)
@@ -47,7 +43,11 @@ export const SecretsManager: React.FC<SecretsManagerProps> = ({ projectId }) => 
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    loadSecrets();
+  }, [projectId, loadSecrets]);
 
   const saveSecrets = async (updatedSecrets: Secret[]) => {
     try {

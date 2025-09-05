@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 // Card imports removed - not used in this component
@@ -30,11 +30,7 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
   const [template, setTemplate] = useState('hello-world');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadFunctionFiles();
-  }, [functionName]);
-
-  const loadFunctionFiles = async () => {
+  const loadFunctionFiles = useCallback(async () => {
     try {
       setLoading(true);
       const activeProject = projectManager.getActiveProject();
@@ -62,7 +58,11 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [functionName]);
+
+  useEffect(() => {
+    loadFunctionFiles();
+  }, [functionName, loadFunctionFiles]);
 
   const buildFileTree = (files: any[], _basePath: string): FileNode[] => {
     const tree: FileNode[] = [];
