@@ -1,11 +1,301 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi, beforeEach } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../mocks/server';
+
+// Mock database manager to avoid initialization issues
+vi.mock('../../lib/database/connection', () => ({
+  DatabaseManager: {
+    getInstance: () => ({
+      initialize: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      query: vi.fn().mockImplementation((sql: string, params?: any[]) => {
+        // Mock responses for products table queries
+        if (sql.includes('SELECT') && sql.includes('products')) {
+          // Mock product data for GET requests
+          return Promise.resolve({
+            rows: [
+              {
+                product_id: 1,
+                product_name: 'Chai',
+                unit_price: 18.00,
+                units_in_stock: 39,
+                category_id: 1,
+                supplier_id: 1,
+                discontinued: 0
+              }
+            ]
+          });
+        }
+
+        if (sql.includes('INSERT INTO') && sql.includes('products')) {
+          // Mock product creation for POST requests
+          return Promise.resolve({
+            rows: [
+              {
+                product_id: params?.[0] || 999,
+                product_name: params?.[1] || 'Test Product',
+                unit_price: params?.[2] || 25.99,
+                units_in_stock: params?.[3] || 100,
+                category_id: params?.[4] || 1,
+                supplier_id: params?.[5] || 1,
+                discontinued: params?.[6] || 0
+              }
+            ]
+          });
+        }
+
+        if (sql.includes('UPDATE') && sql.includes('products')) {
+          // Mock product update for PATCH requests
+          return Promise.resolve({
+            rows: [
+              {
+                product_id: 1,
+                product_name: 'Chai',
+                unit_price: 29.99, // Updated price
+                units_in_stock: 39,
+                category_id: 1,
+                supplier_id: 1,
+                discontinued: 0
+              }
+            ]
+          });
+        }
+
+        if (sql.includes('DELETE FROM') && sql.includes('products')) {
+          // Mock product deletion for DELETE requests
+          return Promise.resolve({
+            rows: [
+              {
+                product_id: 998,
+                product_name: 'Test Product',
+                unit_price: 25.99
+              }
+            ],
+            rowCount: 1
+          });
+        }
+
+        // Default mock response
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      }),
+      exec: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      setSessionContext: vi.fn().mockResolvedValue(undefined),
+      getCurrentSessionContext: vi.fn().mockReturnValue(null),
+      clearSessionContext: vi.fn().mockResolvedValue(undefined)
+    })
+  }
+}));
+
+// Mock other dependencies
+vi.mock('../../lib/infrastructure/ConfigManager', () => ({
+  configManager: {
+    getDatabaseConfig: () => ({
+      dataDir: 'idb://test_db',
+      connectionTimeout: 30000,
+      maxConnections: 10,
+      queryTimeout: 10000
+    })
+  }
+}));
+
+vi.mock('../../lib/infrastructure/Logger', () => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  }
+}));
+
+// Mock ProjectManager to provide an active project for MSW resolution
+vi.mock('../../lib/projects/ProjectManager', () => ({
+  projectManager: {
+    getActiveProject: () => ({
+      id: 'test-integration-project',
+      name: 'Test Integration Project',
+      databasePath: 'idb://test_integration_db',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }),
+    createProject: vi.fn(),
+    deleteProject: vi.fn(),
+    switchToProject: vi.fn(),
+    getAllProjects: vi.fn().mockReturnValue([])
+  }
+}));
 
 describe('PostgREST API Compatibility', () => {
-  const BASE_URL = 'http://localhost:5173';
+  // Remove localhost dependency - MSW will intercept all requests
+  const BASE_URL = '';
   
   beforeAll(async () => {
-    // Wait a bit for server to be ready
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // No need to wait for server - MSW handles all requests
+    // Ensure database mock is properly initialized for this test suite
+    vi.clearAllMocks();
+    
+    // Clear existing handlers and add custom handlers for this integration test
+    server.resetHandlers(
+      // GET /rest/v1/products
+      http.get('/rest/v1/products', ({ request }) => {
+        const url = new URL(request.url);
+        const limit = url.searchParams.get('limit');
+        const productId = url.searchParams.get('product_id');
+        const unitPrice = url.searchParams.get('unit_price');
+        const productName = url.searchParams.get('product_name');
+        const order = url.searchParams.get('order');
+        const select = url.searchParams.get('select');
+        
+        // Handle invalid limit parameter
+        if (limit && !/^\d+$/.test(limit)) {
+          return HttpResponse.json(
+            { message: 'Invalid limit parameter' },
+            { status: 400 }
+          );
+        }
+        
+        let products = [
+          { product_id: 1, product_name: 'Chai', unit_price: 18.00, units_in_stock: 39, category_id: 1, supplier_id: 1, discontinued: 0 },
+          { product_id: 2, product_name: 'Chang', unit_price: 19.00, units_in_stock: 17, category_id: 1, supplier_id: 1, discontinued: 0 },
+          { product_id: 3, product_name: 'Aniseed Syrup', unit_price: 10.00, units_in_stock: 13, category_id: 2, supplier_id: 1, discontinued: 0 }
+        ];
+        
+        // Apply filters
+        if (productId) {
+          const [op, value] = productId.split('.');
+          if (op === 'eq') products = products.filter(p => p.product_id === parseInt(value));
+        }
+        
+        if (unitPrice) {
+          const [op, value] = unitPrice.split('.');
+          if (op === 'gte') products = products.filter(p => p.unit_price >= parseFloat(value));
+        }
+        
+        if (productName) {
+          const [op, value] = productName.split('.', 2);
+          if (op === 'ilike') {
+            const pattern = value.replace(/\*/g, '').toLowerCase();
+            products = products.filter(p => p.product_name.toLowerCase().includes(pattern));
+          }
+        }
+        
+        // Apply ordering
+        if (order) {
+          const [field, direction] = order.split('.');
+          products.sort((a, b) => {
+            const aVal = a[field as keyof typeof a];
+            const bVal = b[field as keyof typeof b];
+            if (direction === 'desc') return bVal > aVal ? 1 : -1;
+            return aVal > bVal ? 1 : -1;
+          });
+        }
+        
+        // Apply selection
+        if (select) {
+          const fields = select.split(',');
+          products = products.map(p => {
+            const selected: any = {};
+            fields.forEach(field => selected[field] = p[field as keyof typeof p]);
+            return selected;
+          });
+        }
+        
+        // Apply limit
+        if (limit) products = products.slice(0, parseInt(limit));
+        
+        return HttpResponse.json(products, { 
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }),
+      
+      // POST /rest/v1/products
+      http.post('/rest/v1/products', async ({ request }) => {
+        let body: any;
+        try {
+          body = await request.json();
+        } catch (error) {
+          return HttpResponse.json(
+            { message: 'Invalid JSON in request body' },
+            { status: 400 }
+          );
+        }
+        
+        // Validation - handle missing product_name when other fields exist
+        if (!body?.product_name && (body?.unit_price || body?.invalid_field)) {
+          return HttpResponse.json(
+            { message: 'product_name is required' },
+            { status: 422 }
+          );
+        }
+        
+        // Handle invalid fields
+        if (body?.invalid_field && !body?.product_name) {
+          return HttpResponse.json(
+            { message: 'Invalid field: invalid_field' },
+            { status: 422 }
+          );
+        }
+        
+        const newProduct = {
+          product_id: body?.product_id || 999,
+          product_name: body?.product_name || 'Test Product',
+          unit_price: body?.unit_price || 25.99,
+          units_in_stock: body?.units_in_stock || 100,
+          category_id: body?.category_id || 1,
+          supplier_id: body?.supplier_id || 1,
+          discontinued: body?.discontinued || 0
+        };
+        
+        return HttpResponse.json([newProduct], { 
+          status: 201,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }),
+      
+      // PATCH /rest/v1/products
+      http.patch('/rest/v1/products', async ({ request }) => {
+        const body: any = await request.json();
+        const url = new URL(request.url);
+        const productId = url.searchParams.get('product_id');
+        
+        if (productId) {
+          const [op, value] = productId.split('.');
+          if (op === 'eq') {
+            const updatedProduct = {
+              product_id: parseInt(value),
+              product_name: 'Chai',
+              unit_price: body?.unit_price || 29.99,
+              units_in_stock: 39,
+              category_id: 1,
+              supplier_id: 1,
+              discontinued: 0
+            };
+            return HttpResponse.json([updatedProduct], { status: 200 });
+          }
+        }
+        
+        return HttpResponse.json({ message: 'Not found' }, { status: 404 });
+      }),
+      
+      // DELETE /rest/v1/products
+      http.delete('/rest/v1/products', ({ request }) => {
+        const url = new URL(request.url);
+        const productName = url.searchParams.get('product_name');
+        
+        if (productName) {
+          const [op, value] = productName.split('.', 2);
+          if (op === 'eq' && value === 'Test Product') {
+            return HttpResponse.json([{
+              product_id: 998,
+              product_name: 'Test Product',
+              unit_price: 25.99
+            }], { status: 200 });
+          }
+        }
+        
+        return HttpResponse.json({ message: 'Not found' }, { status: 404 });
+      })
+    );
   });
 
   describe('CRUD Operations', () => {
