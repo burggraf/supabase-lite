@@ -502,7 +502,7 @@ export class WebVMFunctionExecutor {
    */
   private createFunctionEnvironment(invocation: FunctionInvocation): FunctionEnvironment {
     return {
-      SUPABASE_DB_URL: 'http://localhost:8080',
+      SUPABASE_DB_URL: 'http://localhost:5173',
       SUPABASE_ANON_KEY: 'test-anon-key',
       SUPABASE_PROJECT_ID: invocation.context.project.id,
       NODE_ENV: 'development',

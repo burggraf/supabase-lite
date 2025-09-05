@@ -160,14 +160,14 @@ export class WebVMManager extends SimpleEventEmitter {
     const activeProject = projectManager.getActiveProject()
     if (activeProject) {
       this.functionExecutor = new WebVMFunctionExecutor({
-        url: 'http://localhost:8080',
+        url: window.location.origin,
         key: 'anonymous-key',
         projectId: activeProject.id
       })
     } else {
       // Fallback to default project if none active
       this.functionExecutor = new WebVMFunctionExecutor({
-        url: 'http://localhost:8080',
+        url: window.location.origin,
         key: 'anonymous-key',
         projectId: 'default'
       })
@@ -485,7 +485,7 @@ export class WebVMManager extends SimpleEventEmitter {
       config: {
         'deno-version': '1.40.0',
         'runtime-port': 8000,
-        'supabase-url': 'http://localhost:8080',
+        'supabase-url': window.location.origin,
         'supabase-anon-key': 'anonymous-key'
       }
     })
