@@ -210,7 +210,7 @@ export class FolderUploadService {
     currentPath: string,
     files: { handle: FileSystemFileHandle; path: string }[]
   ): Promise<void> {
-    // @ts-ignore - File System Access API not fully typed
+    // @ts-expect-error - File System Access API not fully typed
     for await (const [name, entry] of dirHandle.entries()) {
       const fullPath = currentPath ? `${currentPath}/${name}` : name;
       

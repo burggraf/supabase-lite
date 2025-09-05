@@ -6,7 +6,7 @@ export interface DatabaseConnection {
 }
 
 export interface QueryResult {
-  rows: any[];
+  rows: unknown[];
   fields: Array<{ name: string; dataTypeID: number }>;
   rowCount: number;
   command: string;
@@ -53,7 +53,7 @@ export interface ColumnSchema {
   name: string;
   type: string;
   nullable: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   isPrimaryKey: boolean;
   isForeignKey: boolean;
 }
@@ -94,14 +94,14 @@ export interface ColumnInfo {
 }
 
 export interface TableDataResponse {
-  rows: any[];
+  rows: unknown[];
   totalCount: number;
 }
 
 export interface CellEditProps {
-  value: any;
+  value: unknown;
   column: ColumnInfo;
-  onSave: (value: any) => void;
+  onSave: (value: unknown) => void;
   onCancel: () => void;
 }
 

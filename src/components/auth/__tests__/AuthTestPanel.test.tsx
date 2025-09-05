@@ -258,7 +258,7 @@ describe('AuthTestPanel', () => {
 		})
 
 		it('should show loading state during authentication', async () => {
-			let resolveSignIn: (value: any) => void = () => {}
+			let resolveSignIn: (value: unknown) => void = () => {}
 			const signInPromise = new Promise((resolve) => {
 				resolveSignIn = resolve
 			})

@@ -12,7 +12,7 @@ let isConfigured = false;
 /**
  * Initialize Monaco resources
  */
-async function initializeMonaco() {
+async function initializeMonaco(): Promise<void> {
   if (typeof window === 'undefined') {
     // In test environment, use mocks
     return;
@@ -67,7 +67,7 @@ export async function configureMonacoOffline(): Promise<void> {
 
   // Set up worker environment
   (self as any).MonacoEnvironment = {
-    getWorker(_: any, label: string) {
+    getWorker(_: any, label: string): Worker {
       switch (label) {
         case 'json':
           return new workers.json();
@@ -139,7 +139,7 @@ export async function configureMonacoOffline(): Promise<void> {
 
   // Set SQL completion provider
   monaco.languages.registerCompletionItemProvider('sql', {
-    provideCompletionItems: () => {
+    provideCompletionItems: (): any => {
       const suggestions = [
         {
           label: 'SELECT',
@@ -186,7 +186,7 @@ export function isMonacoConfigured(): boolean {
 /**
  * Get the default editor options for offline use
  */
-export function getOfflineEditorOptions(): any {
+export function getOfflineEditorOptions() {
   return {
     fontSize: 14,
     lineNumbers: 'on',

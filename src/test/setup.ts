@@ -19,9 +19,9 @@ afterAll(() => server.close())
 // Mock crypto.randomUUID if not available
 Object.defineProperty(global, 'crypto', {
   value: {
-    randomUUID: () => Math.random().toString(36).substring(2, 15),
+    randomUUID: (): string => Math.random().toString(36).substring(2, 15),
     subtle: {
-      digest: vi.fn().mockImplementation(async (_algorithm, _data) => {
+      digest: vi.fn().mockImplementation(async (): Promise<ArrayBuffer> => {
         // Simple mock hash - return a consistent hash for 'Password123$'
         const hashForPassword123$ = new Uint8Array([
           0xef, 0x92, 0xb7, 0x78, 0xba, 0xfe, 0x77, 0x1e,
@@ -31,7 +31,7 @@ Object.defineProperty(global, 'crypto', {
         ])
         return hashForPassword123$.buffer
       }),
-      importKey: vi.fn().mockImplementation(async (_format: string, _keyData: any, algorithm: any, extractable: boolean, keyUsages: string[]) => {
+      importKey: vi.fn().mockImplementation(async (_format: KeyFormat, _keyData: BufferSource | JsonWebKey, algorithm: AlgorithmIdentifier, extractable: boolean, keyUsages: KeyUsage[]): Promise<CryptoKey> => {
         // Return a mock key object
         return {
           algorithm,
@@ -40,11 +40,11 @@ Object.defineProperty(global, 'crypto', {
           usages: keyUsages
         }
       }),
-      sign: vi.fn().mockImplementation(async (_algorithm: any, key: any, data: any) => {
+      sign: vi.fn().mockImplementation(async (_algorithm: AlgorithmIdentifier, key: CryptoKey, data: BufferSource): Promise<ArrayBuffer> => {
         // Mock signature that varies based on key and data
         // const encoder = new TextEncoder()
         const keyStr = JSON.stringify(key)
-        const dataStr = new TextDecoder().decode(data)
+        const dataStr = new TextDecoder().decode(data as ArrayBuffer)
 
         // Create a simple hash-like signature based on key and data
         let hash = 0
@@ -61,23 +61,23 @@ Object.defineProperty(global, 'crypto', {
 
         return signature.buffer
       }),
-      generateKey: vi.fn().mockImplementation(async (algorithm, extractable, keyUsages) => {
+      generateKey: vi.fn().mockImplementation(async (algorithm: AlgorithmIdentifier, extractable: boolean, keyUsages: KeyUsage[]): Promise<CryptoKeyPair> => {
         // Return a mock ES256 key pair
         const privateKey = {
           algorithm,
           extractable,
           type: 'private',
-          usages: (keyUsages as string[]).filter((usage: any) => ['sign'].includes(usage))
+          usages: keyUsages.filter((usage) => ['sign'].includes(usage))
         }
         const publicKey = {
           algorithm,
           extractable,
           type: 'public',
-          usages: (keyUsages as string[]).filter((usage: any) => ['verify'].includes(usage))
+          usages: keyUsages.filter((usage) => ['verify'].includes(usage))
         }
         return { privateKey, publicKey }
       }),
-      exportKey: vi.fn().mockImplementation(async (format, key) => {
+      exportKey: vi.fn().mockImplementation(async (format: string, key: CryptoKey): Promise<JsonWebKey> => {
         // Return mock JWK for public keys
         if (format === 'jwk' && key.type === 'public') {
           return {
@@ -109,7 +109,7 @@ Object.defineProperty(window, 'localStorage', {
 // Mock performance.now
 Object.defineProperty(window, 'performance', {
   value: {
-    now: vi.fn(() => Date.now())
+    now: vi.fn((): number => Date.now())
   }
 })
 
@@ -184,7 +184,7 @@ vi.mock('jose', () => {
         return `${header}.${payload}.${signature}`
       })
     })),
-    jwtVerify: vi.fn().mockImplementation(async (jwt: string, _key: any, _options: any) => {
+    jwtVerify: vi.fn().mockImplementation(async (jwt: string) => {
       // Simple mock verification - just decode the JWT
       const parts = jwt.split('.')
       if (parts.length !== 3) {
@@ -197,7 +197,7 @@ vi.mock('jose', () => {
           payload,
           protectedHeader: JSON.parse(atob(parts[0]))
         }
-      } catch (error) {
+      } catch {
         throw new Error('Invalid token: Invalid Compact JWS')
       }
     })
@@ -213,7 +213,7 @@ beforeEach(() => {
     if (DatabaseManager && DatabaseManager.instance) {
       DatabaseManager.instance = null
     }
-  } catch (_error) {
+  } catch {
     // Module might not exist yet, ignore
   }
 })

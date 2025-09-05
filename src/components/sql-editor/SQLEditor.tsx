@@ -31,7 +31,7 @@ export function SQLEditor() {
   const [editorHeight, setEditorHeight] = useState(400); // Fixed pixel height
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<unknown>(null);
   const dragStartY = useRef<number>(0);
   const dragStartHeight = useRef<number>(0);
   
@@ -78,8 +78,8 @@ export function SQLEditor() {
     setIsDragging(false);
     // Trigger Monaco Editor layout recalculation after resize
     setTimeout(() => {
-      if (editorRef.current) {
-        editorRef.current.layout();
+      if (editorRef.current && typeof editorRef.current === 'object' && editorRef.current !== null && 'layout' in editorRef.current) {
+        (editorRef.current as { layout: () => void }).layout();
       }
     }, 100);
   }, []);
@@ -125,8 +125,8 @@ export function SQLEditor() {
         const result = await executeQuery(query);
         setResult(result);
       }
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Query execution failed';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Query execution failed';
       setError(errorMessage);
     } finally {
       setIsExecuting(false);
@@ -205,7 +205,7 @@ export function SQLEditor() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  const formatValue = (value: any): string => {
+  const formatValue = (value: unknown): string => {
     if (value === null) return 'NULL';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);

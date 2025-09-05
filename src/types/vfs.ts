@@ -117,7 +117,7 @@ export interface VFSOperationResult {
   /** Error message if operation failed */
   error?: string;
   /** Operation result data */
-  data?: any;
+  data?: unknown;
   /** Operation duration in milliseconds */
   duration?: number;
   /** Operation type for logging */
@@ -169,7 +169,7 @@ export interface VFSCreateFileOptions {
   /** Create parent directories if they don't exist */
   createDirectories?: boolean;
   /** Additional file metadata */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface VFSUpdateFileOptions {
@@ -187,7 +187,7 @@ export interface VFSError {
   /** Human-readable error message */
   message: string;
   /** Additional error details */
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   /** Original error if available */
   cause?: Error;
 }
@@ -241,7 +241,7 @@ export interface VFSIndexedDBSchema {
 export interface VFSEvent {
   type: VFSEventType;
   projectId: string;
-  data?: any;
+  data?: unknown;
   timestamp: Date;
 }
 
@@ -317,7 +317,7 @@ export interface VFSBucket {
   /** Bucket last modification timestamp */
   updatedAt: Date;
   /** Additional bucket metadata */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface VFSBucketOptions {
@@ -328,7 +328,7 @@ export interface VFSBucketOptions {
   /** Allowed MIME types */
   allowedMimeTypes?: string[];
   /** Additional metadata */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Extend VFS operations to include bucket management

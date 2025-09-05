@@ -6,15 +6,15 @@ export interface LogEntry {
   level: LogLevel;
   message: string;
   timestamp: Date;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   duration?: number;
 }
 
 export interface Logger {
-  debug(message: string, context?: Record<string, any>): void;
-  info(message: string, context?: Record<string, any>): void;
-  warn(message: string, context?: Record<string, any>): void;
-  error(message: string, error?: Error, context?: Record<string, any>): void;
+  debug(message: string, context?: Record<string, unknown>): void;
+  info(message: string, context?: Record<string, unknown>): void;
+  warn(message: string, context?: Record<string, unknown>): void;
+  error(message: string, error?: Error, context?: Record<string, unknown>): void;
   getEntries(): LogEntry[];
   clear(): void;
 }
@@ -25,11 +25,11 @@ export interface InfrastructureError {
   details?: string;
   hint?: string;
   originalError?: Error;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export interface ErrorHandler {
-  handleError(error: unknown, context?: Record<string, any>): InfrastructureError;
+  handleError(error: unknown, context?: Record<string, unknown>): InfrastructureError;
   formatError(error: InfrastructureError): string;
   isRecoverable(error: InfrastructureError): boolean;
 }
@@ -67,8 +67,8 @@ export interface AppConfig {
 }
 
 export interface ConfigManager {
-  get<T = any>(key: string): T | undefined;
-  set(key: string, value: any): void;
+  get<T = unknown>(key: string): T | undefined;
+  set(key: string, value: unknown): void;
   getAll(): AppConfig;
   reset(): void;
   load(config: Partial<AppConfig>): void;
@@ -197,11 +197,11 @@ export interface APIRequest {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   url: string;
   headers: Record<string, string>;
-  body?: any;
+  body?: unknown;
   timeout?: number;
 }
 
-export interface APIResponse<T = any> {
+export interface APIResponse<T = unknown> {
   data: T;
   status: number;
   headers: Record<string, string>;
@@ -218,7 +218,7 @@ export interface ResponseInterceptor {
 }
 
 export interface APIBridge {
-  request<T = any>(request: APIRequest): Promise<APIResponse<T>>;
+  request<T = unknown>(request: APIRequest): Promise<APIResponse<T>>;
   addRequestInterceptor(interceptor: RequestInterceptor): void;
   addResponseInterceptor(interceptor: ResponseInterceptor): void;
   validateRequest(request: APIRequest): boolean;

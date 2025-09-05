@@ -34,7 +34,7 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
     open: boolean;
     functionName: string;
     loading: boolean;
-    response: any;
+    response: unknown;
     error: string | null;
     requestBody: string;
   }>({

@@ -193,7 +193,7 @@ describe('PostgREST API Compatibility', () => {
         if (select) {
           const fields = select.split(',');
           products = products.map(p => {
-            const selected: any = {};
+            const selected: Record<string, unknown> = {};
             fields.forEach(field => selected[field] = p[field as keyof typeof p]);
             return selected;
           }) as typeof products;
@@ -222,7 +222,7 @@ describe('PostgREST API Compatibility', () => {
         } | undefined;
         try {
           body = await request.json() as typeof body;
-        } catch (error) {
+        } catch {
           return HttpResponse.json(
             { message: 'Invalid JSON in request body' },
             { status: 400 }
@@ -263,7 +263,7 @@ describe('PostgREST API Compatibility', () => {
       
       // PATCH /rest/v1/products
       http.patch('/rest/v1/products', async ({ request }) => {
-        const body: any = await request.json();
+        const body: Record<string, unknown> = await request.json();
         const url = new URL(request.url);
         const productId = url.searchParams.get('product_id');
         
@@ -513,7 +513,7 @@ describe('PostgREST API Compatibility', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(Array.isArray(data)).toBe(true);
-      data.forEach((product: any) => {
+      data.forEach((product: { unit_price: number }) => {
         expect(product.unit_price).toBeGreaterThanOrEqual(20);
       });
     });
@@ -529,7 +529,7 @@ describe('PostgREST API Compatibility', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(Array.isArray(data)).toBe(true);
-      data.forEach((product: any) => {
+      data.forEach((product: { product_name: string }) => {
         expect(product.product_name.toLowerCase()).toContain('chai');
       });
     });

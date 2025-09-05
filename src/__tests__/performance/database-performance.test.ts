@@ -12,7 +12,7 @@ vi.mock('@/lib/database/connection', () => ({
         return Promise.resolve();
       }),
       close: vi.fn().mockResolvedValue(undefined),
-      query: vi.fn().mockImplementation(async (sql: string, params?: any[]) => {
+      query: vi.fn().mockImplementation(async (sql: string, params?: unknown[]) => {
         // Simulate query execution time based on query complexity
         let delay = 1; // Base delay in ms
         
@@ -22,7 +22,7 @@ vi.mock('@/lib/database/connection', () => ({
         if (sql.includes('CREATE INDEX')) {
           delay += 10;
           // Set global flag to track index creation
-          (global as any).__indexCreated = true;
+          (global as Record<string, unknown>).__indexCreated = true;
         }
         // Minimal delay for INSERT operations to prevent timeout in index performance test
         if (sql.includes('INSERT') && params && params.length > 0) delay += 0.01;
@@ -55,7 +55,7 @@ vi.mock('@/lib/database/connection', () => ({
           // Simulate index performance improvement by adjusting delay
           if (sql.includes('index_test') && sql.includes('WHERE')) {
             // Check if an index was already created (we'll track this with a flag)
-            if ((global as any).__indexCreated) {
+            if ((global as Record<string, unknown>).__indexCreated) {
               delay = 1; // Fast with index
             } else {
               delay = 5; // Slower without index
@@ -100,7 +100,7 @@ vi.mock('@/lib/database/connection', () => ({
         if (sql.includes('CREATE INDEX')) {
           delay = 15;
           // Set global flag to track index creation
-          (global as any).__indexCreated = true;
+          (global as Record<string, unknown>).__indexCreated = true;
         }
         
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -126,7 +126,7 @@ describe('Database Performance Benchmarks', () => {
 
   beforeEach(async () => {
     // Clear index flag for test isolation
-    (global as any).__indexCreated = false;
+    (global as Record<string, unknown>).__indexCreated = false;
     
     dbManager = DatabaseManager.getInstance();
     await dbManager.initialize(':memory:'); // Use in-memory database for tests

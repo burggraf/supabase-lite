@@ -5,8 +5,8 @@ import { Badge } from '@/components/ui/badge'
 
 interface TestResult {
   operation: string
-  data: any
-  error: any
+  data: unknown
+  error: unknown
   status: number
   statusText: string
   count: number
@@ -21,7 +21,7 @@ export default function APITester() {
     
     try {
       let response: Response
-      let data: any
+      let data: unknown
 
       switch (testName) {
         case 'basic-select':
@@ -88,11 +88,11 @@ export default function APITester() {
 
       setResults(prev => [result, ...prev])
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       const result: TestResult = {
         operation,
         data: null,
-        error: { message: error.message },
+        error: { message: error instanceof Error ? error.message : String(error) },
         status: 0,
         statusText: '',
         count: 0

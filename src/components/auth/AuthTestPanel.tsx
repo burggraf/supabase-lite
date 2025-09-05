@@ -13,7 +13,7 @@ import { getBaseUrl } from '@/lib/utils'
 
 interface AuthTestResult {
   success: boolean
-  data?: any
+  data?: unknown
   error?: string
   duration?: number
 }
@@ -45,14 +45,14 @@ export function AuthTestPanel() {
   const [challengeId, setChallengeId] = useState('')
   
   // Factors state
-  const [factors, setFactors] = useState<any>({ totp: [], phone: [] })
+  const [factors, setFactors] = useState<{ totp: unknown[]; phone: unknown[] }>({ totp: [], phone: [] })
 
   useEffect(() => {
     // Initialize auth manager
     authManager.initialize().catch(console.error)
     
     // Set up auth state listener
-    const unsubscribe = sessionManager.onAuthStateChange((event: any) => {
+    const unsubscribe = sessionManager.onAuthStateChange((event: unknown) => {
       console.log('Auth state change:', event)
       setCurrentUser(sessionManager.getUser())
       setCurrentSession(sessionManager.getSession())
@@ -92,7 +92,7 @@ export function AuthTestPanel() {
     return key.slice(0, 10) + '...' + key.slice(-10)
   }
 
-  const runTest = async (testName: string, testFn: () => Promise<any>) => {
+  const runTest = async (testName: string, testFn: () => Promise<unknown>) => {
     const startTime = performance.now()
     
     try {
@@ -109,14 +109,14 @@ export function AuthTestPanel() {
       }))
       
       return result
-    } catch (error: any) {
+    } catch (error: unknown) {
       const duration = performance.now() - startTime
       
       setTestResults(prev => ({
         ...prev,
         [testName]: {
           success: false,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           duration: Math.round(duration)
         }
       }))
@@ -518,18 +518,18 @@ const supabase = createClient(
               {(factors.totp.length > 0 || factors.phone.length > 0) && (
                 <div className="space-y-2">
                   <h4 className="font-medium">Current Factors:</h4>
-                  {factors.totp.map((factor: any) => (
-                    <div key={factor.id} className="flex items-center gap-2 p-2 border rounded">
+                  {factors.totp.map((factor: unknown) => (
+                    <div key={(factor as Record<string, unknown>).id as string} className="flex items-center gap-2 p-2 border rounded">
                       <Badge>TOTP</Badge>
-                      <span>{factor.friendly_name}</span>
-                      <span className="text-xs text-muted-foreground">{factor.status}</span>
+                      <span>{(factor as Record<string, unknown>).friendly_name as string}</span>
+                      <span className="text-xs text-muted-foreground">{(factor as Record<string, unknown>).status as string}</span>
                     </div>
                   ))}
-                  {factors.phone.map((factor: any) => (
-                    <div key={factor.id} className="flex items-center gap-2 p-2 border rounded">
+                  {factors.phone.map((factor: unknown) => (
+                    <div key={(factor as Record<string, unknown>).id as string} className="flex items-center gap-2 p-2 border rounded">
                       <Badge>Phone</Badge>
-                      <span>{factor.phone}</span>
-                      <span className="text-xs text-muted-foreground">{factor.status}</span>
+                      <span>{(factor as Record<string, unknown>).phone as string}</span>
+                      <span className="text-xs text-muted-foreground">{(factor as Record<string, unknown>).status as string}</span>
                     </div>
                   ))}
                 </div>
@@ -544,7 +544,7 @@ const supabase = createClient(
             <CardContent className="space-y-3">
               <select 
                 value={mfaFactorType} 
-                onChange={(e) => setMfaFactorType(e.target.value as 'totp' | 'phone')}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setMfaFactorType(e.target.value as 'totp' | 'phone')}
                 className="w-full p-2 border rounded"
               >
                 <option value="totp">TOTP (Authenticator)</option>

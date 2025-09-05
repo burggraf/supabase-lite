@@ -64,7 +64,7 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
     loadFunctionFiles();
   }, [functionName, loadFunctionFiles]);
 
-  const buildFileTree = (files: any[], _basePath: string): FileNode[] => {
+  const buildFileTree = (files: unknown[], _basePath: string): FileNode[] => {
     const tree: FileNode[] = [];
     
     files.forEach(file => {

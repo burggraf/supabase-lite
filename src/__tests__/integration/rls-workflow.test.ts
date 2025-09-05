@@ -65,7 +65,7 @@ describe('Row Level Security (RLS) Workflow Integration', () => {
     // Clean up
     try {
       await dbManager.exec('DROP TABLE IF EXISTS test_posts;');
-    } catch (error) {
+    } catch {
       // Ignore cleanup errors
     }
     await dbManager.close();

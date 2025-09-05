@@ -7,8 +7,8 @@ import type { ColumnInfo } from '@/types';
 
 interface FormFieldProps {
   column: ColumnInfo;
-  value: any;
-  onChange: (value: any) => void;
+  value: unknown;
+  onChange: (value: unknown) => void;
   error?: string;
   disabled?: boolean;
 }
@@ -20,7 +20,7 @@ export function FormField({ column, value, onChange, error, disabled = false }: 
     setLocalValue(newValue);
     
     // Process value based on column type
-    let processedValue: any = newValue;
+    let processedValue: unknown = newValue;
     
     if (newValue === '' || newValue === null) {
       processedValue = column.is_nullable === 'YES' ? null : '';
@@ -111,7 +111,7 @@ export function FormField({ column, value, onChange, error, disabled = false }: 
       <Input
         type={getInputType()}
         value={localValue}
-        onChange={(e) => handleChange(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange(e.target.value)}
         placeholder={getPlaceholder()}
         disabled={disabled}
         className={cn(error && "border-destructive")}

@@ -23,13 +23,13 @@ import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } f
 import type { ColumnInfo } from '@/types';
 
 interface DataTableProps {
-  data: any[];
+  data: Record<string, unknown>[];
   columns: ColumnInfo[];
   totalCount: number;
   pageIndex: number;
   pageSize: number;
   onPaginationChange: (pagination: { pageIndex: number; pageSize: number }) => void;
-  onRowClick: (row: any) => void;
+  onRowClick: (row: Record<string, unknown>) => void;
   primaryKeyColumn: string;
   globalFilter: string;
 }

@@ -29,7 +29,7 @@ describe('SeedDataSection Component', () => {
       isConnected: true,
       connectionInfo: { database: 'test_db' },
       error: null
-    } as any);
+    } as unknown as ReturnType<typeof useDatabase>);
   });
 
   describe('Rendering', () => {
@@ -225,7 +225,7 @@ describe('SeedDataSection Component', () => {
         isConnected: false,
         connectionInfo: null,
         error: null
-      } as any);
+      } as unknown as ReturnType<typeof useDatabase>);
       
       render(<SeedDataSection />);
       
@@ -242,7 +242,7 @@ describe('SeedDataSection Component', () => {
         isConnected: false,
         connectionInfo: null,
         error: 'Connection failed'
-      } as any);
+      } as unknown as ReturnType<typeof useDatabase>);
       
       render(<SeedDataSection />);
       
@@ -255,7 +255,7 @@ describe('SeedDataSection Component', () => {
     it('should show loading state during operations', async () => {
       const user = userEvent.setup();
       // Create a promise that we can control
-      let resolvePromise: (value: any) => void;
+      let resolvePromise: (value: unknown) => void;
       const controlledPromise = new Promise(resolve => { resolvePromise = resolve; });
       mockExecuteScript.mockReturnValue(controlledPromise);
       
