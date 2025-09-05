@@ -551,33 +551,17 @@ export class WebVMManager extends SimpleEventEmitter {
       }
     })
     
-    // Simulate successful Envoy installation and startup
-    setTimeout(() => {
+    // Actually install and start Envoy in WebVM (no fake timers!)
+    try {
+      const installResult = await this.sendWebVMCommand(installCommand)
+      console.log('📦 Envoy installation command sent to WebVM:', installResult)
+      
+      // Only update status if installation was successful
       this.envoyInstalled = true
       this.status.envoy.installed = true
       this.status.envoy.version = '1.28.0'
       this.status.envoy.port = 8080
       this.status.envoy.adminPort = 8081
-      
-      // Start Envoy automatically
-      setTimeout(() => {
-        this.envoyRunning = true
-        this.status.envoy.running = true
-        this.status.envoy.routingActive = true
-        
-        this.emit('envoy-ready', {
-          type: 'envoy-ready',
-          timestamp: new Date(),
-          data: { 
-            version: '1.28.0',
-            port: 8080,
-            adminPort: 8081,
-            routes: ['rest', 'auth', 'storage', 'functions']
-          }
-        })
-        
-        console.log('✅ Envoy Proxy ready for API routing')
-      }, 1000) // Envoy starts 1 second after installation
       
       this.emit('envoy-installed', {
         type: 'envoy-installed',
@@ -585,8 +569,48 @@ export class WebVMManager extends SimpleEventEmitter {
         data: { version: '1.28.0', port: 8080, adminPort: 8081 }
       })
       
-      console.log('✅ Envoy Proxy installed in WebVM')
-    }, 2000) // Envoy installation takes 2 seconds (after Edge Runtime)
+      // Start Envoy with the routing configuration
+      const startResult = await this.sendWebVMCommand({
+        type: 'start-envoy',
+        config: {
+          'proxy-port': 8080,
+          'admin-port': 8081,
+          'routes': [
+            { 'match': '/rest/v1/*', 'target': 'localhost:3000' },    // PostgREST
+            { 'match': '/auth/v1/*', 'target': 'localhost:5173' },    // Auth service (MSW)  
+            { 'match': '/storage/v1/*', 'target': 'localhost:5173' }, // Storage service (MSW)
+            { 'match': '/functions/v1/*', 'target': 'localhost:8000' } // Edge Functions
+          ]
+        }
+      })
+      
+      console.log('🚀 Envoy start command sent to WebVM:', startResult)
+      
+      // Only mark as running if start was successful
+      this.envoyRunning = true
+      this.status.envoy.running = true
+      this.status.envoy.routingActive = true
+      
+      this.emit('envoy-ready', {
+        type: 'envoy-ready',
+        timestamp: new Date(),
+        data: { 
+          version: '1.28.0',
+          port: 8080,
+          adminPort: 8081,
+          routes: ['rest', 'auth', 'storage', 'functions']
+        }
+      })
+      
+      console.log('✅ Envoy Proxy actually started in WebVM and routing active')
+      
+    } catch (error) {
+      console.error('❌ Failed to install/start Envoy in WebVM:', error)
+      // Keep envoyInstalled and envoyRunning as false
+      this.status.envoy.installed = false
+      this.status.envoy.running = false
+      this.status.envoy.routingActive = false
+    }
   }
 
   /**

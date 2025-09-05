@@ -2174,11 +2174,7 @@ Deno.serve(async (req: Request) => {
     // Default fallback
     return new HttpResponse(null, { status: 404 })
   }),
-  http.get('/rest/v1/:table', withProjectResolution(createRestGetHandler())),
-  http.head('/rest/v1/:table', withProjectResolution(createRestHeadHandler())),
-  http.post('/rest/v1/:table', withProjectResolution(createRestPostHandler())),
-  http.patch('/rest/v1/:table', withProjectResolution(createRestPatchHandler())),
-  http.delete('/rest/v1/:table', withProjectResolution(createRestDeleteHandler())),
+  // PostgREST API calls should go to real PostgREST in WebVM - NO MSW HANDLING!
 
   // Edge Functions - direct handler
   http.all('/functions/v1/:functionName', ({ params, request }: any) => {
@@ -2198,16 +2194,7 @@ Deno.serve(async (req: Request) => {
 
   // ==== PROJECT-SPECIFIC ROUTES ====
   
-  // PostgREST-compatible REST API endpoints with project identifier
-  http.get('/:projectId/rest/v1/:table', withProjectResolution(createRestGetHandler())),
-  http.head('/:projectId/rest/v1/:table', withProjectResolution(createRestHeadHandler())),
-  http.post('/:projectId/rest/v1/:table', withProjectResolution(createRestPostHandler())),
-  http.patch('/:projectId/rest/v1/:table', withProjectResolution(createRestPatchHandler())),
-  http.delete('/:projectId/rest/v1/:table', withProjectResolution(createRestDeleteHandler())),
-
-  // RPC (Remote Procedure Call) endpoints for stored functions
-  http.post('/rest/v1/rpc/:functionName', withProjectResolution(createRpcHandler())),
-  http.post('/:projectId/rest/v1/rpc/:functionName', withProjectResolution(createRpcHandler())),
+  // ALL PostgREST API calls (/rest/v1/*) should go to real PostgREST in WebVM - NO MSW HANDLING!
 
   // Authentication endpoints - Use AuthBridge for all auth operations (consistent approach)
   http.post('/auth/v1/signup', async ({ request }: any) => {
