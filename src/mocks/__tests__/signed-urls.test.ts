@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { setupServer } from 'msw/node';
-import { handlers } from '../handlers';
+import { handlers } from '../handlers/index';
 
 // Test server setup
 const server = setupServer(...handlers);
