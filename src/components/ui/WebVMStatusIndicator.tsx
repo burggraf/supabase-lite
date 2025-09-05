@@ -31,11 +31,13 @@ export function WebVMStatusIndicator({ iconOnly = false, compact = false }: WebV
     // Set up event listeners for WebVM state changes
     const handleWebVMReady = () => updateStatus();
     const handlePostgRESTReady = () => updateStatus();
+    const handleEdgeRuntimeReady = () => updateStatus();
     const handleStarted = () => updateStatus();
     const handleStopped = () => updateStatus();
 
     webvmManager.on('webvm-ready', handleWebVMReady);
     webvmManager.on('postgrest-ready', handlePostgRESTReady);
+    webvmManager.on('edge-runtime-ready', handleEdgeRuntimeReady);
     webvmManager.on('started', handleStarted);
     webvmManager.on('stopped', handleStopped);
 
@@ -45,6 +47,7 @@ export function WebVMStatusIndicator({ iconOnly = false, compact = false }: WebV
     return () => {
       webvmManager.off('webvm-ready', handleWebVMReady);
       webvmManager.off('postgrest-ready', handlePostgRESTReady);
+      webvmManager.off('edge-runtime-ready', handleEdgeRuntimeReady);
       webvmManager.off('started', handleStarted);
       webvmManager.off('stopped', handleStopped);
       clearInterval(interval);
@@ -55,13 +58,34 @@ export function WebVMStatusIndicator({ iconOnly = false, compact = false }: WebV
     return null;
   }
 
-  // Determine status color and text based on WebVM and PostgREST state
+  // Determine status color and text based on WebVM, PostgREST, and Edge Runtime state
   const getStatusInfo = () => {
-    if (status.state === 'running' && status.postgrest.running && status.postgrest.bridgeConnected) {
+    if (status.state === 'running' && 
+        status.postgrest.running && 
+        status.postgrest.bridgeConnected && 
+        status.edgeRuntime.running) {
       return {
         color: 'bg-green-500',
+        text: 'Edge Runtime Ready',
+        detailed: 'WebVM running, PostgREST connected, Edge Runtime active'
+      };
+    } else if (status.state === 'running' && 
+               status.postgrest.running && 
+               status.postgrest.bridgeConnected && 
+               status.edgeRuntime.installed && 
+               !status.edgeRuntime.running) {
+      return {
+        color: 'bg-yellow-500',
+        text: 'Edge Runtime Starting',
+        detailed: 'WebVM running, PostgREST connected, Edge Runtime initializing'
+      };
+    } else if (status.state === 'running' && 
+               status.postgrest.running && 
+               status.postgrest.bridgeConnected) {
+      return {
+        color: 'bg-blue-500',
         text: 'PostgREST Ready',
-        detailed: 'WebVM running, PostgREST connected'
+        detailed: 'WebVM running, PostgREST connected, Edge Runtime installing'
       };
     } else if (status.state === 'running' && status.postgrest.installed && !status.postgrest.running) {
       return {
