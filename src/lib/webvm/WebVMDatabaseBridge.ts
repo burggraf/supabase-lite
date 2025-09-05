@@ -227,10 +227,10 @@ export class WebVMDatabaseBridge {
   ): Promise<void> {
     try {
       // In test environments, MSW will intercept the request
-      // In real environments, this will reach the dev server
+      // In real environments, this will route through Envoy proxy
       const baseUrl = typeof window !== 'undefined' && window.location 
-        ? window.location.origin 
-        : 'http://localhost:5173'
+        ? 'http://localhost:8080'
+        : 'http://localhost:8080'
       const url = `${baseUrl}${request.path}`
       console.log('🔄 WebVMDatabaseBridge: Fallback HTTP request to', url)
 

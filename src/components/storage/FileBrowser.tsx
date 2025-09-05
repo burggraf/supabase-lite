@@ -76,9 +76,9 @@ export function FileBrowser({ bucket, currentPath, onPathChange }: FileBrowserPr
   const [newFilePath, setNewFilePath] = useState('');
   const [isMoving, setIsMoving] = useState(false);
 
-  // Initialize Storage Client
+  // Initialize Storage Client - Route through Envoy proxy
   const storageClient = new StorageClient({
-    apiUrl: window.location.origin,
+    apiUrl: 'http://localhost:8080',
     apiKey: 'dummy-key'
   });
   const storageBucket = storageClient.from(bucket.name);

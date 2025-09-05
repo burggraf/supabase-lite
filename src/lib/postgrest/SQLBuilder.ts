@@ -117,7 +117,9 @@ export class SQLBuilder {
     
     // For now, assume foreign key relationship based on naming convention
     // In a real implementation, this would use database metadata
-    const joinCondition = `${mainTable}.${embedded.table}_id = ${alias}.id`
+    // Use singular form of table name for foreign key column name (Northwind convention)
+    const singularTable = this.getSingularTableName(embedded.table)
+    const joinCondition = `${mainTable}.${singularTable}_id = ${alias}.id`
     
     joins.push({
       table: embedded.table,
@@ -351,5 +353,25 @@ export class SQLBuilder {
       sql,
       parameters: this.parameters
     }
+  }
+
+  /**
+   * Convert plural table names to singular for foreign key column naming
+   * This follows the Northwind database naming convention
+   */
+  private getSingularTableName(tableName: string): string {
+    // Map common plural table names to their singular forms used in Northwind FK columns
+    const pluralToSingularMap: Record<string, string> = {
+      'customers': 'customer',
+      'categories': 'category', 
+      'orders': 'order',
+      'products': 'product',
+      'employees': 'employee',
+      'suppliers': 'supplier',
+      'shippers': 'shipper',
+      'territories': 'territory'
+    }
+
+    return pluralToSingularMap[tableName] || tableName
   }
 }

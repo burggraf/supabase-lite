@@ -4,9 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 const SUPABASE_URL_KEY = 'supabase-lite-url';
 const SUPABASE_API_KEY_KEY = 'supabase-lite-api-key';
 
-// Default configuration
+// Default configuration - Routes through Envoy proxy
 const DEFAULT_CONFIG = {
-  url: 'http://localhost:5173',
+  url: 'http://localhost:8080',
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQyMDk2MDAsImV4cCI6MTg5MVECWMDh0.o6LGZvMJoV5U7CDIsKKHhjqTLLHgJ9jlNUmNgcjnv6c'
 };
 
