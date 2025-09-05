@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 interface TestResult {
 	test: string
 	status?: number
-	data?: any
+	data?: unknown
 	error?: string
 	timestamp: string
 }
@@ -14,7 +14,7 @@ export function APITester() {
 	const [results, setResults] = useState<TestResult[]>([])
 	const [isLoading, setIsLoading] = useState(false)
 
-	const addResult = (test: string, status?: number, data?: any, error?: string) => {
+	const addResult = (test: string, status?: number, data?: unknown, error?: string) => {
 		const result: TestResult = {
 			test,
 			status,

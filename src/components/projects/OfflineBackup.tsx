@@ -75,7 +75,7 @@ export function OfflineBackup({
     return `${name}-${timestamp}.${format}`
   }, [exportAll])
 
-  const saveWithFileSystemAPI = async (data: any, _size: number) => {
+  const saveWithFileSystemAPI = async (data: unknown, _size: number) => {
     const filename = generateFileName(selectedFormat)
     const fileHandle = await (window as any).showSaveFilePicker({
       suggestedName: filename,
@@ -88,7 +88,7 @@ export function OfflineBackup({
     await writable.close()
   }
 
-  const saveWithDownloadAPI = (data: any, _size: number) => {
+  const saveWithDownloadAPI = (data: unknown, _size: number) => {
     const content = selectedFormat === 'json' ? JSON.stringify(data, null, 2) : data
     const acceptKeys = Object.keys(fileTypeMap[selectedFormat].accept)
     const mimeType = acceptKeys[0] as keyof typeof fileTypeMap[typeof selectedFormat]['accept']

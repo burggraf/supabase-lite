@@ -17,7 +17,7 @@ interface InsertRowDialogProps {
   columns: ColumnInfo[];
   tableName: string;
   schema: string;
-  onInsert: (data: Record<string, any>) => Promise<boolean>;
+  onInsert: (data: Record<string, unknown>) => Promise<boolean>;
   loading?: boolean;
 }
 
@@ -29,14 +29,14 @@ export function InsertRowDialog({
   onInsert,
   loading = false,
 }: InsertRowDialogProps) {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form when dialog opens/closes
   useEffect(() => {
     if (open) {
-      const initialData: Record<string, any> = {};
+      const initialData: Record<string, unknown> = {};
       columns.forEach(column => {
         // Set default values for columns that have them
         if (column.column_default) {
@@ -58,7 +58,7 @@ export function InsertRowDialog({
     }
   }, [open, columns]);
 
-  const handleFieldChange = (columnName: string, value: any) => {
+  const handleFieldChange = (columnName: string, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       [columnName]: value,

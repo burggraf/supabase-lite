@@ -23,7 +23,7 @@ vi.mock('sonner', () => ({
 
 // Mock the deployment modal
 vi.mock('../AppDeploymentModal', () => ({
-  AppDeploymentModal: ({ open, onClose, onSuccess }: any) => (
+  AppDeploymentModal: ({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) => (
     open ? (
       <div data-testid="deployment-modal">
         <button onClick={onClose}>Close</button>

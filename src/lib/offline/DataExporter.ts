@@ -8,7 +8,7 @@ import { projectManager } from '../projects/ProjectManager'
 
 export interface ExportResult {
   success: boolean
-  data?: any
+  data?: unknown
   size?: number
   error?: string
   warnings?: string[]
@@ -66,7 +66,7 @@ export class DataExporter {
       }
 
       const tables = await this.dbManager.getTableList()
-      const tableData: Record<string, any[]> = {}
+      const tableData: Record<string, unknown[]> = {}
 
       // Export table data
       for (const table of tables) {
@@ -133,7 +133,7 @@ export class DataExporter {
     }
   }
 
-  async importProject(importData: any, format: ExportFormat): Promise<ImportResult> {
+  async importProject(importData: unknown, format: ExportFormat): Promise<ImportResult> {
     try {
       // Validate data first
       const validation = await this.validateImportData(importData, format)
@@ -162,7 +162,7 @@ export class DataExporter {
     }
   }
 
-  async validateImportData(data: any, format: ExportFormat): Promise<ValidationResult> {
+  async validateImportData(data: unknown, format: ExportFormat): Promise<ValidationResult> {
     const errors: string[] = []
 
     try {
@@ -220,7 +220,7 @@ export class DataExporter {
     }
   }
 
-  private formatExportData(project: any, tableData: Record<string, any[]>, format: ExportFormat): ExportResult {
+  private formatExportData(project: any, tableData: Record<string, unknown[]>, format: ExportFormat): ExportResult {
     const metadata: ProjectMetadata = {
       exportedAt: new Date().toISOString(),
       version: '1.0',
@@ -313,7 +313,7 @@ export class DataExporter {
     }
   }
 
-  private async importFromJSON(data: any): Promise<ImportResult> {
+  private async importFromJSON(data: unknown): Promise<ImportResult> {
     try {
       const project = data.project
       const tables = data.tables
@@ -322,7 +322,7 @@ export class DataExporter {
       const projectId = await projectManager.createProject(project.name || 'Imported Project')
 
       // Import table data
-      for (const [tableName, rows] of Object.entries(tables as Record<string, any[]>)) {
+      for (const [tableName, rows] of Object.entries(tables as Record<string, unknown[]>)) {
         if (!Array.isArray(rows) || rows.length === 0) continue
 
         try {

@@ -43,9 +43,9 @@ Object.defineProperty(document.body, 'removeChild', {
 });
 
 describe('BackupsSection', () => {
-  const mockUseDatabase = useDatabase as any;
-  const mockProjectManager = projectManager as any;
-  const mockDbManager = dbManager as any;
+  const mockUseDatabase = useDatabase as unknown as ReturnType<typeof useDatabase>;
+  const mockProjectManager = projectManager as unknown as typeof projectManager;
+  const mockDbManager = dbManager as unknown as typeof dbManager;
 
   beforeEach(() => {
     vi.clearAllMocks();

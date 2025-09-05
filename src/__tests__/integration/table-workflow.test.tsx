@@ -7,7 +7,7 @@ import { ProjectManager } from '@/lib/projects/ProjectManager';
 
 // Mock external dependencies
 vi.mock('@monaco-editor/react', () => ({
-  default: ({ value, onChange }: any) => (
+  default: ({ value, onChange }: { value?: string; onChange?: (value: string) => void }) => (
     <textarea
       data-testid="monaco-editor"
       value={value}
@@ -45,7 +45,7 @@ describe('Table Management Workflow Integration', () => {
       ])
     };
 
-    vi.spyOn(DatabaseManager, 'getInstance').mockReturnValue(mockDbInstance as any);
+    vi.spyOn(DatabaseManager, 'getInstance').mockReturnValue(mockDbInstance as unknown as DatabaseManager);
     
     // Mock ProjectManager
     const mockProjectManager = {
@@ -58,7 +58,7 @@ describe('Table Management Workflow Integration', () => {
       createProject: vi.fn(),
       switchToProject: vi.fn()
     };
-    vi.spyOn(ProjectManager, 'getInstance').mockReturnValue(mockProjectManager as any);
+    vi.spyOn(ProjectManager, 'getInstance').mockReturnValue(mockProjectManager as unknown as ProjectManager);
   });
 
   afterEach(() => {

@@ -34,8 +34,8 @@ export function DatabaseBasic() {
         
         const result = await executeQuery(query);
         
-        const tableInfos: TableInfo[] = result.rows.map((row: any) => ({
-          name: String(row.name),
+        const tableInfos: TableInfo[] = result.rows.map((row: unknown) => ({
+          name: String((row as Record<string, unknown>).name),
         }));
         
         setTables(tableInfos);

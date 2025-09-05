@@ -38,7 +38,7 @@ export function AppDeploymentModal({ open, onClose, onSuccess }: AppDeploymentMo
   const handleSelectFolder = async () => {
     if (isFileSystemAccessSupported) {
       try {
-        // @ts-ignore - File System Access API types
+        // @ts-expect-error - File System Access API types
         const dirHandle = await window.showDirectoryPicker();
         setSelectedFolder(dirHandle);
         
@@ -82,7 +82,7 @@ export function AppDeploymentModal({ open, onClose, onSuccess }: AppDeploymentMo
     const files: string[] = [];
     
     const processDirectory = async (handle: FileSystemDirectoryHandle, path = '') => {
-      // @ts-ignore - File System Access API not fully typed
+      // @ts-expect-error - File System Access API not fully typed
       for await (const [name, entry] of handle.entries()) {
         const fullPath = path ? `${path}/${name}` : name;
         
@@ -281,7 +281,7 @@ export function AppDeploymentModal({ open, onClose, onSuccess }: AppDeploymentMo
             <input
               ref={fileInputRef}
               type="file"
-              /* @ts-ignore */
+              /* @ts-expect-error - webkitdirectory is a non-standard property */
               webkitdirectory=""
               multiple
               className="hidden"

@@ -386,7 +386,7 @@ describe('EdgeFunctions', () => {
 
   describe('Component State Management', () => {
     it('should manage loading state correctly', async () => {
-      let resolveListFiles!: (value: any) => void;
+      let resolveListFiles!: (value: unknown) => void;
       const listFilesPromise = new Promise(resolve => {
         resolveListFiles = resolve;
       });

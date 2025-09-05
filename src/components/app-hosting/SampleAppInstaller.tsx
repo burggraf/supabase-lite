@@ -207,10 +207,10 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 							.replace(/href="\/assets\//g, `href="assets/`)
 							.replace(/src="\/assets\//g, `src="assets/`)
 							.replace(
-								/href="\/([^"\/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g,
+								/href="\/([^"/]*\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))"/g,
 								`href="$1"`
 							)
-							.replace(/src="\/([^"\/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`)
+							.replace(/src="\/([^"/]*\.(js|svg|png|jpg|jpeg|gif|webp|ico))"/g, `src="$1"`)
 
 						console.log('🔧 SAMPLE INSTALLER: HTML rewrite result:', {
 							changed: originalContent !== htmlContent,

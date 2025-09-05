@@ -26,6 +26,7 @@ export function ProjectsSection({
   onUpdateProjectName,
   isLoading = false
 }: ProjectsSectionProps) {
+  void _activeProject; // Intentionally unused - available for future use
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);

@@ -38,7 +38,7 @@ interface ColumnEditorProps {
 export function ColumnEditor({ column, onUpdate, onRemove, canRemove }: ColumnEditorProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  const handleUpdate = (field: keyof Column, value: any) => {
+  const handleUpdate = (field: keyof Column, value: unknown) => {
     onUpdate(column.id, { [field]: value });
   };
 

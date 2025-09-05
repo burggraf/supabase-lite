@@ -138,14 +138,17 @@ export function DatabaseWorking() {
       
       const result = await executeQuery(query);
       
-      const tableInfos: TableInfo[] = result.rows.map((row: any) => ({
-        name: String(row.name),
-        description: String(row.description) || 'No description',
-        rows: parseInt(String(row.estimated_rows)) || 0,
-        size: formatBytes(parseInt(String(row.size_bytes)) || 0),
-        columns: parseInt(String(row.column_count)) || 0,
-        realtime_enabled: false,
-      }));
+      const tableInfos: TableInfo[] = result.rows.map((row: unknown) => {
+        const rowData = row as Record<string, unknown>;
+        return {
+          name: String(rowData.name),
+          description: String(rowData.description) || 'No description',
+          rows: parseInt(String(rowData.estimated_rows)) || 0,
+          size: formatBytes(parseInt(String(rowData.size_bytes)) || 0),
+          columns: parseInt(String(rowData.column_count)) || 0,
+          realtime_enabled: false,
+        };
+      });
       
       // Don't show mock tables anymore - show real tables or empty list
       setTables(tableInfos);

@@ -44,8 +44,8 @@ describe('Service Worker Registration', () => {
     const { ServiceWorkerManager } = await import('../lib/offline/ServiceWorkerManager');
     const { EnvironmentDetector } = await import('../lib/offline/EnvironmentDetector');
 
-    vi.mocked(ServiceWorkerManager).mockImplementation(() => mockServiceWorkerManager as any);
-    vi.mocked(EnvironmentDetector).mockImplementation(() => mockEnvironmentDetector as any);
+    vi.mocked(ServiceWorkerManager).mockImplementation(() => mockServiceWorkerManager as unknown as InstanceType<typeof ServiceWorkerManager>);
+    vi.mocked(EnvironmentDetector).mockImplementation(() => mockEnvironmentDetector as unknown as InstanceType<typeof EnvironmentDetector>);
 
     // Mock navigator.serviceWorker
     Object.defineProperty(navigator, 'serviceWorker', {
@@ -112,7 +112,7 @@ describe('Service Worker Registration', () => {
 
     it('should skip registration when service workers are not supported', async () => {
       // Remove service worker support
-      delete (navigator as any).serviceWorker;
+      delete (navigator as Record<string, unknown>).serviceWorker;
       
       const { registerServiceWorker } = await import('../sw-register');
       

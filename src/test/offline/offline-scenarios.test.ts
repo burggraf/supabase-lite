@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Offline Scenarios', () => {
-  let mockNavigator: any;
-  let originalNavigator: any;
+  let mockNavigator: Record<string, unknown>;
+  let originalNavigator: Navigator;
 
   beforeEach(() => {
     // Mock navigator.onLine
@@ -140,7 +140,7 @@ describe('Offline Scenarios', () => {
             return { onsuccess: null, onerror: null };
           }),
           get: vi.fn((key) => {
-            const result = { result: mockStore.get(key), onsuccess: null as any, onerror: null as any };
+            const result = { result: mockStore.get(key), onsuccess: null as unknown as ((event: unknown) => void) | null, onerror: null as unknown as ((event: unknown) => void) | null };
             setTimeout(() => result.onsuccess?.(result), 0);
             return result;
           })

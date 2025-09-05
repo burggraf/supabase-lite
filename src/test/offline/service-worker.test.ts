@@ -244,7 +244,7 @@ describe('Service Worker Tests', () => {
       try {
         response = await fetch(request);
         await cache.put(request, response.clone());
-      } catch (error) {
+      } catch {
         response = await cache.match(request);
       }
 
@@ -268,7 +268,7 @@ describe('Service Worker Tests', () => {
       let response;
       try {
         response = await fetch(request);
-      } catch (error) {
+      } catch {
         response = await cache.match(request);
       }
 
@@ -436,7 +436,7 @@ describe('Service Worker Tests', () => {
 
       try {
         response = await fetch(request);
-      } catch (error) {
+      } catch {
         // Fallback to cache or offline page
         const cache = await caches.open('fallback-cache');
         response = await cache.match('/offline.html') || new Response('Offline');
@@ -465,11 +465,11 @@ describe('Service Worker Tests', () => {
       let response;
       try {
         response = await fetch('/api/test');
-      } catch (networkError) {
+      } catch {
         try {
           const cache = await caches.open('fallback');
           response = await cache.match('/offline.html');
-        } catch (cacheError) {
+        } catch {
           // Ultimate fallback
           response = new Response('Service temporarily unavailable', {
             status: 503,

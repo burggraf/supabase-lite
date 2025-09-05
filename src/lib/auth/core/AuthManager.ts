@@ -481,7 +481,7 @@ export class AuthManager {
   }
 
 
-  private async createUserInDB(user: User, hashedPassword: any): Promise<void> {
+  private async createUserInDB(user: User, hashedPassword: unknown): Promise<void> {
     try {
       // Convert boolean verified fields to timestamp format for Supabase schema
       const emailConfirmedAt = user.email_verified ? user.created_at : null
@@ -557,7 +557,7 @@ export class AuthManager {
     `, [...updateValues, userId])
   }
 
-  private async getStoredPassword(userId: string): Promise<string | any> {
+  private async getStoredPassword(userId: string): Promise<string | unknown> {
     const result = await this.dbManager.query(
       'SELECT encrypted_password FROM auth.users WHERE id = $1',
       [userId]
@@ -581,7 +581,7 @@ export class AuthManager {
     return storedData
   }
 
-  private async updatePasswordInDB(userId: string, hashedPassword: any): Promise<void> {
+  private async updatePasswordInDB(userId: string, hashedPassword: unknown): Promise<void> {
     // Store complete HashedPassword object as JSON to preserve algorithm and salt info
     const passwordData = JSON.stringify(hashedPassword)
     
@@ -662,7 +662,7 @@ export class AuthManager {
     ])
   }
 
-  private async logAuditEvent(event: string, payload: any): Promise<void> {
+  private async logAuditEvent(event: string, payload: unknown): Promise<void> {
     try {
       await this.dbManager.query(`
         INSERT INTO auth.audit_log_entries (id, payload, created_at)
@@ -679,7 +679,7 @@ export class AuthManager {
 
   private mapDBUserToUser(dbUser: any): User {
     // Parse metadata fields safely
-    const parseMetadata = (value: any): any => {
+    const parseMetadata = (value: any): unknown => {
       if (value === null || value === undefined) return {}
       if (typeof value === 'string') {
         try {

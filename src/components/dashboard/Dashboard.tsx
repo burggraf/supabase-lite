@@ -32,7 +32,7 @@ export function Dashboard() {
       if (allProjects.length === 0) {
         try {
           setIsProjectsLoading(true);
-          const defaultProject = await projectManager.createProject('My First Project');
+          await projectManager.createProject('My First Project');
           
           // Let useDatabase hook handle initialization when it detects the active project
           // This prevents race condition between Dashboard and useDatabase initialization

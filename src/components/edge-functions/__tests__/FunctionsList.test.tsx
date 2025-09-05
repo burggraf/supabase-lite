@@ -93,7 +93,7 @@ describe('FunctionsList', () => {
     ];
 
     it('should display functions list when functions exist', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as unknown as VirtualFile[]);
 
       render(<FunctionsList {...mockProps} />);
 
@@ -107,7 +107,7 @@ describe('FunctionsList', () => {
     });
 
     it('should call onEditFunction when Edit button is clicked', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as unknown as VirtualFile[]);
 
       render(<FunctionsList {...mockProps} />);
 
@@ -122,7 +122,7 @@ describe('FunctionsList', () => {
     });
 
     it('should open test modal when Test button is clicked', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as unknown as VirtualFile[]);
 
       render(<FunctionsList {...mockProps} />);
 
@@ -139,7 +139,7 @@ describe('FunctionsList', () => {
     });
 
     it('should handle function deletion with confirmation', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as unknown as VirtualFile[]);
       mockVfsManager.deleteFile.mockResolvedValue(true);
 
       // Mock window.confirm
@@ -179,7 +179,7 @@ describe('FunctionsList', () => {
     ];
 
     it('should execute function test with proper request', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as unknown as VirtualFile[]);
 
       // Mock fetch for function execution
       global.fetch = vi.fn().mockResolvedValue({
@@ -220,7 +220,7 @@ describe('FunctionsList', () => {
     });
 
     it('should handle test errors gracefully', async () => {
-      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as any);
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as unknown as VirtualFile[]);
 
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 

@@ -11,11 +11,11 @@ import type { ColumnInfo } from '@/types';
 interface RowEditPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  row: Record<string, any> | null;
+  row: Record<string, unknown> | null;
   columns: ColumnInfo[];
   tableName: string;
   schema: string;
-  onSave: (data: Record<string, any>) => Promise<boolean>;
+  onSave: (data: Record<string, unknown>) => Promise<boolean>;
   loading?: boolean;
 }
 
@@ -29,7 +29,7 @@ export function RowEditPanel({
   onSave,
   loading = false,
 }: RowEditPanelProps) {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize form data when row changes
@@ -39,7 +39,7 @@ export function RowEditPanel({
     }
   }, [row]);
 
-  const handleFieldChange = (columnName: string, value: any) => {
+  const handleFieldChange = (columnName: string, value: unknown) => {
     setFormData((prev) => ({
       ...prev,
       [columnName]: value,
@@ -139,17 +139,17 @@ export function RowEditPanel({
     };
 
     // Format value for display in input
-    const formatValueForInput = (val: any) => {
+    const formatValueForInput = (val: unknown) => {
       if (val === null || val === undefined) return '';
       if (column.data_type.includes('timestamp')) {
         try {
-          const date = new Date(val);
+          const date = new Date(val as string | number | Date);
           return date.toISOString().slice(0, 16); // Format for datetime-local
         } catch {
-          return val.toString();
+          return String(val);
         }
       }
-      return val.toString();
+      return String(val);
     };
 
     return (

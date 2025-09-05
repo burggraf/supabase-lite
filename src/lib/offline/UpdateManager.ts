@@ -157,7 +157,7 @@ export class UpdateManager {
     if (delay > 0) {
       this.scheduledUpdateTimer = setTimeout(async () => {
         await this.applyUpdate();
-      }, delay) as any;
+      }, delay) as unknown as number;
     }
   }
 
@@ -292,7 +292,7 @@ export class UpdateManager {
     }
   }
 
-  private getLocalStorageData(key: string): any {
+  private getLocalStorageData(key: string): unknown {
     try {
       const data = localStorage.getItem(key);
       return data ? JSON.parse(data) : null;

@@ -23,14 +23,14 @@ global.navigator = {
   storage: {
     estimate: mockStorageEstimate,
     persist: vi.fn()
-  } as any
+  } as unknown as typeof global.indexedDB
 }
 
 global.caches = {
   keys: mockCachesKeys,
   open: mockCachesOpen,
   delete: vi.fn()
-} as any
+} as unknown as typeof global.caches
 
 // Test component that can throw errors
 const ErrorThrowingComponent = ({ shouldThrow }: { shouldThrow: boolean }) => {
@@ -49,9 +49,9 @@ describe('Phase 3 Integration Tests', () => {
     vi.clearAllMocks()
     
     // Reset singletons
-    ;(SyncQueue as any).instance = null
-    ;(OfflineErrorHandler as any).instance = null
-    ;(StorageManager as any).instance = null
+    ;(SyncQueue as unknown as { instance: unknown }).instance = null
+    ;(OfflineErrorHandler as unknown as { instance: unknown }).instance = null
+    ;(StorageManager as unknown as { instance: unknown }).instance = null
     
     syncQueue = SyncQueue.getInstance()
     errorHandler = OfflineErrorHandler.getInstance()
@@ -98,7 +98,7 @@ describe('Phase 3 Integration Tests', () => {
         toggleOfflineMode: vi.fn()
       })
 
-      const { container: _container } = render(
+      render(
         <div>
           <EnhancedOfflineIndicator />
           <OfflineErrorBoundary>
@@ -158,7 +158,7 @@ describe('Phase 3 Integration Tests', () => {
       })
 
       // Mock failing operation
-      const _mockOperation = vi.fn().mockRejectedValue(new Error('Network error'))
+      vi.fn().mockRejectedValue(new Error('Network error'))
       
       // Enrich error to make it offline-related
       const context = {

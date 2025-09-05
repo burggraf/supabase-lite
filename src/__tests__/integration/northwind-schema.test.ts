@@ -27,7 +27,7 @@ describe('Northwind Database Schema Integration', () => {
       await dbManager.exec('DROP TABLE IF EXISTS territories CASCADE;');
       await dbManager.exec('DROP TABLE IF EXISTS region CASCADE;');
       await dbManager.exec('DROP TABLE IF EXISTS shippers CASCADE;');
-    } catch (_error) {
+    } catch {
       // Ignore cleanup errors - tables might not exist
     }
   });

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Development Workflow Tests', () => {
-  let mockFetch: any;
+  let mockFetch: ReturnType<typeof vi.fn>;
   let originalLocation: Location;
 
   beforeEach(() => {

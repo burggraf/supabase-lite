@@ -6,17 +6,17 @@ import { WebSocketServer } from 'ws'
 import type { IncomingMessage } from 'http'
 
 interface PendingRequest {
-  resolve: (response: any) => void
-  reject: (error: any) => void
+  resolve: (response: unknown) => void
+  reject: (error: unknown) => void
   timeout: NodeJS.Timeout
-  proxySocket?: any  // Store which proxy sent the request
+  proxySocket?: import('ws').WebSocket  // Store which proxy sent the request
 }
 
 // WebSocket bridge that forwards HTTP requests to browser for processing
 function websocketBridge(): Plugin {
   let wss: WebSocketServer | null = null
-  let browserSocket: any = null
-  const proxyConnections = new Set<any>()
+  let browserSocket: import('ws').WebSocket | null = null
+  const proxyConnections = new Set<import('ws').WebSocket>()
   const pendingRequests = new Map<string, PendingRequest>()
   
   // Helper to get request body
@@ -109,7 +109,7 @@ function websocketBridge(): Plugin {
                 else if (message.type === 'command_complete') {
                   console.log('✅ CLI command completed - sending completion signal to browser')
                   // Forward completion signal to browser
-                  if (browserSocket && browserSocket.readyState === 1) {
+                  if (browserSocket && browserSocket.readyState === browserSocket.OPEN) {
                     browserSocket.send(JSON.stringify({
                       type: 'COMMAND_COMPLETE',
                       timestamp: new Date().toISOString()
@@ -123,7 +123,7 @@ function websocketBridge(): Plugin {
                   
                   // Forward the request message to the browser
                   console.log(`🔍 Browser socket status: exists=${!!browserSocket}, readyState=${browserSocket?.readyState}`)
-                  if (browserSocket && browserSocket.readyState === 1) {
+                  if (browserSocket && browserSocket.readyState === browserSocket.OPEN) {
                     // Create pending request entry for WebSocket requests
                     const timeout = setTimeout(() => {
                       pendingRequests.delete(message.requestId)
@@ -147,7 +147,7 @@ function websocketBridge(): Plugin {
                           response: {
                             status: 500,
                             headers: { 'Content-Type': 'application/json' },
-                            body: { error: error.message }
+                            body: { error: error instanceof Error ? error.message : 'Unknown error' }
                           }
                         }))
                       },
@@ -188,7 +188,7 @@ function websocketBridge(): Plugin {
                 
                 // Send completion signal to browser when proxy disconnects
                 // This handles the case where CLI exits without sending explicit completion signal
-                if (browserSocket && browserSocket.readyState === 1) {
+                if (browserSocket && browserSocket.readyState === browserSocket.OPEN) {
                   console.log('📤 Proxy disconnected - sending completion signal to browser')
                   browserSocket.send(JSON.stringify({
                     type: 'COMMAND_COMPLETE',
@@ -247,7 +247,7 @@ function websocketBridge(): Plugin {
           req.url.startsWith('/vfs-direct/') || // Direct VFS access bypassing MSW
           req.url.startsWith('/app/') || // App hosting routes
           // Project-prefixed API routes (pattern: /:projectId/rest|auth|debug|storage|app)
-          /^\/[^\/]+\/(rest|auth|debug|storage|vfs-direct|app)\//.test(req.url)
+          /^\/[^/]+\/(rest|auth|debug|storage|vfs-direct|app)\//.test(req.url)
         );
         
         if (isApiRoute) {
@@ -347,7 +347,7 @@ function websocketBridge(): Plugin {
             url: req.url 
           })
           
-          if (!browserSocket || browserSocket.readyState !== 1) {
+          if (!browserSocket || browserSocket.readyState !== browserSocket.OPEN) {
             res.writeHead(503, {
               'Content-Type': 'application/json',
               'Access-Control-Allow-Origin': '*'
@@ -368,7 +368,7 @@ function websocketBridge(): Plugin {
             
             // Extract project context from URL for better logging
             const urlPath = req.url || '';
-            const projectMatch = urlPath.match(/^\/([^\/]+)\/(rest|auth|debug|storage|vfs-direct|app)\//);
+            const projectMatch = urlPath.match(/^\/([^/]+)\/(rest|auth|debug|storage|vfs-direct|app)\//);
             const projectContext = projectMatch ? {
               projectId: projectMatch[1],
               apiType: projectMatch[2]
@@ -378,7 +378,7 @@ function websocketBridge(): Plugin {
             const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
             
             // Create promise for the response
-            const responsePromise = new Promise<any>((resolve, reject) => {
+            const responsePromise = new Promise<unknown>((resolve, reject) => {
               const timeout = setTimeout(() => {
                 pendingRequests.delete(requestId)
                 reject(new Error('Request timeout'))
@@ -419,7 +419,7 @@ function websocketBridge(): Plugin {
             }
             
             // Wait for response from browser
-            const response = await responsePromise
+            const response = await responsePromise as { status?: number; headers?: Record<string, string>; body: unknown }
             
             console.log(`📥 Received response for ${requestId}${contextStr} (status: ${response.status})`)
             
@@ -458,7 +458,7 @@ function websocketBridge(): Plugin {
             })
             res.end(typeof response.body === 'string' ? response.body : JSON.stringify(response.body))
             
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error(`❌ Error processing request ${req.method} ${req.url}:`, error)
             res.writeHead(500, {
               'Content-Type': 'application/json',
@@ -466,7 +466,7 @@ function websocketBridge(): Plugin {
             })
             res.end(JSON.stringify({
               error: 'Internal server error',
-              message: error.message,
+              message: error instanceof Error ? error.message : 'Unknown error',
               path: req.url,
               method: req.method
             }))

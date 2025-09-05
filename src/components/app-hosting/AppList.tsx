@@ -100,12 +100,12 @@ export function AppList({ apps, onAppDeleted, onAppUpdated }: AppListProps) {
     window.open(`/app/${appName}`, '_blank');
   };
 
-  const handleExportApp = async (_appName: string) => {
+  const handleExportApp = async () => {
     try {
       // This would export the app as a zip file
       // For now, just show a toast
       toast.info('Export feature coming soon!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to export app');
     }
   };
@@ -196,7 +196,7 @@ export function AppList({ apps, onAppDeleted, onAppUpdated }: AppListProps) {
                       Open App
                     </DropdownMenuItem>
                     
-                    <DropdownMenuItem onClick={() => handleExportApp(app.name)}>
+                    <DropdownMenuItem onClick={() => handleExportApp()}>
                       <Download className="h-4 w-4 mr-2" />
                       Export App
                     </DropdownMenuItem>
