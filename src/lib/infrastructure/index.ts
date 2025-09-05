@@ -118,7 +118,7 @@ export async function checkInfrastructureHealth(): Promise<{
     
     // Check migration status
     try {
-      const migrationStatus = await migrationManager.getMigrationStatus();
+      const migrationStatus = await migrationManager.getMigrations();
       details.migrations = migrationStatus;
     } catch {
       details.migrations = 'error';

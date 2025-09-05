@@ -7,7 +7,7 @@ const mockPerformance = vi.hoisted(() => ({
   mark: vi.fn(),
   measure: vi.fn(),
   getEntriesByType: vi.fn(() => []),
-  getEntriesByName: vi.fn(() => []),
+  getEntriesByName: vi.fn(),
   clearMarks: vi.fn(),
   clearMeasures: vi.fn()
 }))
@@ -63,7 +63,7 @@ describe('PerformanceMonitor', () => {
 
     it('should end timing operations and calculate duration', () => {
       mockPerformance.getEntriesByName.mockReturnValue([
-        { startTime: 1000, duration: 250 }
+        { startTime: 1000, duration: 250 } as any
       ])
 
       performanceMonitor.startTiming('database-query')

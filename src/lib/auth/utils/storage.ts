@@ -1,4 +1,4 @@
-import type { Session, RefreshToken } from '../types'
+import type { Session, RefreshToken } from '../types/auth.types'
 
 export interface StorageAdapter {
   getItem(key: string): Promise<string | null>

@@ -1,3 +1,16 @@
+// FINAL CACHE BREAK: Direct interface export to force complete reload  
+// Auth API response interface - renamed to avoid conflict with infrastructure.ts
+export interface AuthAPIResponse {
+  data?: any
+  error?: any // Using any temporarily to avoid circular reference
+  status: number
+  statusText: string
+  headers: Record<string, string>
+}
+
+// DUPLICATE EXPORT TO FORCE CACHE INVALIDATION
+export type AuthAPIResponseType = AuthAPIResponse
+
 export interface SignUpRequest {
   email?: string
   phone?: string
@@ -175,9 +188,3 @@ export interface AuthError {
   message: string
 }
 
-export interface APIResponse<T = any> {
-  data?: T
-  error?: AuthError
-  status: number
-  statusText: string
-}

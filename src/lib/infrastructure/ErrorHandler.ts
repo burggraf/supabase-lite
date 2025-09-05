@@ -132,12 +132,16 @@ export class InfrastructureErrorHandler implements ErrorHandler {
 
     // Handle InfrastructureError (already processed)
     if (this.isInfrastructureError(error)) {
-      return { ...error, context: { ...error.context, ...context } };
+      const infraError = error as InfrastructureError;
+      return { 
+        ...infraError, 
+        context: { ...(infraError.context || {}), ...context } 
+      };
     }
 
     // Handle standard Error objects
-    if (error instanceof Error) {
-      return this.mapStandardError(error, context);
+    if ((error as any) instanceof Error) {
+      return this.mapStandardError(error as Error, context);
     }
 
     // Handle HTTP errors
@@ -216,7 +220,7 @@ export class InfrastructureErrorHandler implements ErrorHandler {
 
   private mapPGError(error: any, context?: Record<string, any>): InfrastructureError {
     const pgCode = error.code;
-    let infraCode = ERROR_CODES.DATABASE_QUERY_FAILED;
+    let infraCode: string = ERROR_CODES.DATABASE_QUERY_FAILED;
     let hint: string | undefined;
 
     // Map PostgreSQL error codes to infrastructure codes

@@ -142,7 +142,7 @@ export function useTableData() {
         // Only now update the state atomically
         setTables(tableList);
         // Always update lastConnectionId to track the actual successful load
-        setLastConnectionId(connectionId);
+        _setLastConnectionId(connectionId);
         // Mark that we've loaded tables for this connection (fixes refresh bug)
         setHasLoadedForConnection(connectionId);
         

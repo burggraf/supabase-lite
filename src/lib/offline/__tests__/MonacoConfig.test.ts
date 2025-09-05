@@ -105,7 +105,7 @@ describe('MonacoConfig', () => {
       );
       
       expect(sqlTokenizerCall).toBeDefined();
-      const tokenizerConfig = sqlTokenizerCall[1];
+      const tokenizerConfig = sqlTokenizerCall![1];
       
       expect(tokenizerConfig.keywords).toContain('SELECT');
       expect(tokenizerConfig.keywords).toContain('FROM');
@@ -125,7 +125,7 @@ describe('MonacoConfig', () => {
       );
       
       expect(completionCall).toBeDefined();
-      const provider = completionCall[1];
+      const provider = completionCall![1];
       
       const completions = provider.provideCompletionItems();
       expect(completions.suggestions).toBeDefined();

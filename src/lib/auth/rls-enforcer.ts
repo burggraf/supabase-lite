@@ -1,5 +1,5 @@
 import { logger } from '@/lib/infrastructure';
-import type { SessionContext } from './types';
+import type { SessionContext } from '../database/connection';
 
 /**
  * Application-level RLS enforcement for PGlite compatibility

@@ -15,7 +15,7 @@ import type {
   AuthenticatorAssuranceLevel,
   MFAFactor,
   MFAChallenge
-} from '../types'
+} from '../types/auth.types'
 
 export interface AuthManagerConfig {
   enableSignups: boolean

@@ -4,10 +4,16 @@ export { JWTService } from './core/JWTService'
 export { SessionManager } from './core/SessionManager'
 export { PasswordService } from './core/PasswordService'
 
-// Types
-export * from './types/auth.types'
-export * from './types/jwt.types'
-export * from './types/api.types'
+// Types - Import directly from source files to avoid caching issues
+export type * from './types/auth.types'
+export type * from './types/jwt.types'
+export type { 
+  AuthAPIResponse, 
+  SignUpRequest, 
+  SignInRequest, 
+  RecoverPasswordRequest,
+  AuthError as APIAuthError
+} from './types/api-responses'
 
 // Utils
 export { CryptoUtils } from './utils/crypto'

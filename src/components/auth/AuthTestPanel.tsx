@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { AuthManager, SessionManager, MFAService } from '@/lib/auth'
 import { apiKeyGenerator } from '@/lib/auth/api-keys'
-import type { User, Session } from '@/lib/auth/types'
+import type { User, Session } from '@/lib/auth/types/auth.types'
 import type { ApiKeys } from '@/lib/auth/api-keys'
 import { Copy, Eye, EyeOff, Check } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
@@ -52,7 +52,7 @@ export function AuthTestPanel() {
     authManager.initialize().catch(console.error)
     
     // Set up auth state listener
-    const unsubscribe = sessionManager.onAuthStateChange((event) => {
+    const unsubscribe = sessionManager.onAuthStateChange((event: any) => {
       console.log('Auth state change:', event)
       setCurrentUser(sessionManager.getUser())
       setCurrentSession(sessionManager.getSession())

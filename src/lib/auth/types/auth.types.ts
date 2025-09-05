@@ -1,3 +1,4 @@
+// CACHE BREAK: Force reload of User interface
 export interface User {
   id: string
   email?: string

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { AuthManager } from '../AuthManager'
 import { DatabaseManager } from '../../../database/connection'
-import type { SignUpCredentials } from '../../types'
+import type { SignUpCredentials } from '../../types/auth.types'
 
 // Mock the DatabaseManager
 vi.mock('../../../database/connection', () => ({
@@ -57,7 +57,7 @@ describe('AuthManager Database Operations', () => {
     authManager['jwtService'] = {
       initialize: vi.fn(),
       extractClaims: vi.fn()
-    }
+    } as any
     authManager['sessionManager'] = {
       initialize: vi.fn(),
       createSession: vi.fn(),
@@ -66,9 +66,9 @@ describe('AuthManager Database Operations', () => {
       updateUser: vi.fn(),
       refreshSession: vi.fn(),
       signOut: vi.fn()
-    }
+    } as any
     authManager['passwordService'] = {
-      hashPassword: vi.fn(() => ({
+      hashPassword: vi.fn(() => Promise.resolve({
         hash: 'hashed_password',
         salt: 'salt_value',
         algorithm: 'PBKDF2',
@@ -78,7 +78,7 @@ describe('AuthManager Database Operations', () => {
       generatePasswordResetToken: vi.fn(() => 'reset_token'),
       isValidPasswordResetToken: vi.fn(),
       hashForAudit: vi.fn()
-    }
+    } as any
   })
 
   afterEach(() => {
@@ -140,7 +140,7 @@ describe('AuthManager Database Operations', () => {
       await expect(authManager.signUp(credentials)).resolves.toBeDefined()
 
       // Check that createUserInDB was called with proper null handling
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
+      const createUserCalls = mockDbManager.query.mock.calls.filter((call: any) =>
         call[0].includes('INSERT INTO auth.users')
       )
 
@@ -159,7 +159,7 @@ describe('AuthManager Database Operations', () => {
 
       await authManager.signUp(credentials)
 
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
+      const createUserCalls = mockDbManager.query.mock.calls.filter((call: any) =>
         call[0].includes('INSERT INTO auth.users')
       )
 
@@ -181,7 +181,7 @@ describe('AuthManager Database Operations', () => {
 
       await authManager.signUp(credentials)
 
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
+      const createUserCalls = mockDbManager.query.mock.calls.filter((call: any) =>
         call[0].includes('INSERT INTO auth.users')
       )
 
@@ -266,7 +266,7 @@ describe('AuthManager Database Operations', () => {
       await authManager['getStoredPassword']('user-id')
 
       // All queries should be formatted (no $ parameters)
-      mockDbManager.query.mock.calls.forEach(call => {
+      mockDbManager.query.mock.calls.forEach((call: any) => {
         const query = call[0]
         expect(query).not.toContain('$1')
         expect(query).not.toContain('$2')
@@ -294,7 +294,7 @@ describe('AuthManager Database Operations', () => {
 
       await authManager.signUp(credentials)
 
-      const createUserCalls = mockDbManager.query.mock.calls.filter(call =>
+      const createUserCalls = mockDbManager.query.mock.calls.filter((call: any) =>
         call[0].includes('INSERT INTO auth.users')
       )
 

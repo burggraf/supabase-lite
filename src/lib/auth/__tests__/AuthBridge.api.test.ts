@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { AuthBridge } from '../AuthBridge'
 import { AuthManager } from '../core/AuthManager'
-import type { SignInRequest, SignUpRequest } from '../types'
+import type { SignInRequest, SignUpRequest } from '../types/api-responses'
 import bcrypt from 'bcryptjs'
 
 describe('AuthBridge API Compatibility', () => {
