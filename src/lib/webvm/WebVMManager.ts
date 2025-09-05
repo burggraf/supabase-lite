@@ -260,6 +260,62 @@ export class WebVMManager extends SimpleEventEmitter {
   }
 
   /**
+   * Execute PostgREST API request via WebVM
+   */
+  async executePostgRESTRequest(
+    method: string, 
+    path: string, 
+    headers: Record<string, string> = {}, 
+    body?: string
+  ): Promise<Response> {
+    if (!this.webvmEmbed) {
+      throw new Error('WebVM embed not registered')
+    }
+
+    if (!this.postgrestRunning) {
+      throw new Error('PostgREST not running in WebVM')
+    }
+
+    return new Promise((resolve, reject) => {
+      const requestId = `postgrest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      // Set up timeout
+      const timeout = setTimeout(() => {
+        reject(new Error('PostgREST request timeout'))
+      }, 30000)
+
+      // Set up response listener
+      const handleResponse = (event: any) => {
+        if (event.data?.type === 'postgrest-response' && event.data?.requestId === requestId) {
+          clearTimeout(timeout)
+          window.removeEventListener('message', handleResponse)
+          
+          // Create a Response-like object
+          const response = new Response(event.data.body, {
+            status: event.data.status || 200,
+            statusText: event.data.statusText || 'OK',
+            headers: new Headers(event.data.headers || {})
+          })
+          
+          resolve(response)
+        }
+      }
+
+      window.addEventListener('message', handleResponse)
+
+      // Send PostgREST request to WebVM
+      this.webvmEmbed.sendMessage({
+        type: 'postgrest-request',
+        requestId,
+        method,
+        path,
+        headers,
+        body
+      })
+    })
+  }
+
+  /**
    * Get current WebVM status
    */
   getStatus(): WebVMStatus {

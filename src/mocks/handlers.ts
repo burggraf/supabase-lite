@@ -2174,7 +2174,57 @@ Deno.serve(async (req: Request) => {
     // Default fallback
     return new HttpResponse(null, { status: 404 })
   }),
-  // PostgREST API calls should go to real PostgREST in WebVM - NO MSW HANDLING!
+  // PostgREST API calls - Route to real PostgREST in WebVM iframe
+  http.all('/rest/v1/*', async ({ request }: any) => {
+    console.log('🚀 Routing PostgREST request to WebVM:', request.method, request.url)
+    
+    try {
+      const url = new URL(request.url)
+      const body = request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
+      
+      // Get headers
+      const headers: Record<string, string> = {}
+      request.headers.forEach((value: string, key: string) => {
+        headers[key] = value
+      })
+      
+      // Execute via WebVM
+      const response = await webvmManager.executePostgRESTRequest(
+        request.method,
+        url.pathname + url.search,
+        headers,
+        body
+      )
+      
+      // Convert Response to HttpResponse for MSW
+      const responseBody = await response.text()
+      const responseHeaders: Record<string, string> = {}
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value
+      })
+      
+      return new HttpResponse(responseBody, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          ...responseHeaders
+        }
+      })
+      
+    } catch (error) {
+      console.error('❌ WebVM PostgREST request failed:', error)
+      return HttpResponse.json({
+        error: 'PostgREST request failed',
+        message: (error as Error).message
+      }, {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+  }),
 
   // Edge Functions - direct handler
   http.all('/functions/v1/:functionName', ({ params, request }: any) => {
@@ -2194,7 +2244,57 @@ Deno.serve(async (req: Request) => {
 
   // ==== PROJECT-SPECIFIC ROUTES ====
   
-  // ALL PostgREST API calls (/rest/v1/*) should go to real PostgREST in WebVM - NO MSW HANDLING!
+  // Project-specific PostgREST API calls - also route to real PostgREST in WebVM
+  http.all('/:projectId/rest/v1/*', async ({ request }: any) => {
+    console.log('🚀 Routing project PostgREST request to WebVM:', request.method, request.url)
+    
+    try {
+      const url = new URL(request.url)
+      const body = request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
+      
+      // Get headers  
+      const headers: Record<string, string> = {}
+      request.headers.forEach((value: string, key: string) => {
+        headers[key] = value
+      })
+      
+      // Execute via WebVM
+      const response = await webvmManager.executePostgRESTRequest(
+        request.method,
+        url.pathname + url.search,
+        headers,
+        body
+      )
+      
+      // Convert Response to HttpResponse for MSW
+      const responseBody = await response.text()
+      const responseHeaders: Record<string, string> = {}
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value
+      })
+      
+      return new HttpResponse(responseBody, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          ...responseHeaders
+        }
+      })
+      
+    } catch (error) {
+      console.error('❌ WebVM project PostgREST request failed:', error)
+      return HttpResponse.json({
+        error: 'PostgREST request failed',
+        message: (error as Error).message
+      }, {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+  }),
 
   // Authentication endpoints - Use AuthBridge for all auth operations (consistent approach)
   http.post('/auth/v1/signup', async ({ request }: any) => {
