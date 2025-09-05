@@ -19,6 +19,13 @@ import { projectManager } from '@/lib/projects/ProjectManager';
 import { CrossOriginAPIHandler } from '@/lib/api/CrossOriginAPIHandler';
 import { Toaster } from 'sonner';
 
+// Extend Window interface for global API handler
+declare global {
+  interface Window {
+    crossOriginAPIHandler?: CrossOriginAPIHandler;
+  }
+}
+
 function App() {
   const { currentPage, navigate } = useRouter();
   const [isInitializing, setIsInitializing] = useState(true);
@@ -39,7 +46,7 @@ function App() {
         handlerRef = handler;
         
         // Make API handler globally accessible for ProxyConnector
-        (window as any).crossOriginAPIHandler = handler;
+        window.crossOriginAPIHandler = handler;
         
         // Only update state if the effect hasn't been cancelled
         if (!isCancelled) {

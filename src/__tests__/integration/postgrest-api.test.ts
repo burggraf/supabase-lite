@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 
@@ -8,7 +8,7 @@ vi.mock('../../lib/database/connection', () => ({
     getInstance: () => ({
       initialize: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
-      query: vi.fn().mockImplementation((sql: string, params?: any[]) => {
+      query: vi.fn().mockImplementation((sql: string, params?: (string | number | boolean | null)[]) => {
         // Mock responses for products table queries
         if (sql.includes('SELECT') && sql.includes('products')) {
           // Mock product data for GET requests
@@ -196,7 +196,7 @@ describe('PostgREST API Compatibility', () => {
             const selected: any = {};
             fields.forEach(field => selected[field] = p[field as keyof typeof p]);
             return selected;
-          });
+          }) as typeof products;
         }
         
         // Apply limit
@@ -210,9 +210,18 @@ describe('PostgREST API Compatibility', () => {
       
       // POST /rest/v1/products
       http.post('/rest/v1/products', async ({ request }) => {
-        let body: any;
+        let body: {
+          product_id?: number;
+          product_name?: string;
+          unit_price?: number;
+          units_in_stock?: number;
+          category_id?: number;
+          supplier_id?: number;
+          discontinued?: number;
+          invalid_field?: unknown;
+        } | undefined;
         try {
-          body = await request.json();
+          body = await request.json() as typeof body;
         } catch (error) {
           return HttpResponse.json(
             { message: 'Invalid JSON in request body' },

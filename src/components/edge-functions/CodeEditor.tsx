@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Editor } from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -67,36 +67,8 @@ export function CodeEditor({ selectedFile, onFileChange }: CodeEditorProps) {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load file content when selectedFile changes
-  useEffect(() => {
-    if (selectedFile) {
-      loadFile(selectedFile);
-    }
-  }, [selectedFile]);
-
-  // Auto-save functionality
-  useEffect(() => {
-    if (autoSave && activeFileIndex >= 0) {
-      const activeFile = openFiles[activeFileIndex];
-      if (activeFile?.isDirty) {
-        if (autoSaveTimeoutRef.current) {
-          clearTimeout(autoSaveTimeoutRef.current);
-        }
-        
-        autoSaveTimeoutRef.current = setTimeout(() => {
-          handleSaveFile(activeFileIndex);
-        }, 2000);
-      }
-    }
-
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-    };
-  }, [openFiles, activeFileIndex, autoSave]);
-
-  const loadFile = async (filePath: string) => {
+  // Load file function
+  const loadFile = useCallback(async (filePath: string) => {
     try {
       setIsLoading(true);
 
@@ -142,8 +114,16 @@ export function CodeEditor({ selectedFile, onFileChange }: CodeEditorProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [openFiles]);
 
+  // Load file content when selectedFile changes
+  useEffect(() => {
+    if (selectedFile) {
+      loadFile(selectedFile);
+    }
+  }, [selectedFile, loadFile]);
+
+  // Save file function  
   const handleSaveFile = async (fileIndex: number) => {
     try {
       const file = openFiles[fileIndex];
@@ -172,6 +152,28 @@ export function CodeEditor({ selectedFile, onFileChange }: CodeEditorProps) {
       toast.error(`Failed to save ${openFiles[fileIndex]?.name}`);
     }
   };
+
+  // Auto-save functionality
+  useEffect(() => {
+    if (autoSave && activeFileIndex >= 0) {
+      const activeFile = openFiles[activeFileIndex];
+      if (activeFile?.isDirty) {
+        if (autoSaveTimeoutRef.current) {
+          clearTimeout(autoSaveTimeoutRef.current);
+        }
+        
+        autoSaveTimeoutRef.current = setTimeout(() => {
+          handleSaveFile(activeFileIndex);
+        }, 2000);
+      }
+    }
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [openFiles, activeFileIndex, autoSave, handleSaveFile]);
 
   const handleSaveAllFiles = async () => {
     const dirtyFiles = openFiles
