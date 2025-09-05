@@ -2176,27 +2176,6 @@ Deno.serve(async (req: Request) => {
   }),
   // PostgREST API calls - Route to real PostgREST in WebVM iframe
   http.all('/rest/v1/*', async ({ request }: any) => {
-    // Check if this is a direct WebVM request (avoid circular routing)
-    if (request.headers.get('X-WebVM-Direct')) {
-      console.log('🔄 WebVM direct database request, using SQLBuilder fallback')
-      // Use the old enhanced bridge for direct WebVM requests
-      return await enhancedBridge.handleRestRequest({
-        table: new URL(request.url).pathname.split('/').pop() || '',
-        method: request.method as any,
-        body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.json() : undefined,
-        headers: Object.fromEntries(request.headers.entries()),
-        url: new URL(request.url)
-      }).then(result => {
-        return HttpResponse.json(result.data, {
-          status: result.status || 200,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-          }
-        })
-      })
-    }
-    
     console.log('🚀 Routing PostgREST request to WebVM:', request.method, request.url)
     
     try {

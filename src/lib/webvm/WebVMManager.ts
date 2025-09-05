@@ -284,61 +284,33 @@ export class WebVMManager extends SimpleEventEmitter {
         reject(new Error('PostgREST request timeout'))
       }, 30000)
 
-      // Set up response listener for shell command output
+      // Set up response listener
       const handleResponse = (event: any) => {
-        if (event.data?.type === 'shell-output' && event.data?.requestId === requestId) {
+        if (event.data?.type === 'postgrest-response' && event.data?.requestId === requestId) {
           clearTimeout(timeout)
           window.removeEventListener('message', handleResponse)
           
-          try {
-            // Parse curl output - assume it's JSON from PostgREST
-            const output = event.data.output || ''
-            let responseBody = output
-            let status = 200
-            
-            // Try to parse as JSON
-            try {
-              JSON.parse(output)
-            } catch {
-              // If not valid JSON, treat as error
-              responseBody = JSON.stringify({ error: 'Invalid response from PostgREST', output })
-              status = 500
-            }
-            
-            // Create a Response-like object
-            const response = new Response(responseBody, {
-              status,
-              statusText: status === 200 ? 'OK' : 'Error',
-              headers: new Headers({
-                'Content-Type': 'application/json'
-              })
-            })
-            
-            resolve(response)
-          } catch (error) {
-            reject(error)
-          }
+          // Create a Response-like object
+          const response = new Response(event.data.body, {
+            status: event.data.status || 200,
+            statusText: event.data.statusText || 'OK',
+            headers: new Headers(event.data.headers || {})
+          })
+          
+          resolve(response)
         }
       }
 
       window.addEventListener('message', handleResponse)
 
-      // Execute PostgREST via curl command in WebVM
-      const headersArgs = Object.entries(headers)
-        .map(([key, value]) => `-H "${key}: ${value}"`)
-        .join(' ')
-      
-      const bodyArg = body ? `--data '${body.replace(/'/g, "'\"'\"'")}'` : ''
-      
-      const curlCommand = `curl -s -X ${method} ${headersArgs} ${bodyArg} "http://localhost:3000${path}"`
-      
-      console.log('🚀 Executing PostgREST command in WebVM:', curlCommand)
-      
-      // Send shell command to WebVM
+      // Send PostgREST request to WebVM
       this.webvmEmbed.sendMessage({
-        type: 'shell-command',
+        type: 'postgrest-request',
         requestId,
-        command: curlCommand
+        method,
+        path,
+        headers,
+        body
       })
     })
   }
