@@ -36,21 +36,21 @@
   "author": "burggraf",
   "license": "MIT",
   "dependencies": {
-    "commander": "^12.1.0",
     "axios": "^1.7.7",
-    "cli-table3": "^0.6.5",
-    "readline": "^1.3.0",
-    "express": "^4.21.1",
-    "ws": "^8.18.3",
+    "commander": "^12.1.0",
     "cors": "^2.8.5",
+    "express": "^4.21.1",
     "open": "^10.1.0",
-    "portfinder": "^1.0.32"
+    "portfinder": "^1.0.32",
+    "readline": "^1.3.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/node": "^24.2.1",
-    "@types/express": "^5.0.2",
-    "@types/ws": "^8.5.13",
     "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.2",
+    "@types/node": "^24.2.1",
+    "@types/ws": "^8.5.13",
+    "cli-table3": "^0.6.5",
     "typescript": "~5.8.3",
     "vitest": "^3.2.4"
   },
