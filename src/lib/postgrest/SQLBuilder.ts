@@ -115,9 +115,9 @@ export class SQLBuilder {
   ): void {
     const alias = embedded.alias || `${embedded.table}_embed`
     
-    // For now, assume foreign key relationship based on naming convention
-    // In a real implementation, this would use database metadata
-    const joinCondition = `${mainTable}.${embedded.table}_id = ${alias}.id`
+    // Use proper singular foreign key column names
+    const singularTable = this.getSingularTableName(embedded.table)
+    const joinCondition = `${mainTable}.${singularTable}_id = ${alias}.id`
     
     joins.push({
       table: embedded.table,
@@ -138,6 +138,25 @@ export class SQLBuilder {
     } else {
       columns.push(`${alias}.*`)
     }
+  }
+
+  /**
+   * Convert plural table names to singular for foreign key columns
+   */
+  private getSingularTableName(tableName: string): string {
+    const singularMap: Record<string, string> = {
+      'customers': 'customer',
+      'categories': 'category',
+      'orders': 'order',
+      'products': 'product',
+      'employees': 'employee',
+      'suppliers': 'supplier',
+      'shippers': 'shipper',
+      'territories': 'territory',
+      'order_details': 'order_detail'
+    }
+    
+    return singularMap[tableName] || tableName
   }
 
   /**
