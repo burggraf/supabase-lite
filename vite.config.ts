@@ -354,7 +354,7 @@ function websocketBridge(): Plugin {
             })
             res.end(JSON.stringify({
               error: 'Browser database not connected',
-              message: 'Please open http://localhost:5173 in your browser to initialize the database connection.',
+              message: `Please open http://localhost:${server.config.server.port || 5173} in your browser to initialize the database connection.`,
               details: 'The WebSocket bridge requires the browser to be connected for database operations',
               path: req.url,
               method: req.method

@@ -71,37 +71,37 @@ values
   .from('characters')
   .select('*', { count: 'exact', head: true })
 
-    // Basic validation
-    if (data && expectedResponse && expectedResponse.data) {
-      const dataMatches = JSON.stringify(data) === JSON.stringify(expectedResponse.data);
-      console.log(`✅ Test result: ${dataMatches ? 'PASS' : 'FAIL'}`);
-      
-      if (!dataMatches) {
-        console.log('📊 Expected:', JSON.stringify(expectedResponse.data, null, 2));
-        console.log('📊 Actual:', JSON.stringify(data, null, 2));
-      }
-      
+    // Validate count result
+    if (error) {
+      console.log(`❌ Query failed with error: ${error.message}`);
       return {
         testId: '010-querying-with-count-option',
         functionId: 'select',
         name: 'Querying with count option',
-        passed: dataMatches,
-        error: null,
-        data: data,
-        expected: expectedResponse.data
-      };
-    } else {
-      console.log('⚠️  No expected response data to compare');
-      return {
-        testId: '010-querying-with-count-option',
-        functionId: 'select',
-        name: 'Querying with count option',
-        passed: data ? true : false,
-        error: error ? error.message : null,
-        data: data,
-        expected: expectedResponse ? expectedResponse.data : null
+        passed: false,
+        error: error.message,
+        data: null,
+        expected: expectedResponse
       };
     }
+
+    const countMatches = count === expectedResponse.count;
+    console.log(`✅ Test result: ${countMatches ? 'PASS' : 'FAIL'}`);
+    
+    if (!countMatches) {
+      console.log('📊 Expected count:', expectedResponse.count);
+      console.log('📊 Actual count:', count);
+    }
+    
+    return {
+      testId: '010-querying-with-count-option',
+      functionId: 'select',
+      name: 'Querying with count option',
+      passed: countMatches,
+      error: null,
+      data: { count },
+      expected: expectedResponse
+    };
 
   } catch (err) {
     console.log(`❌ Test failed with error: ${err.message}`);
@@ -112,7 +112,7 @@ values
       passed: false,
       error: err.message,
       data: null,
-      expected: expectedResponse ? expectedResponse.data : null
+      expected: expectedResponse
     };
   } finally {
     // Always cleanup, regardless of pass/fail
