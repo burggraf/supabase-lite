@@ -437,6 +437,70 @@ export class AuthManager {
   }
 
   /**
+   * Get all users from the database
+   */
+  async getAllUsers(): Promise<User[]> {
+    const result = await this.dbManager.query(
+      'SELECT * FROM auth.users ORDER BY created_at DESC',
+      []
+    )
+    return result.rows.map((row) => this.mapDBUserToUser(row))
+  }
+
+  /**
+   * Get total count of users
+   */
+  async getUserCount(): Promise<number> {
+    const result = await this.dbManager.query(
+      'SELECT COUNT(*) as count FROM auth.users',
+      []
+    )
+    return parseInt(result.rows[0].count, 10)
+  }
+
+  /**
+   * Get users filtered by provider
+   */
+  async getUsersByProvider(provider: string): Promise<User[]> {
+    const result = await this.dbManager.query(
+      'SELECT * FROM auth.users WHERE raw_app_meta_data->>\'provider\' = $1 ORDER BY created_at DESC',
+      [provider]
+    )
+    return result.rows.map((row) => this.mapDBUserToUser(row))
+  }
+
+  /**
+   * Delete a user by ID
+   */
+  async deleteUser(userId: string): Promise<void> {
+    if (!userId || userId.trim() === '') {
+      throw this.createAuthError('User ID is required', 400, 'user_id_required')
+    }
+
+    await this.dbManager.query(
+      'DELETE FROM auth.users WHERE id = $1',
+      [userId]
+    )
+
+    // Log audit event
+    await this.logAuditEvent('user_deleted', { user_id: userId })
+  }
+
+  /**
+   * Get available providers with user counts
+   */
+  async getProviders(): Promise<Array<{ provider: string; count: number }>> {
+    const result = await this.dbManager.query(
+      'SELECT raw_app_meta_data->>\'provider\' as provider, COUNT(*) as count FROM auth.users GROUP BY raw_app_meta_data->>\'provider\' ORDER BY count DESC',
+      []
+    )
+    return result.rows.map((row) => ({
+      provider: row.provider,
+      count: parseInt(row.count, 10)
+    }))
+  }
+
+  /**
    * Sign in with OAuth provider (simulated)
    */
   private async signInWithProvider(provider: string): Promise<{ user: User; session: Session }> {

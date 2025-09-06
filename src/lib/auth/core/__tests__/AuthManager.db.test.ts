@@ -402,4 +402,240 @@ describe('AuthManager Database Operations', () => {
       consoleSpy.mockRestore()
     })
   })
+
+  describe('User Management Methods', () => {
+    describe('getAllUsers', () => {
+      it('should return all users from the database', async () => {
+        const mockUsers = [
+          {
+            id: 'user-1',
+            email: 'user1@example.com',
+            phone: null,
+            email_confirmed_at: '2023-01-01T00:00:00Z',
+            phone_confirmed_at: null,
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-01T00:00:00Z',
+            last_sign_in_at: '2023-01-02T00:00:00Z',
+            role: 'authenticated',
+            raw_app_meta_data: '{"provider": "email", "providers": ["email"]}',
+            raw_user_meta_data: '{"name": "User One"}',
+            is_anonymous: false
+          },
+          {
+            id: 'user-2',
+            email: 'user2@example.com',
+            phone: null,
+            email_confirmed_at: '2023-01-01T00:00:00Z',
+            phone_confirmed_at: null,
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-01T00:00:00Z',
+            last_sign_in_at: null,
+            role: 'authenticated',
+            raw_app_meta_data: '{"provider": "email", "providers": ["email"]}',
+            raw_user_meta_data: '{}',
+            is_anonymous: false
+          }
+        ]
+
+        mockDbManager.query.mockResolvedValue({ rows: mockUsers })
+
+        const result = await authManager.getAllUsers()
+
+        expect(mockDbManager.query).toHaveBeenCalledWith(
+          'SELECT * FROM auth.users ORDER BY created_at DESC',
+          []
+        )
+        expect(result).toHaveLength(2)
+        expect(result[0].id).toBe('user-1')
+        expect(result[0].email).toBe('user1@example.com')
+        expect(result[0].email_verified).toBe(true)
+        expect(result[1].id).toBe('user-2')
+        expect(result[1].email).toBe('user2@example.com')
+        expect(result[1].last_sign_in_at).toBeNull()
+      })
+
+      it('should return empty array when no users exist', async () => {
+        mockDbManager.query.mockResolvedValue({ rows: [] })
+
+        const result = await authManager.getAllUsers()
+
+        expect(result).toEqual([])
+      })
+
+      it('should handle database errors', async () => {
+        mockDbManager.query.mockRejectedValue(new Error('Database error'))
+
+        await expect(authManager.getAllUsers()).rejects.toThrow('Database error')
+      })
+    })
+
+    describe('getUserCount', () => {
+      it('should return the total count of users', async () => {
+        mockDbManager.query.mockResolvedValue({ rows: [{ count: '42' }] })
+
+        const result = await authManager.getUserCount()
+
+        expect(mockDbManager.query).toHaveBeenCalledWith(
+          'SELECT COUNT(*) as count FROM auth.users',
+          []
+        )
+        expect(result).toBe(42)
+      })
+
+      it('should return 0 when no users exist', async () => {
+        mockDbManager.query.mockResolvedValue({ rows: [{ count: '0' }] })
+
+        const result = await authManager.getUserCount()
+
+        expect(result).toBe(0)
+      })
+
+      it('should handle database errors', async () => {
+        mockDbManager.query.mockRejectedValue(new Error('Database error'))
+
+        await expect(authManager.getUserCount()).rejects.toThrow('Database error')
+      })
+    })
+
+    describe('getUsersByProvider', () => {
+      it('should return users filtered by email provider', async () => {
+        const mockUsers = [
+          {
+            id: 'user-1',
+            email: 'user1@example.com',
+            phone: null,
+            email_confirmed_at: '2023-01-01T00:00:00Z',
+            phone_confirmed_at: null,
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-01T00:00:00Z',
+            role: 'authenticated',
+            raw_app_meta_data: '{"provider": "email", "providers": ["email"]}',
+            raw_user_meta_data: '{}',
+            is_anonymous: false
+          }
+        ]
+
+        mockDbManager.query.mockResolvedValue({ rows: mockUsers })
+
+        const result = await authManager.getUsersByProvider('email')
+
+        expect(mockDbManager.query).toHaveBeenCalledWith(
+          'SELECT * FROM auth.users WHERE raw_app_meta_data->>\'provider\' = $1 ORDER BY created_at DESC',
+          ['email']
+        )
+        expect(result).toHaveLength(1)
+        expect(result[0].email).toBe('user1@example.com')
+      })
+
+      it('should return users filtered by phone provider', async () => {
+        const mockUsers = [
+          {
+            id: 'user-1',
+            email: null,
+            phone: '+1234567890',
+            email_confirmed_at: null,
+            phone_confirmed_at: '2023-01-01T00:00:00Z',
+            created_at: '2023-01-01T00:00:00Z',
+            updated_at: '2023-01-01T00:00:00Z',
+            role: 'authenticated',
+            raw_app_meta_data: '{"provider": "phone", "providers": ["phone"]}',
+            raw_user_meta_data: '{}',
+            is_anonymous: false
+          }
+        ]
+
+        mockDbManager.query.mockResolvedValue({ rows: mockUsers })
+
+        const result = await authManager.getUsersByProvider('phone')
+
+        expect(mockDbManager.query).toHaveBeenCalledWith(
+          'SELECT * FROM auth.users WHERE raw_app_meta_data->>\'provider\' = $1 ORDER BY created_at DESC',
+          ['phone']
+        )
+        expect(result).toHaveLength(1)
+        expect(result[0].phone).toBe('+1234567890')
+      })
+
+      it('should return empty array when no users match provider', async () => {
+        mockDbManager.query.mockResolvedValue({ rows: [] })
+
+        const result = await authManager.getUsersByProvider('oauth')
+
+        expect(result).toEqual([])
+      })
+
+      it('should handle database errors', async () => {
+        mockDbManager.query.mockRejectedValue(new Error('Database error'))
+
+        await expect(authManager.getUsersByProvider('email')).rejects.toThrow('Database error')
+      })
+    })
+
+    describe('deleteUser', () => {
+      it('should delete a user successfully', async () => {
+        mockDbManager.query.mockResolvedValue({ rows: [] })
+
+        await authManager.deleteUser('user-123')
+
+        expect(mockDbManager.query).toHaveBeenCalledWith(
+          'DELETE FROM auth.users WHERE id = $1',
+          ['user-123']
+        )
+      })
+
+      it('should log audit event when deleting user', async () => {
+        mockDbManager.query
+          .mockResolvedValueOnce({ rows: [] }) // DELETE query
+          .mockResolvedValueOnce({ rows: [] }) // audit log
+
+        await authManager.deleteUser('user-123')
+
+        // Check that audit logging was called
+        const auditCalls = mockDbManager.query.mock.calls.filter((call: any) =>
+          call[0].includes('INSERT INTO auth.audit_log_entries')
+        )
+        expect(auditCalls).toHaveLength(1)
+      })
+
+      it('should handle database errors during deletion', async () => {
+        mockDbManager.query.mockRejectedValue(new Error('Deletion failed'))
+
+        await expect(authManager.deleteUser('user-123')).rejects.toThrow('Deletion failed')
+      })
+
+      it('should validate user ID parameter', async () => {
+        await expect(authManager.deleteUser('')).rejects.toThrow('User ID is required')
+      })
+    })
+
+    describe('getProviders', () => {
+      it('should return list of available providers', async () => {
+        const mockProviders = [
+          { provider: 'email', count: '25' },
+          { provider: 'phone', count: '7' }
+        ]
+
+        mockDbManager.query.mockResolvedValue({ rows: mockProviders })
+
+        const result = await authManager.getProviders()
+
+        expect(mockDbManager.query).toHaveBeenCalledWith(
+          'SELECT raw_app_meta_data->>\'provider\' as provider, COUNT(*) as count FROM auth.users GROUP BY raw_app_meta_data->>\'provider\' ORDER BY count DESC',
+          []
+        )
+        expect(result).toEqual([
+          { provider: 'email', count: 25 },
+          { provider: 'phone', count: 7 }
+        ])
+      })
+
+      it('should return empty array when no users exist', async () => {
+        mockDbManager.query.mockResolvedValue({ rows: [] })
+
+        const result = await authManager.getProviders()
+
+        expect(result).toEqual([])
+      })
+    })
+  })
 })
