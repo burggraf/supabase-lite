@@ -56,7 +56,12 @@ export class SQLBuilder {
     }
 
     try {
+      // Strip quotes from table names for comparison
+      const cleanMainTable = mainTable.replace(/^"(.*)"$/, '$1')
+      const cleanEmbeddedTable = embeddedTable.replace(/^"(.*)"$/, '$1')
+      
       // Query to find foreign key relationship in either direction
+      // Use string literals safely escaped
       const query = `
         SELECT 
           tc.table_name AS referencing_table,
@@ -71,11 +76,12 @@ export class SQLBuilder {
           ON ccu.constraint_name = tc.constraint_name 
           AND ccu.table_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-          AND ((tc.table_name = '${mainTable}' AND ccu.table_name = '${embeddedTable}')
-            OR (tc.table_name = '${embeddedTable}' AND ccu.table_name = '${mainTable}'))
+          AND ((tc.table_name = '${cleanMainTable.replace(/'/g, "''")}' AND ccu.table_name = '${cleanEmbeddedTable.replace(/'/g, "''")}')
+            OR (tc.table_name = '${cleanEmbeddedTable.replace(/'/g, "''")}' AND ccu.table_name = '${cleanMainTable.replace(/'/g, "''")}'))
       `
       
-      console.log(`🗃️  Executing FK discovery query:`, query.trim())
+      console.log(`🗃️  Executing FK discovery query with tables: "${cleanMainTable}" <-> "${cleanEmbeddedTable}"`)
+      console.log(`🗃️  Query:`, query.trim())
       const result = await this.dbManager.query(query)
       console.log(`🗃️  FK discovery result:`, result)
       
@@ -188,6 +194,21 @@ export class SQLBuilder {
     const joins: JoinInfo[] = []
     const selectColumns: string[] = []
     
+    // Helper function to properly quote table names if they contain spaces
+    const quoteTableName = (tableName: string): string => {
+      // If table name is already quoted, return as-is
+      if (tableName.startsWith('"') && tableName.endsWith('"')) {
+        return tableName
+      }
+      // If table name contains spaces or special characters, quote it
+      if (tableName.includes(' ') || /[^a-zA-Z0-9_]/.test(tableName)) {
+        return `"${tableName}"`
+      }
+      return tableName
+    }
+    
+    const quotedMainTable = quoteTableName(table)
+    
     // Add main table columns, filtering out embedded table names
     const embeddedTableNames = (query.embedded || []).map(e => e.table)
     
@@ -199,25 +220,27 @@ export class SQLBuilder {
         }
         
         if (col === '*') {
-          selectColumns.push(`${table}.*`)
+          selectColumns.push(`${quotedMainTable}.*`)
         } else {
-          selectColumns.push(`${table}.${col}`)
+          selectColumns.push(`${quotedMainTable}.${col}`)
         }
       }
     } else {
-      selectColumns.push(`${table}.*`)
+      selectColumns.push(`${quotedMainTable}.*`)
     }
     
     // Add embedded resources as correlated subqueries
     for (const embedded of query.embedded || []) {
       const subquery = await this.buildEmbeddedSubquery(table, embedded)
       if (subquery) {
-        selectColumns.push(`(${subquery}) AS ${embedded.table}`)
+        // Use the original table name as alias, properly quoted for SQL but keeping original name for result
+        const quotedAlias = quoteTableName(embedded.table)
+        selectColumns.push(`(${subquery}) AS ${quotedAlias}`)
       }
     }
     
     // Build FROM clause
-    const fromClause = `FROM ${table}`
+    const fromClause = `FROM ${quotedMainTable}`
 
     // Build WHERE clause
     const whereClause = this.buildWhereClause(query.filters)
@@ -263,6 +286,22 @@ export class SQLBuilder {
       return null
     }
     
+    // Helper function to properly quote table names if they contain spaces
+    const quoteTableName = (tableName: string): string => {
+      // If table name is already quoted, return as-is
+      if (tableName.startsWith('"') && tableName.endsWith('"')) {
+        return tableName
+      }
+      // If table name contains spaces or special characters, quote it
+      if (tableName.includes(' ') || /[^a-zA-Z0-9_]/.test(tableName)) {
+        return `"${tableName}"`
+      }
+      return tableName
+    }
+    
+    const quotedEmbeddedTable = quoteTableName(embedded.table)
+    const quotedMainTable = quoteTableName(table)
+    
     // Build the SELECT columns for the embedded resource
     let selectClause: string
     if (embedded.select && embedded.select.length > 0) {
@@ -270,39 +309,43 @@ export class SQLBuilder {
       const columnPairs = embedded.select.map(col => {
         if (col === '*') {
           // For *, return all columns as JSON - need to use row_to_json
-          return `to_json(${embedded.table})`
+          return `to_json(${quotedEmbeddedTable})`
         } else {
-          return `'${col}', ${embedded.table}.${col}`
+          return `'${col}', ${quotedEmbeddedTable}.${col}`
         }
       })
       
       if (embedded.select.includes('*')) {
-        selectClause = `to_json(${embedded.table})`
+        selectClause = `to_json(${quotedEmbeddedTable})`
       } else {
         selectClause = `json_build_object(${columnPairs.join(', ')})`
       }
     } else {
       // Select all columns as JSON object
-      selectClause = `to_json(${embedded.table})`
+      selectClause = `to_json(${quotedEmbeddedTable})`
     }
+    
+    // Quote the FK relationship table names for matching
+    const quotedFromTable = quoteTableName(fkRelationship.fromTable)
+    const quotedToTable = quoteTableName(fkRelationship.toTable)
     
     // Determine join condition based on relationship direction
     let whereCondition: string
-    if (fkRelationship.fromTable === embedded.table && fkRelationship.toTable === table) {
+    if (fkRelationship.fromTable === embedded.table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === table.replace(/^"(.*)"$/, '$1')) {
       // One-to-many: embedded table references main table
       // instruments.section_id = orchestral_sections.id
-      whereCondition = `${embedded.table}.${fkRelationship.fromColumn} = ${table}.${fkRelationship.toColumn}`
-    } else if (fkRelationship.fromTable === table && fkRelationship.toTable === embedded.table) {
+      whereCondition = `${quotedEmbeddedTable}.${fkRelationship.fromColumn} = ${quotedMainTable}.${fkRelationship.toColumn}`
+    } else if (fkRelationship.fromTable === table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === embedded.table.replace(/^"(.*)"$/, '$1')) {
       // Many-to-one: main table references embedded table
       // orchestral_sections.section_id = sections.id
-      whereCondition = `${table}.${fkRelationship.fromColumn} = ${embedded.table}.${fkRelationship.toColumn}`
+      whereCondition = `${quotedMainTable}.${fkRelationship.fromColumn} = ${quotedEmbeddedTable}.${fkRelationship.toColumn}`
     } else {
       console.log(`❌ Invalid foreign key relationship direction`)
       return null
     }
 
     // Build the complete subquery
-    const subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${embedded.table} WHERE ${whereCondition}`
+    const subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
     
     console.log(`🗃️  Generated embedded subquery: ${subquery}`)
     return subquery

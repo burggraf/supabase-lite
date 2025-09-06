@@ -379,11 +379,26 @@ export class ResponseFormatter {
 
       // Process each embedded resource
       for (const embedded of query.embedded || []) {
-        // The embedded resource is already in JSON format from the SQL aggregation
-        // We just need to parse it if it's a string
-        if (formattedRow[embedded.table]) {
-          let embeddedData = formattedRow[embedded.table]
-          
+        // Handle both quoted and unquoted table names as keys
+        let embeddedData = null
+        let keyFound = null
+        
+        // Try different variations of the key
+        const possibleKeys = [
+          embedded.table,                           // original: "musical instruments"
+          `"${embedded.table}"`,                   // double-quoted: ""musical instruments""
+          embedded.table.replace(/^"(.*)"$/, '$1') // unquoted: musical instruments
+        ]
+        
+        for (const key of possibleKeys) {
+          if (formattedRow[key] !== undefined) {
+            embeddedData = formattedRow[key]
+            keyFound = key
+            break
+          }
+        }
+        
+        if (keyFound && embeddedData !== null) {
           // Parse JSON string if needed
           if (typeof embeddedData === 'string') {
             try {
@@ -396,13 +411,21 @@ export class ResponseFormatter {
           
           // Ensure empty arrays for null/empty results
           if (!embeddedData || (Array.isArray(embeddedData) && embeddedData.length === 0)) {
-            formattedRow[embedded.table] = []
-          } else {
-            formattedRow[embedded.table] = embeddedData
+            embeddedData = []
+          }
+          
+          // Set the data using the original table name (without extra quotes)
+          const cleanTableName = embedded.table.replace(/^"(.*)"$/, '$1')
+          formattedRow[cleanTableName] = embeddedData
+          
+          // Remove the old key if it's different from the clean name
+          if (keyFound !== cleanTableName) {
+            delete formattedRow[keyFound]
           }
         } else {
-          // No embedded data found
-          formattedRow[embedded.table] = []
+          // No embedded data found - set empty array using clean table name
+          const cleanTableName = embedded.table.replace(/^"(.*)"$/, '$1')
+          formattedRow[cleanTableName] = []
         }
       }
 

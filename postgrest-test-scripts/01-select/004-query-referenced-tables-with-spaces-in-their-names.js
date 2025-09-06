@@ -96,7 +96,7 @@ values
     // Execute test code
     console.log('🧪 Executing test code...');
     const { data, error } = await supabase
-  .from('orchestal sections')
+  .from('"orchestral sections"')
   .select(`
     name,
     "musical instruments" (
