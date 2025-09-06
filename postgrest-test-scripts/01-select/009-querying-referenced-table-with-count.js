@@ -92,14 +92,28 @@ insert into instruments (name, section_id) values
 			.from('orchestral_sections')
 			.select(`*, instruments(count)`)
 
-		// Basic validation
+		// Basic validation - flexible UUID comparison
 		if (data && expectedResponse) {
-			const dataMatches = JSON.stringify(data) === JSON.stringify(expectedResponse)
+			// Check structure and values excluding the dynamic UUID
+			let dataMatches = false
+			if (data.length === expectedResponse.length && data.length === 1) {
+				const actualItem = data[0]
+				const expectedItem = expectedResponse[0]
+				
+				// Check all fields except id (which is a dynamic UUID)
+				dataMatches = 
+					actualItem.name === expectedItem.name &&
+					Array.isArray(actualItem.instruments) &&
+					actualItem.instruments.length === expectedItem.instruments.length &&
+					actualItem.instruments[0].count === expectedItem.instruments[0].count &&
+					typeof actualItem.id === 'string' && actualItem.id.length > 0
+			}
+			
 			console.log(`✅ Test result: ${dataMatches ? 'PASS' : 'FAIL'}`)
 
 			if (!dataMatches) {
-				console.log('📊 Expected:', JSON.stringify(expectedResponse, null, 2))
-				console.log('📊 Actual:', JSON.stringify(data, null, 2))
+				console.log('📊 Expected structure:', JSON.stringify(expectedResponse, null, 2))
+				console.log('📊 Actual structure:', JSON.stringify(data, null, 2))
 			}
 
 			return {

@@ -610,8 +610,8 @@ export class SQLBuilder {
     const quotedEmbeddedTable = quoteTableName(embedded.table)
     const quotedMainTable = quoteTableName(table)
     
-    // Build the SELECT columns for the embedded resource
-    const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
+    // Check if this is a count-only request
+    const isCountOnly = embedded.select?.length === 1 && embedded.select[0] === 'count'
     
     // Quote the FK relationship table names for matching
     const quotedFromTable = quoteTableName(fkRelationship.fromTable)
@@ -624,13 +624,6 @@ export class SQLBuilder {
     if (fkRelationship.joinTable) {
       console.log(`🔗 Building many-to-many subquery through join table: ${fkRelationship.joinTable}`)
       
-      // Many-to-many: use join table to connect main table and embedded table
-      // SELECT json_agg(...) FROM embedded_table 
-      // WHERE embedded_table.id IN (
-      //   SELECT join_table.embedded_fk_column 
-      //   FROM join_table 
-      //   WHERE join_table.main_fk_column = main_table.id
-      // )
       const joinTableQuoted = quoteTableName(fkRelationship.joinTable!)
       const whereCondition = `${quotedEmbeddedTable}.${fkRelationship.toColumn} IN (
         SELECT ${joinTableQuoted}.${fkRelationship.joinEmbeddedColumn} 
@@ -638,7 +631,13 @@ export class SQLBuilder {
         WHERE ${joinTableQuoted}.${fkRelationship.joinMainColumn} = ${quotedMainTable}.${fkRelationship.fromColumn}
       )`
       
-      subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+      if (isCountOnly) {
+        // For count-only requests, return a simple count without json_agg nesting
+        subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${whereCondition})))`
+      } else {
+        const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
+        subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+      }
     } else {
       // Direct relationship (one-to-many or many-to-one)
       let whereCondition: string
@@ -651,7 +650,14 @@ export class SQLBuilder {
         // Each row in main table has exactly one corresponding row in embedded table
         // Return single object, not array
         whereCondition = `${quotedMainTable}.${fkRelationship.fromColumn} = ${quotedEmbeddedTable}.${fkRelationship.toColumn}`
-        subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${whereCondition} LIMIT 1`
+        
+        if (isCountOnly) {
+          // For count-only many-to-one, just return 1 if relationship exists
+          subquery = `SELECT json_build_object('count', CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) THEN 1 ELSE 0 END)`
+        } else {
+          const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
+          subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${whereCondition} LIMIT 1`
+        }
         return subquery
       } else {
         console.log(`❌ Invalid foreign key relationship direction`)
@@ -660,8 +666,13 @@ export class SQLBuilder {
 
       // One-to-many: embedded table references main table
       // Can have multiple rows in embedded table for each main table row
-      // Return array
-      subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+      if (isCountOnly) {
+        // For count-only requests, return a simple count without json_agg nesting
+        subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${whereCondition})))`
+      } else {
+        const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
+        subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+      }
     }
     
     console.log(`🗃️  Generated embedded subquery: ${subquery}`)
@@ -673,6 +684,9 @@ export class SQLBuilder {
    */
   private async buildEmbeddedSelectClause(embedded: EmbeddedResource, quotedEmbeddedTable: string, parentTable: string): Promise<string> {
     const columnPairs: string[] = []
+    
+    // Check if this is a count-only request
+    const isCountOnly = embedded.select?.length === 1 && embedded.select[0] === 'count'
     
     // Add regular columns if any
     if (embedded.select && embedded.select.length > 0) {
@@ -686,6 +700,10 @@ export class SQLBuilder {
           }
           // Otherwise, we need to merge it with nested resources - this is complex, so for now return just the table
           columnPairs.push(`'*', ${allColumnsPair}`)
+        } else if (col === 'count') {
+          // Handle count aggregation for embedded resources - return count as separate query structure
+          // This will be handled in the subquery builder
+          columnPairs.push(`'count', COUNT(*)`)
         } else {
           columnPairs.push(`'${col}', ${quotedEmbeddedTable}.${col}`)
         }
