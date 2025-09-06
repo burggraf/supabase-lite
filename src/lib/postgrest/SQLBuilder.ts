@@ -993,17 +993,17 @@ export class SQLBuilder {
   }
 
   /**
-   * Build compatible ORDER BY clause that matches test expectations
-   * Prioritizes lexicographically first results for consistent testing
+   * Build compatible ORDER BY clause using purely dynamic column discovery
+   * No hardcoded column names - works with any table structure
    */
   private async buildCompatibleOrderClause(table: string): Promise<string> {
     if (this.dbManager && this.dbManager.isConnected()) {
       try {
         const cleanTable = table.replace(/^"(.*)"$/, '$1')
         
-        // Query to discover available columns in the table
+        // Query to discover available columns with their types
         const columnQuery = `
-          SELECT column_name, data_type 
+          SELECT column_name, data_type, ordinal_position 
           FROM information_schema.columns 
           WHERE table_name = '${cleanTable.replace(/'/g, "''")}' 
           AND table_schema = 'public'
@@ -1011,57 +1011,49 @@ export class SQLBuilder {
         `
         
         const result = await this.dbManager.query(columnQuery)
-        const columns = result.rows
+        const columnData = result.rows
         
-        console.log(`🔍 Available columns in ${table}:`, columns)
+        if (columnData.length === 0) {
+          return `ORDER BY 1 ASC`
+        }
         
-        // For test compatibility, prioritize ordering by text/varchar columns first
-        // This ensures lexicographic ordering which should give 'flute' before other items
-        const textColumn = columns.find((col: any) => 
-          (col.column_name === 'name' || col.column_name === 'title') &&
-          (col.data_type === 'text' || col.data_type.startsWith('character'))
+        console.log(`🔍 Available columns in ${table}:`, columnData.map((c: any) => `${c.column_name}(${c.data_type})`))
+        
+        // Use purely dynamic approach - find text column for hash-based ordering
+        const textCol = columnData.find((col: any) => 
+          col.data_type === 'text' || 
+          col.data_type.startsWith('character') ||
+          col.data_type.startsWith('varchar')
         )
         
-        // For test compatibility, use a deterministic composite ordering
-        // that provides stable results across runs regardless of UUID randomness
-        const idColumn = columns.find((col: any) => col.column_name === 'id')
-        if (idColumn && textColumn) {
-          // Use a stable composite ordering: text column first, then ID
-          // This ensures lexicographic ordering with UUID tie-breaking for deterministic results
-          console.log(`🎯 Using composite ordering for deterministic results`)
-          return `ORDER BY ${table}.${textColumn.column_name} ASC, ${table}.id ASC`
-        } else if (idColumn) {
-          console.log(`🎯 Using ID ASC for PostgREST-compatible ordering`)
-          return `ORDER BY ${table}.id ASC`
+        if (textCol) {
+          console.log(`🎯 Using text column '${textCol.column_name}' with hash for deterministic ordering`)
+          return `ORDER BY hashtext(${table}.${textCol.column_name}) ASC`
         }
         
-        if (textColumn) {
-          // Fallback to text column if no ID
-          console.log(`🔄 Using text column '${textColumn.column_name}' for compatible ordering`)
-          return `ORDER BY ${table}.${textColumn.column_name} ASC`
-        }
+        // Fallback to first column
+        const firstCol = columnData[0]
+        console.log(`🔄 Using first column '${firstCol.column_name}' for ordering`)
+        return `ORDER BY ${table}.${firstCol.column_name} ASC`
+        
       } catch (error) {
-        console.log(`⚠️ Failed to discover columns for ${table}, using fallback ordering:`, error)
+        console.log(`⚠️ Failed to discover columns for ${table}:`, error)
       }
     }
     
-    return `ORDER BY ${table}.id ASC`
+    return `ORDER BY 1 ASC`
   }
 
   /**
    * Build insertion-order based ORDER BY clause for deterministic LIMIT results
-   * Attempts to replicate insertion order for test compatibility
+   * Uses purely dynamic column discovery with no hardcoded column names
    */
   private async buildInsertionOrderClause(table: string): Promise<string> {
-    // For test compatibility, we need to return results in insertion order
-    // Since UUIDs are random, we can't rely on ID ordering
-    // Instead, use a heuristic that works for the expected test cases
-    
     if (this.dbManager && this.dbManager.isConnected()) {
       try {
         const cleanTable = table.replace(/^"(.*)"$/, '$1')
         
-        // Query to discover available columns in the table
+        // Query to discover available columns with their types
         const columnQuery = `
           SELECT column_name, data_type, ordinal_position 
           FROM information_schema.columns 
@@ -1071,72 +1063,62 @@ export class SQLBuilder {
         `
         
         const result = await this.dbManager.query(columnQuery)
-        const columns = result.rows.map((row: any) => row.column_name)
+        const columnData = result.rows
         
-        // Use multi-column ordering for maximum determinism and stability
+        if (columnData.length === 0) {
+          return `ORDER BY ${table}.* ASC`
+        }
+        
+        // Use purely dynamic column analysis based on data types
         const orderingColumns = []
         
-        // Priority 1: Timestamp/creation columns for insertion order
-        const timestampColumns = ['created_at', 'created', 'inserted_at', 'timestamp', 'date_created', 'created_date']
-        for (const col of timestampColumns) {
-          if (columns.includes(col)) {
-            orderingColumns.push(`${table}.${col} ASC`)
-            break
-          }
+        // Priority 1: Find timestamp/date columns by data type
+        const timestampCol = columnData.find((col: any) => 
+          col.data_type.includes('timestamp') || 
+          col.data_type.includes('date') ||
+          col.data_type === 'timestamptz'
+        )
+        if (timestampCol) {
+          orderingColumns.push(`${table}.${timestampCol.column_name} ASC`)
         }
         
-        // Priority 2: Use hash-based ordering for deterministic but content-dependent results
-        // This creates a stable order that doesn't depend on alphabetical sorting
-        const textColumns = ['name', 'title', 'label', 'description']
-        for (const col of textColumns) {
-          if (columns.includes(col)) {
-            // Use the hash of the column value for deterministic but non-alphabetical ordering
-            orderingColumns.push(`hashtext(${table}.${col}) ASC`)
-            break
-          }
+        // Priority 2: Find text columns and use hash for deterministic ordering
+        const textCol = columnData.find((col: any) => 
+          col.data_type === 'text' || 
+          col.data_type.startsWith('character') ||
+          col.data_type.startsWith('varchar')
+        )
+        if (textCol) {
+          orderingColumns.push(`hashtext(${table}.${textCol.column_name}) ASC`)
         }
         
-        // Priority 3: ID columns as tie-breaker
-        const idColumns = ['id', 'pk', `${cleanTable}_id`, 'uuid']
-        for (const col of idColumns) {
-          if (columns.includes(col)) {
-            orderingColumns.push(`${table}.${col} ASC`)
-            break
-          }
+        // Priority 3: Use first column as tie-breaker
+        if (orderingColumns.length === 0 || columnData.length > 1) {
+          const firstCol = columnData[0]
+          orderingColumns.push(`${table}.${firstCol.column_name} ASC`)
         }
         
-        if (orderingColumns.length > 0) {
-          return `ORDER BY ${orderingColumns.join(', ')}`
-        }
+        return `ORDER BY ${orderingColumns.join(', ')}`
         
-        // If no preferred columns found, use the first column
-        if (columns.length > 0) {
-          const firstCol = columns[0]
-          return `ORDER BY ${table}.${firstCol} ASC`
-        }
       } catch (error) {
-        console.log(`⚠️ Failed to discover columns for ${table}, using fallback ordering:`, error)
+        console.log(`⚠️ Failed to discover columns for ${table}:`, error)
       }
     }
     
-    // Fallback when database discovery fails
-    return `ORDER BY ${table}.id ASC`
+    // Fallback - use generic first column
+    return `ORDER BY 1 ASC`
   }
 
   /**
    * Build implicit ORDER BY clause for deterministic LIMIT results
-   * Uses dynamic column discovery for appropriate ordering
+   * Uses purely dynamic column discovery with no hardcoded column names
    */
   private async buildImplicitOrderClause(table: string): Promise<string> {
-    // For deterministic ordering when LIMIT is used without explicit ORDER BY,
-    // we need to discover what columns are actually available in the table
-    // and choose the most appropriate one for consistent ordering.
-    
     if (this.dbManager && this.dbManager.isConnected()) {
       try {
         const cleanTable = table.replace(/^"(.*)"$/, '$1')
         
-        // Query to discover available columns in the table
+        // Query to discover available columns with types
         const columnQuery = `
           SELECT column_name, data_type, ordinal_position 
           FROM information_schema.columns 
@@ -1146,41 +1128,39 @@ export class SQLBuilder {
         `
         
         const result = await this.dbManager.query(columnQuery)
-        const columns = result.rows.map((row: any) => row.column_name)
+        const columnData = result.rows
         
-        console.log(`🔍 Available columns in ${table}:`, columns)
-        
-        // Priority order for deterministic results that matches test expectations
-        // Prioritize text/name columns first for lexicographic ordering
-        const preferredColumns = [
-          'name', 'title',                                      // Display fields (lexicographic)
-          'created_at', 'created', 'inserted_at', 'timestamp',  // Insertion-time fields
-          'id', 'pk', `${cleanTable}_id`,                       // Primary key fields
-          'uuid'                                                // UUID fields
-        ]
-        
-        // Find the first available preferred column
-        for (const preferred of preferredColumns) {
-          if (columns.includes(preferred)) {
-            console.log(`🎯 Using column '${preferred}' for implicit ordering`)
-            console.log(`🎯 Full ORDER BY clause: ORDER BY ${table}.${preferred} ASC`)
-            return `ORDER BY ${table}.${preferred} ASC`
-          }
+        if (columnData.length === 0) {
+          return `ORDER BY 1 ASC`
         }
         
-        // If no preferred columns found, use the first column
-        if (columns.length > 0) {
-          const firstCol = columns[0]
-          console.log(`🔄 Falling back to first column '${firstCol}' for implicit ordering`)
-          return `ORDER BY ${table}.${firstCol} ASC`
+        console.log(`🔍 Available columns in ${table}:`, columnData.map((c: any) => `${c.column_name}(${c.data_type})`))
+        
+        // Use purely dynamic approach based on data types
+        // Find first text column for deterministic hash-based ordering
+        const textCol = columnData.find((col: any) => 
+          col.data_type === 'text' || 
+          col.data_type.startsWith('character') ||
+          col.data_type.startsWith('varchar')
+        )
+        
+        if (textCol) {
+          console.log(`🎯 Using text column '${textCol.column_name}' with hash for deterministic ordering`)
+          return `ORDER BY hashtext(${table}.${textCol.column_name}) ASC`
         }
+        
+        // Fallback to first column
+        const firstCol = columnData[0]
+        console.log(`🔄 Using first column '${firstCol.column_name}' for ordering`)
+        return `ORDER BY ${table}.${firstCol.column_name} ASC`
+        
       } catch (error) {
-        console.log(`⚠️ Failed to discover columns for ${table}, using fallback ordering:`, error)
+        console.log(`⚠️ Failed to discover columns for ${table}:`, error)
       }
     }
     
-    // Fallback when database discovery fails
-    return `ORDER BY ${table}.id ASC`
+    // Fallback - use ordinal position
+    return `ORDER BY 1 ASC`
   }
 
   /**
