@@ -1,0 +1,714 @@
+[
+  {
+    "number": 1,
+    "functionId": "select",
+    "exampleId": "getting-your-data",
+    "fileName": "001-getting-your-data.js",
+    "relativePath": "01-select/001-getting-your-data.js",
+    "name": "Getting your data"
+  },
+  {
+    "number": 2,
+    "functionId": "select",
+    "exampleId": "selecting-specific-columns",
+    "fileName": "002-selecting-specific-columns.js",
+    "relativePath": "01-select/002-selecting-specific-columns.js",
+    "name": "Selecting specific columns"
+  },
+  {
+    "number": 3,
+    "functionId": "select",
+    "exampleId": "query-referenced-tables",
+    "fileName": "003-query-referenced-tables.js",
+    "relativePath": "01-select/003-query-referenced-tables.js",
+    "name": "Query referenced tables"
+  },
+  {
+    "number": 4,
+    "functionId": "select",
+    "exampleId": "query-referenced-tables-with-spaces-in-their-names",
+    "fileName": "004-query-referenced-tables-with-spaces-in-their-names.js",
+    "relativePath": "01-select/004-query-referenced-tables-with-spaces-in-their-names.js",
+    "name": "Query referenced tables with spaces in their names"
+  },
+  {
+    "number": 5,
+    "functionId": "select",
+    "exampleId": "query-referenced-tables-through-a-join-table",
+    "fileName": "005-query-referenced-tables-through-a-join-table.js",
+    "relativePath": "01-select/005-query-referenced-tables-through-a-join-table.js",
+    "name": "Query referenced tables through a join table"
+  },
+  {
+    "number": 6,
+    "functionId": "select",
+    "exampleId": "query-the-same-referenced-table-multiple-times",
+    "fileName": "006-query-the-same-referenced-table-multiple-times.js",
+    "relativePath": "01-select/006-query-the-same-referenced-table-multiple-times.js",
+    "name": "Query the same referenced table multiple times"
+  },
+  {
+    "number": 7,
+    "functionId": "select",
+    "exampleId": "query-nested-foreign-tables-through-a-join-table",
+    "fileName": "007-query-nested-foreign-tables-through-a-join-table.js",
+    "relativePath": "01-select/007-query-nested-foreign-tables-through-a-join-table.js",
+    "name": "Query nested foreign tables through a join table"
+  },
+  {
+    "number": 8,
+    "functionId": "select",
+    "exampleId": "filtering-through-referenced-tables",
+    "fileName": "008-filtering-through-referenced-tables.js",
+    "relativePath": "01-select/008-filtering-through-referenced-tables.js",
+    "name": "Filtering through referenced tables"
+  },
+  {
+    "number": 9,
+    "functionId": "select",
+    "exampleId": "querying-referenced-table-with-count",
+    "fileName": "009-querying-referenced-table-with-count.js",
+    "relativePath": "01-select/009-querying-referenced-table-with-count.js",
+    "name": "Querying referenced table with count"
+  },
+  {
+    "number": 10,
+    "functionId": "select",
+    "exampleId": "querying-with-count-option",
+    "fileName": "010-querying-with-count-option.js",
+    "relativePath": "01-select/010-querying-with-count-option.js",
+    "name": "Querying with count option"
+  },
+  {
+    "number": 11,
+    "functionId": "select",
+    "exampleId": "querying-json-data",
+    "fileName": "011-querying-json-data.js",
+    "relativePath": "01-select/011-querying-json-data.js",
+    "name": "Querying JSON data"
+  },
+  {
+    "number": 12,
+    "functionId": "select",
+    "exampleId": "querying-referenced-table-with-inner-join",
+    "fileName": "012-querying-referenced-table-with-inner-join.js",
+    "relativePath": "01-select/012-querying-referenced-table-with-inner-join.js",
+    "name": "Querying referenced table with inner join"
+  },
+  {
+    "number": 13,
+    "functionId": "select",
+    "exampleId": "switching-schemas-per-query",
+    "fileName": "013-switching-schemas-per-query.js",
+    "relativePath": "01-select/013-switching-schemas-per-query.js",
+    "name": "Switching schemas per query"
+  },
+  {
+    "number": 14,
+    "functionId": "insert",
+    "exampleId": "create-a-record",
+    "fileName": "014-create-a-record.js",
+    "relativePath": "02-insert/014-create-a-record.js",
+    "name": "Create a record"
+  },
+  {
+    "number": 15,
+    "functionId": "insert",
+    "exampleId": "create-a-record-and-return-it",
+    "fileName": "015-create-a-record-and-return-it.js",
+    "relativePath": "02-insert/015-create-a-record-and-return-it.js",
+    "name": "Create a record and return it"
+  },
+  {
+    "number": 16,
+    "functionId": "insert",
+    "exampleId": "bulk-create",
+    "fileName": "016-bulk-create.js",
+    "relativePath": "02-insert/016-bulk-create.js",
+    "name": "Bulk create"
+  },
+  {
+    "number": 17,
+    "functionId": "update",
+    "exampleId": "updating-your-data",
+    "fileName": "017-updating-your-data.js",
+    "relativePath": "03-update/017-updating-your-data.js",
+    "name": "Updating your data"
+  },
+  {
+    "number": 18,
+    "functionId": "update",
+    "exampleId": "update-a-record-and-return-it",
+    "fileName": "018-update-a-record-and-return-it.js",
+    "relativePath": "03-update/018-update-a-record-and-return-it.js",
+    "name": "Update a record and return it"
+  },
+  {
+    "number": 19,
+    "functionId": "update",
+    "exampleId": "updating-json-data",
+    "fileName": "019-updating-json-data.js",
+    "relativePath": "03-update/019-updating-json-data.js",
+    "name": "Updating JSON data"
+  },
+  {
+    "number": 20,
+    "functionId": "upsert",
+    "exampleId": "upsert-your-data",
+    "fileName": "020-upsert-your-data.js",
+    "relativePath": "04-upsert/020-upsert-your-data.js",
+    "name": "Upsert your data"
+  },
+  {
+    "number": 21,
+    "functionId": "upsert",
+    "exampleId": "bulk-upsert-your-data",
+    "fileName": "021-bulk-upsert-your-data.js",
+    "relativePath": "04-upsert/021-bulk-upsert-your-data.js",
+    "name": "Bulk Upsert your data"
+  },
+  {
+    "number": 22,
+    "functionId": "upsert",
+    "exampleId": "upserting-into-tables-with-constraints",
+    "fileName": "022-upserting-into-tables-with-constraints.js",
+    "relativePath": "04-upsert/022-upserting-into-tables-with-constraints.js",
+    "name": "Upserting into tables with constraints"
+  },
+  {
+    "number": 23,
+    "functionId": "delete",
+    "exampleId": "delete-records",
+    "fileName": "023-delete-records.js",
+    "relativePath": "05-delete/023-delete-records.js",
+    "name": "Delete a single record"
+  },
+  {
+    "number": 24,
+    "functionId": "delete",
+    "exampleId": "delete-records-and-return-it",
+    "fileName": "024-delete-records-and-return-it.js",
+    "relativePath": "05-delete/024-delete-records-and-return-it.js",
+    "name": "Delete a record and return it"
+  },
+  {
+    "number": 25,
+    "functionId": "delete",
+    "exampleId": "delete-multiple-records",
+    "fileName": "025-delete-multiple-records.js",
+    "relativePath": "05-delete/025-delete-multiple-records.js",
+    "name": "Delete multiple records"
+  },
+  {
+    "number": 26,
+    "functionId": "rpc",
+    "exampleId": "call-a-postgres-function-without-arguments",
+    "fileName": "026-call-a-postgres-function-without-arguments.js",
+    "relativePath": "06-rpc/026-call-a-postgres-function-without-arguments.js",
+    "name": "Call a Postgres function without arguments"
+  },
+  {
+    "number": 27,
+    "functionId": "rpc",
+    "exampleId": "call-a-postgres-function-with-arguments",
+    "fileName": "027-call-a-postgres-function-with-arguments.js",
+    "relativePath": "06-rpc/027-call-a-postgres-function-with-arguments.js",
+    "name": "Call a Postgres function with arguments"
+  },
+  {
+    "number": 28,
+    "functionId": "rpc",
+    "exampleId": "bulk-processing",
+    "fileName": "028-bulk-processing.js",
+    "relativePath": "06-rpc/028-bulk-processing.js",
+    "name": "Bulk processing"
+  },
+  {
+    "number": 29,
+    "functionId": "rpc",
+    "exampleId": "call-a-postgres-function-with-filters",
+    "fileName": "029-call-a-postgres-function-with-filters.js",
+    "relativePath": "06-rpc/029-call-a-postgres-function-with-filters.js",
+    "name": "Call a Postgres function with filters"
+  },
+  {
+    "number": 30,
+    "functionId": "rpc",
+    "exampleId": "call-a-read-only-postgres-function",
+    "fileName": "030-call-a-read-only-postgres-function.js",
+    "relativePath": "06-rpc/030-call-a-read-only-postgres-function.js",
+    "name": "Call a read-only Postgres function"
+  },
+  {
+    "number": 31,
+    "functionId": "using-filters",
+    "exampleId": "applying-filters",
+    "fileName": "031-applying-filters.js",
+    "relativePath": "07-using-filters/031-applying-filters.js",
+    "name": "Applying Filters"
+  },
+  {
+    "number": 32,
+    "functionId": "using-filters",
+    "exampleId": "chaining-filters",
+    "fileName": "032-chaining-filters.js",
+    "relativePath": "07-using-filters/032-chaining-filters.js",
+    "name": "Chaining"
+  },
+  {
+    "number": 33,
+    "functionId": "using-filters",
+    "exampleId": "conditional-chaining",
+    "fileName": "033-conditional-chaining.js",
+    "relativePath": "07-using-filters/033-conditional-chaining.js",
+    "name": "Conditional Chaining"
+  },
+  {
+    "number": 34,
+    "functionId": "using-filters",
+    "exampleId": "filter-by-value-within-json-column",
+    "fileName": "034-filter-by-value-within-json-column.js",
+    "relativePath": "07-using-filters/034-filter-by-value-within-json-column.js",
+    "name": "Filter by values within a JSON column"
+  },
+  {
+    "number": 35,
+    "functionId": "using-filters",
+    "exampleId": "filter-referenced-tables",
+    "fileName": "035-filter-referenced-tables.js",
+    "relativePath": "07-using-filters/035-filter-referenced-tables.js",
+    "name": "Filter referenced tables"
+  },
+  {
+    "number": 36,
+    "functionId": "eq",
+    "exampleId": "with-select",
+    "fileName": "036-with-select.js",
+    "relativePath": "08-eq/036-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 37,
+    "functionId": "neq",
+    "exampleId": "with-select",
+    "fileName": "037-with-select.js",
+    "relativePath": "09-neq/037-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 38,
+    "functionId": "gt",
+    "exampleId": "with-select",
+    "fileName": "038-with-select.js",
+    "relativePath": "10-gt/038-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 39,
+    "functionId": "gte",
+    "exampleId": "with-select",
+    "fileName": "039-with-select.js",
+    "relativePath": "11-gte/039-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 40,
+    "functionId": "lt",
+    "exampleId": "with-select",
+    "fileName": "040-with-select.js",
+    "relativePath": "12-lt/040-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 41,
+    "functionId": "lte",
+    "exampleId": "with-select",
+    "fileName": "041-with-select.js",
+    "relativePath": "13-lte/041-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 42,
+    "functionId": "like",
+    "exampleId": "with-select",
+    "fileName": "042-with-select.js",
+    "relativePath": "14-like/042-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 43,
+    "functionId": "ilike",
+    "exampleId": "with-select",
+    "fileName": "043-with-select.js",
+    "relativePath": "15-ilike/043-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 44,
+    "functionId": "is",
+    "exampleId": "checking-nullness",
+    "fileName": "044-checking-nullness.js",
+    "relativePath": "16-is/044-checking-nullness.js",
+    "name": "Checking for nullness, true or false"
+  },
+  {
+    "number": 45,
+    "functionId": "in",
+    "exampleId": "with-select",
+    "fileName": "045-with-select.js",
+    "relativePath": "17-in/045-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 46,
+    "functionId": "contains",
+    "exampleId": "on-array-columns",
+    "fileName": "046-on-array-columns.js",
+    "relativePath": "18-contains/046-on-array-columns.js",
+    "name": "On array columns"
+  },
+  {
+    "number": 47,
+    "functionId": "contains",
+    "exampleId": "on-range-columns",
+    "fileName": "047-on-range-columns.js",
+    "relativePath": "18-contains/047-on-range-columns.js",
+    "name": "On range columns"
+  },
+  {
+    "number": 48,
+    "functionId": "contains",
+    "exampleId": "on-jsonb-columns",
+    "fileName": "048-on-jsonb-columns.js",
+    "relativePath": "18-contains/048-on-jsonb-columns.js",
+    "name": "On `jsonb` columns"
+  },
+  {
+    "number": 49,
+    "functionId": "contained-by",
+    "exampleId": "on-array-columns",
+    "fileName": "049-on-array-columns.js",
+    "relativePath": "19-contained-by/049-on-array-columns.js",
+    "name": "On array columns"
+  },
+  {
+    "number": 50,
+    "functionId": "contained-by",
+    "exampleId": "on-range-columns",
+    "fileName": "050-on-range-columns.js",
+    "relativePath": "19-contained-by/050-on-range-columns.js",
+    "name": "On range columns"
+  },
+  {
+    "number": 51,
+    "functionId": "contained-by",
+    "exampleId": "on-jsonb-columns",
+    "fileName": "051-on-jsonb-columns.js",
+    "relativePath": "19-contained-by/051-on-jsonb-columns.js",
+    "name": "On `jsonb` columns"
+  },
+  {
+    "number": 52,
+    "functionId": "range-gt",
+    "exampleId": "with-select",
+    "fileName": "052-with-select.js",
+    "relativePath": "20-range-gt/052-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 53,
+    "functionId": "range-gte",
+    "exampleId": "with-select",
+    "fileName": "053-with-select.js",
+    "relativePath": "21-range-gte/053-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 54,
+    "functionId": "range-lt",
+    "exampleId": "with-select",
+    "fileName": "054-with-select.js",
+    "relativePath": "22-range-lt/054-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 55,
+    "functionId": "range-lte",
+    "exampleId": "with-select",
+    "fileName": "055-with-select.js",
+    "relativePath": "23-range-lte/055-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 56,
+    "functionId": "range-adjacent",
+    "exampleId": "with-select",
+    "fileName": "056-with-select.js",
+    "relativePath": "24-range-adjacent/056-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 57,
+    "functionId": "overlaps",
+    "exampleId": "on-array-columns",
+    "fileName": "057-on-array-columns.js",
+    "relativePath": "25-overlaps/057-on-array-columns.js",
+    "name": "On array columns"
+  },
+  {
+    "number": 58,
+    "functionId": "overlaps",
+    "exampleId": "on-range-columns",
+    "fileName": "058-on-range-columns.js",
+    "relativePath": "25-overlaps/058-on-range-columns.js",
+    "name": "On range columns"
+  },
+  {
+    "number": 59,
+    "functionId": "text-search",
+    "exampleId": "text-search",
+    "fileName": "059-text-search.js",
+    "relativePath": "26-text-search/059-text-search.js",
+    "name": "Text search"
+  },
+  {
+    "number": 60,
+    "functionId": "text-search",
+    "exampleId": "basic-normalization",
+    "fileName": "060-basic-normalization.js",
+    "relativePath": "26-text-search/060-basic-normalization.js",
+    "name": "Basic normalization"
+  },
+  {
+    "number": 61,
+    "functionId": "text-search",
+    "exampleId": "full-normalization",
+    "fileName": "061-full-normalization.js",
+    "relativePath": "26-text-search/061-full-normalization.js",
+    "name": "Full normalization"
+  },
+  {
+    "number": 62,
+    "functionId": "text-search",
+    "exampleId": "web-search",
+    "fileName": "062-web-search.js",
+    "relativePath": "26-text-search/062-web-search.js",
+    "name": "Websearch"
+  },
+  {
+    "number": 63,
+    "functionId": "match",
+    "exampleId": "with-select",
+    "fileName": "063-with-select.js",
+    "relativePath": "27-match/063-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 64,
+    "functionId": "not",
+    "exampleId": "with-select",
+    "fileName": "064-with-select.js",
+    "relativePath": "28-not/064-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 65,
+    "functionId": "or",
+    "exampleId": "with-select",
+    "fileName": "065-with-select.js",
+    "relativePath": "29-or/065-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 66,
+    "functionId": "or",
+    "exampleId": "use-or-with-and",
+    "fileName": "066-use-or-with-and.js",
+    "relativePath": "29-or/066-use-or-with-and.js",
+    "name": "Use `or` with `and`"
+  },
+  {
+    "number": 67,
+    "functionId": "or",
+    "exampleId": "use-or-on-referenced-tables",
+    "fileName": "067-use-or-on-referenced-tables.js",
+    "relativePath": "29-or/067-use-or-on-referenced-tables.js",
+    "name": "Use `or` on referenced tables"
+  },
+  {
+    "number": 68,
+    "functionId": "filter",
+    "exampleId": "with-select",
+    "fileName": "068-with-select.js",
+    "relativePath": "30-filter/068-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 69,
+    "functionId": "filter",
+    "exampleId": "on-a-referenced-table",
+    "fileName": "069-on-a-referenced-table.js",
+    "relativePath": "30-filter/069-on-a-referenced-table.js",
+    "name": "On a referenced table"
+  },
+  {
+    "number": 70,
+    "functionId": "db-modifiers-select",
+    "exampleId": "with-upsert",
+    "fileName": "070-with-upsert.js",
+    "relativePath": "32-db-modifiers-select/070-with-upsert.js",
+    "name": "With `upsert()`"
+  },
+  {
+    "number": 71,
+    "functionId": "order",
+    "exampleId": "with-select",
+    "fileName": "071-with-select.js",
+    "relativePath": "33-order/071-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 72,
+    "functionId": "order",
+    "exampleId": "on-a-referenced-table",
+    "fileName": "072-on-a-referenced-table.js",
+    "relativePath": "33-order/072-on-a-referenced-table.js",
+    "name": "On a referenced table"
+  },
+  {
+    "number": 73,
+    "functionId": "order",
+    "exampleId": "order-parent-table-by-a-referenced-table",
+    "fileName": "073-order-parent-table-by-a-referenced-table.js",
+    "relativePath": "33-order/073-order-parent-table-by-a-referenced-table.js",
+    "name": "Order parent table by a referenced table"
+  },
+  {
+    "number": 74,
+    "functionId": "limit",
+    "exampleId": "with-select",
+    "fileName": "074-with-select.js",
+    "relativePath": "34-limit/074-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 75,
+    "functionId": "limit",
+    "exampleId": "on-a-referenced-table",
+    "fileName": "075-on-a-referenced-table.js",
+    "relativePath": "34-limit/075-on-a-referenced-table.js",
+    "name": "On a referenced table"
+  },
+  {
+    "number": 76,
+    "functionId": "range",
+    "exampleId": "with-select",
+    "fileName": "076-with-select.js",
+    "relativePath": "35-range/076-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 77,
+    "functionId": "abort-signal",
+    "exampleId": "aborting-requests-in-flight",
+    "fileName": "077-aborting-requests-in-flight.js",
+    "relativePath": "36-abort-signal/077-aborting-requests-in-flight.js",
+    "name": "Aborting requests in-flight"
+  },
+  {
+    "number": 78,
+    "functionId": "abort-signal",
+    "exampleId": "set-a-timeout",
+    "fileName": "078-set-a-timeout.js",
+    "relativePath": "36-abort-signal/078-set-a-timeout.js",
+    "name": "Set a timeout"
+  },
+  {
+    "number": 79,
+    "functionId": "single",
+    "exampleId": "with-select",
+    "fileName": "079-with-select.js",
+    "relativePath": "37-single/079-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 80,
+    "functionId": "maybe-single",
+    "exampleId": "with-select",
+    "fileName": "080-with-select.js",
+    "relativePath": "38-maybe-single/080-with-select.js",
+    "name": "With `select()`"
+  },
+  {
+    "number": 81,
+    "functionId": "csv",
+    "exampleId": "return-data-as-csv",
+    "fileName": "081-return-data-as-csv.js",
+    "relativePath": "39-csv/081-return-data-as-csv.js",
+    "name": "Return data as CSV"
+  },
+  {
+    "number": 82,
+    "functionId": "returns",
+    "exampleId": "override-type-of-successful-response",
+    "fileName": "082-override-type-of-successful-response.js",
+    "relativePath": "40-returns/082-override-type-of-successful-response.js",
+    "name": "Override type of successful response"
+  },
+  {
+    "number": 83,
+    "functionId": "returns",
+    "exampleId": "override-type-of-object-response",
+    "fileName": "083-override-type-of-object-response.js",
+    "relativePath": "40-returns/083-override-type-of-object-response.js",
+    "name": "Override type of object response"
+  },
+  {
+    "number": 84,
+    "functionId": "overrideTypes",
+    "exampleId": "complete-override-type-of-successful-response",
+    "fileName": "084-complete-override-type-of-successful-response.js",
+    "relativePath": "41-overrideTypes/084-complete-override-type-of-successful-response.js",
+    "name": "Complete Override type of successful response"
+  },
+  {
+    "number": 85,
+    "functionId": "overrideTypes",
+    "exampleId": "complete-override-type-of-object-response",
+    "fileName": "085-complete-override-type-of-object-response.js",
+    "relativePath": "41-overrideTypes/085-complete-override-type-of-object-response.js",
+    "name": "Complete Override type of object response"
+  },
+  {
+    "number": 86,
+    "functionId": "overrideTypes",
+    "exampleId": "partial-override-type-of-successful-response",
+    "fileName": "086-partial-override-type-of-successful-response.js",
+    "relativePath": "41-overrideTypes/086-partial-override-type-of-successful-response.js",
+    "name": "Partial Override type of successful response"
+  },
+  {
+    "number": 87,
+    "functionId": "overrideTypes",
+    "exampleId": "partial-override-type-of-object-response",
+    "fileName": "087-partial-override-type-of-object-response.js",
+    "relativePath": "41-overrideTypes/087-partial-override-type-of-object-response.js",
+    "name": "Partial Override type of object response"
+  },
+  {
+    "number": 88,
+    "functionId": "explain",
+    "exampleId": "get-execution-plan",
+    "fileName": "088-get-execution-plan.js",
+    "relativePath": "42-explain/088-get-execution-plan.js",
+    "name": "Get the execution plan"
+  },
+  {
+    "number": 89,
+    "functionId": "explain",
+    "exampleId": "get-execution-plan-with-analyze-and-verbose",
+    "fileName": "089-get-execution-plan-with-analyze-and-verbose.js",
+    "relativePath": "42-explain/089-get-execution-plan-with-analyze-and-verbose.js",
+    "name": "Get the execution plan with analyze and verbose"
+  }
+]
