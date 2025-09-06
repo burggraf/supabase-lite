@@ -16,6 +16,7 @@ export interface ParsedOrder {
 export interface EmbeddedResource {
   table: string
   alias?: string
+  fkHint?: string  // Foreign key constraint hint for disambiguation
   select?: string[]
   filters?: ParsedFilter[]
   order?: ParsedOrder[]
@@ -25,6 +26,7 @@ export interface EmbeddedResource {
 
 export interface ParsedQuery {
   select?: string[]
+  columnAliases?: Record<string, string>  // Maps actual column names to aliases
   filters: ParsedFilter[]
   order?: ParsedOrder[]
   limit?: number
@@ -49,8 +51,10 @@ export class QueryParser {
     // Parse select parameter
     const select = params.get('select')
     if (select) {
-      query.select = this.parseSelect(select)
-      query.embedded = this.parseEmbedded(select)
+      const { columns, aliases, embedded } = this.parseSelectWithAliases(select)
+      query.select = columns
+      query.columnAliases = aliases
+      query.embedded = embedded
     }
 
     // Parse filters
@@ -115,7 +119,14 @@ export class QueryParser {
   private static parseSelect(select: string): string[] {
     // Simple case: just column names
     if (!select.includes('(')) {
-      return select.split(',').map(col => col.trim()).filter(Boolean)
+      return select.split(',').map(col => {
+        const trimmed = col.trim()
+        // Handle column aliases (alias:column_name)
+        if (trimmed.includes(':')) {
+          return trimmed.split(':')[0].trim()
+        }
+        return trimmed
+      }).filter(Boolean)
     }
 
     // Complex case with embedded resources - return top-level columns only
@@ -128,7 +139,13 @@ export class QueryParser {
       
       if (char === ',' && depth === 0) {
         if (currentColumn.trim()) {
-          columns.push(currentColumn.trim())
+          const trimmed = currentColumn.trim()
+          // Handle column aliases (alias:column_name)
+          if (trimmed.includes(':') && !trimmed.includes('(')) {
+            columns.push(trimmed.split(':')[0].trim())
+          } else {
+            columns.push(trimmed)
+          }
         }
         currentColumn = ''
       } else if (char === '(') {
@@ -136,7 +153,12 @@ export class QueryParser {
           // This is an embedded resource
           const resourceName = currentColumn.trim()
           if (resourceName && !resourceName.includes('*')) {
-            columns.push(resourceName)
+            // Handle aliases and foreign key hints for embedded resources
+            let cleanResourceName = resourceName
+            if (resourceName.includes(':')) {
+              cleanResourceName = resourceName.split(':')[0].trim()
+            }
+            columns.push(cleanResourceName)
           }
         }
         depth++
@@ -158,10 +180,95 @@ export class QueryParser {
     }
 
     if (currentColumn.trim() && depth === 0) {
-      columns.push(currentColumn.trim())
+      const trimmed = currentColumn.trim()
+      // Handle column aliases (alias:column_name)
+      if (trimmed.includes(':') && !trimmed.includes('(')) {
+        columns.push(trimmed.split(':')[0].trim())
+      } else {
+        columns.push(trimmed)
+      }
     }
 
     return columns.filter(Boolean)
+  }
+
+  /**
+   * Parse select parameter with alias support
+   */
+  private static parseSelectWithAliases(select: string): { columns: string[], aliases: Record<string, string>, embedded: EmbeddedResource[] } {
+    const columns: string[] = []
+    const aliases: Record<string, string> = {}
+    const embedded = this.parseEmbedded(select)
+    
+    // Simple case: just column names
+    if (!select.includes('(')) {
+      select.split(',').forEach(col => {
+        const trimmed = col.trim()
+        if (trimmed.includes(':')) {
+          const [alias, actualCol] = trimmed.split(':').map(s => s.trim())
+          columns.push(actualCol)
+          aliases[actualCol] = alias
+        } else {
+          columns.push(trimmed)
+        }
+      })
+      return { columns: columns.filter(Boolean), aliases, embedded }
+    }
+
+    // Complex case with embedded resources - parse top-level columns only
+    let depth = 0
+    let currentColumn = ''
+
+    for (let i = 0; i < select.length; i++) {
+      const char = select[i]
+      
+      if (char === ',' && depth === 0) {
+        if (currentColumn.trim()) {
+          const trimmed = currentColumn.trim()
+          // Handle column aliases (alias:column_name)
+          if (trimmed.includes(':') && !trimmed.includes('(')) {
+            const [alias, actualCol] = trimmed.split(':').map(s => s.trim())
+            columns.push(actualCol)
+            aliases[actualCol] = alias
+          } else {
+            columns.push(trimmed)
+          }
+        }
+        currentColumn = ''
+      } else if (char === '(') {
+        if (depth === 0) {
+          // This is an embedded resource - skip it, handled by parseEmbedded
+          currentColumn = ''
+        }
+        depth++
+        if (depth > 1) {
+          currentColumn += char
+        }
+      } else if (char === ')') {
+        depth--
+        if (depth > 0) {
+          currentColumn += char
+        }
+      } else if (depth === 0) {
+        currentColumn += char
+      } else {
+        currentColumn += char
+      }
+    }
+
+    if (currentColumn.trim() && depth === 0) {
+      const trimmed = currentColumn.trim()
+      // Handle column aliases (alias:column_name)
+      if (trimmed.includes(':') && !trimmed.includes('(')) {
+        const [alias, actualCol] = trimmed.split(':').map(s => s.trim())
+        columns.push(actualCol)
+        aliases[actualCol] = alias
+      } else {
+        columns.push(trimmed)
+      }
+    }
+
+    return { columns: columns.filter(Boolean), aliases, embedded }
   }
 
   /**
@@ -196,9 +303,35 @@ export class QueryParser {
       } else if (char === ')') {
         depth--
         if (depth === 0 && currentTable) {
-          // Parse the embedded resource
+          // Parse the embedded resource with alias and FK hint support
+          let tableName = currentTable
+          let alias: string | undefined
+          let fkHint: string | undefined
+          
+          // Handle alias:table!fkey_hint syntax
+          if (currentTable.includes(':')) {
+            const parts = currentTable.split(':')
+            alias = parts[0].trim()
+            tableName = parts[1].trim()
+          }
+          
+          // Handle foreign key hints (table!fkey_constraint)
+          if (tableName.includes('!')) {
+            const parts = tableName.split('!')
+            tableName = parts[0].trim()
+            fkHint = parts[1].trim()
+          }
+          
           const resource: EmbeddedResource = {
-            table: currentTable
+            table: tableName
+          }
+          
+          if (alias) {
+            resource.alias = alias
+          }
+          
+          if (fkHint) {
+            resource.fkHint = fkHint
           }
 
           if (embeddedContent.trim()) {

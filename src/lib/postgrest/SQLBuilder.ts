@@ -40,7 +40,7 @@ export class SQLBuilder {
   /**
    * Discover foreign key relationship between two tables
    */
-  private async discoverForeignKeyRelationship(mainTable: string, embeddedTable: string): Promise<{ fromTable: string, fromColumn: string, toTable: string, toColumn: string } | null> {
+  private async discoverForeignKeyRelationship(mainTable: string, embeddedTable: string, fkHint?: string): Promise<{ fromTable: string, fromColumn: string, toTable: string, toColumn: string } | null> {
     console.log(`🔍 Attempting to discover FK relationship: ${mainTable} <-> ${embeddedTable}`)
     console.log(`🔧 DbManager available:`, !!this.dbManager)
     console.log(`🔧 DbManager connected:`, this.dbManager ? this.dbManager.isConnected() : 'N/A')
@@ -62,12 +62,13 @@ export class SQLBuilder {
       
       // Query to find foreign key relationship in either direction
       // Use string literals safely escaped
-      const query = `
+      let query = `
         SELECT 
           tc.table_name AS referencing_table,
           kcu.column_name AS foreign_key_column,
           ccu.table_name AS referenced_table,
-          ccu.column_name AS referenced_column
+          ccu.column_name AS referenced_column,
+          tc.constraint_name
         FROM information_schema.table_constraints AS tc
         JOIN information_schema.key_column_usage AS kcu 
           ON tc.constraint_name = kcu.constraint_name 
@@ -80,7 +81,13 @@ export class SQLBuilder {
             OR (tc.table_name = '${cleanEmbeddedTable.replace(/'/g, "''")}' AND ccu.table_name = '${cleanMainTable.replace(/'/g, "''")}'))
       `
       
-      console.log(`🗃️  Executing FK discovery query with tables: "${cleanMainTable}" <-> "${cleanEmbeddedTable}"`)
+      // If a foreign key hint is provided, filter by constraint name
+      if (fkHint) {
+        query += ` AND tc.constraint_name = '${fkHint.replace(/'/g, "''")}'`
+        console.log(`🎯 Using foreign key hint: ${fkHint}`)
+      }
+      
+      console.log(`🗃️  Executing FK discovery query with tables: "${cleanMainTable}" <-> "${cleanEmbeddedTable}"${fkHint ? ` (FK hint: ${fkHint})` : ''}`)
       console.log(`🗃️  Query:`, query.trim())
       const result = await this.dbManager.query(query)
       console.log(`🗃️  FK discovery result:`, result)
@@ -98,8 +105,78 @@ export class SQLBuilder {
       }
       
       console.log(`❌ No FK relationship found between ${mainTable} and ${embeddedTable}`)
+      
+      // If no direct relationship, try to find a many-to-many relationship through a join table
+      return await this.discoverManyToManyRelationship(cleanMainTable, cleanEmbeddedTable)
     } catch (error) {
       console.error(`💥 Failed to discover foreign key relationship between ${mainTable} and ${embeddedTable}:`, error)
+    }
+
+    return null
+  }
+
+  /**
+   * Discover many-to-many relationship through a join table
+   */
+  private async discoverManyToManyRelationship(mainTable: string, embeddedTable: string): Promise<{ fromTable: string, fromColumn: string, toTable: string, toColumn: string, joinTable?: string, joinMainColumn?: string, joinEmbeddedColumn?: string } | null> {
+    console.log(`🔍 Attempting to discover many-to-many relationship: ${mainTable} <-> ${embeddedTable}`)
+    
+    if (!this.dbManager || !this.dbManager.isConnected()) {
+      return null
+    }
+
+    try {
+      // Look for a join table that references both main table and embedded table
+      const query = `
+        SELECT 
+          tc1.table_name AS join_table,
+          kcu1.column_name AS main_fk_column,
+          ccu1.table_name AS main_table,
+          ccu1.column_name AS main_pk_column,
+          kcu2.column_name AS embedded_fk_column,
+          ccu2.table_name AS embedded_table,
+          ccu2.column_name AS embedded_pk_column
+        FROM information_schema.table_constraints AS tc1
+        JOIN information_schema.key_column_usage AS kcu1 
+          ON tc1.constraint_name = kcu1.constraint_name 
+        JOIN information_schema.constraint_column_usage AS ccu1 
+          ON ccu1.constraint_name = tc1.constraint_name 
+        JOIN information_schema.table_constraints AS tc2
+          ON tc1.table_name = tc2.table_name
+          AND tc2.constraint_type = 'FOREIGN KEY'
+          AND tc2.constraint_name != tc1.constraint_name
+        JOIN information_schema.key_column_usage AS kcu2 
+          ON tc2.constraint_name = kcu2.constraint_name 
+        JOIN information_schema.constraint_column_usage AS ccu2 
+          ON ccu2.constraint_name = tc2.constraint_name 
+        WHERE tc1.constraint_type = 'FOREIGN KEY'
+          AND ccu1.table_name = '${mainTable.replace(/'/g, "''")}' 
+          AND ccu2.table_name = '${embeddedTable.replace(/'/g, "''")}'
+      `
+      
+      console.log(`🗃️  Executing many-to-many discovery query`)
+      console.log(`🗃️  Query:`, query.trim())
+      const result = await this.dbManager.query(query)
+      console.log(`🗃️  Many-to-many discovery result:`, result)
+      
+      if (result.rows.length > 0) {
+        const row = result.rows[0]
+        const m2mInfo = {
+          fromTable: mainTable,
+          fromColumn: row.main_pk_column,
+          toTable: embeddedTable,
+          toColumn: row.embedded_pk_column,
+          joinTable: row.join_table,
+          joinMainColumn: row.main_fk_column,
+          joinEmbeddedColumn: row.embedded_fk_column
+        }
+        console.log(`✅ Found many-to-many relationship:`, m2mInfo)
+        return m2mInfo
+      }
+      
+      console.log(`❌ No many-to-many relationship found between ${mainTable} and ${embeddedTable}`)
+    } catch (error) {
+      console.error(`💥 Failed to discover many-to-many relationship between ${mainTable} and ${embeddedTable}:`, error)
     }
 
     return null
@@ -278,7 +355,7 @@ export class SQLBuilder {
     console.log(`🔍 Building subquery for: ${table} -> ${embedded.table}`)
     
     // Discover the foreign key relationship
-    const fkRelationship = await this.discoverForeignKeyRelationship(table, embedded.table)
+    const fkRelationship = await this.discoverForeignKeyRelationship(table, embedded.table, embedded.fkHint)
     console.log(`🔗 Foreign key relationship found:`, fkRelationship)
     
     if (!fkRelationship) {
@@ -330,22 +407,45 @@ export class SQLBuilder {
     const quotedToTable = quoteTableName(fkRelationship.toTable)
     
     // Determine join condition based on relationship direction
-    let whereCondition: string
-    if (fkRelationship.fromTable === embedded.table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === table.replace(/^"(.*)"$/, '$1')) {
-      // One-to-many: embedded table references main table
-      // instruments.section_id = orchestral_sections.id
-      whereCondition = `${quotedEmbeddedTable}.${fkRelationship.fromColumn} = ${quotedMainTable}.${fkRelationship.toColumn}`
-    } else if (fkRelationship.fromTable === table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === embedded.table.replace(/^"(.*)"$/, '$1')) {
-      // Many-to-one: main table references embedded table
-      // orchestral_sections.section_id = sections.id
-      whereCondition = `${quotedMainTable}.${fkRelationship.fromColumn} = ${quotedEmbeddedTable}.${fkRelationship.toColumn}`
+    let subquery: string
+    
+    // Check if this is a many-to-many relationship (has joinTable property)
+    if (fkRelationship.joinTable) {
+      console.log(`🔗 Building many-to-many subquery through join table: ${fkRelationship.joinTable}`)
+      
+      // Many-to-many: use join table to connect main table and embedded table
+      // SELECT json_agg(...) FROM embedded_table 
+      // WHERE embedded_table.id IN (
+      //   SELECT join_table.embedded_fk_column 
+      //   FROM join_table 
+      //   WHERE join_table.main_fk_column = main_table.id
+      // )
+      const joinTableQuoted = quoteTableName(fkRelationship.joinTable!)
+      const whereCondition = `${quotedEmbeddedTable}.${fkRelationship.toColumn} IN (
+        SELECT ${joinTableQuoted}.${fkRelationship.joinEmbeddedColumn} 
+        FROM ${joinTableQuoted} 
+        WHERE ${joinTableQuoted}.${fkRelationship.joinMainColumn} = ${quotedMainTable}.${fkRelationship.fromColumn}
+      )`
+      
+      subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
     } else {
-      console.log(`❌ Invalid foreign key relationship direction`)
-      return null
-    }
+      // Direct relationship (one-to-many or many-to-one)
+      let whereCondition: string
+      if (fkRelationship.fromTable === embedded.table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === table.replace(/^"(.*)"$/, '$1')) {
+        // One-to-many: embedded table references main table
+        // instruments.section_id = orchestral_sections.id
+        whereCondition = `${quotedEmbeddedTable}.${fkRelationship.fromColumn} = ${quotedMainTable}.${fkRelationship.toColumn}`
+      } else if (fkRelationship.fromTable === table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === embedded.table.replace(/^"(.*)"$/, '$1')) {
+        // Many-to-one: main table references embedded table
+        // orchestral_sections.section_id = sections.id
+        whereCondition = `${quotedMainTable}.${fkRelationship.fromColumn} = ${quotedEmbeddedTable}.${fkRelationship.toColumn}`
+      } else {
+        console.log(`❌ Invalid foreign key relationship direction`)
+        return null
+      }
 
-    // Build the complete subquery
-    const subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+      subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+    }
     
     console.log(`🗃️  Generated embedded subquery: ${subquery}`)
     return subquery
@@ -358,7 +458,7 @@ export class SQLBuilder {
     console.log(`🔍 Building JSON aggregation for: ${mainTable} -> ${embedded.table}`)
     
     // Discover the foreign key relationship
-    const fkRelationship = await this.discoverForeignKeyRelationship(mainTable, embedded.table)
+    const fkRelationship = await this.discoverForeignKeyRelationship(mainTable, embedded.table, embedded.fkHint)
     console.log(`🔗 Foreign key relationship found:`, fkRelationship)
     
     if (!fkRelationship) {
