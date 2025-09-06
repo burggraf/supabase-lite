@@ -1,0 +1,37 @@
+{
+  "name": "postgrest-test-suite",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Comprehensive test suite for PostgREST compatibility",
+  "main": "run-all-tests.js",
+  "scripts": {
+    "test": "node run-all-tests.js",
+    "test:select": "node run-all-tests.js --function select",
+    "test:insert": "node run-all-tests.js --function insert", 
+    "test:update": "node run-all-tests.js --function update",
+    "test:delete": "node run-all-tests.js --function delete",
+    "test:filters": "node run-all-tests.js --function using-filters",
+    "test:verbose": "node run-all-tests.js --verbose",
+    "generate": "node generate-tests.cjs",
+    "verify": "node verify-structure.js"
+  },
+  "keywords": [
+    "postgrest",
+    "supabase", 
+    "api-testing",
+    "database-testing"
+  ],
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "author": "PostgREST Test Suite Generator",
+  "license": "MIT"
+}
