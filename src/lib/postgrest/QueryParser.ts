@@ -18,6 +18,7 @@ export interface EmbeddedResource {
   alias?: string
   fkHint?: string  // Foreign key constraint hint for disambiguation
   select?: string[]
+  embedded?: EmbeddedResource[]  // Support for nested embedded resources
   filters?: ParsedFilter[]
   order?: ParsedOrder[]
   limit?: number
@@ -340,7 +341,23 @@ export class QueryParser {
           }
 
           if (embeddedContent.trim()) {
-            resource.select = embeddedContent.split(',').map(col => col.trim()).filter(Boolean)
+            // Check if the embedded content contains nested resources (parentheses)
+            if (embeddedContent.includes('(')) {
+              // Parse nested embedded resources
+              const nestedEmbedded = this.parseEmbedded(embeddedContent)
+              if (nestedEmbedded.length > 0) {
+                resource.embedded = nestedEmbedded
+              }
+              
+              // Also parse any top-level columns (those without parentheses)
+              const topLevelColumns = this.extractTopLevelColumns(embeddedContent)
+              if (topLevelColumns.length > 0) {
+                resource.select = topLevelColumns
+              }
+            } else {
+              // Simple case: just column names
+              resource.select = embeddedContent.split(',').map(col => col.trim()).filter(Boolean)
+            }
           }
 
           embedded.push(resource)
@@ -357,6 +374,52 @@ export class QueryParser {
     }
 
     return embedded
+  }
+
+  /**
+   * Extract top-level columns from embedded content that contains nested resources
+   */
+  private static extractTopLevelColumns(content: string): string[] {
+    const columns: string[] = []
+    let depth = 0
+    let currentColumn = ''
+
+    for (let i = 0; i < content.length; i++) {
+      const char = content[i]
+      
+      if (char === ',' && depth === 0) {
+        if (currentColumn.trim() && !currentColumn.includes('(')) {
+          columns.push(currentColumn.trim())
+        }
+        currentColumn = ''
+      } else if (char === '(') {
+        depth++
+        if (depth === 1) {
+          // This starts an embedded resource, don't include in column
+          currentColumn = ''
+        } else {
+          currentColumn += char
+        }
+      } else if (char === ')') {
+        depth--
+        if (depth > 0) {
+          currentColumn += char
+        } else {
+          // End of embedded resource, reset
+          currentColumn = ''
+        }
+      } else if (depth === 0) {
+        currentColumn += char
+      } else {
+        currentColumn += char
+      }
+    }
+
+    if (currentColumn.trim() && depth === 0 && !currentColumn.includes('(')) {
+      columns.push(currentColumn.trim())
+    }
+
+    return columns.filter(Boolean)
   }
 
   /**

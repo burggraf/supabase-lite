@@ -396,7 +396,7 @@ export class ResponseFormatter {
         ].filter(Boolean) // Remove null/undefined values
         
         for (const key of possibleKeys) {
-          if (formattedRow[key] !== undefined) {
+          if (key !== undefined && formattedRow[key] !== undefined) {
             embeddedData = formattedRow[key]
             keyFound = key
             break

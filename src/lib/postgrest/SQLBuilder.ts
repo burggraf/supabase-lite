@@ -40,7 +40,7 @@ export class SQLBuilder {
   /**
    * Discover foreign key relationship between two tables
    */
-  private async discoverForeignKeyRelationship(mainTable: string, embeddedTable: string, fkHint?: string): Promise<{ fromTable: string, fromColumn: string, toTable: string, toColumn: string } | null> {
+  private async discoverForeignKeyRelationship(mainTable: string, embeddedTable: string, fkHint?: string): Promise<{ fromTable: string, fromColumn: string, toTable: string, toColumn: string, joinTable?: string, joinMainColumn?: string, joinEmbeddedColumn?: string } | null> {
     console.log(`🔍 Attempting to discover FK relationship: ${mainTable} <-> ${embeddedTable}`)
     console.log(`🔧 DbManager available:`, !!this.dbManager)
     console.log(`🔧 DbManager connected:`, this.dbManager ? this.dbManager.isConnected() : 'N/A')
@@ -252,7 +252,13 @@ export class SQLBuilder {
         if (col === '*') {
           columns.push(`${table}.*`)
         } else {
-          columns.push(`${table}.${col}`)
+          // Apply column alias if available
+          const alias = query.columnAliases && query.columnAliases[col]
+          if (alias) {
+            columns.push(`${table}.${col} AS ${alias}`)
+          } else {
+            columns.push(`${table}.${col}`)
+          }
         }
       }
     } else {
@@ -299,7 +305,13 @@ export class SQLBuilder {
         if (col === '*') {
           selectColumns.push(`${quotedMainTable}.*`)
         } else {
-          selectColumns.push(`${quotedMainTable}.${col}`)
+          // Apply column alias if available
+          const alias = query.columnAliases && query.columnAliases[col]
+          if (alias) {
+            selectColumns.push(`${quotedMainTable}.${col} AS ${alias}`)
+          } else {
+            selectColumns.push(`${quotedMainTable}.${col}`)
+          }
         }
       }
     } else {
@@ -394,27 +406,7 @@ export class SQLBuilder {
     const quotedMainTable = quoteTableName(table)
     
     // Build the SELECT columns for the embedded resource
-    let selectClause: string
-    if (embedded.select && embedded.select.length > 0) {
-      // Build JSON object with specific columns
-      const columnPairs = embedded.select.map(col => {
-        if (col === '*') {
-          // For *, return all columns as JSON - need to use row_to_json
-          return `to_json(${quotedEmbeddedTable})`
-        } else {
-          return `'${col}', ${quotedEmbeddedTable}.${col}`
-        }
-      })
-      
-      if (embedded.select.includes('*')) {
-        selectClause = `to_json(${quotedEmbeddedTable})`
-      } else {
-        selectClause = `json_build_object(${columnPairs.join(', ')})`
-      }
-    } else {
-      // Select all columns as JSON object
-      selectClause = `to_json(${quotedEmbeddedTable})`
-    }
+    const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
     
     // Quote the FK relationship table names for matching
     const quotedFromTable = quoteTableName(fkRelationship.fromTable)
@@ -469,6 +461,49 @@ export class SQLBuilder {
     
     console.log(`🗃️  Generated embedded subquery: ${subquery}`)
     return subquery
+  }
+
+  /**
+   * Build SELECT clause for embedded resource that may contain nested embedded resources
+   */
+  private async buildEmbeddedSelectClause(embedded: EmbeddedResource, quotedEmbeddedTable: string, parentTable: string): Promise<string> {
+    const columnPairs: string[] = []
+    
+    // Add regular columns if any
+    if (embedded.select && embedded.select.length > 0) {
+      for (const col of embedded.select) {
+        if (col === '*') {
+          // For *, return all columns as JSON - we'll merge this with other columns
+          const allColumnsPair = `to_json(${quotedEmbeddedTable})`
+          // If we only have '*', return it directly
+          if (embedded.select.length === 1 && (!embedded.embedded || embedded.embedded.length === 0)) {
+            return allColumnsPair
+          }
+          // Otherwise, we need to merge it with nested resources - this is complex, so for now return just the table
+          columnPairs.push(`'*', ${allColumnsPair}`)
+        } else {
+          columnPairs.push(`'${col}', ${quotedEmbeddedTable}.${col}`)
+        }
+      }
+    }
+    
+    // Add nested embedded resources
+    if (embedded.embedded && embedded.embedded.length > 0) {
+      for (const nestedEmbedded of embedded.embedded) {
+        const nestedSubquery = await this.buildEmbeddedSubquery(embedded.table, nestedEmbedded)
+        if (nestedSubquery) {
+          const aliasName = nestedEmbedded.alias || nestedEmbedded.table
+          columnPairs.push(`'${aliasName}', (${nestedSubquery})`)
+        }
+      }
+    }
+    
+    if (columnPairs.length > 0) {
+      return `json_build_object(${columnPairs.join(', ')})`
+    } else {
+      // No specific columns or nested resources, return all columns
+      return `to_json(${quotedEmbeddedTable})`
+    }
   }
 
   /**
