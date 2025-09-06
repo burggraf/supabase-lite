@@ -1,0 +1,93 @@
+[
+  {
+    "title": "Getting your data",
+    "code": "const { data, error } = await supabase\n  .from('characters')\n  .select()",
+    "data": "create table\ncharacters (id int8 primary key, name text);\n\ninsert into\ncharacters (id, name)\nvalues\n  (1, 'Harry'),\n  (2, 'Frodo'),\n  (3, 'Katniss');",
+    "response": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Harry\"\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Frodo\"\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Katniss\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": ""
+  },
+  {
+    "title": "Selecting specific columns",
+    "code": "const { data, error } = await supabase\n  .from('characters')\n  .select('name')",
+    "data": "create table\ncharacters (id int8 primary key, name text);\n\ninsert into\ncharacters (id, name)\nvalues\n  (1, 'Frodo'),\n  (2, 'Harry'),\n  (3, 'Katniss');",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"Frodo\"\n    },\n    {\n      \"name\": \"Harry\"\n    },\n    {\n      \"name\": \"Katniss\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": ""
+  },
+  {
+    "title": "Query referenced tables",
+    "code": "const { data, error } = await supabase\n  .from('orchestral_sections')\n  .select(`\n    name,\n    instruments (\n      name\n    )\n  `)",
+    "data": "create table\norchestral_sections (id int8 primary key, name text);\n\ncreate table\ninstruments (\n  id int8 primary key,\n  section_id int8 not null references orchestral_sections,\n  name text\n);\n\ninsert into\norchestral_sections (id, name)\nvalues\n  (1, 'strings'),\n  (2, 'woodwinds');\n\ninsert into\ninstruments (id, section_id, name)\nvalues\n  (1, 2, 'flute'),\n  (2, 1, 'violin');",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    },\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "If your database has foreign key relationships, you can query related tables too."
+  },
+  {
+    "title": "Query referenced tables with spaces in their names",
+    "code": "const { data, error } = await supabase\n  .from('orchestal sections')\n  .select(`\n    name,\n    \"musical instruments\" (\n      name\n    )\n  `)",
+    "data": "create table\n\"orchestal sections\" (id int8 primary key, name text);\n\ncreate table\n\"musical instruments\" (\n  id int8 primary key,\n  section_id int8 not null references \"orchestal sections\",\n  name text\n);\n\ninsert into\n\"orchestal sections\" (id, name)\nvalues\n  (1, 'strings'),\n  (2, 'woodwinds');\n\ninsert into\n\"musical instruments\" (id, section_id, name)\nvalues\n  (1, 2, 'flute'),\n  (2, 1, 'violin');",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"musical instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    },\n    {\n      \"name\": \"woodwinds\",\n      \"musical instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "If your table or column names have special characters or spaces, you need to wrap them in double quotes."
+  },
+  {
+    "title": "Query referenced tables through a join table",
+    "code": "const { data, error } = await supabase\n  .from('users')\n  .select(`\n    name,\n    teams (\n      name\n    )\n  `)",
+    "data": "create table\nusers (id int8 primary key, name text);\n\ncreate table\nteams (id int8 primary key, name text);\n\ncreate table\nuser_teams (\n  user_id int8 not null references users,\n  team_id int8 not null references teams,\n  primary key (user_id, team_id)\n);\n\ninsert into\nusers (id, name)\nvalues\n  (1, 'Kiran'),\n  (2, 'Evan');\n\ninsert into\nteams (id, name)\nvalues\n  (1, 'Green'),\n  (2, 'Blue');\n\ninsert into\nuser_teams (user_id, team_id)\nvalues\n  (1, 1),\n  (1, 2),\n  (2, 2);",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"Kiran\",\n      \"teams\": [\n        {\n          \"name\": \"Green\"\n        },\n        {\n          \"name\": \"Blue\"\n        }\n      ]\n    },\n    {\n      \"name\": \"Evan\",\n      \"teams\": [\n        {\n          \"name\": \"Blue\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "If your tables are connected via a join table, you can still use the table name. PostgREST will automatically detect the relationship."
+  },
+  {
+    "title": "Query the same referenced table multiple times",
+    "code": "const { data, error } = await supabase\n  .from('messages')\n  .select(`\n    id,\n    from:users!messages_from_fkey(\n      name\n    ),\n    to:users!messages_to_fkey(\n      name\n    )\n  `)",
+    "data": "create table\nusers (id int8 primary key, name text);\n\ncreate table\nmessages (\n  id int8 primary key,\n  from_user_id int8 not null references users,\n  to_user_id int8 not null references users,\n  message text\n);\n\ninsert into\nusers (id, name)\nvalues\n  (1, 'Kiran'),\n  (2, 'Evan');\n\ninsert into\nmessages (id, from_user_id, to_user_id, message)\nvalues\n  (1, 1, 2, 'Hello Evan'),\n  (2, 2, 1, 'Hello Kiran');",
+    "response": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"from\": {\n        \"name\": \"Kiran\"\n      },\n      \"to\": {\n        \"name\": \"Evan\"\n      }\n    },\n    {\n      \"id\": 2,\n      \"from\": {\n        \"name\": \"Evan\"\n      },\n      \"to\": {\n        \"name\": \"Kiran\"\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "If you need to reference the same table multiple times, you can use the foreign key constraint name to disambiguate."
+  },
+  {
+    "title": "Query nested foreign tables through a join table",
+    "code": "const { data, error } = await supabase\n  .from('users')\n  .select(`\n    name,\n    teams (\n      name,\n      members (\n        name\n      )\n    )\n  `)",
+    "data": "create table\nusers (id int8 primary key, name text);\n\ncreate table\nteams (id int8 primary key, name text);\n\ncreate table\nuser_teams (\n  user_id int8 not null references users,\n  team_id int8 not null references teams,\n  primary key (user_id, team_id)\n);\n\ninsert into\nusers (id, name)\nvalues\n  (1, 'Kiran'),\n  (2, 'Evan'),\n  (3, 'Angela');\n\ninsert into\nteams (id, name)\nvalues\n  (1, 'Green'),\n  (2, 'Blue');\n\ninsert into\nuser_teams (user_id, team_id)\nvalues\n  (1, 1),\n  (2, 1),\n  (2, 2),\n  (3, 2);",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"Kiran\",\n      \"teams\": [\n        {\n          \"name\": \"Green\",\n          \"members\": [\n            {\n              \"name\": \"Kiran\"\n            },\n            {\n              \"name\": \"Evan\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"name\": \"Evan\",\n      \"teams\": [\n        {\n          \"name\": \"Green\",\n          \"members\": [\n            {\n              \"name\": \"Kiran\"\n            },\n            {\n              \"name\": \"Evan\"\n            }\n          ]\n        },\n        {\n          \"name\": \"Blue\",\n          \"members\": [\n            {\n              \"name\": \"Evan\"\n            },\n            {\n              \"name\": \"Angela\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"name\": \"Angela\",\n      \"teams\": [\n        {\n          \"name\": \"Blue\",\n          \"members\": [\n            {\n              \"name\": \"Evan\"\n            },\n            {\n              \"name\": \"Angela\"\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "You can query tables nested through join tables by using the relationship names."
+  },
+  {
+    "title": "Filtering through referenced tables",
+    "code": "const { data, error } = await supabase\n  .from('users')\n  .select(`\n    name,\n    teams!inner (\n      name\n    )\n  `)\n  .eq('teams.name', 'Red')",
+    "data": "create table\nusers (id int8 primary key, name text);\n\ncreate table\nteams (id int8 primary key, name text);\n\ncreate table\nuser_teams (\n  user_id int8 not null references users,\n  team_id int8 not null references teams,\n  primary key (user_id, team_id)\n);\n\ninsert into\nusers (id, name)\nvalues\n  (1, 'Kiran'),\n  (2, 'Evan'),\n  (3, 'Angela');\n\ninsert into\nteams (id, name)\nvalues\n  (1, 'Red'),\n  (2, 'Green'),\n  (3, 'Blue');\n\ninsert into\nuser_teams (user_id, team_id)\nvalues\n  (1, 1),\n  (2, 2),\n  (3, 3);",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"Kiran\",\n      \"teams\": [\n        {\n          \"name\": \"Red\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "You can filter the parent table by the values of referenced tables. Use !inner to ensure only results with matching related records are returned."
+  },
+  {
+    "title": "Querying referenced table with count",
+    "code": "const { data, error } = await supabase\n  .from('teams')\n  .select(`\n    name,\n    members:user_teams(count)\n  `)",
+    "data": "create table\nusers (id int8 primary key, name text);\n\ncreate table\nteams (id int8 primary key, name text);\n\ncreate table\nuser_teams (\n  user_id int8 not null references users,\n  team_id int8 not null references teams,\n  primary key (user_id, team_id)\n);\n\ninsert into\nusers (id, name)\nvalues\n  (1, 'Kiran'),\n  (2, 'Evan'),\n  (3, 'Angela');\n\ninsert into\nteams (id, name)\nvalues\n  (1, 'Red'),\n  (2, 'Blue');\n\ninsert into\nuser_teams (user_id, team_id)\nvalues\n  (1, 1),\n  (2, 1),\n  (3, 2);",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"Red\",\n      \"members\": [\n        {\n          \"count\": 2\n        }\n      ]\n    },\n    {\n      \"name\": \"Blue\",\n      \"members\": [\n        {\n          \"count\": 1\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "You can get the count of related records by using count in the select clause."
+  },
+  {
+    "title": "Querying with count option",
+    "code": "const { data, error, count } = await supabase\n  .from('characters')\n  .select('name', { count: 'exact' })",
+    "data": "create table\ncharacters (id int8 primary key, name text);\n\ninsert into\ncharacters (id, name)\nvalues\n  (1, 'Harry'),\n  (2, 'Frodo'),\n  (3, 'Katniss');",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"Harry\"\n    },\n    {\n      \"name\": \"Frodo\"\n    },\n    {\n      \"name\": \"Katniss\"\n    }\n  ],\n  \"count\": 3,\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "You can get the total count of records along with your query results using the count option."
+  },
+  {
+    "title": "Querying JSON data",
+    "code": "const { data, error } = await supabase\n  .from('users')\n  .select(`\n    name,\n    address->city\n  `)",
+    "data": "create table\nusers (\n  id int8 primary key,\n  name text,\n  address jsonb\n);\n\ninsert into\nusers (id, name, address)\nvalues\n  (1, 'Kiran', '{\"city\": \"New York\", \"country\": \"USA\"}'),\n  (2, 'Evan', '{\"city\": \"London\", \"country\": \"UK\"}');",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"Kiran\",\n      \"city\": \"New York\"\n    },\n    {\n      \"name\": \"Evan\",\n      \"city\": \"London\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "You can query specific fields within JSON columns using the -> operator."
+  },
+  {
+    "title": "Querying referenced table with inner join",
+    "code": "const { data, error } = await supabase\n  .from('countries')\n  .select(`\n    name,\n    cities!inner (\n      name\n    )\n  `)",
+    "data": "create table\ncountries (id int8 primary key, name text);\n\ncreate table\ncities (\n  id int8 primary key,\n  name text,\n  country_id int8 references countries\n);\n\ninsert into\ncountries (id, name)\nvalues\n  (1, 'Germany'),\n  (2, 'Indonesia');\n\ninsert into\ncities (id, name, country_id)\nvalues\n  (1, 'Berlin', 1),\n  (2, 'Jakarta', 2);",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"Germany\",\n      \"cities\": [\n        {\n          \"name\": \"Berlin\"\n        }\n      ]\n    },\n    {\n      \"name\": \"Indonesia\",\n      \"cities\": [\n        {\n          \"name\": \"Jakarta\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "Use !inner to perform an inner join, which only returns results where there are matching related records."
+  },
+  {
+    "title": "Switching schemas per query",
+    "code": "const { data, error } = await supabase\n  .schema('private')\n  .from('employees')\n  .select('name')",
+    "data": "create schema private;\n\ncreate table\nprivate.employees (id int8 primary key, name text);\n\ninsert into\nprivate.employees (id, name)\nvalues\n  (1, 'Kiran'),\n  (2, 'Evan');",
+    "response": "{\n  \"data\": [\n    {\n      \"name\": \"Kiran\"\n    },\n    {\n      \"name\": \"Evan\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+    "notes": "You can switch to different database schemas using the schema() method before your query."
+  }
+]
