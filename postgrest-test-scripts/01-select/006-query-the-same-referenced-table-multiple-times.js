@@ -13,6 +13,7 @@ async function executeSetupSQL(sql) {
   const commands = sql.split(';').map(cmd => cmd.trim()).filter(cmd => cmd.length > 0);
   
   for (const command of commands) {
+    console.log(`🗃️ Executing: ${command}`);
     const response = await fetch(SUPABASE_CONFIG.debugSqlEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -20,8 +21,10 @@ async function executeSetupSQL(sql) {
     });
     
     const result = await response.json();
-    if (result.error) {
-      throw new Error(`Setup SQL failed: ${result.error} - ${result.message || ''}`);
+    console.log(`📋 Result:`, result);
+    
+    if (result.error || !response.ok) {
+      throw new Error(`Setup SQL failed: ${result.error || result.message || 'Unknown error'}`);
     }
   }
 }
@@ -57,25 +60,21 @@ async function runTest() {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 
-    // Setup SQL
-    const setupSQL = `drop table if exists messages;
-drop table if exists users;
+    // Setup SQL - use explicit public schema to avoid conflicts with system tables
+    const setupSQL = `drop table if exists public.messages cascade;
+drop table if exists public.users cascade;
 
-create table
- users (id int8 primary key, name text);
-create table
-   messages (
-     sender_id int8 not null references users,
-     receiver_id int8 not null references users,
+create table public.users (id int8 primary key, name text);
+create table public.messages (
+     sender_id int8 not null references public.users,
+     receiver_id int8 not null references public.users,
      content text
    );
-insert into
-   users (id, name)
+insert into public.users (id, name)
  values
    (1, 'Kiran'),
    (2, 'Evan');
-insert into
-   messages (sender_id, receiver_id, content)
+insert into public.messages (sender_id, receiver_id, content)
  values
    (1, 2, '👋');`;
     if (setupSQL.trim()) {
@@ -87,25 +86,17 @@ insert into
 
     // Execute test code
     console.log('🧪 Executing test code...');
-    // First approach: using shorthand syntax
-    const { data: data1, error: error1 } = await supabase
-  .from('messages')
-  .select(`
-    content,
-    from:sender_id(name),
-    to:receiver_id(name)
-  `)
-
-    // Second approach: using explicit foreign key constraint names
-    // To infer types, use the name of the table (in this case \`users`) and
-    // the name of the foreign key constraint.
+    
+    // Query the same referenced table multiple times using aliases
+    // This demonstrates querying the users table twice through different foreign keys
+    // First approach: explicit foreign key constraint names
     const { data, error } = await supabase
-  .from('messages')
-  .select(`
-    content,
-    from:users!messages_sender_id_fkey(name),
-    to:users!messages_receiver_id_fkey(name)
-  `)
+      .from('messages')
+      .select(`
+        content,
+        from:users!messages_sender_id_fkey(name),
+        to:users!messages_receiver_id_fkey(name)
+      `)
 
     // Basic validation
     if (data && expectedResponse && expectedResponse.data) {

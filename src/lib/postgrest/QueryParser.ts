@@ -237,7 +237,8 @@ export class QueryParser {
         currentColumn = ''
       } else if (char === '(') {
         if (depth === 0) {
-          // This is an embedded resource - skip it, handled by parseEmbedded
+          // This is an embedded resource - skip it from main columns
+          // Don't add it to columns as it's handled separately by parseEmbedded
           currentColumn = ''
         }
         depth++
@@ -248,6 +249,10 @@ export class QueryParser {
         depth--
         if (depth > 0) {
           currentColumn += char
+        } else if (depth === 0) {
+          // Just exited an embedded resource, clear currentColumn
+          // as its content belongs to the embedded resource, not main table
+          currentColumn = ''
         }
       } else if (depth === 0) {
         currentColumn += char

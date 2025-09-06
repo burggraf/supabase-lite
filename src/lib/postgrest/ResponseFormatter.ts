@@ -379,16 +379,21 @@ export class ResponseFormatter {
 
       // Process each embedded resource
       for (const embedded of query.embedded || []) {
-        // Handle both quoted and unquoted table names as keys
+        // Determine the final field name - use alias if provided, otherwise table name
+        const fieldName = embedded.alias || embedded.table.replace(/^"(.*)"$/, '$1')
+        
+        // Handle both quoted and unquoted table names as keys in the SQL result
         let embeddedData = null
         let keyFound = null
         
-        // Try different variations of the key
+        // Try different variations of the key that might be in the SQL result
         const possibleKeys = [
-          embedded.table,                           // original: "musical instruments"
-          `"${embedded.table}"`,                   // double-quoted: ""musical instruments""
-          embedded.table.replace(/^"(.*)"$/, '$1') // unquoted: musical instruments
-        ]
+          embedded.alias,                           // alias from SQL: "from", "to"
+          `"${embedded.alias}"`,                   // quoted alias: ""from""
+          embedded.table,                           // table name: "users"
+          `"${embedded.table}"`,                   // quoted table: ""users""
+          embedded.table.replace(/^"(.*)"$/, '$1') // unquoted table: users
+        ].filter(Boolean) // Remove null/undefined values
         
         for (const key of possibleKeys) {
           if (formattedRow[key] !== undefined) {
@@ -414,18 +419,16 @@ export class ResponseFormatter {
             embeddedData = []
           }
           
-          // Set the data using the original table name (without extra quotes)
-          const cleanTableName = embedded.table.replace(/^"(.*)"$/, '$1')
-          formattedRow[cleanTableName] = embeddedData
+          // Set the data using the final field name (alias if available, otherwise table name)
+          formattedRow[fieldName] = embeddedData
           
-          // Remove the old key if it's different from the clean name
-          if (keyFound !== cleanTableName) {
+          // Remove the original key if it's different from the final field name
+          if (keyFound !== fieldName) {
             delete formattedRow[keyFound]
           }
         } else {
-          // No embedded data found - set empty array using clean table name
-          const cleanTableName = embedded.table.replace(/^"(.*)"$/, '$1')
-          formattedRow[cleanTableName] = []
+          // No embedded data found - set empty array using the final field name
+          formattedRow[fieldName] = []
         }
       }
 

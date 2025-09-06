@@ -307,11 +307,25 @@ export class SQLBuilder {
     }
     
     // Add embedded resources as correlated subqueries
-    for (const embedded of query.embedded || []) {
+    // Filter out embedded resources without aliases if there are others with aliases for the same table
+    const filteredEmbedded = (query.embedded || []).filter(embedded => {
+      if (embedded.alias) {
+        return true  // Always include if it has an alias
+      }
+      
+      // Only include if there are no other embedded resources with aliases for the same table
+      const hasAliasedVersion = (query.embedded || []).some(other => 
+        other.table === embedded.table && other.alias
+      )
+      return !hasAliasedVersion
+    })
+    
+    for (const embedded of filteredEmbedded) {
       const subquery = await this.buildEmbeddedSubquery(table, embedded)
       if (subquery) {
-        // Use the original table name as alias, properly quoted for SQL but keeping original name for result
-        const quotedAlias = quoteTableName(embedded.table)
+        // Use the specified alias if provided, otherwise fall back to table name
+        const aliasName = embedded.alias || embedded.table
+        const quotedAlias = quoteTableName(aliasName)
         selectColumns.push(`(${subquery}) AS ${quotedAlias}`)
       }
     }
@@ -437,13 +451,19 @@ export class SQLBuilder {
         whereCondition = `${quotedEmbeddedTable}.${fkRelationship.fromColumn} = ${quotedMainTable}.${fkRelationship.toColumn}`
       } else if (fkRelationship.fromTable === table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === embedded.table.replace(/^"(.*)"$/, '$1')) {
         // Many-to-one: main table references embedded table
-        // orchestral_sections.section_id = sections.id
+        // Each row in main table has exactly one corresponding row in embedded table
+        // Return single object, not array
         whereCondition = `${quotedMainTable}.${fkRelationship.fromColumn} = ${quotedEmbeddedTable}.${fkRelationship.toColumn}`
+        subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${whereCondition} LIMIT 1`
+        return subquery
       } else {
         console.log(`❌ Invalid foreign key relationship direction`)
         return null
       }
 
+      // One-to-many: embedded table references main table
+      // Can have multiple rows in embedded table for each main table row
+      // Return array
       subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
     }
     
