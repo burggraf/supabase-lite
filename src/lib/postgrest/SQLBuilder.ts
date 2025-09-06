@@ -325,11 +325,25 @@ export class SQLBuilder {
         if (col === '*') {
           selectColumns.push(`${quotedMainTable}.*`)
         } else {
-          const alias = query.columnAliases && query.columnAliases[col]
-          if (alias) {
-            selectColumns.push(`${quotedMainTable}.${col} AS ${alias}`)
+          // Check if this is a JSON path expression
+          const jsonPathInfo = this.parseJSONPathExpression(col)
+          if (jsonPathInfo) {
+            // Generate SQL for JSON path extraction
+            const sqlExpression = this.buildJSONPathSQL(quotedMainTable, jsonPathInfo)
+            const alias = query.columnAliases && query.columnAliases[col]
+            if (alias) {
+              selectColumns.push(`${sqlExpression} AS ${alias}`)
+            } else {
+              // Use the computed alias from JSON path parsing
+              selectColumns.push(`${sqlExpression} AS ${jsonPathInfo.alias}`)
+            }
           } else {
-            selectColumns.push(`${quotedMainTable}.${col}`)
+            const alias = query.columnAliases && query.columnAliases[col]
+            if (alias) {
+              selectColumns.push(`${quotedMainTable}.${col} AS ${alias}`)
+            } else {
+              selectColumns.push(`${quotedMainTable}.${col}`)
+            }
           }
         }
       }
@@ -457,12 +471,26 @@ export class SQLBuilder {
         if (col === '*') {
           columns.push(`${table}.*`)
         } else {
-          // Apply column alias if available
-          const alias = query.columnAliases && query.columnAliases[col]
-          if (alias) {
-            columns.push(`${table}.${col} AS ${alias}`)
+          // Check if this is a JSON path expression
+          const jsonPathInfo = this.parseJSONPathExpression(col)
+          if (jsonPathInfo) {
+            // Generate SQL for JSON path extraction
+            const sqlExpression = this.buildJSONPathSQL(table, jsonPathInfo)
+            const alias = query.columnAliases && query.columnAliases[col]
+            if (alias) {
+              columns.push(`${sqlExpression} AS ${alias}`)
+            } else {
+              // Use the computed alias from JSON path parsing
+              columns.push(`${sqlExpression} AS ${jsonPathInfo.alias}`)
+            }
           } else {
-            columns.push(`${table}.${col}`)
+            // Apply column alias if available
+            const alias = query.columnAliases && query.columnAliases[col]
+            if (alias) {
+              columns.push(`${table}.${col} AS ${alias}`)
+            } else {
+              columns.push(`${table}.${col}`)
+            }
           }
         }
       }
@@ -510,12 +538,26 @@ export class SQLBuilder {
         if (col === '*') {
           selectColumns.push(`${quotedMainTable}.*`)
         } else {
-          // Apply column alias if available
-          const alias = query.columnAliases && query.columnAliases[col]
-          if (alias) {
-            selectColumns.push(`${quotedMainTable}.${col} AS ${alias}`)
+          // Check if this is a JSON path expression
+          const jsonPathInfo = this.parseJSONPathExpression(col)
+          if (jsonPathInfo) {
+            // Generate SQL for JSON path extraction
+            const sqlExpression = this.buildJSONPathSQL(quotedMainTable, jsonPathInfo)
+            const alias = query.columnAliases && query.columnAliases[col]
+            if (alias) {
+              selectColumns.push(`${sqlExpression} AS ${alias}`)
+            } else {
+              // Use the computed alias from JSON path parsing
+              selectColumns.push(`${sqlExpression} AS ${jsonPathInfo.alias}`)
+            }
           } else {
-            selectColumns.push(`${quotedMainTable}.${col}`)
+            // Apply column alias if available
+            const alias = query.columnAliases && query.columnAliases[col]
+            if (alias) {
+              selectColumns.push(`${quotedMainTable}.${col} AS ${alias}`)
+            } else {
+              selectColumns.push(`${quotedMainTable}.${col}`)
+            }
           }
         }
       }
@@ -1015,6 +1057,66 @@ export class SQLBuilder {
       sql,
       parameters: this.parameters
     }
+  }
+
+  /**
+   * Parse JSON path expression like address->city, address->>city, etc.
+   * Returns null if not a JSON path expression
+   */
+  private parseJSONPathExpression(expression: string): { columnName: string, operator: string, path: string, alias: string } | null {
+    // Match JSON operators: ->, ->>, #>, #>>
+    // Examples: address->city, address->>city, address#>'{city,name}', address#>>'{city,name}'
+    const jsonPathRegex = /^([a-zA-Z_][a-zA-Z0-9_]*)(->>?|#>>?)(.+)$/
+    const match = expression.match(jsonPathRegex)
+    
+    if (!match) {
+      return null
+    }
+    
+    const [, columnName, operator, path] = match
+    
+    // For simple path like 'city', create alias as just 'city'
+    // For complex paths like '{city,name}', we'll need to handle differently
+    let alias: string
+    
+    if (operator === '->' || operator === '->>') {
+      // Simple key access: address->city becomes alias 'city'
+      alias = path.trim()
+    } else {
+      // Complex path access: address#>'{city,name}' 
+      // For now, create a simple alias based on the last element
+      const cleanPath = path.replace(/[{}'"]/g, '').trim()
+      const pathParts = cleanPath.split(',')
+      alias = pathParts[pathParts.length - 1].trim()
+    }
+    
+    return {
+      columnName,
+      operator,
+      path,
+      alias
+    }
+  }
+
+  /**
+   * Build SQL expression for JSON path extraction
+   */
+  private buildJSONPathSQL(table: string, jsonPathInfo: { columnName: string, operator: string, path: string, alias: string }): string {
+    const { columnName, operator, path } = jsonPathInfo
+    
+    if (operator === '->' || operator === '->>') {
+      // Simple key access: address->city becomes address->'city'
+      // PostgreSQL requires the key to be quoted as a string
+      const quotedPath = `'${path.trim()}'`
+      return `${table}.${columnName}${operator}${quotedPath}`
+    } else if (operator === '#>' || operator === '#>>') {
+      // Complex path access: address#>'{city,name}' 
+      // Path should already include proper formatting
+      return `${table}.${columnName}${operator}${path}`
+    }
+    
+    // Fallback - should not reach here
+    return `${table}.${columnName}`
   }
 
   /**

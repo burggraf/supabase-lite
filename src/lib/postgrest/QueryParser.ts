@@ -210,7 +210,14 @@ export class QueryParser {
           columns.push(actualCol)
           aliases[actualCol] = alias
         } else {
-          columns.push(trimmed)
+          // Check if this is a JSON path extraction (address->city, address->>city, etc.)
+          const jsonPathInfo = this.parseJSONPathExpression(trimmed)
+          if (jsonPathInfo) {
+            columns.push(jsonPathInfo.expression)
+            aliases[jsonPathInfo.expression] = jsonPathInfo.alias
+          } else {
+            columns.push(trimmed)
+          }
         }
       })
       return { columns: columns.filter(Boolean), aliases, embedded }
@@ -232,7 +239,14 @@ export class QueryParser {
             columns.push(actualCol)
             aliases[actualCol] = alias
           } else {
-            columns.push(trimmed)
+            // Check if this is a JSON path extraction (address->city, address->>city, etc.)
+            const jsonPathInfo = this.parseJSONPathExpression(trimmed)
+            if (jsonPathInfo) {
+              columns.push(jsonPathInfo.expression)
+              aliases[jsonPathInfo.expression] = jsonPathInfo.alias
+            } else {
+              columns.push(trimmed)
+            }
           }
         }
         currentColumn = ''
@@ -270,7 +284,14 @@ export class QueryParser {
         columns.push(actualCol)
         aliases[actualCol] = alias
       } else {
-        columns.push(trimmed)
+        // Check if this is a JSON path extraction (address->city, address->>city, etc.)
+        const jsonPathInfo = this.parseJSONPathExpression(trimmed)
+        if (jsonPathInfo) {
+          columns.push(jsonPathInfo.expression)
+          aliases[jsonPathInfo.expression] = jsonPathInfo.alias
+        } else {
+          columns.push(trimmed)
+        }
       }
     }
 
@@ -374,6 +395,44 @@ export class QueryParser {
     }
 
     return embedded
+  }
+
+  /**
+   * Parse JSON path expression like address->city, address->>city, etc.
+   * Returns null if not a JSON path expression
+   */
+  private static parseJSONPathExpression(expression: string): { expression: string, alias: string } | null {
+    // Match JSON operators: ->, ->>, #>, #>>
+    // Examples: address->city, address->>city, address#>'{city,name}', address#>>'{city,name}'
+    const jsonPathRegex = /^([a-zA-Z_][a-zA-Z0-9_]*)(->>?|#>>?)(.+)$/
+    const match = expression.match(jsonPathRegex)
+    
+    if (!match) {
+      return null
+    }
+    
+    const [, columnName, operator, path] = match
+    
+    // For simple path like 'city', create alias as just 'city'
+    // For complex paths like '{city,name}', we'll need to handle differently
+    let alias: string
+    
+    if (operator === '->' || operator === '->>') {
+      // Simple key access: address->city becomes alias 'city'
+      alias = path.trim()
+    } else {
+      // Complex path access: address#>'{city,name}' 
+      // For now, create a simple alias based on the last element
+      const cleanPath = path.replace(/[{}'"]/g, '').trim()
+      const pathParts = cleanPath.split(',')
+      alias = pathParts[pathParts.length - 1].trim()
+    }
+    
+    // Return the original expression and the computed alias
+    return {
+      expression: expression,
+      alias: alias
+    }
   }
 
   /**
