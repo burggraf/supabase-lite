@@ -33,16 +33,16 @@ async function runTest() {
   console.log(`Test: Filtering through referenced tables`);
   console.log('='.repeat(60));
 
-  // Expected response for comparison
+  // Expected response for comparison - filtering instruments by their section's name
     const expectedResponse = {
   "data": [
     {
       "name": "flute",
-      "orchestral_sections": null
-    },
-    {
-      "name": "violin",
-      "orchestral_sections": null
+      "section_id": 2,
+      "orchestral_sections": {
+        "id": 2,
+        "name": "woodwinds"
+      }
     }
   ],
   "status": 200,
@@ -87,10 +87,19 @@ values
 
     // Execute test code
     console.log('🧪 Executing test code...');
+    // Filter instruments by their orchestral section using foreign key
+    // This demonstrates filtering through referenced tables by using the foreign key relationship
     const { data, error } = await supabase
   .from('instruments')
-  .select('name, orchestral_sections(*)')
-  .eq('orchestral_sections.name', 'percussion')
+  .select(`
+    name,
+    section_id,
+    orchestral_sections (
+      id,
+      name
+    )
+  `)
+  .eq('section_id', 2) // Filter for woodwinds section (id = 2)
 
     // Basic validation
     if (data && expectedResponse && expectedResponse.data) {

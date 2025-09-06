@@ -191,12 +191,217 @@ export class SQLBuilder {
     
     const joins: JoinInfo[] = []
     
+    // Check if any filters reference embedded tables
+    const hasEmbeddedTableFilters = this.hasFiltersOnEmbeddedTables(query)
+    console.log(`🔍 Has embedded table filters: ${hasEmbeddedTableFilters}`)
+    
     // Check if we have embedded resources - use different approach
     if (query.embedded && query.embedded.length > 0) {
-      return await this.buildSelectWithJoinAggregation(table, query)
+      // If filters reference embedded tables, use JOIN-based approach
+      // Otherwise use correlated subquery approach
+      if (hasEmbeddedTableFilters) {
+        return await this.buildSelectWithJoins(table, query)
+      } else {
+        return await this.buildSelectWithJoinAggregation(table, query)
+      }
     } else {
-      // Simple query without embedded resources
-      return await this.buildSimpleSelectQuery(table, query)
+      // Simple query without embedded resources, but check for filters on referenced tables
+      if (hasEmbeddedTableFilters) {
+        // Even without explicit embedding, we need joins for filters
+        return await this.buildSelectWithJoins(table, query)
+      } else {
+        return await this.buildSimpleSelectQuery(table, query)
+      }
+    }
+  }
+
+  /**
+   * Check if query has filters on embedded/referenced tables
+   */
+  private hasFiltersOnEmbeddedTables(query: ParsedQuery): boolean {
+    return query.filters.some(filter => {
+      // Check if filter column contains dot notation (table.column)
+      if (filter.column.includes('.')) {
+        const [tableName] = filter.column.split('.')
+        // Check if it's not the main table (assumes main table filters don't use dot notation)
+        // or if it matches an embedded table name
+        return query.embedded?.some(embedded => embedded.table === tableName) || true
+      }
+      return false
+    })
+  }
+
+  /**
+   * Extract table names referenced in filters
+   */
+  private getFilteredTableNames(query: ParsedQuery): Set<string> {
+    const tableNames = new Set<string>()
+    
+    query.filters.forEach(filter => {
+      if (filter.column.includes('.')) {
+        const [tableName] = filter.column.split('.')
+        tableNames.add(tableName)
+      }
+    })
+    
+    return tableNames
+  }
+
+  /**
+   * Build SELECT query with JOINs for filtering on embedded tables
+   */
+  private async buildSelectWithJoins(table: string, query: ParsedQuery): Promise<{ sql: string, joins: JoinInfo[] }> {
+    console.log(`🔍 Building SELECT with JOINs for: ${table}`)
+    
+    const joins: JoinInfo[] = []
+    const selectColumns: string[] = []
+    
+    // Helper function to properly quote table names
+    const quoteTableName = (tableName: string): string => {
+      if (tableName.startsWith('"') && tableName.endsWith('"')) {
+        return tableName
+      }
+      if (tableName.includes(' ') || /[^a-zA-Z0-9_]/.test(tableName)) {
+        return `"${tableName}"`
+      }
+      return tableName
+    }
+    
+    const quotedMainTable = quoteTableName(table)
+    
+    // Get all tables that need to be joined (from embedded resources and filters)
+    const tablesInFilters = this.getFilteredTableNames(query)
+    const embeddedTables = new Set(query.embedded?.map(e => e.table) || [])
+    const allReferencedTables = new Set([...tablesInFilters, ...embeddedTables])
+    
+    console.log(`🔗 Tables referenced in query: ${Array.from(allReferencedTables).join(', ')}`)
+    
+    // Build JOINs for all referenced tables
+    for (const referencedTable of allReferencedTables) {
+      const quotedRefTable = quoteTableName(referencedTable)
+      
+      // Discover foreign key relationship
+      const fkRelationship = await this.discoverForeignKeyRelationship(table, referencedTable)
+      if (fkRelationship) {
+        // Determine JOIN type - use INNER JOIN if the embedded resource specifies inner join
+        const embeddedResource = query.embedded?.find(e => e.table === referencedTable)
+        const isInnerJoin = embeddedResource?.alias?.includes('inner') || 
+                           (embeddedResource && !embeddedResource.alias) // Default inner for embedded
+        
+        const joinType: 'LEFT' | 'INNER' = isInnerJoin ? 'INNER' : 'LEFT'
+        
+        let joinCondition: string
+        if (fkRelationship.fromTable === table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === referencedTable.replace(/^"(.*)"$/, '$1')) {
+          // Main table references embedded table
+          joinCondition = `${quotedMainTable}.${fkRelationship.fromColumn} = ${quotedRefTable}.${fkRelationship.toColumn}`
+        } else if (fkRelationship.fromTable === referencedTable.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === table.replace(/^"(.*)"$/, '$1')) {
+          // Embedded table references main table
+          joinCondition = `${quotedRefTable}.${fkRelationship.fromColumn} = ${quotedMainTable}.${fkRelationship.toColumn}`
+        } else {
+          console.log(`⚠️ Cannot determine join condition for ${table} <-> ${referencedTable}`)
+          continue
+        }
+        
+        joins.push({
+          table: quotedRefTable,
+          alias: quotedRefTable, // Use table name as alias for now
+          condition: joinCondition,
+          type: joinType
+        })
+        
+        console.log(`🔗 Added ${joinType} JOIN: ${quotedRefTable} ON ${joinCondition}`)
+      }
+    }
+    
+    // Build SELECT clause with main table columns
+    const embeddedTableNames = Array.from(embeddedTables)
+    if (query.select && query.select.length > 0) {
+      for (const col of query.select) {
+        // Skip embedded table names - they'll be handled separately
+        if (embeddedTableNames.includes(col)) {
+          continue
+        }
+        
+        if (col === '*') {
+          selectColumns.push(`${quotedMainTable}.*`)
+        } else {
+          const alias = query.columnAliases && query.columnAliases[col]
+          if (alias) {
+            selectColumns.push(`${quotedMainTable}.${col} AS ${alias}`)
+          } else {
+            selectColumns.push(`${quotedMainTable}.${col}`)
+          }
+        }
+      }
+    } else {
+      selectColumns.push(`${quotedMainTable}.*`)
+    }
+    
+    // Add embedded resources as aggregated JSON
+    for (const embedded of query.embedded || []) {
+      const quotedEmbedded = quoteTableName(embedded.table)
+      
+      // Build JSON aggregation for embedded resource
+      let jsonSelectClause: string
+      if (embedded.select && embedded.select.length > 0) {
+        const columnPairs = embedded.select.map(col => {
+          if (col === '*') {
+            return `to_json(${quotedEmbedded})`
+          } else {
+            return `'${col}', ${quotedEmbedded}.${col}`
+          }
+        })
+        if (columnPairs.length === 1 && embedded.select[0] === '*') {
+          jsonSelectClause = columnPairs[0]
+        } else {
+          jsonSelectClause = `json_build_object(${columnPairs.join(', ')})`
+        }
+      } else {
+        jsonSelectClause = `to_json(${quotedEmbedded})`
+      }
+      
+      // Use alias if provided, otherwise use table name
+      const aliasName = embedded.alias || embedded.table
+      const quotedAlias = quoteTableName(aliasName)
+      
+      // For single record relationships, don't use json_agg
+      // For one-to-many relationships, use json_agg
+      // This is a simplification - in practice would need to check the FK relationship direction
+      selectColumns.push(`${jsonSelectClause} AS ${quotedAlias}`)
+    }
+    
+    // Build FROM clause with JOINs
+    let fromClause = `FROM ${quotedMainTable}`
+    for (const join of joins) {
+      fromClause += ` ${join.type} JOIN ${join.table} ON ${join.condition}`
+    }
+
+    // Build WHERE clause (handles dot notation filters now)
+    const whereClause = this.buildWhereClause(query.filters)
+
+    // Build ORDER BY clause
+    const orderClause = this.buildOrderClause(query.order)
+
+    // Build LIMIT and OFFSET
+    const limitClause = query.limit ? `LIMIT ${query.limit}` : ''
+    const offsetClause = query.offset ? `OFFSET ${query.offset}` : ''
+
+    // Combine all parts
+    const parts = [
+      `SELECT ${selectColumns.join(', ')}`,
+      fromClause,
+      whereClause,
+      orderClause,
+      limitClause,
+      offsetClause
+    ].filter(Boolean)
+
+    const finalSQL = parts.join(' ')
+    console.log(`🗃️  Final JOIN-based SQL: ${finalSQL}`)
+
+    return {
+      sql: finalSQL,
+      joins
     }
   }
 
