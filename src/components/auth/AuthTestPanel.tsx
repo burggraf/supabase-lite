@@ -10,6 +10,7 @@ import type { User, Session } from '@/lib/auth/types/auth.types'
 import type { ApiKeys } from '@/lib/auth/api-keys'
 import { Copy, Eye, EyeOff, Check } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
+import { UsersList } from '@/components/auth/users/UsersList'
 
 interface AuthTestResult {
   success: boolean
@@ -252,10 +253,11 @@ export function AuthTestPanel() {
       </Card>
 
       <Tabs defaultValue="keys" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="keys">API Keys</TabsTrigger>
           <TabsTrigger value="auth">Authentication</TabsTrigger>
           <TabsTrigger value="user">User Management</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="mfa">Multi-Factor Auth</TabsTrigger>
         </TabsList>
 
@@ -504,6 +506,10 @@ const supabase = createClient(
               <TestResult testName="recoverPassword" />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="users" className="space-y-4">
+          <UsersList />
         </TabsContent>
 
         <TabsContent value="mfa" className="space-y-4">
