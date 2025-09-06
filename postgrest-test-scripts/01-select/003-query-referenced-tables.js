@@ -20,8 +20,8 @@ async function executeSetupSQL(sql) {
     });
     
     const result = await response.json();
-    if (result.error) {
-      throw new Error(`Setup SQL failed: ${result.error} - ${result.message || ''}`);
+    if (result.error || !response.ok) {
+      throw new Error(`Setup SQL failed: ${result.error || result.message || 'Unknown error'}`);
     }
   }
 }

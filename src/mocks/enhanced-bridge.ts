@@ -25,7 +25,7 @@ export class EnhancedSupabaseAPIBridge {
 
   constructor() {
     this.dbManager = DatabaseManager.getInstance()
-    this.sqlBuilder = new SQLBuilder()
+    this.sqlBuilder = new SQLBuilder(this.dbManager)
   }
 
   async ensureInitialized(): Promise<void> {
@@ -233,7 +233,7 @@ export class EnhancedSupabaseAPIBridge {
       // Don't pre-filter based on hardcoded table names
 
       // Build the main query
-      const sqlQuery = this.sqlBuilder.buildQuery(table, query)
+      const sqlQuery = await this.sqlBuilder.buildQuery(table, query)
       logger.debug('Built SELECT SQL', sqlQuery)
 
       // Execute the query with RLS context

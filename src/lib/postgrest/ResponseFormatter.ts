@@ -379,24 +379,30 @@ export class ResponseFormatter {
 
       // Process each embedded resource
       for (const embedded of query.embedded || []) {
-        const alias = embedded.alias || `${embedded.table}_embed`
-        const embeddedData: Record<string, any> = {}
-
-        // Extract embedded columns
-        for (const [key, value] of Object.entries(row)) {
-          if (key.startsWith(`${alias}_`)) {
-            const embeddedColumn = key.substring(alias.length + 1)
-            embeddedData[embeddedColumn] = value
-            delete formattedRow[key]
+        // The embedded resource is already in JSON format from the SQL aggregation
+        // We just need to parse it if it's a string
+        if (formattedRow[embedded.table]) {
+          let embeddedData = formattedRow[embedded.table]
+          
+          // Parse JSON string if needed
+          if (typeof embeddedData === 'string') {
+            try {
+              embeddedData = JSON.parse(embeddedData)
+            } catch (error) {
+              console.warn(`Failed to parse embedded JSON for ${embedded.table}:`, error)
+              embeddedData = []
+            }
           }
-        }
-
-        // Only add embedded resource if it has data (not all null)
-        const hasData = Object.values(embeddedData).some(value => value !== null)
-        if (hasData) {
-          formattedRow[embedded.table] = embeddedData
+          
+          // Ensure empty arrays for null/empty results
+          if (!embeddedData || (Array.isArray(embeddedData) && embeddedData.length === 0)) {
+            formattedRow[embedded.table] = []
+          } else {
+            formattedRow[embedded.table] = embeddedData
+          }
         } else {
-          formattedRow[embedded.table] = null
+          // No embedded data found
+          formattedRow[embedded.table] = []
         }
       }
 
