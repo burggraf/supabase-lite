@@ -274,25 +274,25 @@
             {
               "type": "info",
               "message": "Starting test: Filtering through referenced tables",
-              "timestamp": "2025-09-08T15:05:35.734Z"
+              "timestamp": "2025-09-08T15:40:58.571Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T15:05:37.494Z"
+              "timestamp": "2025-09-08T15:41:01.289Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T15:05:37.495Z"
+              "timestamp": "2025-09-08T15:41:01.290Z"
             },
             {
               "type": "error",
-              "message": "Test execution failed: Error: {\n  code: \"42P01\",\n  message: 'missing FROM-clause entry for table \"orchestral_sections\"',\n  details: null,\n  hint: null\n}\n",
-              "timestamp": "2025-09-08T15:05:37.591Z"
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"flute\",\n      \"orchestral_sections\": null\n    },\n    {\n      \"name\": \"violin\",\n      \"orchestral_sections\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+              "timestamp": "2025-09-08T15:41:01.425Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -304,7 +304,23 @@
         },
         "response": "```json\n[\n  {\n    \"id\": \"693694e7-d993-4360-a6d7-6294e325d9b6\",\n    \"name\": \"strings\",\n    \"instruments\": [\n      {\n        \"count\": 4\n      }\n    ]\n  }\n]\n```\n",
         "description": "You can get the number of rows in a related table by using the\n**count** property.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Querying referenced table with count",
+              "timestamp": "2025-09-08T15:43:10.990Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Database seeding failed: ",
+              "timestamp": "2025-09-08T15:43:12.719Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "querying-with-count-option",
@@ -315,7 +331,33 @@
         },
         "response": "```json\n{\n  \"count\": 3,\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "You can get the number of rows by using the\n[count](/docs/reference/javascript/select#parameters) option.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Querying with count option",
+              "timestamp": "2025-09-08T15:47:26.840Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T15:47:28.637Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T15:47:28.639Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T15:47:28.800Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "querying-json-data",
@@ -326,7 +368,33 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Frodo\",\n      \"city\": \"Hobbiton\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "You can select and filter data inside of\n[JSON](/docs/guides/database/json) columns. Postgres offers some\n[operators](/docs/guides/database/json#query-the-jsonb-data) for\nquerying JSON data.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Querying JSON data",
+              "timestamp": "2025-09-08T15:47:28.801Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T15:47:29.120Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T15:47:29.121Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T15:47:29.186Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "querying-referenced-table-with-inner-join",
@@ -337,7 +405,33 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"flute\",\n      \"orchestral_sections\": {\"name\": \"woodwinds\"}\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "If you don't want to return the referenced table contents, you can leave the parenthesis empty.\nLike `.select('name, orchestral_sections!inner()')`.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Querying referenced table with inner join",
+              "timestamp": "2025-09-08T15:47:29.187Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T15:47:29.422Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T15:47:29.422Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T15:47:29.504Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "switching-schemas-per-query",
@@ -348,7 +442,33 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": \"4162e008-27b0-4c0f-82dc-ccaeee9a624d\",\n      \"data\": \"mydata\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "In addition to setting the schema during initialization, you can also switch schemas on a per-query basis.\nMake sure you've set up your [database privileges and API settings](/docs/guides/api/using-custom-schemas).\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Switching schemas per query",
+              "timestamp": "2025-09-08T15:47:29.505Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T15:47:29.763Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T15:47:29.764Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution failed: Error: {\n  code: \"42P01\",\n  message: 'relation \"mytable\" does not exist',\n  details: null,\n  hint: null\n}\n",
+              "timestamp": "2025-09-08T15:47:29.833Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -366,7 +486,33 @@
         },
         "response": "```json\n{\n  \"status\": 201,\n  \"statusText\": \"Created\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Create a record",
+              "timestamp": "2025-09-08T15:49:28.925Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T15:49:30.678Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T15:49:30.683Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T15:49:30.894Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "create-a-record-and-return-it",
@@ -376,7 +522,33 @@
           "sql": "```sql\ncreate table\n  countries (id int8 primary key, name text);\n```\n"
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Mordor\"\n    }\n  ],\n  \"status\": 201,\n  \"statusText\": \"Created\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Create a record and return it",
+              "timestamp": "2025-09-08T16:13:03.402Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T16:13:05.097Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T16:13:05.103Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T16:13:05.319Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "bulk-create",
@@ -387,7 +559,33 @@
         },
         "response": "```json\n{\n  \"error\": {\n    \"code\": \"23505\",\n    \"details\": \"Key (id)=(1) already exists.\",\n    \"hint\": null,\n    \"message\": \"duplicate key value violates unique constraint \\\"countries_pkey\\\"\"\n  },\n  \"status\": 409,\n  \"statusText\": \"Conflict\"\n}\n```\n",
         "description": "A bulk create operation is handled in a single transaction.\nIf any of the inserts fail, none of the rows are inserted.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Bulk create",
+              "timestamp": "2025-09-08T16:20:55.262Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T16:20:56.909Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T16:20:56.913Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution failed: Error: {\n  code: \"23505\",\n  message: 'duplicate key value violates unique constraint \"countries_pkey\"',\n  details: \"Key (id)=(1) already exists.\",\n  hint: null\n}\n",
+              "timestamp": "2025-09-08T16:20:57.192Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },

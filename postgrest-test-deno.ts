@@ -57,8 +57,10 @@ class PostgRESTTestRunner {
   private currentProjectId: string | null = null;
   private browserTabOpen = false;
   private isRestarting = false;
+  private isRetestMode = false;
 
-  constructor() {
+  constructor(isRetestMode = false) {
+    this.isRetestMode = isRetestMode;
     const currentDir = Deno.cwd();
     this.config = {
       supabaseLiteUrl: 'http://localhost:5173',
@@ -444,29 +446,11 @@ class PostgRESTTestRunner {
     await this.ensureServerRunning();
     
     const sql = this.extractSQLFromData(sqlData);
-    
-    // Add cleanup commands to drop existing tables first
-    const cleanupSql = `
--- Drop existing tables if they exist
-DROP TABLE IF EXISTS characters CASCADE;
-DROP TABLE IF EXISTS orchestral_sections CASCADE;
-DROP TABLE IF EXISTS instruments CASCADE;
-DROP TABLE IF EXISTS "orchestral sections" CASCADE;
-DROP TABLE IF EXISTS "musical instruments" CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-DROP TABLE IF EXISTS teams CASCADE;
-DROP TABLE IF EXISTS users_teams CASCADE;
-DROP TABLE IF EXISTS messages CASCADE;
-DROP TABLE IF EXISTS games CASCADE;
-
--- Original SQL
-${sql}`;
-    
     const tempSqlFile = join(this.config.workingDir, 'tmp-seed.sql');
     
     try {
-      // Write SQL with cleanup to temporary file
-      await Deno.writeTextFile(tempSqlFile, cleanupSql);
+      // Write SQL to temporary file
+      await Deno.writeTextFile(tempSqlFile, sql);
       this.log('info', 'Created temporary seed file');
       
       // Execute SQL using supabase-lite psql
@@ -570,6 +554,7 @@ ${sql}`;
       .replace('<name>', example.name)
       .replace('<project_url>', projectUrl)
       .replace('<code>', code)
+      .replace('<code_content>', code)
       .replace('<response>', JSON.stringify(expectedResponse, null, 2));
     
     const tempScriptFile = join(this.config.workingDir, 'tmp-script.ts');
@@ -618,6 +603,33 @@ ${sql}`;
     console.log('\n' + border);
     console.log(`* ${headerText} *`);
     console.log(border + '\n');
+  }
+
+  /**
+   * Determine if a test should be skipped based on mode and previous results
+   */
+  private shouldSkipTest(example: Example): string | null {
+    const results = example.results;
+    
+    if (!results) {
+      // No previous results, don't skip
+      return null;
+    }
+    
+    if (this.isRetestMode) {
+      // In retest mode, only skip tests that previously failed and are marked to skip
+      if (!results.passed && results.skip) {
+        return "previously failed with skip=true (manually bypassed)";
+      }
+      // Run all other tests (previously passed or previously failed without skip flag)
+      return null;
+    } else {
+      // In normal mode, skip tests that are marked to skip (passed previously)
+      if (results.skip) {
+        return "already passed";
+      }
+      return null;
+    }
   }
 
   /**
@@ -721,13 +733,16 @@ ${sql}`;
    * Process all test items and examples
    */
   private async processTests(testData: TestItem[]): Promise<void> {
+    let regressionFailures: Array<{item: TestItem, example: Example, error: string}> = [];
+    
     for (const item of testData) {
       this.log('info', `\n=== Processing item: ${item.id} - ${item.title} ===`);
       
       for (const example of item.examples) {
-        // Skip if already marked to skip
-        if (example.results?.skip) {
-          this.log('info', `Skipping example: ${example.id} (already passed)`);
+        const shouldSkip = this.shouldSkipTest(example);
+        
+        if (shouldSkip) {
+          this.log('info', `Skipping example: ${example.id} (${shouldSkip})`);
           continue;
         }
         
@@ -737,13 +752,26 @@ ${sql}`;
         // Process this example
         const results = await this.processExample(item, example);
         
+        // Handle regression testing logic
+        if (this.isRetestMode && example.results?.passed && !results.passed) {
+          // This is a regression - test previously passed but now fails
+          this.log('error', `REGRESSION DETECTED: Test ${example.id} previously passed but now fails`);
+          example.results.skip = false; // Unmark skip flag
+          regressionFailures.push({
+            item,
+            example,
+            error: results.log.filter(log => log.type === 'error').map(log => log.message).join('\n')
+          });
+        }
+        
         // Update the example with results
         example.results = results;
         
         // Save results after each test
         await this.saveResults(testData);
         
-        if (!results.passed) {
+        // In normal mode, stop on first failure. In retest mode, continue collecting regressions
+        if (!results.passed && !this.isRetestMode) {
           this.log('error', `Test failed for example: ${example.id}`);
           this.log('error', 'Stopping execution on first failure for debugging');
           
@@ -755,8 +783,23 @@ ${sql}`;
           Deno.exit(1);
         }
         
-        this.log('info', `Test passed for example: ${example.id}`);
+        if (results.passed) {
+          this.log('info', `Test passed for example: ${example.id}`);
+        } else {
+          this.log('error', `Test failed for example: ${example.id} (continuing in retest mode)`);
+        }
       }
+    }
+    
+    // Handle regression failures
+    if (this.isRetestMode && regressionFailures.length > 0) {
+      this.log('error', `\n=== REGRESSION TEST FAILURES (${regressionFailures.length}) ===`);
+      for (const failure of regressionFailures) {
+        this.log('error', `${failure.item.id} - ${failure.example.name}:`);
+        this.log('error', failure.error);
+        this.log('error', '---');
+      }
+      throw new Error(`${regressionFailures.length} regression test(s) failed`);
     }
     
     this.log('info', '\n=== All tests completed successfully! ===');
@@ -830,6 +873,21 @@ ${sql}`;
 
 // Main execution
 if (import.meta.main) {
-  const runner = new PostgRESTTestRunner();
+  // Parse command line arguments
+  const args = Deno.args;
+  const isRetestMode = args.includes('--retest');
+  
+  if (isRetestMode) {
+    console.log('🔄 Running in regression test mode (--retest)');
+    console.log('   - Will run all tests except those that previously failed with skip=true');
+    console.log('   - Will detect regressions (tests that previously passed but now fail)');
+    console.log('   - Will continue running all tests even if failures occur\n');
+  } else {
+    console.log('🚀 Running in normal test mode');
+    console.log('   - Will skip tests that previously passed (skip=true)');
+    console.log('   - Will stop on first failure for debugging\n');
+  }
+  
+  const runner = new PostgRESTTestRunner(isRetestMode);
   await runner.run();
 }

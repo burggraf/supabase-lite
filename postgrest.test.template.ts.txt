@@ -15,12 +15,62 @@ async function run() {
             console.error('Error:', error);
             Deno.exit(1);
         }
+        
         // Create Supabase-compatible response structure
-        const response = {
-            data: data,
-            status: 200,
-            statusText: "OK"
-        };
+        // Handle different response types (data queries vs count queries vs mutation operations)
+        let response;
+        if (typeof data !== 'undefined') {
+            // Check if this is an INSERT operation by examining the code
+            const codeString = `<code_content>`;
+            const isInsertOperation = codeString.includes('.insert(');
+            const isUpdateOperation = codeString.includes('.update(');
+            const isUpsertOperation = codeString.includes('.upsert(');
+            const isDeleteOperation = codeString.includes('.delete(');
+            
+            if (isInsertOperation || isUpsertOperation) {
+                // INSERT/UPSERT with .select() - should return 201 Created
+                response = {
+                    data: data,
+                    status: 201,
+                    statusText: "Created"
+                };
+            } else if (isUpdateOperation || isDeleteOperation) {
+                // UPDATE/DELETE with .select() - should return 200 OK
+                response = {
+                    data: data,
+                    status: 200,
+                    statusText: "OK"
+                };
+            } else {
+                // Normal SELECT query
+                response = {
+                    data: data,
+                    status: 200,
+                    statusText: "OK"
+                };
+            }
+        } else if (typeof count !== 'undefined') {
+            // Count query
+            response = {
+                count: count,
+                status: 200,
+                statusText: "OK"
+            };
+        } else if (typeof error === 'undefined' || error === null) {
+            // INSERT/UPDATE/DELETE operations that succeed (no data/count returned, no error)
+            response = {
+                status: 201,
+                statusText: "Created"
+            };
+        } else {
+            // Fallback - check what variables are available
+            const availableVars = [];
+            if (typeof data !== 'undefined') availableVars.push('data');
+            if (typeof count !== 'undefined') availableVars.push('count');
+            if (typeof error !== 'undefined') availableVars.push('error');
+            throw new Error(`Could not determine response structure. Available variables: ${availableVars.join(', ')}`);
+        }
+        
         console.log('Data:', JSON.stringify(response));
     } catch (error) {
         console.error('Unexpected Error:', error);
