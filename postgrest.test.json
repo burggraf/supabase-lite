@@ -12,7 +12,33 @@
         "data": {
           "sql": "```sql\ncreate table\n  characters (id int8 primary key, name text);\n\ninsert into\n  characters (id, name)\nvalues\n  (1, 'Harry'),\n  (2, 'Frodo'),\n  (3, 'Katniss');\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Harry\"\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Frodo\"\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Katniss\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n"
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Harry\"\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Frodo\"\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Katniss\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Getting your data",
+              "timestamp": "2025-09-08T14:06:05.445Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T14:06:06.991Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T14:06:06.992Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T14:06:07.130Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "selecting-specific-columns",
@@ -21,17 +47,69 @@
         "data": {
           "sql": "```sql\ncreate table\n  characters (id int8 primary key, name text);\n\ninsert into\n  characters (id, name)\nvalues\n  (1, 'Frodo'),\n  (2, 'Harry'),\n  (3, 'Katniss');\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"Frodo\"\n    },\n    {\n      \"name\": \"Harry\"\n    },\n    {\n      \"name\": \"Katniss\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n"
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"Frodo\"\n    },\n    {\n      \"name\": \"Harry\"\n    },\n    {\n      \"name\": \"Katniss\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Selecting specific columns",
+              "timestamp": "2025-09-08T14:06:45.119Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T14:06:47.797Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T14:06:47.799Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T14:06:47.885Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "query-referenced-tables",
         "name": "Query referenced tables",
         "description": "If your database has foreign key relationships, you can query related tables too.\n",
-        "code": "```js\nconst { data, error } = await supabase\n  .from('orchestal_sections')\n  .select(`\n    name,\n    instruments (\n      name\n    )\n  `)\n```\n",
+        "code": "```js\nconst { data, error } = await supabase\n  .from('orchestral_sections')\n  .select(`\n    name,\n    instruments (\n      name\n    )\n  `)\n```\n",
         "data": {
           "sql": "```sql\ncreate table\n  orchestral_sections (id int8 primary key, name text);\ncreate table\n  instruments (\n    id int8 primary key,\n    section_id int8 not null references orchestral_sections,\n    name text\n  );\n\ninsert into\n  orchestral_sections (id, name)\nvalues\n  (1, 'strings'),\n  (2, 'woodwinds');\ninsert into\n  instruments (id, section_id, name)\nvalues\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    },\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n"
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    },\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Query referenced tables",
+              "timestamp": "2025-09-08T14:12:45.351Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T14:12:47.121Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T14:12:47.122Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T14:12:47.220Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "query-referenced-tables-with-spaces-in-their-names",
@@ -41,7 +119,33 @@
         "data": {
           "sql": "```sql\ncreate table\n  \"orchestral sections\" (id int8 primary key, name text);\ncreate table\n  \"musical instruments\" (\n    id int8 primary key,\n    section_id int8 not null references \"orchestral sections\",\n    name text\n  );\n\ninsert into\n  \"orchestral sections\" (id, name)\nvalues\n  (1, 'strings'),\n  (2, 'woodwinds');\ninsert into\n  \"musical instruments\" (id, section_id, name)\nvalues\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"musical instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    },\n    {\n      \"name\": \"woodwinds\",\n      \"musical instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n"
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"musical instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    },\n    {\n      \"name\": \"woodwinds\",\n      \"musical instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Query referenced tables with spaces in their names",
+              "timestamp": "2025-09-08T14:17:08.907Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T14:17:11.668Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T14:17:11.670Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution failed: Error: {\n  code: \"42P01\",\n  message: 'relation \"orchestal sections\" does not exist',\n  details: null,\n  hint: null\n}\n",
+              "timestamp": "2025-09-08T14:17:11.844Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "query-referenced-tables-through-a-join-table",
@@ -52,7 +156,33 @@
         },
         "response": "```json\n  {\n    \"data\": [\n      {\n        \"name\": \"Kiran\",\n        \"teams\": [\n          {\n            \"name\": \"Green\"\n          },\n          {\n            \"name\": \"Blue\"\n          }\n        ]\n      },\n      {\n        \"name\": \"Evan\",\n        \"teams\": [\n          {\n            \"name\": \"Blue\"\n          }\n        ]\n      }\n    ],\n    \"status\": 200,\n    \"statusText\": \"OK\"\n  }\n  ```\n",
         "description": "If you're in a situation where your tables are **NOT** directly\nrelated, but instead are joined by a _join table_, you can still use\nthe `select()` method to query the related data. The join table needs\nto have the foreign keys as part of its composite primary key.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Query referenced tables through a join table",
+              "timestamp": "2025-09-08T14:27:58.600Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T14:28:01.340Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T14:28:01.341Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T14:28:01.540Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "query-the-same-referenced-table-multiple-times",
@@ -63,7 +193,33 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"content\": \"👋\",\n      \"from\": {\n        \"name\": \"Kiran\"\n      },\n      \"to\": {\n        \"name\": \"Evan\"\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "If you need to query the same referenced table twice, use the name of the\njoined column to identify which join to use. You can also give each\ncolumn an alias.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Query the same referenced table multiple times",
+              "timestamp": "2025-09-08T14:30:10.298Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T14:30:11.965Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T14:30:11.965Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T14:30:12.048Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "query-nested-foreign-tables-through-a-join-table",
@@ -74,7 +230,33 @@
         },
         "response": "```json\n  {\n    \"data\": [\n      {\n        \"game_id\": 1,\n        \"away_team\": {\n          \"users\": [\n            {\n              \"id\": 1,\n              \"name\": \"Kiran\"\n            },\n            {\n              \"id\": 2,\n              \"name\": \"Evan\"\n            }\n          ]\n        }\n      },\n      {\n        \"game_id\": 2,\n        \"away_team\": {\n          \"users\": [\n            {\n              \"id\": 1,\n              \"name\": \"Kiran\"\n            }\n          ]\n        }\n      }\n    ],\n    \"status\": 200,\n    \"statusText\": \"OK\"\n  }\n  ```\n",
         "description": "You can use the result of a joined table to gather data in\nanother foreign table. With multiple references to the same foreign\ntable you must specify the column on which to conduct the join.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Query nested foreign tables through a join table",
+              "timestamp": "2025-09-08T14:30:12.048Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T14:30:12.322Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T14:30:12.323Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T14:30:12.429Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "filtering-through-referenced-tables",
@@ -85,7 +267,33 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"flute\",\n      \"orchestral_sections\": null\n    },\n    {\n      \"name\": \"violin\",\n      \"orchestral_sections\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "If the filter on a referenced table's column is not satisfied, the referenced\ntable returns `[]` or `null` but the parent table is not filtered out.\nIf you want to filter out the parent table rows, use the `!inner` hint\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Filtering through referenced tables",
+              "timestamp": "2025-09-08T14:30:12.430Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T14:30:12.663Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T14:30:12.663Z"
+            },
+            {
+              "type": "error",
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"flute\",\n      \"orchestral_sections\": null\n    },\n    {\n      \"name\": \"violin\",\n      \"orchestral_sections\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+              "timestamp": "2025-09-08T14:30:12.743Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "querying-referenced-table-with-count",

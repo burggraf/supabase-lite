@@ -1,0 +1,30 @@
+// id: <id>
+// name: <name>       
+import { createClient } from '@supabase/supabase-js';
+const SUPABASE_CONFIG = {
+    url: '<project_url>',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
+    debugSqlEndpoint: 'http://localhost:5173/debug/sql'
+};
+const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+const expected_response = <response>;
+async function run() {
+    try {
+        <code>
+        if (error) {
+            console.error('Error:', error);
+            Deno.exit(1);
+        }
+        // Create Supabase-compatible response structure
+        const response = {
+            data: data,
+            status: 200,
+            statusText: "OK"
+        };
+        console.log('Data:', JSON.stringify(response));
+    } catch (error) {
+        console.error('Unexpected Error:', error);
+        Deno.exit(1);
+    }
+}
+run();

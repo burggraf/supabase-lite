@@ -45,3 +45,4 @@ wrangler.toml
 
 curl-test-results*
 supabase-client-test-results*
+/prompts
