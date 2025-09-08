@@ -195,11 +195,30 @@ export class SQLBuilder {
     const hasEmbeddedTableFilters = this.hasFiltersOnEmbeddedTables(query)
     console.log(`🔍 Has embedded table filters: ${hasEmbeddedTableFilters}`)
     
-    // Check if we have embedded resources - use different approach
+    // Check if we have embedded resources
     if (query.embedded && query.embedded.length > 0) {
-      // Always use correlated subquery approach for embedded resources
-      // This ensures referenced table filters don't affect parent table rows
-      return await this.buildSelectWithJoinAggregation(table, query)
+      // Get tables referenced in filters
+      const tablesInFilters = this.getFilteredTableNames(query)
+      const existingEmbeddedTables = new Set((query.embedded || []).map(e => e.table))
+      
+      // Check if filters reference embedded tables  
+      const hasFiltersOnEmbeddedTables = Array.from(tablesInFilters).some(table => 
+        existingEmbeddedTables.has(table)
+      )
+      
+      if (hasFiltersOnEmbeddedTables) {
+        console.log(`🔧 Detected filters on embedded tables - using JOIN approach for proper filtering`)
+        
+        // For PostgREST compatibility: when filtering on embedded table fields,
+        // we need to JOIN the embedded table and apply the filter in the WHERE clause
+        // This ensures only parent rows matching the embedded filter are returned
+        return await this.buildSelectWithJoins(table, query)
+      } else {
+        console.log(`🔧 No filters on embedded tables - using correlated subquery approach`)
+        
+        // No filters on embedded tables, use standard subquery approach
+        return await this.buildSelectWithJoinAggregation(table, query)
+      }
     } else {
       // Simple query without embedded resources, but check for filters on referenced tables
       if (hasEmbeddedTableFilters) {
@@ -254,27 +273,29 @@ export class SQLBuilder {
     
     // Get tables referenced in filters
     const tablesInFilters = this.getFilteredTableNames(query)
+    const existingEmbeddedTables = new Set((query.embedded || []).map(e => e.table))
     
-    // Create implicit embedded resources for filtered tables
-    const implicitEmbedded = Array.from(tablesInFilters).map(tableName => ({
-      table: tableName,
-      select: ['*'],
-      filters: query.filters.filter(f => f.column.startsWith(tableName + '.')),
-      embedded: []
-    }))
+    console.log(`🔍 Tables in filters:`, Array.from(tablesInFilters))
+    console.log(`🔍 Existing embedded tables:`, Array.from(existingEmbeddedTables))
     
-    // Create a modified query with implicit embedding
-    const modifiedQuery = {
-      ...query,
-      embedded: [...(query.embedded || []), ...implicitEmbedded],
-      // Remove referenced table filters from main filters since they'll be applied to subqueries
-      filters: query.filters.filter(f => !f.column.includes('.'))
+    // Check if filters reference embedded tables  
+    const hasFiltersOnEmbeddedTables = Array.from(tablesInFilters).some(table => 
+      existingEmbeddedTables.has(table)
+    )
+    
+    if (hasFiltersOnEmbeddedTables) {
+      console.log(`🔧 Detected filters on embedded tables - using JOIN approach for proper filtering`)
+      
+      // For PostgREST compatibility: when filtering on embedded table fields,
+      // we need to JOIN the embedded table and apply the filter in the WHERE clause
+      // This ensures only parent rows matching the embedded filter are returned
+      return await this.buildSelectWithJoins(table, query)
+    } else {
+      console.log(`🔧 No filters on embedded tables - using correlated subquery approach`)
+      
+      // No filters on embedded tables, use standard subquery approach
+      return await this.buildSelectWithJoinAggregation(table, query)
     }
-    
-    console.log(`🔧 Created implicit embedded resources:`, implicitEmbedded.map(e => e.table))
-    
-    // Use the correlated subquery approach
-    return await this.buildSelectWithJoinAggregation(table, modifiedQuery)
   }
 
   /**
