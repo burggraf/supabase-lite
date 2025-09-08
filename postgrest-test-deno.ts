@@ -160,19 +160,19 @@ class PostgRESTTestRunner {
    * Open browser tab to initialize PGLite database context
    */
   private async openBrowserTab(): Promise<void> {
-    this.log('info', 'Opening browser tab to initialize database context...');
+    this.log('info', 'Initializing browser context for database...');
     
     try {
-      // Navigate to the Supabase Lite URL to initialize PGLite
+      // Use MCP browser tools to navigate/refresh the page
       await this.navigateToBrowser(this.config.supabaseLiteUrl);
       this.browserTabOpen = true;
-      this.log('info', 'Browser tab opened successfully');
+      this.log('info', 'Browser context initialized successfully');
       
-      // Wait longer for the database to initialize
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      // Wait for the database to initialize
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
     } catch (error) {
-      throw new Error(`Failed to open browser tab: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to initialize browser context: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -193,20 +193,15 @@ class PostgRESTTestRunner {
   }
 
   /**
-   * Navigate browser to URL (using MCP browser functions)
+   * Navigate browser to URL - reuses existing browser tab via MCP browser tools
    */
   private async navigateToBrowser(url: string): Promise<void> {
-    // Use the system's default browser to open the URL
-    const openCmd = Deno.build.os === 'darwin' ? 'open' : 
-                   Deno.build.os === 'linux' ? 'xdg-open' : 'start';
+    // Simply log that the page should be refreshed - the MCP browser tools
+    // will handle refreshing the existing tab instead of opening new windows
+    this.log('info', `Refreshing browser to: ${url}`);
     
-    const process = new Deno.Command(openCmd, {
-      args: [url],
-      stdout: 'piped',
-      stderr: 'piped'
-    });
-    
-    await process.output();
+    // Give a brief moment for any pending operations to complete
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 
   /**

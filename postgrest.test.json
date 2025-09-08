@@ -561,30 +561,30 @@
         "description": "A bulk create operation is handled in a single transaction.\nIf any of the inserts fail, none of the rows are inserted.\n",
         "hideCodeBlock": true,
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Bulk create",
-              "timestamp": "2025-09-08T16:20:55.262Z"
+              "timestamp": "2025-09-08T16:40:47.668Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T16:20:56.909Z"
+              "timestamp": "2025-09-08T16:40:49.176Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T16:20:56.913Z"
+              "timestamp": "2025-09-08T16:40:49.177Z"
             },
             {
-              "type": "error",
-              "message": "Test execution failed: Error: {\n  code: \"23505\",\n  message: 'duplicate key value violates unique constraint \"countries_pkey\"',\n  details: \"Key (id)=(1) already exists.\",\n  hint: null\n}\n",
-              "timestamp": "2025-09-08T16:20:57.192Z"
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-08T16:40:49.249Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       }
     ]
@@ -604,7 +604,33 @@
         },
         "response": "```json\n{\n  \"status\": 204,\n  \"statusText\": \"No Content\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Updating your data",
+              "timestamp": "2025-09-08T16:53:15.906Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-08T16:53:17.483Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-08T16:53:17.484Z"
+            },
+            {
+              "type": "error",
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"status\": 204,\n  \"statusText\": \"No Content\"\n}\n\nActual:\n{\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+              "timestamp": "2025-09-08T16:53:17.556Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "update-a-record-and-return-it",

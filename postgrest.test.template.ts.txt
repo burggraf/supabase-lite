@@ -8,12 +8,58 @@ const SUPABASE_CONFIG = {
 };
 const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 const expected_response = <response>;
+
+// Helper functions for error mapping
+function getStatusCodeFromError(errorCode: string): number {
+    switch (errorCode) {
+        case '23505': // unique_violation
+            return 409;
+        case '23503': // foreign_key_violation
+            return 409;
+        case '23502': // not_null_violation
+            return 400;
+        case '23514': // check_violation
+            return 400;
+        case '42P01': // undefined_table
+            return 404;
+        case '42703': // undefined_column
+            return 400;
+        default:
+            return 400;
+    }
+}
+
+function getStatusTextFromError(errorCode: string): string {
+    switch (errorCode) {
+        case '23505': // unique_violation
+        case '23503': // foreign_key_violation
+            return 'Conflict';
+        case '42P01': // undefined_table
+            return 'Not Found';
+        default:
+            return 'Bad Request';
+    }
+}
 async function run() {
     try {
         <code>
+        
+        // Handle error cases - format as PostgREST error response
         if (error) {
-            console.error('Error:', error);
-            Deno.exit(1);
+            // Create PostgREST-compatible error response
+            const response = {
+                error: {
+                    code: error.code || 'UNKNOWN',
+                    details: error.details || null,
+                    hint: error.hint || null,
+                    message: error.message || 'An error occurred'
+                },
+                status: getStatusCodeFromError(error.code),
+                statusText: getStatusTextFromError(error.code)
+            };
+            
+            console.log('Data:', JSON.stringify(response));
+            return;
         }
         
         // Create Supabase-compatible response structure
@@ -58,10 +104,31 @@ async function run() {
             };
         } else if (typeof error === 'undefined' || error === null) {
             // INSERT/UPDATE/DELETE operations that succeed (no data/count returned, no error)
-            response = {
-                status: 201,
-                statusText: "Created"
-            };
+            const codeString = `<code_content>`;
+            const isInsertOperation = codeString.includes('.insert(');
+            const isUpsertOperation = codeString.includes('.upsert(');
+            const isUpdateOperation = codeString.includes('.update(');
+            const isDeleteOperation = codeString.includes('.delete(');
+            
+            if (isInsertOperation || isUpsertOperation) {
+                // INSERT/UPSERT without .select() - should return 201 Created
+                response = {
+                    status: 201,
+                    statusText: "Created"
+                };
+            } else if (isUpdateOperation || isDeleteOperation) {
+                // UPDATE/DELETE without .select() - should return 204 No Content
+                response = {
+                    status: 204,
+                    statusText: "No Content"
+                };
+            } else {
+                // Fallback for other operations
+                response = {
+                    status: 200,
+                    statusText: "OK"
+                };
+            }
         } else {
             // Fallback - check what variables are available
             const availableVars = [];
