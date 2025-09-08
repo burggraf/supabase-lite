@@ -82,14 +82,17 @@ values
   ])
   .select()
 
-    // Basic validation
+    // Basic validation with order-independent comparison
     if (data && expectedResponse && expectedResponse.data) {
-      const dataMatches = JSON.stringify(data) === JSON.stringify(expectedResponse.data);
+      // Sort both arrays by id for consistent comparison
+      const sortedData = [...data].sort((a, b) => a.id - b.id);
+      const sortedExpected = [...expectedResponse.data].sort((a, b) => a.id - b.id);
+      const dataMatches = JSON.stringify(sortedData) === JSON.stringify(sortedExpected);
       console.log(`✅ Test result: ${dataMatches ? 'PASS' : 'FAIL'}`);
       
       if (!dataMatches) {
-        console.log('📊 Expected:', JSON.stringify(expectedResponse.data, null, 2));
-        console.log('📊 Actual:', JSON.stringify(data, null, 2));
+        console.log('📊 Expected:', JSON.stringify(sortedExpected, null, 2));
+        console.log('📊 Actual:', JSON.stringify(sortedData, null, 2));
       }
       
       return {
@@ -98,8 +101,8 @@ values
         name: 'Bulk Upsert your data',
         passed: dataMatches,
         error: null,
-        data: data,
-        expected: expectedResponse.data
+        data: sortedData,
+        expected: sortedExpected
       };
     } else {
       console.log('⚠️  No expected response data to compare');

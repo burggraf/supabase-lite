@@ -890,6 +890,8 @@ export class SQLBuilder {
    * Build single filter condition
    */
   private buildFilterCondition(filter: ParsedFilter): string {
+    console.log(`🔍 Building filter condition for:`, { column: filter.column, operator: filter.operator, value: filter.value, hasJsonPath: !!filter.jsonPath })
+    
     if (filter.column === '__logical__') {
       // Handle logical operators (complex case)
       return this.buildLogicalCondition(filter)
@@ -900,8 +902,37 @@ export class SQLBuilder {
       throw new Error(`Unknown operator: ${filter.operator}`)
     }
 
+    let columnExpression = filter.column
+
+    // If this is a JSON path expression, convert it to proper PostgreSQL syntax
+    if (filter.jsonPath) {
+      const { columnName, jsonOperator, path } = filter.jsonPath
+      
+      console.log(`🔍 JSON Path filter detected:`, { columnName, jsonOperator, path, originalColumn: filter.column })
+      
+      if (jsonOperator === '->' || jsonOperator === '->>') {
+        // Simple key access: address->city becomes address->'city'
+        // PostgreSQL requires the key to be quoted as a string
+        const quotedPath = `'${path.trim()}'`
+        columnExpression = `${columnName}${jsonOperator}${quotedPath}`
+        console.log(`🔨 Generated JSON column expression: ${columnExpression}`)
+      } else if (jsonOperator === '#>' || jsonOperator === '#>>') {
+        // Complex path access: address#>'{city,name}' 
+        // Path should already include proper formatting
+        columnExpression = `${columnName}${jsonOperator}${path}`
+        console.log(`🔨 Generated JSON column expression: ${columnExpression}`)
+      } else {
+        // Fallback - treat as regular column
+        columnExpression = filter.column
+        console.log(`🔨 Fallback column expression: ${columnExpression}`)
+      }
+    } else if (filter.column.includes('->') || filter.column.includes('->>')) {
+      // Handle case where JSON path wasn't detected but column contains JSON operators
+      console.log(`🚨 JSON operators in column but no jsonPath property:`, filter.column)
+    }
+
     let condition = operator.sqlTemplate
-      .replace('{column}', filter.column)
+      .replace('{column}', columnExpression)
 
     // Handle different value types
     if (operator.requiresValue) {
@@ -926,10 +957,20 @@ export class SQLBuilder {
 
     if (operator === 'in') {
       // IN operator with array of values
-      const placeholders = (value as any[])
+      let valueArray: any[]
+      if (Array.isArray(value)) {
+        valueArray = value
+      } else if (typeof value === 'string') {
+        // Handle legacy string format (comma-separated values)
+        valueArray = value.split(',').map(v => v.trim())
+      } else {
+        throw new Error('IN operator requires array or comma-separated string values')
+      }
+      
+      const placeholders = valueArray
         .map(() => `$${this.paramIndex++}`)
         .join(', ')
-      this.parameters.push(...(value as any[]))
+      this.parameters.push(...valueArray)
       return condition.replace('{value}', placeholders)
     }
 
@@ -1209,6 +1250,109 @@ export class SQLBuilder {
     return {
       sql,
       parameters: this.parameters
+    }
+  }
+
+  /**
+   * Build UPSERT query (INSERT with ON CONFLICT DO UPDATE)
+   * Supports custom conflict resolution columns via onConflictColumn parameter
+   */
+  async buildUpsertQuery(table: string, data: Record<string, any>[], onConflictColumn?: string): Promise<SQLQuery> {
+    this.paramIndex = 1
+    this.parameters = []
+
+    const firstRow = data[0]
+    const columns = Object.keys(firstRow)
+    const columnsList = columns.join(', ')
+
+    // Build VALUES clause
+    const valueRows = data.map(row => {
+      const valuePlaceholders = columns.map(col => {
+        this.parameters.push(row[col])
+        return `$${this.paramIndex++}`
+      })
+      return `(${valuePlaceholders.join(', ')})`
+    })
+
+    // Determine conflict target columns
+    let conflictTargetColumns: string[]
+    
+    if (onConflictColumn) {
+      // Use custom conflict column specified by user
+      conflictTargetColumns = [onConflictColumn]
+      console.log(`🎯 Using custom conflict column: ${onConflictColumn}`)
+    } else {
+      // Fallback to primary key constraint discovery
+      const primaryKeyColumns = await this.discoverPrimaryKeyColumns(table)
+      
+      if (primaryKeyColumns.length === 0) {
+        throw new Error(`Cannot perform upsert on table ${table}: no primary key constraint found and no onConflict column specified`)
+      }
+      
+      conflictTargetColumns = primaryKeyColumns
+      console.log(`🔑 Using primary key columns for conflict: ${primaryKeyColumns.join(', ')}`)
+    }
+
+    // Build ON CONFLICT clause
+    const conflictTarget = conflictTargetColumns.join(', ')
+    
+    // Build UPDATE clause for all non-conflict target columns
+    const updateColumns = columns.filter(col => !conflictTargetColumns.includes(col))
+    const updateClause = updateColumns.map(col => `${col} = EXCLUDED.${col}`).join(', ')
+
+    let sql: string
+    if (updateColumns.length > 0) {
+      // Full upsert with updates
+      sql = `INSERT INTO ${table} (${columnsList}) VALUES ${valueRows.join(', ')} ON CONFLICT (${conflictTarget}) DO UPDATE SET ${updateClause} RETURNING *`
+    } else {
+      // Only conflict target columns, just ignore conflicts
+      sql = `INSERT INTO ${table} (${columnsList}) VALUES ${valueRows.join(', ')} ON CONFLICT (${conflictTarget}) DO NOTHING RETURNING *`
+    }
+
+    return {
+      sql,
+      parameters: this.parameters
+    }
+  }
+
+  /**
+   * Dynamically discover primary key columns for a table
+   * Uses PostgreSQL system catalogs, no hardcoded table/column names
+   */
+  private async discoverPrimaryKeyColumns(table: string): Promise<string[]> {
+    if (!this.dbManager || !this.dbManager.isConnected()) {
+      console.log(`⚠️  No database manager available for primary key discovery`)
+      return []
+    }
+
+    try {
+      const cleanTable = table.replace(/^"(.*)"$/, '$1')
+      
+      // Query to discover primary key constraint columns
+      // Uses information_schema to find constraint details
+      const query = `
+        SELECT kcu.column_name 
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu 
+          ON tc.constraint_name = kcu.constraint_name 
+          AND tc.table_schema = kcu.table_schema
+        WHERE tc.constraint_type = 'PRIMARY KEY'
+          AND tc.table_name = '${cleanTable.replace(/'/g, "''")}'
+          AND tc.table_schema = 'public'
+        ORDER BY kcu.ordinal_position
+      `
+      
+      console.log(`🔍 Discovering primary key columns for table: ${table}`)
+      console.log(`🗃️  Primary key discovery query:`, query.trim())
+      
+      const result = await this.dbManager.query(query)
+      const pkColumns = result.rows.map((row: any) => row.column_name)
+      
+      console.log(`✅ Found primary key columns for ${table}:`, pkColumns)
+      return pkColumns
+    } catch (error) {
+      console.error(`💥 Failed to discover primary key columns for table ${table}:`, error)
+      return []
     }
   }
 

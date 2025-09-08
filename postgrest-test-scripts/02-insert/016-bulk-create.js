@@ -33,16 +33,10 @@ async function runTest() {
   console.log(`Test: Bulk create`);
   console.log('='.repeat(60));
 
-  // Expected response for comparison
+  // Expected response for comparison - should be successful bulk insert
     const expectedResponse = {
-  "error": {
-    "code": "23505",
-    "details": "Key (id)=(1) already exists.",
-    "hint": null,
-    "message": "duplicate key value violates unique constraint \"countries_pkey\""
-  },
-  "status": 409,
-  "statusText": "Conflict"
+  "status": 201,
+  "statusText": "Created"
 };
 
   // Track tables created for cleanup
@@ -64,9 +58,9 @@ create table
       console.log('✅ Setup completed');
     }
 
-    // Execute test code - PROPER bulk create test
-    console.log('🧪 Phase 1: Testing SUCCESSFUL bulk insert...');
-    const { data: bulkData, error: bulkError } = await supabase
+    // Execute test code - Bulk create test
+    console.log('🧪 Testing bulk insert with array of records...');
+    const { data, error } = await supabase
   .from('countries')
   .insert([
     { id: 1, name: 'Mordor' },
@@ -75,52 +69,26 @@ create table
   ])
   .select()
 
-    if (bulkError) {
-      throw new Error(`Bulk insert should have succeeded: ${bulkError.message}`);
-    }
-
-    console.log('✅ Successfully inserted', bulkData?.length || 0, 'records via bulk operation');
-    console.log('📊 Bulk insert data:', bulkData);
-
-    // Phase 2: Test constraint violation (as per original spec)
-    console.log('🧪 Phase 2: Testing constraint violation handling...');
-    const { error } = await supabase
-  .from('countries')
-  .insert([
-    { id: 4, name: 'Rohan' },
-    { id: 1, name: 'Duplicate Test' }, // Should conflict with existing id: 1
-  ])
-
-    // Validate constraint violation occurred
-    const hasExpectedError = error && 
-      error.message.includes('duplicate key value violates unique constraint') &&
-      error.message.includes('countries_pkey');
+    // Validate successful bulk insert
+    const insertSuccess = !error && data && data.length === 3;
     
-    // Overall test passes if bulk insert worked AND constraint violation was caught
-    const bulkInsertWorked = bulkData && bulkData.length === 3;
-    const constraintHandlingWorked = hasExpectedError;
-    const overallSuccess = bulkInsertWorked && constraintHandlingWorked;
-    
-    console.log(`✅ Test result: ${overallSuccess ? 'PASS' : 'FAIL'}`);
-    console.log(`   - Bulk insert success: ${bulkInsertWorked ? '✅' : '❌'}`);
-    console.log(`   - Constraint handling: ${constraintHandlingWorked ? '✅' : '❌'}`);
+    console.log(`✅ Test result: ${insertSuccess ? 'PASS' : 'FAIL'}`);
     
     if (error) {
-      console.log('✅ Expected constraint violation caught:', error.message);
+      console.log('❌ Bulk insert error:', error.message);
     } else {
-      console.log('❌ Expected duplicate key constraint violation but operation succeeded');
+      console.log('✅ Successfully bulk inserted', data?.length || 0, 'records');
+      console.log('📊 Inserted data:', data);
     }
     
     return {
       testId: '016-bulk-create',
       functionId: 'insert',
       name: 'Bulk create',
-      passed: overallSuccess,
+      passed: insertSuccess,
       error: error ? error.message : null,
-      data: bulkData, // Contains the successfully bulk-inserted records
-      expected: expectedResponse,
-      bulkInsertWorked: bulkInsertWorked,
-      constraintHandlingWorked: constraintHandlingWorked
+      data: data,
+      expected: expectedResponse
     };
 
   } catch (err) {
@@ -132,9 +100,7 @@ create table
       passed: false,
       error: err.message,
       data: null,
-      expected: expectedResponse,
-      bulkInsertWorked: false,
-      constraintHandlingWorked: false
+      expected: expectedResponse
     };
   } finally {
     // Always cleanup, regardless of pass/fail

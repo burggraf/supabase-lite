@@ -207,14 +207,14 @@ export class ResponseFormatter {
     let status = 200
     let data = results
 
-    // Handle Prefer header
-    if (query.preferReturn === 'minimal') {
+    // Handle Prefer header or no select parameter (PostgREST spec: UPDATE without select returns null data)
+    if (query.preferReturn === 'minimal' || !query.select) {
       status = 204
-      data = []
+      data = null
     }
 
     // Handle single object response (.single() method)
-    if (query.returnSingle && query.preferReturn !== 'minimal') {
+    if (query.returnSingle && query.preferReturn !== 'minimal' && query.select) {
       if (data.length === 0) {
         return {
           data: {

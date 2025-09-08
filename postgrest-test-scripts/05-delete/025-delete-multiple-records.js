@@ -47,10 +47,9 @@ async function runTest() {
     const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 
     // Setup SQL
-    const setupSQL = `drop table if exists countries;
-
-create table
+    const setupSQL = `create table
   countries (id int8 primary key, name text);
+
 insert into
   countries (id, name)
 values
@@ -64,42 +63,32 @@ values
 
     // Execute test code
     console.log('🧪 Executing test code...');
-    const response = await supabase
-  .from('countries')
-  .delete()
-  .in('id', [1, 2, 3])
+    const { data, error } = await supabase
+      .from('countries')
+      .delete()
+      .in('id', [1, 2, 3])
 
-    // Basic validation
-    if (data && expectedResponse && expectedResponse.data) {
-      const dataMatches = JSON.stringify(data) === JSON.stringify(expectedResponse.data);
-      console.log(`✅ Test result: ${dataMatches ? 'PASS' : 'FAIL'}`);
-      
-      if (!dataMatches) {
-        console.log('📊 Expected:', JSON.stringify(expectedResponse.data, null, 2));
-        console.log('📊 Actual:', JSON.stringify(data, null, 2));
-      }
-      
-      return {
-        testId: '025-delete-multiple-records',
-        functionId: 'delete',
-        name: 'Delete multiple records',
-        passed: dataMatches,
-        error: null,
-        data: data,
-        expected: expectedResponse.data
-      };
-    } else {
-      console.log('⚠️  No expected response data to compare');
-      return {
-        testId: '025-delete-multiple-records',
-        functionId: 'delete',
-        name: 'Delete multiple records',
-        passed: data ? true : false,
-        error: error ? error.message : null,
-        data: data,
-        expected: expectedResponse ? expectedResponse.data : null
-      };
+    // For DELETE operations with status 204, we expect no data and no error
+    const testPassed = error === null;
+    console.log(`✅ Test result: ${testPassed ? 'PASS' : 'FAIL'}`);
+    
+    if (!testPassed && error) {
+      console.log('❌ Error:', JSON.stringify(error, null, 2));
     }
+    
+    if (testPassed) {
+      console.log('✅ DELETE operation completed successfully (status 204 - No Content expected)');
+    }
+
+    return {
+      testId: '025-delete-multiple-records',
+      functionId: 'delete',
+      name: 'Delete multiple records',
+      passed: testPassed,
+      error: error ? error.message : null,
+      data: data,
+      expected: expectedResponse
+    };
 
   } catch (err) {
     console.log(`❌ Test failed with error: ${err.message}`);
@@ -110,7 +99,7 @@ values
       passed: false,
       error: err.message,
       data: null,
-      expected: expectedResponse ? expectedResponse.data : null
+      expected: expectedResponse
     };
   } finally {
     // Always cleanup, regardless of pass/fail

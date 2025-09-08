@@ -35,6 +35,7 @@ async function runTest() {
 
   // Expected response for comparison
     const expectedResponse = {
+  "data": null,
   "status": 204,
   "statusText": "No Content"
 };
@@ -64,42 +65,35 @@ values
 
     // Execute test code
     console.log('🧪 Executing test code...');
-    const { error } = await supabase
+    const { data, error } = await supabase
   .from('instruments')
   .update({ name: 'piano' })
   .eq('id', 1)
 
-    // Basic validation
-    if (data && expectedResponse && expectedResponse.data) {
-      const dataMatches = JSON.stringify(data) === JSON.stringify(expectedResponse.data);
-      console.log(`✅ Test result: ${dataMatches ? 'PASS' : 'FAIL'}`);
-      
-      if (!dataMatches) {
-        console.log('📊 Expected:', JSON.stringify(expectedResponse.data, null, 2));
-        console.log('📊 Actual:', JSON.stringify(data, null, 2));
+    // Basic validation - for basic update, data should be null
+    const dataMatches = data === expectedResponse.data; // Both should be null
+    const noError = !error;
+    const testPassed = dataMatches && noError;
+    
+    console.log(`✅ Test result: ${testPassed ? 'PASS' : 'FAIL'}`);
+    
+    if (!testPassed) {
+      console.log('📊 Expected data:', expectedResponse.data);
+      console.log('📊 Actual data:', data);
+      if (error) {
+        console.log('❌ Error occurred:', error.message);
       }
-      
-      return {
-        testId: '017-updating-your-data',
-        functionId: 'update',
-        name: 'Updating your data',
-        passed: dataMatches,
-        error: null,
-        data: data,
-        expected: expectedResponse.data
-      };
-    } else {
-      console.log('⚠️  No expected response data to compare');
-      return {
-        testId: '017-updating-your-data',
-        functionId: 'update',
-        name: 'Updating your data',
-        passed: data ? true : false,
-        error: error ? error.message : null,
-        data: data,
-        expected: expectedResponse ? expectedResponse.data : null
-      };
     }
+    
+    return {
+      testId: '017-updating-your-data',
+      functionId: 'update',
+      name: 'Updating your data',
+      passed: testPassed,
+      error: error ? error.message : null,
+      data: data,
+      expected: expectedResponse.data
+    };
 
   } catch (err) {
     console.log(`❌ Test failed with error: ${err.message}`);
@@ -110,7 +104,7 @@ values
       passed: false,
       error: err.message,
       data: null,
-      expected: expectedResponse ? expectedResponse.data : null
+      expected: expectedResponse.data
     };
   } finally {
     // Always cleanup, regardless of pass/fail

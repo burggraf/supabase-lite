@@ -1,0 +1,298 @@
+{
+  "total": 89,
+  "passed": 32,
+  "failed": 57,
+  "skipped": 0,
+  "duration": 12294,
+  "startTime": 1757288316660,
+  "endTime": 1757288328954,
+  "passRate": "36.0%",
+  "averageTestDuration": 37,
+  "failedTests": [
+    {
+      "testId": "011-querying-json-data",
+      "functionId": "select",
+      "error": null
+    },
+    {
+      "testId": "013-switching-schemas-per-query",
+      "functionId": "select",
+      "error": "Setup SQL failed: SQL execution failed - schema \"myschema\" already exists"
+    },
+    {
+      "testId": "026-call-a-postgres-function-without-arguments",
+      "functionId": "rpc",
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+    },
+    {
+      "testId": "027-call-a-postgres-function-with-arguments",
+      "functionId": "rpc",
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+    },
+    {
+      "testId": "028-bulk-processing",
+      "functionId": "rpc",
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+    },
+    {
+      "testId": "029-call-a-postgres-function-with-filters",
+      "functionId": "rpc",
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+    },
+    {
+      "testId": "030-call-a-read-only-postgres-function",
+      "functionId": "rpc",
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+    },
+    {
+      "testId": "031-applying-filters",
+      "functionId": "using-filters",
+      "error": "supabase.from(...).eq is not a function"
+    },
+    {
+      "testId": "032-chaining-filters",
+      "functionId": "using-filters",
+      "error": "relation \"cities\" does not exist"
+    },
+    {
+      "testId": "033-conditional-chaining",
+      "functionId": "using-filters",
+      "error": "relation \"cities\" does not exist"
+    },
+    {
+      "testId": "036-with-select.js",
+      "functionId": "eq",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "037-with-select.js",
+      "functionId": "neq",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "038-with-select.js",
+      "functionId": "gt",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "039-with-select.js",
+      "functionId": "gte",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "040-with-select.js",
+      "functionId": "lt",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "041-with-select.js",
+      "functionId": "lte",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "042-with-select.js",
+      "functionId": "like",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "043-with-select.js",
+      "functionId": "ilike",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "044-checking-nullness",
+      "functionId": "is",
+      "error": null
+    },
+    {
+      "testId": "045-with-select.js",
+      "functionId": "in",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "046-on-array-columns",
+      "functionId": "contains",
+      "error": null
+    },
+    {
+      "testId": "048-on-jsonb-columns.js",
+      "functionId": "contains",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "051-on-jsonb-columns.js",
+      "functionId": "contained-by",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "052-with-select.js",
+      "functionId": "range-gt",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "053-with-select.js",
+      "functionId": "range-gte",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "054-with-select.js",
+      "functionId": "range-lt",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "055-with-select.js",
+      "functionId": "range-lte",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "056-with-select.js",
+      "functionId": "range-adjacent",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "057-on-array-columns",
+      "functionId": "overlaps",
+      "error": "malformed array literal: \"is:closed,severity:high\""
+    },
+    {
+      "testId": "059-text-search.js",
+      "functionId": "text-search",
+      "error": "Invalid or unexpected token"
+    },
+    {
+      "testId": "060-basic-normalization.js",
+      "functionId": "text-search",
+      "error": "Invalid or unexpected token"
+    },
+    {
+      "testId": "061-full-normalization.js",
+      "functionId": "text-search",
+      "error": "Invalid or unexpected token"
+    },
+    {
+      "testId": "062-web-search.js",
+      "functionId": "text-search",
+      "error": "Invalid or unexpected token"
+    },
+    {
+      "testId": "063-with-select.js",
+      "functionId": "match",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "064-with-select.js",
+      "functionId": "not",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "065-with-select.js",
+      "functionId": "or",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "066-use-or-with-and.js",
+      "functionId": "or",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "067-use-or-on-referenced-tables.js",
+      "functionId": "or",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "068-with-select.js",
+      "functionId": "filter",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "070-with-upsert.js",
+      "functionId": "db-modifiers-select",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "071-with-select.js",
+      "functionId": "order",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "072-on-a-referenced-table",
+      "functionId": "order",
+      "error": "Unknown operator: name"
+    },
+    {
+      "testId": "073-order-parent-table-by-a-referenced-table",
+      "functionId": "order",
+      "error": "function section(text) does not exist"
+    },
+    {
+      "testId": "074-with-select.js",
+      "functionId": "limit",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "075-on-a-referenced-table",
+      "functionId": "limit",
+      "error": "column instruments.limit does not exist"
+    },
+    {
+      "testId": "076-with-select.js",
+      "functionId": "range",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "077-aborting-requests-in-flight",
+      "functionId": "abort-signal",
+      "error": "AbortError: This operation was aborted"
+    },
+    {
+      "testId": "078-set-a-timeout",
+      "functionId": "abort-signal",
+      "error": "relation \"very_big_table\" does not exist"
+    },
+    {
+      "testId": "079-with-select.js",
+      "functionId": "single",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "080-with-select.js",
+      "functionId": "maybe-single",
+      "error": "missing ) after argument list"
+    },
+    {
+      "testId": "081-return-data-as-csv",
+      "functionId": "csv",
+      "error": null
+    },
+    {
+      "testId": "082-override-type-of-successful-response.js",
+      "functionId": "returns",
+      "error": "Unexpected token ')'"
+    },
+    {
+      "testId": "083-override-type-of-object-response.js",
+      "functionId": "returns",
+      "error": "Unexpected token ')'"
+    },
+    {
+      "testId": "084-complete-override-type-of-successful-response.js",
+      "functionId": "overrideTypes",
+      "error": "Unexpected token ','"
+    },
+    {
+      "testId": "085-complete-override-type-of-object-response.js",
+      "functionId": "overrideTypes",
+      "error": "Invalid destructuring assignment target"
+    },
+    {
+      "testId": "086-partial-override-type-of-successful-response.js",
+      "functionId": "overrideTypes",
+      "error": "Unexpected token ')'"
+    },
+    {
+      "testId": "087-partial-override-type-of-object-response.js",
+      "functionId": "overrideTypes",
+      "error": "Unexpected token ')'"
+    }
+  ]
+}

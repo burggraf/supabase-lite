@@ -64,7 +64,7 @@ values
 
     // Execute test code
     console.log('🧪 Executing test code...');
-    const response = await supabase
+    const { data, error } = await supabase
   .from('countries')
   .delete()
   .eq('id', 1)

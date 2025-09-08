@@ -229,10 +229,10 @@ export function parseOperatorValue(operator: string, value: string): { op: Opera
         const trimmed = v.trim()
         // Try to parse as number if possible
         if (!isNaN(Number(trimmed))) {
-          return String(Number(trimmed))
+          return Number(trimmed)
         }
         return trimmed
-      }).join(',')
+      })
       break
 
     case 'cs':

@@ -5,6 +5,11 @@ export interface ParsedFilter {
   operator: string
   value: any
   negated?: boolean
+  jsonPath?: {
+    columnName: string
+    jsonOperator: string
+    path: string
+  }
 }
 
 export interface ParsedOrder {
@@ -37,6 +42,7 @@ export interface ParsedQuery {
   preferReturn?: 'representation' | 'minimal' | 'headers-only'
   preferResolution?: 'merge-duplicates' | 'ignore-duplicates'
   returnSingle?: boolean  // For .single() method support
+  onConflict?: string  // Column(s) to use for ON CONFLICT resolution
 }
 
 export class QueryParser {
@@ -72,6 +78,12 @@ export class QueryParser {
     const order = params.get('order')
     if (order) {
       query.order = this.parseOrder(order)
+    }
+
+    // Parse on_conflict parameter for upserts
+    const onConflict = params.get('on_conflict')
+    if (onConflict) {
+      query.onConflict = onConflict
     }
 
     // Parse pagination with validation
@@ -213,8 +225,9 @@ export class QueryParser {
           // Check if this is a JSON path extraction (address->city, address->>city, etc.)
           const jsonPathInfo = this.parseJSONPathExpression(trimmed)
           if (jsonPathInfo) {
-            columns.push(jsonPathInfo.expression)
-            aliases[jsonPathInfo.expression] = jsonPathInfo.alias
+            // The original trimmed string IS the expression we want to keep
+            columns.push(trimmed)
+            aliases[trimmed] = jsonPathInfo.alias
           } else {
             columns.push(trimmed)
           }
@@ -242,8 +255,8 @@ export class QueryParser {
             // Check if this is a JSON path extraction (address->city, address->>city, etc.)
             const jsonPathInfo = this.parseJSONPathExpression(trimmed)
             if (jsonPathInfo) {
-              columns.push(jsonPathInfo.expression)
-              aliases[jsonPathInfo.expression] = jsonPathInfo.alias
+              columns.push(trimmed)
+              aliases[trimmed] = jsonPathInfo.alias
             } else {
               columns.push(trimmed)
             }
@@ -287,8 +300,8 @@ export class QueryParser {
         // Check if this is a JSON path extraction (address->city, address->>city, etc.)
         const jsonPathInfo = this.parseJSONPathExpression(trimmed)
         if (jsonPathInfo) {
-          columns.push(jsonPathInfo.expression)
-          aliases[jsonPathInfo.expression] = jsonPathInfo.alias
+          columns.push(trimmed)
+          aliases[trimmed] = jsonPathInfo.alias
         } else {
           columns.push(trimmed)
         }
@@ -401,7 +414,7 @@ export class QueryParser {
    * Parse JSON path expression like address->city, address->>city, etc.
    * Returns null if not a JSON path expression
    */
-  private static parseJSONPathExpression(expression: string): { expression: string, alias: string } | null {
+  private static parseJSONPathExpression(expression: string): { columnName: string, operator: string, path: string, alias: string } | null {
     // Match JSON operators: ->, ->>, #>, #>>
     // Examples: address->city, address->>city, address#>'{city,name}', address#>>'{city,name}'
     const jsonPathRegex = /^([a-zA-Z_][a-zA-Z0-9_]*)(->>?|#>>?)(.+)$/
@@ -428,10 +441,11 @@ export class QueryParser {
       alias = pathParts[pathParts.length - 1].trim()
     }
     
-    // Return the original expression and the computed alias
     return {
-      expression: expression,
-      alias: alias
+      columnName,
+      operator,
+      path,
+      alias
     }
   }
 
@@ -490,15 +504,31 @@ export class QueryParser {
       return this.parseLogicalFilter(key, value)
     }
 
+    // Check if the column key contains JSON path operators
+    console.log(`🔍 Parsing filter - key: "${key}", value: "${value}"`)
+    const jsonPathInfo = this.parseJSONPathExpression(key)
+    console.log(`🔍 JSON Path info:`, jsonPathInfo)
+
     // Handle regular filters: column=operator.value
     const match = value.match(/^([a-z]+)\.(.*)$/i)
     if (!match) {
       // Default to equality if no operator specified
-      return {
+      const filter: ParsedFilter = {
         column: key,
         operator: 'eq',
         value: value
       }
+      
+      // Add JSON path information if detected
+      if (jsonPathInfo) {
+        filter.jsonPath = {
+          columnName: jsonPathInfo.columnName,
+          jsonOperator: jsonPathInfo.operator,
+          path: jsonPathInfo.path
+        }
+      }
+      
+      return filter
     }
 
     const [, operator, operatorValue] = match
@@ -509,11 +539,22 @@ export class QueryParser {
 
     try {
       const { parsedValue } = parseOperatorValue(operator, operatorValue)
-      return {
+      const filter: ParsedFilter = {
         column: key,
         operator,
         value: parsedValue
       }
+      
+      // Add JSON path information if detected
+      if (jsonPathInfo) {
+        filter.jsonPath = {
+          columnName: jsonPathInfo.columnName,
+          jsonOperator: jsonPathInfo.operator,
+          path: jsonPathInfo.path
+        }
+      }
+      
+      return filter
     } catch (error) {
       console.error(`Error parsing filter ${key}=${value}:`, error)
       return null

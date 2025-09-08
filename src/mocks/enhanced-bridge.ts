@@ -79,7 +79,12 @@ export class EnhancedSupabaseAPIBridge {
             data: null // HEAD returns no body, only headers
           }
         case 'POST':
-          return await this.handleInsert(request.table, enhancedQuery, request.body, context)
+          // Check if this is an upsert request (prefer: resolution=merge-duplicates)
+          if (enhancedQuery.preferResolution === 'merge-duplicates') {
+            return await this.handleUpsert(request.table, enhancedQuery, request.body, context)
+          } else {
+            return await this.handleInsert(request.table, enhancedQuery, request.body, context)
+          }
         case 'PATCH':
           return await this.handleUpdate(request.table, enhancedQuery, request.body, context)
         case 'DELETE':
@@ -283,6 +288,34 @@ export class EnhancedSupabaseAPIBridge {
       return ResponseFormatter.formatInsertResponse(result.rows, query)
     } catch (error) {
       logError('INSERT query failed', error as Error, { table, body })
+      return ResponseFormatter.formatErrorResponse(error)
+    }
+  }
+
+  /**
+   * Handle UPSERT queries (INSERT with ON CONFLICT DO UPDATE)
+   */
+  private async handleUpsert(
+    table: string,
+    query: ParsedQuery,
+    body: any,
+    context: SessionContext
+  ): Promise<FormattedResponse> {
+    if (!body || typeof body !== 'object') {
+      throw new Error('Request body is required for UPSERT')
+    }
+
+    try {
+      const data = Array.isArray(body) ? body : [body]
+      
+      const sqlQuery = await this.sqlBuilder.buildUpsertQuery(table, data, query.onConflict)
+      
+      logger.debug('Built UPSERT SQL', sqlQuery)
+
+      const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
+      return ResponseFormatter.formatInsertResponse(result.rows, query)
+    } catch (error) {
+      logError('UPSERT query failed', error as Error, { table, body })
       return ResponseFormatter.formatErrorResponse(error)
     }
   }
