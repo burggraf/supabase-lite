@@ -197,18 +197,15 @@ export class SQLBuilder {
     
     // Check if we have embedded resources - use different approach
     if (query.embedded && query.embedded.length > 0) {
-      // If filters reference embedded tables, use JOIN-based approach
-      // Otherwise use correlated subquery approach
-      if (hasEmbeddedTableFilters) {
-        return await this.buildSelectWithJoins(table, query)
-      } else {
-        return await this.buildSelectWithJoinAggregation(table, query)
-      }
+      // Always use correlated subquery approach for embedded resources
+      // This ensures referenced table filters don't affect parent table rows
+      return await this.buildSelectWithJoinAggregation(table, query)
     } else {
       // Simple query without embedded resources, but check for filters on referenced tables
       if (hasEmbeddedTableFilters) {
-        // Even without explicit embedding, we need joins for filters
-        return await this.buildSelectWithJoins(table, query)
+        // For filters on referenced tables without embedding, we need to create 
+        // implicit embedding to maintain PostgREST behavior
+        return await this.buildSelectWithImplicitEmbedding(table, query)
       } else {
         return await this.buildSimpleSelectQuery(table, query)
       }
@@ -248,6 +245,39 @@ export class SQLBuilder {
   }
 
   /**
+   * Build SELECT query with implicit embedding for referenced table filters
+   * This method handles cases like .eq('orchestral_sections.name', 'percussion')
+   * where the referenced table is filtered but not explicitly embedded
+   */
+  private async buildSelectWithImplicitEmbedding(table: string, query: ParsedQuery): Promise<{ sql: string, joins: JoinInfo[] }> {
+    console.log(`🔍 Building SELECT with implicit embedding for: ${table}`)
+    
+    // Get tables referenced in filters
+    const tablesInFilters = this.getFilteredTableNames(query)
+    
+    // Create implicit embedded resources for filtered tables
+    const implicitEmbedded = Array.from(tablesInFilters).map(tableName => ({
+      table: tableName,
+      select: ['*'],
+      filters: query.filters.filter(f => f.column.startsWith(tableName + '.')),
+      embedded: []
+    }))
+    
+    // Create a modified query with implicit embedding
+    const modifiedQuery = {
+      ...query,
+      embedded: [...(query.embedded || []), ...implicitEmbedded],
+      // Remove referenced table filters from main filters since they'll be applied to subqueries
+      filters: query.filters.filter(f => !f.column.includes('.'))
+    }
+    
+    console.log(`🔧 Created implicit embedded resources:`, implicitEmbedded.map(e => e.table))
+    
+    // Use the correlated subquery approach
+    return await this.buildSelectWithJoinAggregation(table, modifiedQuery)
+  }
+
+  /**
    * Build SELECT query with JOINs for filtering on embedded tables
    */
   private async buildSelectWithJoins(table: string, query: ParsedQuery): Promise<{ sql: string, joins: JoinInfo[] }> {
@@ -283,12 +313,25 @@ export class SQLBuilder {
       // Discover foreign key relationship
       const fkRelationship = await this.discoverForeignKeyRelationship(table, referencedTable)
       if (fkRelationship) {
-        // Determine JOIN type - use INNER JOIN if the embedded resource specifies inner join
+        // Determine JOIN type for PostgREST compatibility
         const embeddedResource = query.embedded?.find(e => e.table === referencedTable)
-        const isInnerJoin = embeddedResource?.alias?.includes('inner') || 
-                           (embeddedResource && !embeddedResource.alias) // Default inner for embedded
         
-        const joinType: 'LEFT' | 'INNER' = isInnerJoin ? 'INNER' : 'LEFT'
+        // For referenced table filters (without explicit embedding), always use LEFT JOIN
+        // This ensures parent rows are returned with referenced table fields set to null
+        // when the filter doesn't match (correct PostgREST behavior)
+        const isExplicitInnerJoin = embeddedResource?.alias?.includes('inner')
+        const isFilterOnlyReference = tablesInFilters.has(referencedTable) && !embeddedResource
+        
+        let joinType: 'LEFT' | 'INNER'
+        if (isExplicitInnerJoin) {
+          joinType = 'INNER'
+        } else if (isFilterOnlyReference) {
+          // Filter on referenced table without embedding - use LEFT JOIN for PostgREST compatibility
+          joinType = 'LEFT'
+        } else {
+          // Default LEFT JOIN for embedded resources (changed from INNER for PostgREST compatibility)
+          joinType = 'LEFT'
+        }
         
         let joinCondition: string
         if (fkRelationship.fromTable === table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === referencedTable.replace(/^"(.*)"$/, '$1')) {
@@ -667,18 +710,38 @@ export class SQLBuilder {
       console.log(`🔗 Building many-to-many subquery through join table: ${fkRelationship.joinTable}`)
       
       const joinTableQuoted = quoteTableName(fkRelationship.joinTable!)
-      const whereCondition = `${quotedEmbeddedTable}.${fkRelationship.toColumn} IN (
+      let whereCondition = `${quotedEmbeddedTable}.${fkRelationship.toColumn} IN (
         SELECT ${joinTableQuoted}.${fkRelationship.joinEmbeddedColumn} 
         FROM ${joinTableQuoted} 
         WHERE ${joinTableQuoted}.${fkRelationship.joinMainColumn} = ${quotedMainTable}.${fkRelationship.fromColumn}
       )`
+      
+      // Build additional WHERE conditions for embedded filters
+      if (embedded.filters && embedded.filters.length > 0) {
+        const embeddedFilterConditions = embedded.filters
+          .map(filter => {
+            // Strip table name from filter column since we're already in the embedded table context
+            const columnName = filter.column.includes('.') ? 
+              filter.column.split('.').slice(1).join('.') : filter.column
+            return this.buildFilterCondition({ ...filter, column: columnName })
+          })
+          .filter(Boolean)
+        
+        if (embeddedFilterConditions.length > 0) {
+          whereCondition += ` AND ${embeddedFilterConditions.join(' AND ')}`
+        }
+      }
       
       if (isCountOnly) {
         // For count-only requests, return a simple count without json_agg nesting
         subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${whereCondition})))`
       } else {
         const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
-        subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+        subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
+                           THEN COALESCE(json_agg(${selectClause}), '[]'::json) 
+                           ELSE NULL 
+                           END 
+                    FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
       }
     } else {
       // Direct relationship (one-to-many or many-to-one)
@@ -693,12 +756,32 @@ export class SQLBuilder {
         // Return single object, not array
         whereCondition = `${quotedMainTable}.${fkRelationship.fromColumn} = ${quotedEmbeddedTable}.${fkRelationship.toColumn}`
         
+        // Build additional WHERE conditions for embedded filters
+        let additionalWhere = ''
+        if (embedded.filters && embedded.filters.length > 0) {
+          const embeddedFilterConditions = embedded.filters
+            .map(filter => {
+              // Strip table name from filter column since we're already in the embedded table context
+              const columnName = filter.column.includes('.') ? 
+                filter.column.split('.').slice(1).join('.') : filter.column
+              return this.buildFilterCondition({ ...filter, column: columnName })
+            })
+            .filter(Boolean)
+          
+          if (embeddedFilterConditions.length > 0) {
+            additionalWhere = ` AND ${embeddedFilterConditions.join(' AND ')}`
+          }
+        }
+        
+        const fullWhereCondition = `${whereCondition}${additionalWhere}`
+        
         if (isCountOnly) {
-          // For count-only many-to-one, just return 1 if relationship exists
-          subquery = `SELECT json_build_object('count', CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) THEN 1 ELSE 0 END)`
+          // For count-only many-to-one, return 1 if relationship exists and matches filters, 0 otherwise
+          subquery = `SELECT json_build_object('count', CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}) THEN 1 ELSE 0 END)`
         } else {
           const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
-          subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${whereCondition} LIMIT 1`
+          // Return NULL if no matching rows found (when filters don't match)
+          subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1`
         }
         return subquery
       } else {
@@ -708,12 +791,36 @@ export class SQLBuilder {
 
       // One-to-many: embedded table references main table
       // Can have multiple rows in embedded table for each main table row
+      
+      // Build additional WHERE conditions for embedded filters
+      let additionalWhere = ''
+      if (embedded.filters && embedded.filters.length > 0) {
+        const embeddedFilterConditions = embedded.filters
+          .map(filter => {
+            // Strip table name from filter column since we're already in the embedded table context
+            const columnName = filter.column.includes('.') ? 
+              filter.column.split('.').slice(1).join('.') : filter.column
+            return this.buildFilterCondition({ ...filter, column: columnName })
+          })
+          .filter(Boolean)
+        
+        if (embeddedFilterConditions.length > 0) {
+          additionalWhere = ` AND ${embeddedFilterConditions.join(' AND ')}`
+        }
+      }
+      
+      const fullWhereCondition = `${whereCondition}${additionalWhere}`
+      
       if (isCountOnly) {
         // For count-only requests, return a simple count without json_agg nesting
-        subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${whereCondition})))`
+        subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition})))`
       } else {
         const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
-        subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+        subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}) 
+                           THEN COALESCE(json_agg(${selectClause}), '[]'::json) 
+                           ELSE NULL 
+                           END 
+                    FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}`
       }
     }
     
