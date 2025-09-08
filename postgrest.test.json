@@ -611,22 +611,22 @@
             {
               "type": "info",
               "message": "Starting test: Updating your data",
-              "timestamp": "2025-09-08T16:53:15.906Z"
+              "timestamp": "2025-09-08T18:03:42.976Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T16:53:17.483Z"
+              "timestamp": "2025-09-08T18:03:45.289Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T16:53:17.484Z"
+              "timestamp": "2025-09-08T18:03:45.291Z"
             },
             {
               "type": "error",
               "message": "Test failed - results don't match:\nExpected:\n{\n  \"status\": 204,\n  \"statusText\": \"No Content\"\n}\n\nActual:\n{\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
-              "timestamp": "2025-09-08T16:53:17.556Z"
+              "timestamp": "2025-09-08T18:03:45.396Z"
             }
           ],
           "skip": false

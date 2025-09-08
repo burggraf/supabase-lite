@@ -1,0 +1,1933 @@
+{
+  "summary": {
+    "total": 89,
+    "passed": 32,
+    "failed": 57,
+    "skipped": 0,
+    "duration": 11767,
+    "startTime": 1757354183914,
+    "endTime": 1757354195681,
+    "passRate": "36.0%",
+    "averageTestDuration": 32,
+    "failedTests": [
+      {
+        "testId": "013-switching-schemas-per-query",
+        "functionId": "select",
+        "error": "relation \"mytable\" does not exist"
+      },
+      {
+        "testId": "023-delete-records",
+        "functionId": "delete",
+        "error": null
+      },
+      {
+        "testId": "026-call-a-postgres-function-without-arguments",
+        "functionId": "rpc",
+        "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+      },
+      {
+        "testId": "027-call-a-postgres-function-with-arguments",
+        "functionId": "rpc",
+        "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+      },
+      {
+        "testId": "028-bulk-processing",
+        "functionId": "rpc",
+        "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+      },
+      {
+        "testId": "029-call-a-postgres-function-with-filters",
+        "functionId": "rpc",
+        "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+      },
+      {
+        "testId": "030-call-a-read-only-postgres-function",
+        "functionId": "rpc",
+        "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\""
+      },
+      {
+        "testId": "031-applying-filters",
+        "functionId": "using-filters",
+        "error": "supabase.from(...).eq is not a function"
+      },
+      {
+        "testId": "032-chaining-filters",
+        "functionId": "using-filters",
+        "error": "relation \"cities\" does not exist"
+      },
+      {
+        "testId": "033-conditional-chaining",
+        "functionId": "using-filters",
+        "error": "relation \"cities\" does not exist"
+      },
+      {
+        "testId": "036-with-select.js",
+        "functionId": "eq",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "037-with-select.js",
+        "functionId": "neq",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "038-with-select.js",
+        "functionId": "gt",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "039-with-select.js",
+        "functionId": "gte",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "040-with-select.js",
+        "functionId": "lt",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "041-with-select.js",
+        "functionId": "lte",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "042-with-select.js",
+        "functionId": "like",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "043-with-select.js",
+        "functionId": "ilike",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "044-checking-nullness",
+        "functionId": "is",
+        "error": null
+      },
+      {
+        "testId": "045-with-select.js",
+        "functionId": "in",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "046-on-array-columns",
+        "functionId": "contains",
+        "error": null
+      },
+      {
+        "testId": "048-on-jsonb-columns.js",
+        "functionId": "contains",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "051-on-jsonb-columns.js",
+        "functionId": "contained-by",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "052-with-select.js",
+        "functionId": "range-gt",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "053-with-select.js",
+        "functionId": "range-gte",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "054-with-select.js",
+        "functionId": "range-lt",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "055-with-select.js",
+        "functionId": "range-lte",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "056-with-select.js",
+        "functionId": "range-adjacent",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "057-on-array-columns",
+        "functionId": "overlaps",
+        "error": "malformed array literal: \"is:closed,severity:high\""
+      },
+      {
+        "testId": "059-text-search.js",
+        "functionId": "text-search",
+        "error": "Invalid or unexpected token"
+      },
+      {
+        "testId": "060-basic-normalization.js",
+        "functionId": "text-search",
+        "error": "Invalid or unexpected token"
+      },
+      {
+        "testId": "061-full-normalization.js",
+        "functionId": "text-search",
+        "error": "Invalid or unexpected token"
+      },
+      {
+        "testId": "062-web-search.js",
+        "functionId": "text-search",
+        "error": "Invalid or unexpected token"
+      },
+      {
+        "testId": "063-with-select.js",
+        "functionId": "match",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "064-with-select.js",
+        "functionId": "not",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "065-with-select.js",
+        "functionId": "or",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "066-use-or-with-and.js",
+        "functionId": "or",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "067-use-or-on-referenced-tables.js",
+        "functionId": "or",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "068-with-select.js",
+        "functionId": "filter",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "070-with-upsert.js",
+        "functionId": "db-modifiers-select",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "071-with-select.js",
+        "functionId": "order",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "072-on-a-referenced-table",
+        "functionId": "order",
+        "error": "Unknown operator: name"
+      },
+      {
+        "testId": "073-order-parent-table-by-a-referenced-table",
+        "functionId": "order",
+        "error": "function section(text) does not exist"
+      },
+      {
+        "testId": "074-with-select.js",
+        "functionId": "limit",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "075-on-a-referenced-table",
+        "functionId": "limit",
+        "error": "column instruments.limit does not exist"
+      },
+      {
+        "testId": "076-with-select.js",
+        "functionId": "range",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "077-aborting-requests-in-flight",
+        "functionId": "abort-signal",
+        "error": "AbortError: This operation was aborted"
+      },
+      {
+        "testId": "078-set-a-timeout",
+        "functionId": "abort-signal",
+        "error": "relation \"very_big_table\" does not exist"
+      },
+      {
+        "testId": "079-with-select.js",
+        "functionId": "single",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "080-with-select.js",
+        "functionId": "maybe-single",
+        "error": "missing ) after argument list"
+      },
+      {
+        "testId": "081-return-data-as-csv",
+        "functionId": "csv",
+        "error": null
+      },
+      {
+        "testId": "082-override-type-of-successful-response.js",
+        "functionId": "returns",
+        "error": "Unexpected token ')'"
+      },
+      {
+        "testId": "083-override-type-of-object-response.js",
+        "functionId": "returns",
+        "error": "Unexpected token ')'"
+      },
+      {
+        "testId": "084-complete-override-type-of-successful-response.js",
+        "functionId": "overrideTypes",
+        "error": "Unexpected token ','"
+      },
+      {
+        "testId": "085-complete-override-type-of-object-response.js",
+        "functionId": "overrideTypes",
+        "error": "Invalid destructuring assignment target"
+      },
+      {
+        "testId": "086-partial-override-type-of-successful-response.js",
+        "functionId": "overrideTypes",
+        "error": "Unexpected token ')'"
+      },
+      {
+        "testId": "087-partial-override-type-of-object-response.js",
+        "functionId": "overrideTypes",
+        "error": "Unexpected token ')'"
+      }
+    ]
+  },
+  "results": [
+    {
+      "testId": "001-getting-your-data",
+      "functionId": "select",
+      "name": "Getting your data",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "Harry"
+        },
+        {
+          "id": 2,
+          "name": "Frodo"
+        },
+        {
+          "id": 3,
+          "name": "Katniss"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "name": "Harry"
+        },
+        {
+          "id": 2,
+          "name": "Frodo"
+        },
+        {
+          "id": 3,
+          "name": "Katniss"
+        }
+      ],
+      "testPath": "01-select/001-getting-your-data.js",
+      "duration": 55,
+      "timestamp": "2025-09-08T17:56:23.997Z"
+    },
+    {
+      "testId": "002-selecting-specific-columns",
+      "functionId": "select",
+      "name": "Selecting specific columns",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "name": "Frodo"
+        },
+        {
+          "name": "Harry"
+        },
+        {
+          "name": "Katniss"
+        }
+      ],
+      "expected": [
+        {
+          "name": "Frodo"
+        },
+        {
+          "name": "Harry"
+        },
+        {
+          "name": "Katniss"
+        }
+      ],
+      "testPath": "01-select/002-selecting-specific-columns.js",
+      "duration": 46,
+      "timestamp": "2025-09-08T17:56:24.145Z"
+    },
+    {
+      "testId": "003-query-referenced-tables",
+      "functionId": "select",
+      "name": "Query referenced tables",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "name": "strings",
+          "instruments": [
+            {
+              "name": "violin"
+            }
+          ]
+        },
+        {
+          "name": "woodwinds",
+          "instruments": [
+            {
+              "name": "flute"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "name": "strings",
+          "instruments": [
+            {
+              "name": "violin"
+            }
+          ]
+        },
+        {
+          "name": "woodwinds",
+          "instruments": [
+            {
+              "name": "flute"
+            }
+          ]
+        }
+      ],
+      "testPath": "01-select/003-query-referenced-tables.js",
+      "duration": 96,
+      "timestamp": "2025-09-08T17:56:24.341Z"
+    },
+    {
+      "testId": "004-query-referenced-tables-with-spaces-in-their-names",
+      "functionId": "select",
+      "name": "Query referenced tables with spaces in their names",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "name": "strings",
+          "musical instruments": [
+            {
+              "name": "violin"
+            }
+          ]
+        },
+        {
+          "name": "woodwinds",
+          "musical instruments": [
+            {
+              "name": "flute"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "name": "strings",
+          "musical instruments": [
+            {
+              "name": "violin"
+            }
+          ]
+        },
+        {
+          "name": "woodwinds",
+          "musical instruments": [
+            {
+              "name": "flute"
+            }
+          ]
+        }
+      ],
+      "testPath": "01-select/004-query-referenced-tables-with-spaces-in-their-names.js",
+      "duration": 89,
+      "timestamp": "2025-09-08T17:56:24.532Z"
+    },
+    {
+      "testId": "005-query-referenced-tables-through-a-join-table",
+      "functionId": "select",
+      "name": "Query referenced tables through a join table",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "name": "Kiran",
+          "teams": [
+            {
+              "name": "Green"
+            },
+            {
+              "name": "Blue"
+            }
+          ]
+        },
+        {
+          "name": "Evan",
+          "teams": [
+            {
+              "name": "Blue"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "name": "Kiran",
+          "teams": [
+            {
+              "name": "Green"
+            },
+            {
+              "name": "Blue"
+            }
+          ]
+        },
+        {
+          "name": "Evan",
+          "teams": [
+            {
+              "name": "Blue"
+            }
+          ]
+        }
+      ],
+      "testPath": "01-select/005-query-referenced-tables-through-a-join-table.js",
+      "duration": 161,
+      "timestamp": "2025-09-08T17:56:24.794Z"
+    },
+    {
+      "testId": "006-query-the-same-referenced-table-multiple-times",
+      "functionId": "select",
+      "name": "Query the same referenced table multiple times",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "content": "👋",
+          "from": {
+            "name": "Kiran"
+          },
+          "to": {
+            "name": "Evan"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "content": "👋",
+          "from": {
+            "name": "Kiran"
+          },
+          "to": {
+            "name": "Evan"
+          }
+        }
+      ],
+      "testPath": "01-select/006-query-the-same-referenced-table-multiple-times.js",
+      "duration": 91,
+      "timestamp": "2025-09-08T17:56:24.985Z"
+    },
+    {
+      "testId": "007-query-nested-foreign-tables-through-a-join-table",
+      "functionId": "select",
+      "name": "Query nested foreign tables through a join table",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "game_id": 1,
+          "away_team": {
+            "users": [
+              {
+                "id": 1,
+                "name": "Kiran"
+              },
+              {
+                "id": 2,
+                "name": "Evan"
+              }
+            ]
+          }
+        },
+        {
+          "game_id": 2,
+          "away_team": {
+            "users": [
+              {
+                "id": 1,
+                "name": "Kiran"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": [
+        {
+          "game_id": 1,
+          "away_team": {
+            "users": [
+              {
+                "id": 1,
+                "name": "Kiran"
+              },
+              {
+                "id": 2,
+                "name": "Evan"
+              }
+            ]
+          }
+        },
+        {
+          "game_id": 2,
+          "away_team": {
+            "users": [
+              {
+                "id": 1,
+                "name": "Kiran"
+              }
+            ]
+          }
+        }
+      ],
+      "testPath": "01-select/007-query-nested-foreign-tables-through-a-join-table.js",
+      "duration": 223,
+      "timestamp": "2025-09-08T17:56:25.309Z"
+    },
+    {
+      "testId": "008-filtering-through-referenced-tables",
+      "functionId": "select",
+      "name": "Filtering through referenced tables",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "name": "flute",
+          "section_id": 2,
+          "orchestral_sections": {
+            "id": 2,
+            "name": "woodwinds"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "name": "flute",
+          "section_id": 2,
+          "orchestral_sections": {
+            "id": 2,
+            "name": "woodwinds"
+          }
+        }
+      ],
+      "testPath": "01-select/008-filtering-through-referenced-tables.js",
+      "duration": 86,
+      "timestamp": "2025-09-08T17:56:25.496Z"
+    },
+    {
+      "testId": "009-querying-referenced-table-with-count",
+      "functionId": "select",
+      "name": "Querying referenced table with count",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": "8471742e-f70e-4414-a4b2-2637b57b0965",
+          "name": "strings",
+          "instruments": [
+            {
+              "count": 4
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "id": "693694e7-d993-4360-a6d7-6294e325d9b6",
+          "name": "strings",
+          "instruments": [
+            {
+              "count": 4
+            }
+          ]
+        }
+      ],
+      "testPath": "01-select/009-querying-referenced-table-with-count.js",
+      "duration": 79,
+      "timestamp": "2025-09-08T17:56:25.676Z"
+    },
+    {
+      "testId": "010-querying-with-count-option",
+      "functionId": "select",
+      "name": "Querying with count option",
+      "passed": true,
+      "error": null,
+      "data": {
+        "count": 3
+      },
+      "expected": {
+        "count": 3,
+        "status": 200,
+        "statusText": "OK"
+      },
+      "testPath": "01-select/010-querying-with-count-option.js",
+      "duration": 45,
+      "timestamp": "2025-09-08T17:56:25.822Z"
+    },
+    {
+      "testId": "011-querying-json-data",
+      "functionId": "select",
+      "name": "Querying JSON data",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "Frodo",
+          "city": "Hobbiton"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "name": "Frodo",
+          "city": "Hobbiton"
+        }
+      ],
+      "testPath": "01-select/011-querying-json-data.js",
+      "duration": 44,
+      "timestamp": "2025-09-08T17:56:25.967Z"
+    },
+    {
+      "testId": "012-querying-referenced-table-with-inner-join",
+      "functionId": "select",
+      "name": "Querying referenced table with inner join",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "name": "flute",
+          "orchestral_sections": {
+            "name": "woodwinds"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "name": "flute",
+          "orchestral_sections": {
+            "name": "woodwinds"
+          }
+        }
+      ],
+      "testPath": "01-select/012-querying-referenced-table-with-inner-join.js",
+      "duration": 84,
+      "timestamp": "2025-09-08T17:56:26.153Z"
+    },
+    {
+      "testId": "013-switching-schemas-per-query",
+      "functionId": "select",
+      "name": "Switching schemas per query",
+      "passed": false,
+      "error": "relation \"mytable\" does not exist",
+      "data": null,
+      "expected": [
+        {
+          "id": "4162e008-27b0-4c0f-82dc-ccaeee9a624d",
+          "data": "mydata"
+        }
+      ],
+      "testPath": "01-select/013-switching-schemas-per-query.js",
+      "duration": 47,
+      "timestamp": "2025-09-08T17:56:26.301Z"
+    },
+    {
+      "testId": "014-create-a-record",
+      "functionId": "insert",
+      "name": "Create a record",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "Mordor"
+        }
+      ],
+      "expected": {
+        "status": 201,
+        "statusText": "Created"
+      },
+      "testPath": "02-insert/014-create-a-record.js",
+      "duration": 37,
+      "timestamp": "2025-09-08T17:56:26.439Z"
+    },
+    {
+      "testId": "015-create-a-record-and-return-it",
+      "functionId": "insert",
+      "name": "Create a record and return it",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "Mordor"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "name": "Mordor"
+        }
+      ],
+      "testPath": "02-insert/015-create-a-record-and-return-it.js",
+      "duration": 37,
+      "timestamp": "2025-09-08T17:56:26.577Z"
+    },
+    {
+      "testId": "016-bulk-create",
+      "functionId": "insert",
+      "name": "Bulk create",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "Mordor"
+        },
+        {
+          "id": 2,
+          "name": "The Shire"
+        },
+        {
+          "id": 3,
+          "name": "Gondor"
+        }
+      ],
+      "expected": {
+        "status": 201,
+        "statusText": "Created"
+      },
+      "testPath": "02-insert/016-bulk-create.js",
+      "duration": 39,
+      "timestamp": "2025-09-08T17:56:26.715Z"
+    },
+    {
+      "testId": "017-updating-your-data",
+      "functionId": "update",
+      "name": "Updating your data",
+      "passed": true,
+      "error": null,
+      "data": null,
+      "expected": null,
+      "testPath": "03-update/017-updating-your-data.js",
+      "duration": 44,
+      "timestamp": "2025-09-08T17:56:26.860Z"
+    },
+    {
+      "testId": "018-update-a-record-and-return-it",
+      "functionId": "update",
+      "name": "Update a record and return it",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "piano"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "name": "piano"
+        }
+      ],
+      "testPath": "03-update/018-update-a-record-and-return-it.js",
+      "duration": 46,
+      "timestamp": "2025-09-08T17:56:27.007Z"
+    },
+    {
+      "testId": "019-updating-json-data",
+      "functionId": "update",
+      "name": "Updating JSON data",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "Michael",
+          "address": {
+            "street": "Melrose Place",
+            "postcode": 90210
+          }
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "name": "Michael",
+          "address": {
+            "street": "Melrose Place",
+            "postcode": 90210
+          }
+        }
+      ],
+      "testPath": "03-update/019-updating-json-data.js",
+      "duration": 45,
+      "timestamp": "2025-09-08T17:56:27.154Z"
+    },
+    {
+      "testId": "020-upsert-your-data",
+      "functionId": "upsert",
+      "name": "Upsert your data",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "piano"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "name": "piano"
+        }
+      ],
+      "testPath": "04-upsert/020-upsert-your-data.js",
+      "duration": 45,
+      "timestamp": "2025-09-08T17:56:27.299Z"
+    },
+    {
+      "testId": "021-bulk-upsert-your-data",
+      "functionId": "upsert",
+      "name": "Bulk Upsert your data",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "piano"
+        },
+        {
+          "id": 2,
+          "name": "harp"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "name": "piano"
+        },
+        {
+          "id": 2,
+          "name": "harp"
+        }
+      ],
+      "testPath": "04-upsert/021-bulk-upsert-your-data.js",
+      "duration": 46,
+      "timestamp": "2025-09-08T17:56:27.446Z"
+    },
+    {
+      "testId": "022-upserting-into-tables-with-constraints",
+      "functionId": "upsert",
+      "name": "Upserting into tables with constraints",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 42,
+          "handle": "saoirse",
+          "display_name": "Saoirse"
+        }
+      ],
+      "testPath": "04-upsert/022-upserting-into-tables-with-constraints.js",
+      "duration": 44,
+      "timestamp": "2025-09-08T17:56:27.591Z"
+    },
+    {
+      "testId": "023-delete-records",
+      "functionId": "delete",
+      "name": "Delete a single record",
+      "passed": false,
+      "error": null,
+      "data": null,
+      "testPath": "05-delete/023-delete-records.js",
+      "duration": 43,
+      "timestamp": "2025-09-08T17:56:27.735Z"
+    },
+    {
+      "testId": "024-delete-records-and-return-it",
+      "functionId": "delete",
+      "name": "Delete a record and return it",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "Mordor"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "name": "Mordor"
+        }
+      ],
+      "testPath": "05-delete/024-delete-records-and-return-it.js",
+      "duration": 45,
+      "timestamp": "2025-09-08T17:56:27.881Z"
+    },
+    {
+      "testId": "025-delete-multiple-records",
+      "functionId": "delete",
+      "name": "Delete multiple records",
+      "passed": true,
+      "error": null,
+      "data": null,
+      "expected": {
+        "status": 204,
+        "statusText": "No Content"
+      },
+      "testPath": "05-delete/025-delete-multiple-records.js",
+      "duration": 38,
+      "timestamp": "2025-09-08T17:56:28.020Z"
+    },
+    {
+      "testId": "026-call-a-postgres-function-without-arguments",
+      "functionId": "rpc",
+      "name": "Call a Postgres function without arguments",
+      "passed": false,
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\"",
+      "data": null,
+      "expected": "Hello world",
+      "testPath": "06-rpc/026-call-a-postgres-function-without-arguments.js",
+      "duration": 11,
+      "timestamp": "2025-09-08T17:56:28.133Z"
+    },
+    {
+      "testId": "027-call-a-postgres-function-with-arguments",
+      "functionId": "rpc",
+      "name": "Call a Postgres function with arguments",
+      "passed": false,
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\"",
+      "data": null,
+      "expected": "👋",
+      "testPath": "06-rpc/027-call-a-postgres-function-with-arguments.js",
+      "duration": 8,
+      "timestamp": "2025-09-08T17:56:28.242Z"
+    },
+    {
+      "testId": "028-bulk-processing",
+      "functionId": "rpc",
+      "name": "Bulk processing",
+      "passed": false,
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\"",
+      "data": null,
+      "expected": [
+        2,
+        3,
+        4
+      ],
+      "testPath": "06-rpc/028-bulk-processing.js",
+      "duration": 7,
+      "timestamp": "2025-09-08T17:56:28.349Z"
+    },
+    {
+      "testId": "029-call-a-postgres-function-with-filters",
+      "functionId": "rpc",
+      "name": "Call a Postgres function with filters",
+      "passed": false,
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\"",
+      "data": null,
+      "expected": {
+        "id": 1,
+        "name": "Rohan"
+      },
+      "testPath": "06-rpc/029-call-a-postgres-function-with-filters.js",
+      "duration": 39,
+      "timestamp": "2025-09-08T17:56:28.490Z"
+    },
+    {
+      "testId": "030-call-a-read-only-postgres-function",
+      "functionId": "rpc",
+      "name": "Call a read-only Postgres function",
+      "passed": false,
+      "error": "Setup SQL failed: SQL execution failed - syntax error at or near \"$\"",
+      "data": null,
+      "expected": "Hello world",
+      "testPath": "06-rpc/030-call-a-read-only-postgres-function.js",
+      "duration": 8,
+      "timestamp": "2025-09-08T17:56:28.599Z"
+    },
+    {
+      "testId": "031-applying-filters",
+      "functionId": "using-filters",
+      "name": "Applying Filters",
+      "passed": false,
+      "error": "supabase.from(...).eq is not a function",
+      "data": null,
+      "expected": null,
+      "testPath": "07-using-filters/031-applying-filters.js",
+      "duration": 14,
+      "timestamp": "2025-09-08T17:56:28.714Z"
+    },
+    {
+      "testId": "032-chaining-filters",
+      "functionId": "using-filters",
+      "name": "Chaining",
+      "passed": false,
+      "error": "relation \"cities\" does not exist",
+      "data": null,
+      "expected": null,
+      "testPath": "07-using-filters/032-chaining-filters.js",
+      "duration": 22,
+      "timestamp": "2025-09-08T17:56:28.837Z"
+    },
+    {
+      "testId": "033-conditional-chaining",
+      "functionId": "using-filters",
+      "name": "Conditional Chaining",
+      "passed": false,
+      "error": "relation \"cities\" does not exist",
+      "data": null,
+      "expected": null,
+      "testPath": "07-using-filters/033-conditional-chaining.js",
+      "duration": 20,
+      "timestamp": "2025-09-08T17:56:28.959Z"
+    },
+    {
+      "testId": "034-filter-by-value-within-json-column",
+      "functionId": "using-filters",
+      "name": "Filter by values within a JSON column",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "name": "Michael",
+          "address": {
+            "postcode": 90210
+          }
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "name": "Michael",
+          "address": {
+            "postcode": 90210
+          }
+        }
+      ],
+      "testPath": "07-using-filters/034-filter-by-value-within-json-column.js",
+      "duration": 44,
+      "timestamp": "2025-09-08T17:56:29.104Z"
+    },
+    {
+      "testId": "035-filter-referenced-tables",
+      "functionId": "using-filters",
+      "name": "Filter referenced tables",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "name": "woodwinds",
+          "instruments": {
+            "name": "flute"
+          }
+        }
+      ],
+      "expected": null,
+      "testPath": "07-using-filters/035-filter-referenced-tables.js",
+      "duration": 84,
+      "timestamp": "2025-09-08T17:56:29.289Z"
+    },
+    {
+      "testId": "036-with-select.js",
+      "functionId": "eq",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "08-eq/036-with-select.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:29.390Z"
+    },
+    {
+      "testId": "037-with-select.js",
+      "functionId": "neq",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "09-neq/037-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:29.492Z"
+    },
+    {
+      "testId": "038-with-select.js",
+      "functionId": "gt",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "10-gt/038-with-select.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:29.594Z"
+    },
+    {
+      "testId": "039-with-select.js",
+      "functionId": "gte",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "11-gte/039-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:29.696Z"
+    },
+    {
+      "testId": "040-with-select.js",
+      "functionId": "lt",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "12-lt/040-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:29.798Z"
+    },
+    {
+      "testId": "041-with-select.js",
+      "functionId": "lte",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "13-lte/041-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:29.900Z"
+    },
+    {
+      "testId": "042-with-select.js",
+      "functionId": "like",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "14-like/042-with-select.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:30.001Z"
+    },
+    {
+      "testId": "043-with-select.js",
+      "functionId": "ilike",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "15-ilike/043-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:30.103Z"
+    },
+    {
+      "testId": "044-checking-nullness",
+      "functionId": "is",
+      "name": "Checking for nullness, true or false",
+      "passed": false,
+      "error": null,
+      "data": [
+        {
+          "id": 2,
+          "name": null
+        }
+      ],
+      "expected": [
+        {
+          "id": 2,
+          "name": "null"
+        }
+      ],
+      "testPath": "16-is/044-checking-nullness.js",
+      "duration": 51,
+      "timestamp": "2025-09-08T17:56:30.255Z"
+    },
+    {
+      "testId": "045-with-select.js",
+      "functionId": "in",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "17-in/045-with-select.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:30.357Z"
+    },
+    {
+      "testId": "046-on-array-columns",
+      "functionId": "contains",
+      "name": "On array columns",
+      "passed": false,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "title": "Cache invalidation is not working",
+          "tags": [
+            "is:open",
+            "severity:high",
+            "priority:low"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "title": "Cache invalidation is not working"
+        }
+      ],
+      "testPath": "18-contains/046-on-array-columns.js",
+      "duration": 45,
+      "timestamp": "2025-09-08T17:56:30.503Z"
+    },
+    {
+      "testId": "047-on-range-columns",
+      "functionId": "contains",
+      "name": "On range columns",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "room_name": "Emerald",
+          "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "room_name": "Emerald",
+          "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+        }
+      ],
+      "testPath": "18-contains/047-on-range-columns.js",
+      "duration": 45,
+      "timestamp": "2025-09-08T17:56:30.649Z"
+    },
+    {
+      "testId": "048-on-jsonb-columns.js",
+      "functionId": "contains",
+      "name": "On `jsonb` columns",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "18-contains/048-on-jsonb-columns.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:30.751Z"
+    },
+    {
+      "testId": "049-on-array-columns",
+      "functionId": "contained-by",
+      "name": "On array columns",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "name": "Chemistry"
+        }
+      ],
+      "expected": [
+        {
+          "name": "Chemistry"
+        }
+      ],
+      "testPath": "19-contained-by/049-on-array-columns.js",
+      "duration": 44,
+      "timestamp": "2025-09-08T17:56:30.896Z"
+    },
+    {
+      "testId": "050-on-range-columns",
+      "functionId": "contained-by",
+      "name": "On range columns",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "room_name": "Emerald",
+          "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "room_name": "Emerald",
+          "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+        }
+      ],
+      "testPath": "19-contained-by/050-on-range-columns.js",
+      "duration": 46,
+      "timestamp": "2025-09-08T17:56:31.043Z"
+    },
+    {
+      "testId": "051-on-jsonb-columns.js",
+      "functionId": "contained-by",
+      "name": "On `jsonb` columns",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "19-contained-by/051-on-jsonb-columns.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:31.145Z"
+    },
+    {
+      "testId": "052-with-select.js",
+      "functionId": "range-gt",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "20-range-gt/052-with-select.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:31.245Z"
+    },
+    {
+      "testId": "053-with-select.js",
+      "functionId": "range-gte",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "21-range-gte/053-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:31.347Z"
+    },
+    {
+      "testId": "054-with-select.js",
+      "functionId": "range-lt",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "22-range-lt/054-with-select.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:31.449Z"
+    },
+    {
+      "testId": "055-with-select.js",
+      "functionId": "range-lte",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "23-range-lte/055-with-select.js",
+      "duration": 2,
+      "timestamp": "2025-09-08T17:56:31.552Z"
+    },
+    {
+      "testId": "056-with-select.js",
+      "functionId": "range-adjacent",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "24-range-adjacent/056-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:31.652Z"
+    },
+    {
+      "testId": "057-on-array-columns",
+      "functionId": "overlaps",
+      "name": "On array columns",
+      "passed": false,
+      "error": "malformed array literal: \"is:closed,severity:high\"",
+      "data": null,
+      "expected": [
+        {
+          "title": "Cache invalidation is not working"
+        }
+      ],
+      "testPath": "25-overlaps/057-on-array-columns.js",
+      "duration": 65,
+      "timestamp": "2025-09-08T17:56:31.819Z"
+    },
+    {
+      "testId": "058-on-range-columns",
+      "functionId": "overlaps",
+      "name": "On range columns",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "id": 1,
+          "room_name": "Emerald",
+          "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+        }
+      ],
+      "expected": [
+        {
+          "id": 1,
+          "room_name": "Emerald",
+          "during": "[\"2000-01-01 13:00:00\",\"2000-01-01 15:00:00\")"
+        }
+      ],
+      "testPath": "25-overlaps/058-on-range-columns.js",
+      "duration": 47,
+      "timestamp": "2025-09-08T17:56:31.967Z"
+    },
+    {
+      "testId": "059-text-search.js",
+      "functionId": "text-search",
+      "name": "Text search",
+      "passed": false,
+      "error": "Invalid or unexpected token",
+      "data": null,
+      "expected": null,
+      "testPath": "26-text-search/059-text-search.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:32.069Z"
+    },
+    {
+      "testId": "060-basic-normalization.js",
+      "functionId": "text-search",
+      "name": "Basic normalization",
+      "passed": false,
+      "error": "Invalid or unexpected token",
+      "data": null,
+      "expected": null,
+      "testPath": "26-text-search/060-basic-normalization.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:32.170Z"
+    },
+    {
+      "testId": "061-full-normalization.js",
+      "functionId": "text-search",
+      "name": "Full normalization",
+      "passed": false,
+      "error": "Invalid or unexpected token",
+      "data": null,
+      "expected": null,
+      "testPath": "26-text-search/061-full-normalization.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:32.272Z"
+    },
+    {
+      "testId": "062-web-search.js",
+      "functionId": "text-search",
+      "name": "Websearch",
+      "passed": false,
+      "error": "Invalid or unexpected token",
+      "data": null,
+      "expected": null,
+      "testPath": "26-text-search/062-web-search.js",
+      "duration": 3,
+      "timestamp": "2025-09-08T17:56:32.376Z"
+    },
+    {
+      "testId": "063-with-select.js",
+      "functionId": "match",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "27-match/063-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:32.479Z"
+    },
+    {
+      "testId": "064-with-select.js",
+      "functionId": "not",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "28-not/064-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:32.581Z"
+    },
+    {
+      "testId": "065-with-select.js",
+      "functionId": "or",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "29-or/065-with-select.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:32.699Z"
+    },
+    {
+      "testId": "066-use-or-with-and.js",
+      "functionId": "or",
+      "name": "Use `or` with `and`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "29-or/066-use-or-with-and.js",
+      "duration": 3,
+      "timestamp": "2025-09-08T17:56:32.803Z"
+    },
+    {
+      "testId": "067-use-or-on-referenced-tables.js",
+      "functionId": "or",
+      "name": "Use `or` on referenced tables",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "29-or/067-use-or-on-referenced-tables.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:32.905Z"
+    },
+    {
+      "testId": "068-with-select.js",
+      "functionId": "filter",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "30-filter/068-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:33.008Z"
+    },
+    {
+      "testId": "069-on-a-referenced-table",
+      "functionId": "filter",
+      "name": "On a referenced table",
+      "passed": true,
+      "error": null,
+      "data": [
+        {
+          "name": "woodwinds",
+          "instruments": {
+            "name": "flute"
+          }
+        }
+      ],
+      "expected": null,
+      "testPath": "30-filter/069-on-a-referenced-table.js",
+      "duration": 98,
+      "timestamp": "2025-09-08T17:56:33.207Z"
+    },
+    {
+      "testId": "070-with-upsert.js",
+      "functionId": "db-modifiers-select",
+      "name": "With `upsert()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "32-db-modifiers-select/070-with-upsert.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:33.308Z"
+    },
+    {
+      "testId": "071-with-select.js",
+      "functionId": "order",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "33-order/071-with-select.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:33.409Z"
+    },
+    {
+      "testId": "072-on-a-referenced-table",
+      "functionId": "order",
+      "name": "On a referenced table",
+      "passed": false,
+      "error": "Unknown operator: name",
+      "data": null,
+      "expected": [
+        {
+          "name": "strings",
+          "instruments": [
+            {
+              "name": "violin"
+            },
+            {
+              "name": "harp"
+            }
+          ]
+        },
+        {
+          "name": "woodwinds",
+          "characters": []
+        }
+      ],
+      "testPath": "33-order/072-on-a-referenced-table.js",
+      "duration": 79,
+      "timestamp": "2025-09-08T17:56:33.589Z"
+    },
+    {
+      "testId": "073-order-parent-table-by-a-referenced-table",
+      "functionId": "order",
+      "name": "Order parent table by a referenced table",
+      "passed": false,
+      "error": "function section(text) does not exist",
+      "data": null,
+      "expected": [
+        {
+          "name": "violin",
+          "orchestral_sections": {
+            "name": "strings"
+          }
+        },
+        {
+          "name": "flute",
+          "orchestral_sections": {
+            "name": "woodwinds"
+          }
+        }
+      ],
+      "testPath": "33-order/073-order-parent-table-by-a-referenced-table.js",
+      "duration": 111,
+      "timestamp": "2025-09-08T17:56:33.802Z"
+    },
+    {
+      "testId": "074-with-select.js",
+      "functionId": "limit",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "34-limit/074-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:33.904Z"
+    },
+    {
+      "testId": "075-on-a-referenced-table",
+      "functionId": "limit",
+      "name": "On a referenced table",
+      "passed": false,
+      "error": "column instruments.limit does not exist",
+      "data": null,
+      "expected": [
+        {
+          "name": "strings",
+          "instruments": [
+            {
+              "name": "violin"
+            }
+          ]
+        }
+      ],
+      "testPath": "34-limit/075-on-a-referenced-table.js",
+      "duration": 88,
+      "timestamp": "2025-09-08T17:56:34.093Z"
+    },
+    {
+      "testId": "076-with-select.js",
+      "functionId": "range",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "35-range/076-with-select.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:34.195Z"
+    },
+    {
+      "testId": "077-aborting-requests-in-flight",
+      "functionId": "abort-signal",
+      "name": "Aborting requests in-flight",
+      "passed": false,
+      "error": "AbortError: This operation was aborted",
+      "data": null,
+      "testPath": "36-abort-signal/077-aborting-requests-in-flight.js",
+      "duration": 3,
+      "timestamp": "2025-09-08T17:56:34.300Z"
+    },
+    {
+      "testId": "078-set-a-timeout",
+      "functionId": "abort-signal",
+      "name": "Set a timeout",
+      "passed": false,
+      "error": "relation \"very_big_table\" does not exist",
+      "data": null,
+      "testPath": "36-abort-signal/078-set-a-timeout.js",
+      "duration": 17,
+      "timestamp": "2025-09-08T17:56:34.418Z"
+    },
+    {
+      "testId": "079-with-select.js",
+      "functionId": "single",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "37-single/079-with-select.js",
+      "duration": 2,
+      "timestamp": "2025-09-08T17:56:34.521Z"
+    },
+    {
+      "testId": "080-with-select.js",
+      "functionId": "maybe-single",
+      "name": "With `select()`",
+      "passed": false,
+      "error": "missing ) after argument list",
+      "data": null,
+      "expected": null,
+      "testPath": "38-maybe-single/080-with-select.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:34.623Z"
+    },
+    {
+      "testId": "081-return-data-as-csv",
+      "functionId": "csv",
+      "name": "Return data as CSV",
+      "passed": false,
+      "error": null,
+      "data": "[{\"id\":1,\"name\":\"Luke\"},{\"id\":2,\"name\":\"Leia\"},{\"id\":3,\"name\":\"Han\"}]",
+      "expected": "id,name\n1,Luke\n2,Leia\n3,Han",
+      "testPath": "39-csv/081-return-data-as-csv.js",
+      "duration": 46,
+      "timestamp": "2025-09-08T17:56:34.770Z"
+    },
+    {
+      "testId": "082-override-type-of-successful-response.js",
+      "functionId": "returns",
+      "name": "Override type of successful response",
+      "passed": false,
+      "error": "Unexpected token ')'",
+      "data": null,
+      "expected": null,
+      "testPath": "40-returns/082-override-type-of-successful-response.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:34.872Z"
+    },
+    {
+      "testId": "083-override-type-of-object-response.js",
+      "functionId": "returns",
+      "name": "Override type of object response",
+      "passed": false,
+      "error": "Unexpected token ')'",
+      "data": null,
+      "expected": null,
+      "testPath": "40-returns/083-override-type-of-object-response.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:34.973Z"
+    },
+    {
+      "testId": "084-complete-override-type-of-successful-response.js",
+      "functionId": "overrideTypes",
+      "name": "Complete Override type of successful response",
+      "passed": false,
+      "error": "Unexpected token ','",
+      "data": null,
+      "expected": null,
+      "testPath": "41-overrideTypes/084-complete-override-type-of-successful-response.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:35.075Z"
+    },
+    {
+      "testId": "085-complete-override-type-of-object-response.js",
+      "functionId": "overrideTypes",
+      "name": "Complete Override type of object response",
+      "passed": false,
+      "error": "Invalid destructuring assignment target",
+      "data": null,
+      "expected": null,
+      "testPath": "41-overrideTypes/085-complete-override-type-of-object-response.js",
+      "duration": 2,
+      "timestamp": "2025-09-08T17:56:35.178Z"
+    },
+    {
+      "testId": "086-partial-override-type-of-successful-response.js",
+      "functionId": "overrideTypes",
+      "name": "Partial Override type of successful response",
+      "passed": false,
+      "error": "Unexpected token ')'",
+      "data": null,
+      "expected": null,
+      "testPath": "41-overrideTypes/086-partial-override-type-of-successful-response.js",
+      "duration": 0,
+      "timestamp": "2025-09-08T17:56:35.279Z"
+    },
+    {
+      "testId": "087-partial-override-type-of-object-response.js",
+      "functionId": "overrideTypes",
+      "name": "Partial Override type of object response",
+      "passed": false,
+      "error": "Unexpected token ')'",
+      "data": null,
+      "expected": null,
+      "testPath": "41-overrideTypes/087-partial-override-type-of-object-response.js",
+      "duration": 1,
+      "timestamp": "2025-09-08T17:56:35.382Z"
+    },
+    {
+      "testId": "088-get-execution-plan",
+      "functionId": "explain",
+      "name": "Get the execution plan",
+      "passed": true,
+      "error": null,
+      "data": "[{\"id\":1,\"name\":\"Luke\"},{\"id\":2,\"name\":\"Leia\"},{\"id\":3,\"name\":\"Han\"}]",
+      "expected": null,
+      "testPath": "42-explain/088-get-execution-plan.js",
+      "duration": 55,
+      "timestamp": "2025-09-08T17:56:35.537Z"
+    },
+    {
+      "testId": "089-get-execution-plan-with-analyze-and-verbose",
+      "functionId": "explain",
+      "name": "Get the execution plan with analyze and verbose",
+      "passed": true,
+      "error": null,
+      "data": "[{\"id\":1,\"name\":\"Luke\"},{\"id\":2,\"name\":\"Leia\"},{\"id\":3,\"name\":\"Han\"}]",
+      "expected": null,
+      "testPath": "42-explain/089-get-execution-plan-with-analyze-and-verbose.js",
+      "duration": 42,
+      "timestamp": "2025-09-08T17:56:35.681Z"
+    }
+  ],
+  "config": {
+    "maxConcurrency": 1,
+    "timeoutMs": 30000,
+    "retryAttempts": 2,
+    "outputDir": "./results",
+    "logLevel": "INFO"
+  },
+  "timestamp": "2025-09-08T17-56-35-681Z"
+}

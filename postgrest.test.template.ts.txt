@@ -65,30 +65,47 @@ async function run() {
         // Create Supabase-compatible response structure
         // Handle different response types (data queries vs count queries vs mutation operations)
         let response;
-        if (typeof data !== 'undefined') {
-            // Check if this is an INSERT operation by examining the code
+        if (typeof data !== 'undefined' && data !== null) {
+            // Check if this is an INSERT/UPDATE/DELETE operation by examining the code
             const codeString = `<code_content>`;
             const isInsertOperation = codeString.includes('.insert(');
             const isUpdateOperation = codeString.includes('.update(');
             const isUpsertOperation = codeString.includes('.upsert(');
             const isDeleteOperation = codeString.includes('.delete(');
+            const hasSelectClause = codeString.includes('.select(');
             
             if (isInsertOperation || isUpsertOperation) {
-                // INSERT/UPSERT with .select() - should return 201 Created
-                response = {
-                    data: data,
-                    status: 201,
-                    statusText: "Created"
-                };
+                if (hasSelectClause) {
+                    // INSERT/UPSERT with .select() - should return 201 Created with data
+                    response = {
+                        data: data,
+                        status: 201,
+                        statusText: "Created"
+                    };
+                } else {
+                    // INSERT/UPSERT without .select() - should return 201 Created, no data
+                    response = {
+                        status: 201,
+                        statusText: "Created"
+                    };
+                }
             } else if (isUpdateOperation || isDeleteOperation) {
-                // UPDATE/DELETE with .select() - should return 200 OK
-                response = {
-                    data: data,
-                    status: 200,
-                    statusText: "OK"
-                };
+                if (hasSelectClause) {
+                    // UPDATE/DELETE with .select() - should return 200 OK with data
+                    response = {
+                        data: data,
+                        status: 200,
+                        statusText: "OK"
+                    };
+                } else {
+                    // UPDATE/DELETE without .select() - should return 204 No Content, no data
+                    response = {
+                        status: 204,
+                        statusText: "No Content"
+                    };
+                }
             } else {
-                // Normal SELECT query
+                // Normal SELECT query - should return 200 OK with data
                 response = {
                     data: data,
                     status: 200,
@@ -103,31 +120,40 @@ async function run() {
                 statusText: "OK"
             };
         } else if (typeof error === 'undefined' || error === null) {
-            // INSERT/UPDATE/DELETE operations that succeed (no data/count returned, no error)
-            const codeString = `<code_content>`;
-            const isInsertOperation = codeString.includes('.insert(');
-            const isUpsertOperation = codeString.includes('.upsert(');
-            const isUpdateOperation = codeString.includes('.update(');
-            const isDeleteOperation = codeString.includes('.delete(');
-            
-            if (isInsertOperation || isUpsertOperation) {
-                // INSERT/UPSERT without .select() - should return 201 Created
+            // Check if the API response has status info directly
+            if (typeof status !== 'undefined' && typeof statusText !== 'undefined') {
+                // Use the API response status directly when available
                 response = {
-                    status: 201,
-                    statusText: "Created"
-                };
-            } else if (isUpdateOperation || isDeleteOperation) {
-                // UPDATE/DELETE without .select() - should return 204 No Content
-                response = {
-                    status: 204,
-                    statusText: "No Content"
+                    status: status,
+                    statusText: statusText
                 };
             } else {
-                // Fallback for other operations
-                response = {
-                    status: 200,
-                    statusText: "OK"
-                };
+                // INSERT/UPDATE/DELETE operations that succeed (no data/count returned, no error)
+                const codeString = `<code_content>`;
+                const isInsertOperation = codeString.includes('.insert(');
+                const isUpsertOperation = codeString.includes('.upsert(');
+                const isUpdateOperation = codeString.includes('.update(');
+                const isDeleteOperation = codeString.includes('.delete(');
+                
+                if (isInsertOperation || isUpsertOperation) {
+                    // INSERT/UPSERT without .select() - should return 201 Created
+                    response = {
+                        status: 201,
+                        statusText: "Created"
+                    };
+                } else if (isUpdateOperation || isDeleteOperation) {
+                    // UPDATE/DELETE without .select() - should return 204 No Content
+                    response = {
+                        status: 204,
+                        statusText: "No Content"
+                    };
+                } else {
+                    // Fallback for other operations
+                    response = {
+                        status: 200,
+                        statusText: "OK"
+                    };
+                }
             }
         } else {
             // Fallback - check what variables are available
