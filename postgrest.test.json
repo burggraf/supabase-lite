@@ -156,32 +156,32 @@
             {
               "type": "info",
               "message": "Starting test: Query referenced tables with spaces in their names",
-              "timestamp": "2025-09-09T21:36:08.004Z"
+              "timestamp": "2025-09-09T22:48:03.236Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T21:36:08.393Z"
+              "timestamp": "2025-09-09T22:48:03.562Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T21:36:08.555Z"
+              "timestamp": "2025-09-09T22:48:03.728Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T21:36:10.756Z"
+              "timestamp": "2025-09-09T22:48:05.804Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-09T21:36:10.757Z"
+              "timestamp": "2025-09-09T22:48:05.811Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-09T21:36:10.841Z"
+              "timestamp": "2025-09-09T22:48:05.895Z"
             }
           ],
           "skip": true
@@ -344,32 +344,32 @@
             {
               "type": "info",
               "message": "Starting test: Filtering through referenced tables",
-              "timestamp": "2025-09-09T22:43:53.007Z"
+              "timestamp": "2025-09-09T23:33:32.723Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T22:43:53.344Z"
+              "timestamp": "2025-09-09T23:33:33.067Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T22:43:53.510Z"
+              "timestamp": "2025-09-09T23:33:33.235Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T22:43:55.664Z"
+              "timestamp": "2025-09-09T23:33:35.380Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-09T22:43:55.665Z"
+              "timestamp": "2025-09-09T23:33:35.381Z"
             },
             {
               "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"flute\",\n      \"orchestral_sections\": null\n    },\n    {\n      \"name\": \"violin\",\n      \"orchestral_sections\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"42P01\",\n    \"details\": null,\n    \"hint\": null,\n    \"message\": \"missing FROM-clause entry for table \\\"orchestral_sections\\\"\"\n  },\n  \"status\": 404,\n  \"statusText\": \"Not Found\"\n}",
-              "timestamp": "2025-09-09T22:43:55.748Z"
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"flute\",\n      \"orchestral_sections\": null\n    },\n    {\n      \"name\": \"violin\",\n      \"orchestral_sections\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [\n    {\n      \"name\": \"flute\",\n      \"orchestral_sections\": []\n    },\n    {\n      \"name\": \"violin\",\n      \"orchestral_sections\": []\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+              "timestamp": "2025-09-09T23:33:35.465Z"
             }
           ],
           "skip": false
