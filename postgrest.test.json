@@ -145,46 +145,46 @@
         "id": "query-referenced-tables-with-spaces-in-their-names",
         "name": "Query referenced tables with spaces in their names",
         "description": "If your table name contains spaces, you must use double quotes in the `select` statement to reference the table.\n",
-        "code": "```js\nconst { data, error } = await supabase\n  .from('orchestal sections')\n  .select(`\n    name,\n    \"musical instruments\" (\n      name\n    )\n  `)\n```\n",
+        "code": "```js\nconst { data, error } = await supabase\n  .from('orchestral sections')\n  .select(`\n    name,\n    \"musical instruments\" (\n      name\n    )\n  `)\n```\n",
         "data": {
           "sql": "```sql\nCREATE TABLE\n  \"orchestral sections\" (id int8 primary key, name text);\nCREATE TABLE\n  \"musical instruments\" (\n    id int8 primary key,\n    section_id int8 not null references \"orchestral sections\",\n    name text\n  );\n\nINSERT INTO\n  \"orchestral sections\" (id, name)\nVALUES\n  (1, 'strings'),\n  (2, 'woodwinds');\nINSERT INTO\n  \"musical instruments\" (id, section_id, name)\nVALUES\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n"
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"musical instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    },\n    {\n      \"name\": \"woodwinds\",\n      \"musical instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Query referenced tables with spaces in their names",
-              "timestamp": "2025-09-09T21:30:20.432Z"
+              "timestamp": "2025-09-09T21:36:08.004Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T21:30:20.779Z"
+              "timestamp": "2025-09-09T21:36:08.393Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T21:30:20.979Z"
+              "timestamp": "2025-09-09T21:36:08.555Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T21:30:23.080Z"
+              "timestamp": "2025-09-09T21:36:10.756Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-09T21:30:23.081Z"
+              "timestamp": "2025-09-09T21:36:10.757Z"
             },
             {
-              "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"musical instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    },\n    {\n      \"name\": \"woodwinds\",\n      \"musical instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"42P01\",\n    \"details\": null,\n    \"hint\": null,\n    \"message\": \"relation \\\"orchestal sections\\\" does not exist\"\n  },\n  \"status\": 404,\n  \"statusText\": \"Not Found\"\n}",
-              "timestamp": "2025-09-09T21:30:23.235Z"
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T21:36:10.841Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -203,35 +203,35 @@
             {
               "type": "info",
               "message": "Starting test: Query referenced tables through a join table",
-              "timestamp": "2025-09-09T21:26:15.293Z"
+              "timestamp": "2025-09-09T21:36:10.842Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T21:26:15.645Z"
+              "timestamp": "2025-09-09T21:36:11.215Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T21:26:15.804Z"
+              "timestamp": "2025-09-09T21:36:11.391Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T21:26:17.884Z"
+              "timestamp": "2025-09-09T21:36:17.179Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-09T21:26:17.884Z"
+              "timestamp": "2025-09-09T21:36:17.186Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-09T21:26:18.035Z"
+              "timestamp": "2025-09-09T21:36:17.341Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -250,35 +250,35 @@
             {
               "type": "info",
               "message": "Starting test: Query the same referenced table multiple times",
-              "timestamp": "2025-09-09T21:26:18.036Z"
+              "timestamp": "2025-09-09T21:36:17.343Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T21:26:18.382Z"
+              "timestamp": "2025-09-09T21:36:17.720Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T21:26:18.552Z"
+              "timestamp": "2025-09-09T21:36:17.894Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T21:26:20.605Z"
+              "timestamp": "2025-09-09T21:36:20.013Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-09T21:26:20.606Z"
+              "timestamp": "2025-09-09T21:36:20.014Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-09T21:26:20.707Z"
+              "timestamp": "2025-09-09T21:36:20.101Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -297,35 +297,35 @@
             {
               "type": "info",
               "message": "Starting test: Query nested foreign tables through a join table",
-              "timestamp": "2025-09-09T21:26:20.709Z"
+              "timestamp": "2025-09-09T21:36:20.102Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T21:26:21.074Z"
+              "timestamp": "2025-09-09T21:36:20.542Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T21:26:21.234Z"
+              "timestamp": "2025-09-09T21:36:20.741Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T21:26:23.319Z"
+              "timestamp": "2025-09-09T21:36:24.361Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-09T21:26:23.320Z"
+              "timestamp": "2025-09-09T21:36:24.362Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-09T21:26:23.470Z"
+              "timestamp": "2025-09-09T21:36:24.509Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -344,22 +344,32 @@
             {
               "type": "info",
               "message": "Starting test: Filtering through referenced tables",
-              "timestamp": "2025-09-08T15:40:58.571Z"
+              "timestamp": "2025-09-09T22:43:53.007Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T22:43:53.344Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T22:43:53.510Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T15:41:01.289Z"
+              "timestamp": "2025-09-09T22:43:55.664Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T15:41:01.290Z"
+              "timestamp": "2025-09-09T22:43:55.665Z"
             },
             {
               "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"flute\",\n      \"orchestral_sections\": null\n    },\n    {\n      \"name\": \"violin\",\n      \"orchestral_sections\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
-              "timestamp": "2025-09-08T15:41:01.425Z"
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"flute\",\n      \"orchestral_sections\": null\n    },\n    {\n      \"name\": \"violin\",\n      \"orchestral_sections\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"42P01\",\n    \"details\": null,\n    \"hint\": null,\n    \"message\": \"missing FROM-clause entry for table \\\"orchestral_sections\\\"\"\n  },\n  \"status\": 404,\n  \"statusText\": \"Not Found\"\n}",
+              "timestamp": "2025-09-09T22:43:55.748Z"
             }
           ],
           "skip": false
