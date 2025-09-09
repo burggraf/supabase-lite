@@ -1110,9 +1110,30 @@ export class SQLBuilder {
     }
 
     if (operator === 'ov') {
-      // Array overlap operator
+      // Array overlap operator - ensure proper PostgreSQL array format
       const paramPlaceholder = `$${this.paramIndex++}`
-      const arrayValue = Array.isArray(value) ? `{${value.join(',')}}` : value
+      let arrayValue: string
+      
+      if (Array.isArray(value)) {
+        // Convert JavaScript array to PostgreSQL array format
+        // Quote string elements to handle values with special characters
+        const quotedElements = value.map(v => `"${String(v).replace(/"/g, '""')}"`)
+        arrayValue = `{${quotedElements.join(',')}}`
+      } else if (typeof value === 'string') {
+        // Handle legacy string format or already formatted PostgreSQL array
+        if (value.startsWith('{') && value.endsWith('}')) {
+          arrayValue = value // Already in PostgreSQL format
+        } else {
+          // Convert comma-separated string to PostgreSQL array format
+          const elements = value.split(',').map(v => v.trim())
+          const quotedElements = elements.map(v => `"${v.replace(/"/g, '""')}"`)
+          arrayValue = `{${quotedElements.join(',')}}`
+        }
+      } else {
+        // Fallback - convert to string
+        arrayValue = `{"${String(value).replace(/"/g, '""')}"}`
+      }
+      
       this.parameters.push(arrayValue)
       return condition.replace('{value}', paramPlaceholder)
     }

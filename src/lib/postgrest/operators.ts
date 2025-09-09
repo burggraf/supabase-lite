@@ -247,9 +247,13 @@ export function parseOperatorValue(operator: string, value: string): { op: Opera
       break
 
     case 'ov':
-      // Parse array values
+      // Parse array values for overlap operator
       if (value.startsWith('{') && value.endsWith('}')) {
-        parsedValue = value.slice(1, -1).split(',').map(v => v.trim()).join(',')
+        // Already in PostgreSQL array format - extract array elements
+        parsedValue = value.slice(1, -1).split(',').map(v => v.trim())
+      } else {
+        // Handle comma-separated format from URL parameters (e.g., "is:closed,severity:high")
+        parsedValue = value.split(',').map(v => v.trim())
       }
       break
   }
