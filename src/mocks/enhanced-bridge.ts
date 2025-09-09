@@ -629,16 +629,28 @@ export class EnhancedSupabaseAPIBridge {
       method: request.method 
     })
 
+    // Parse the request to get query parameters
+    const query = QueryParser.parseQuery(request.url, request.headers)
 
-    // Default mock response for other tables
-    return ResponseFormatter.formatSelectResponse([], {
-      select: ['*'],
-      count: undefined,
-      filters: [],
-      order: [],
-      limit: undefined,
-      offset: undefined
-    })
+    // Handle different HTTP methods appropriately
+    switch (request.method) {
+      case 'DELETE':
+        return ResponseFormatter.formatDeleteResponse([], query)
+      case 'PATCH':
+        return ResponseFormatter.formatUpdateResponse([], query)
+      case 'POST':
+        return ResponseFormatter.formatInsertResponse([], query)
+      default:
+        // Default to SELECT for GET, HEAD, and other methods
+        return ResponseFormatter.formatSelectResponse([], {
+          select: ['*'],
+          count: undefined,
+          filters: [],
+          order: [],
+          limit: undefined,
+          offset: undefined
+        })
+    }
   }
 
   private async hashPassword(password: string): Promise<string> {

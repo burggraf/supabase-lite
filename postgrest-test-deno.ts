@@ -823,19 +823,13 @@ class PostgRESTTestRunner {
       const testResult = await this.runTest(scriptPath);
 
       if (!testResult.success) {
-        // Don't clean up test script on failure so we can inspect it
-        this.log('info', `Test script preserved for debugging: ${scriptPath}`);
+        this.log('info', `Test script available for debugging: ${scriptPath}`);
         const errorMsg = `Test execution failed: ${testResult.error}`;
         log.push(this.createTestLog('error', errorMsg));
         return { passed: false, log, skip: false };
       }
 
-      // Clean up test script only on success
-      try {
-        await Deno.remove(scriptPath);
-      } catch (error) {
-        this.log('error', `Failed to remove test script: ${error instanceof Error ? error.message : String(error)}`);
-      }
+      // Keep test script for debugging - don't clean up
 
       // Parse actual output (should be JSON)
       let actualData: any;
@@ -876,9 +870,55 @@ class PostgRESTTestRunner {
   /**
    * Process all test items and examples
    */
-  private async processTests(testData: TestItem[]): Promise<void> {
+  private async processTests(testData: TestItem[], targetTestId?: string): Promise<void> {
     let regressionFailures: Array<{ item: TestItem, example: Example, error: string }> = [];
 
+    // If a specific test ID is provided, find and run only that test
+    if (targetTestId) {
+      let foundTest = false;
+      
+      for (const item of testData) {
+        for (const example of item.examples) {
+          if (example.id === targetTestId) {
+            foundTest = true;
+            this.log('info', `\n=== Running single test: ${item.id} - ${example.name} (${targetTestId}) ===`);
+            
+            // Display prominent header for current test
+            this.displayTestHeader(item, example);
+
+            // Process this example (always run it, don't skip)
+            const results = await this.processExample(item, example);
+
+            // Update the example with results
+            example.results = results;
+
+            // Save results after the test
+            await this.saveResults(testData);
+
+            // Display clean test result
+            const testName = `${item.id} - ${example.name}`;
+            this.displayTestResult(results.passed, testName);
+
+            if (!results.passed) {
+              // Display comprehensive failure information
+              this.displayFailureDetails(item, example, results);
+              Deno.exit(1);
+            }
+            
+            this.log('info', '\n=== Single test completed successfully! ===');
+            Deno.exit(0);
+          }
+        }
+      }
+      
+      if (!foundTest) {
+        this.log('error', `Test with ID "${targetTestId}" not found`);
+        Deno.exit(1);
+      }
+      return;
+    }
+
+    // Original logic for running all tests
     for (const item of testData) {
       this.log('info', `\n=== Processing item: ${item.id} - ${item.title} ===`);
 
@@ -974,7 +1014,7 @@ class PostgRESTTestRunner {
   /**
    * Main execution method
    */
-  async run(): Promise<void> {
+  async run(targetTestId?: string): Promise<void> {
     try {
       this.log('info', '🚀 Starting PostgREST Test Runner');
 
@@ -995,8 +1035,8 @@ class PostgRESTTestRunner {
       await this.deleteExistingProject('postgrest-test-project');
       await this.createProject('postgrest-test-project');
 
-      // Process all tests
-      await this.processTests(testData);
+      // Process tests (single test if targetTestId provided, all tests otherwise)
+      await this.processTests(testData, targetTestId);
 
       // Clean up browser tab
       await this.closeBrowserTab();
@@ -1017,8 +1057,19 @@ if (import.meta.main) {
   // Parse command line arguments
   const args = Deno.args;
   const isRetestMode = args.includes('--retest');
+  
+  // Look for --test-id argument
+  let targetTestId: string | undefined;
+  const testIdArgIndex = args.findIndex(arg => arg === '--test-id');
+  if (testIdArgIndex >= 0 && testIdArgIndex < args.length - 1) {
+    targetTestId = args[testIdArgIndex + 1];
+  }
 
-  if (isRetestMode) {
+  if (targetTestId) {
+    console.log(`🎯 Running single test with ID: ${targetTestId}`);
+    console.log('   - Will run only this specific test, ignoring skip flags');
+    console.log('   - Will stop immediately if the test fails\n');
+  } else if (isRetestMode) {
     console.log('🔄 Running in regression test mode (--retest)');
     console.log('   - Will run all tests except those that previously failed with skip=true');
     console.log('   - Will detect regressions (tests that previously passed but now fail)');
@@ -1030,5 +1081,5 @@ if (import.meta.main) {
   }
 
   const runner = new PostgRESTTestRunner(isRetestMode);
-  await runner.run();
+  await runner.run(targetTestId);
 }

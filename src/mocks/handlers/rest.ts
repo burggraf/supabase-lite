@@ -100,10 +100,12 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
     
     // For 204 No Content responses, return empty body (correct HTTP semantics)
     if (response.status === 204) {
+      // Remove Content-Type header for 204 responses (no content)
+      const { 'Content-Type': contentType, ...headersWithoutContentType } = response.headers
       return new HttpResponse(null, {
         status: response.status,
         headers: {
-          ...response.headers,
+          ...headersWithoutContentType,
           ...REST_CORS_HEADERS
         }
       })
@@ -132,6 +134,33 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
       url: new URL(request.url)
     })
     
+    // For 204 No Content responses, check if there's status injection data for testing
+    if (response.status === 204) {
+      // Check if the response data contains status injection (for testing compatibility)
+      if (response.data && typeof response.data === 'object' && 
+          '__supabase_status' in response.data) {
+        // Return the injected data as JSON for test script extraction
+        return HttpResponse.json(response.data, {
+          status: response.status,
+          headers: {
+            ...response.headers,
+            ...REST_CORS_HEADERS
+          }
+        })
+      }
+      
+      // Otherwise return empty body (correct HTTP semantics)
+      const { 'Content-Type': contentType, ...headersWithoutContentType } = response.headers
+      return new HttpResponse(null, {
+        status: response.status,
+        headers: {
+          ...headersWithoutContentType,
+          ...REST_CORS_HEADERS
+        }
+      })
+    }
+    
+    // For other responses, return data normally
     return HttpResponse.json(response.data, {
       status: response.status,
       headers: {

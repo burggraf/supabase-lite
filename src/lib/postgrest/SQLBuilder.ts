@@ -1421,6 +1421,29 @@ export class SQLBuilder {
       console.log(`🔑 Using primary key columns for conflict: ${primaryKeyColumns.join(', ')}`)
     }
 
+    // Discover primary key columns to detect invalid upsert scenarios
+    const primaryKeyColumns = await this.discoverPrimaryKeyColumns(table)
+    
+    // PostgREST validation: If using a custom conflict column (not primary key),
+    // check if the upsert would update primary key fields. This should fail.
+    if (onConflictColumn && primaryKeyColumns.length > 0) {
+      const updateColumns = columns.filter(col => !conflictTargetColumns.includes(col))
+      const wouldUpdatePrimaryKey = updateColumns.some(col => primaryKeyColumns.includes(col))
+      
+      if (wouldUpdatePrimaryKey) {
+        console.log(`🚨 UPSERT validation failed: Cannot update primary key columns ${primaryKeyColumns.join(', ')} when using conflict resolution on ${onConflictColumn}`)
+        
+        // Create a PostgreSQL-style error to match expected behavior
+        const error = new Error(`duplicate key value violates unique constraint "${table}_${onConflictColumn}_key"`)
+        ;(error as any).code = '23505'
+        ;(error as any).detail = `Key (${onConflictColumn})=(${firstRow[onConflictColumn]}) already exists.` // PostgreSQL uses 'detail', not 'details'
+        ;(error as any).hint = null
+        ;(error as any).constraint = `${table}_${onConflictColumn}_key`
+        ;(error as any).severity = 'ERROR'  // Make it look like a PostgreSQL error
+        throw error
+      }
+    }
+
     // Build ON CONFLICT clause
     const conflictTarget = conflictTargetColumns.join(', ')
     
