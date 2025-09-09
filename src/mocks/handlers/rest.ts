@@ -206,6 +206,54 @@ const createRpcHandler = () => async ({ params, request }: any) => {
   }
 }
 
+const createRpcGetHandler = () => async ({ params, request }: any) => {
+  try {
+    // For GET requests, extract parameters from query string
+    const url = new URL(request.url)
+    const queryParams: Record<string, any> = {}
+    
+    // Convert URLSearchParams to plain object
+    for (const [key, value] of url.searchParams.entries()) {
+      // Handle JSON parameters
+      try {
+        queryParams[key] = JSON.parse(value)
+      } catch {
+        // If not JSON, use as string
+        queryParams[key] = value
+      }
+    }
+    
+    console.log('🔍 RPC GET Handler - Function:', params.functionName)
+    console.log('🔍 RPC GET Handler - Query Params:', queryParams)
+    
+    const response = await enhancedBridge.handleRpc(
+      params.functionName as string,
+      queryParams,
+      extractHeaders(request),
+      url
+    )
+    
+    console.log('🔍 RPC GET Handler - Response:', response)
+    console.log('🔍 RPC GET Handler - Response data:', response.data)
+    console.log('🔍 RPC GET Handler - Response status:', response.status)
+    
+    // For scalar RPC responses, return the value directly as JSON
+    return HttpResponse.json(response.data, {
+      status: response.status,
+      headers: {
+        ...response.headers,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+        'Access-Control-Allow-Methods': 'GET'
+      }
+    })
+  } catch (error: any) {
+    console.error('❌ RPC GET Handler Error:', error)
+    return createPostgreSQLErrorResponse(error)
+  }
+}
+
 // REST API handlers
 export const restHandlers = [
   // Non-project-scoped REST handlers
@@ -225,4 +273,8 @@ export const restHandlers = [
   // RPC handlers
   http.post('/rest/v1/rpc/:functionName', withProjectResolution(createRpcHandler())),
   http.post('/:projectId/rest/v1/rpc/:functionName', withProjectResolution(createRpcHandler())),
+  
+  // RPC GET handlers (for read-only functions with { get: true })
+  http.get('/rest/v1/rpc/:functionName', withProjectResolution(createRpcGetHandler())),
+  http.get('/:projectId/rest/v1/rpc/:functionName', withProjectResolution(createRpcGetHandler())),
 ]

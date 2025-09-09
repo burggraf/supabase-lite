@@ -42,18 +42,34 @@ function getStatusTextFromError(errorCode: string): string {
 }
 async function run() {
     try {
-        <code>
-        
-        // Extract response components for compatibility
-        // Handle both destructuring and direct response patterns
         let responseData, responseError, responseCount, responseStatus, responseStatusText;
-        if (typeof response !== 'undefined') {
-            // Direct response object (const response = await ...)
-            ({ data: responseData, error: responseError, count: responseCount, status: responseStatus, statusText: responseStatusText } = response || {});
-        } else if (typeof data !== 'undefined' || typeof error !== 'undefined') {
-            // Destructuring pattern (const { data, error } = await ...)
-            responseData = data;
-            responseError = error;
+        
+        try {
+            <code>
+            
+            // Extract response components for compatibility
+            // Handle both destructuring and direct response patterns
+            if (typeof response !== 'undefined') {
+                // Direct response object (const response = await ...)
+                ({ data: responseData, error: responseError, count: responseCount, status: responseStatus, statusText: responseStatusText } = response || {});
+            } else if (typeof data !== 'undefined' || typeof error !== 'undefined') {
+                // Destructuring pattern (const { data, error } = await ...)
+                responseData = data;
+                responseError = error;
+            }
+        } catch (executionError) {
+            // Handle JavaScript execution errors (like calling .eq() before .select())
+            console.log('Data:', JSON.stringify({
+                error: {
+                    code: 'UNKNOWN',
+                    details: null,
+                    hint: null,
+                    message: executionError.message
+                },
+                status: 400,
+                statusText: 'Bad Request'
+            }));
+            return;
         }
         
         // Handle error cases - format as PostgREST error response

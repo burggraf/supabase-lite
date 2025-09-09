@@ -34,7 +34,16 @@ async function runTest() {
   console.log('='.repeat(60));
 
   // Expected response for comparison
-  const expectedResponse = null;
+  const expectedResponse = {
+    "error": {
+      "code": "UNKNOWN",
+      "details": null,
+      "hint": null,
+      "message": "supabase.from(...).eq is not a function"
+    },
+    "status": 400,
+    "statusText": "Bad Request"
+  };
   
   // Track tables created for cleanup
   let createdTables = [];
@@ -54,47 +63,82 @@ async function runTest() {
 
     // Execute test code
     console.log('🧪 Executing test code...');
-    // First approach: with select
-    const { data: data1, error: error1 } = await supabase
-  .from('instruments')
-  .select('name, section_id')
-  .eq('name', 'violin')    // Correct
-
-    // Second approach: without select (demonstrating incorrect usage)
-    const { data, error } = await supabase
-  .from('instruments')
-  .eq('name', 'violin')    // Incorrect
-  .select('name, section_id')
-
-    // Basic validation
-    if (data && expectedResponse && expectedResponse.data) {
-      const dataMatches = JSON.stringify(data) === JSON.stringify(expectedResponse.data);
-      console.log(`✅ Test result: ${dataMatches ? 'PASS' : 'FAIL'}`);
+    
+    let data = null;
+    let error = null;
+    
+    try {
+      // First approach: with select (correct usage)
+      const { data: data1, error: error1 } = await supabase
+        .from('instruments')
+        .select('name, section_id')
+        .eq('name', 'violin')    // Correct
       
-      if (!dataMatches) {
-        console.log('📊 Expected:', JSON.stringify(expectedResponse.data, null, 2));
-        console.log('📊 Actual:', JSON.stringify(data, null, 2));
+      console.log('✅ Correct approach worked:', { data: data1, error: error1 });
+      
+      // Second approach: without select (demonstrating incorrect usage - should throw error)
+      const { data: data2, error: error2 } = await supabase
+        .from('instruments')
+        .eq('name', 'violin')    // Incorrect - this should fail
+        .select('name, section_id');
+      
+      // If we get here without error, that's unexpected
+      data = data2;
+      error = error2;
+      console.log('⚠️  Incorrect approach unexpectedly succeeded:', { data, error });
+      
+    } catch (err) {
+      // This is expected - the incorrect usage should throw an error
+      console.log('✅ Incorrect approach correctly failed with error:', err.message);
+      error = {
+        code: 'UNKNOWN',
+        details: null,
+        hint: null,
+        message: err.message
+      };
+    }
+
+    // Basic validation - check if we got the expected error
+    if (error && expectedResponse && expectedResponse.error) {
+      const errorMatches = error.message === expectedResponse.error.message;
+      console.log(`✅ Test result: ${errorMatches ? 'PASS' : 'FAIL'}`);
+      
+      if (!errorMatches) {
+        console.log('📊 Expected error message:', expectedResponse.error.message);
+        console.log('📊 Actual error message:', error.message);
       }
       
       return {
         testId: '031-applying-filters',
         functionId: 'using-filters',
         name: 'Applying Filters',
-        passed: dataMatches,
+        passed: errorMatches,
         error: null,
-        data: data,
-        expected: expectedResponse.data
+        data: { error },
+        expected: expectedResponse.error
       };
-    } else {
-      console.log('⚠️  No expected response data to compare');
+    } else if (!error && expectedResponse && expectedResponse.error) {
+      // Expected an error but didn't get one
+      console.log('❌ Expected an error but none occurred');
       return {
         testId: '031-applying-filters',
         functionId: 'using-filters',
         name: 'Applying Filters',
-        passed: data ? true : false,
-        error: error ? error.message : null,
+        passed: false,
+        error: 'Expected an error but none occurred',
         data: data,
-        expected: expectedResponse ? expectedResponse.data : null
+        expected: expectedResponse.error
+      };
+    } else {
+      console.log('⚠️  Unexpected test scenario');
+      return {
+        testId: '031-applying-filters',
+        functionId: 'using-filters',
+        name: 'Applying Filters',
+        passed: false,
+        error: 'Unexpected test scenario',
+        data: data,
+        expected: expectedResponse ? expectedResponse.error : null
       };
     }
 
