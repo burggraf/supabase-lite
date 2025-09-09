@@ -1449,31 +1449,45 @@
         "name": "Chaining",
         "description": "Filters can be chained together to produce advanced queries. For example,\nto query cities with population between 1,000 and 10,000:\n\n```ts\nconst { data, error } = await supabase\n  .from('cities')\n  .select('name, country_id')\n  .gte('population', 1000)\n  .lt('population', 10000)\n```\n",
         "code": "```ts\nconst { data, error } = await supabase\n  .from('cities')\n  .select('name, country_id')\n  .gte('population', 1000)\n  .lt('population', 10000)\n```\n",
+        "data": {
+          "sql": "```sql\nCREATE TABLE\n  cities (id int8 primary key, name text, country_id int8, population int8);\n\nINSERT INTO\n  cities (id, name, country_id, population)\nVALUES\n  (1, 'San Francisco', 1, 800000),\n  (2, 'New York', 1, 8000000),\n  (3, 'Paris', 2, 2000000),\n  (4, 'Berlin', 3, 3500000),\n  (5, 'Tokyo', 4, 9000000);\n```\n"
+        },
+        "response": "```json\n{\n  \"data\": [],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Chaining",
-              "timestamp": "2025-09-09T17:36:53.751Z"
+              "timestamp": "2025-09-09T17:40:12.467Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T17:36:54.080Z"
+              "timestamp": "2025-09-09T17:40:12.867Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T17:36:54.229Z"
+              "timestamp": "2025-09-09T17:40:13.032Z"
             },
             {
-              "type": "error",
-              "message": "Test execution error: Cannot read properties of undefined (reading 'sql')",
-              "timestamp": "2025-09-09T17:36:54.229Z"
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T17:40:14.331Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T17:40:14.332Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T17:40:14.409Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -1481,31 +1495,45 @@
         "name": "Conditional Chaining",
         "description": "Filters can be built up one step at a time and then executed. For example:\n\n```ts\nconst filterByName = null\nconst filterPopLow = 1000\nconst filterPopHigh = 10000\n\nlet query = supabase\n  .from('cities')\n  .select('name, country_id')\n\nif (filterByName)  { query = query.eq('name', filterByName) }\nif (filterPopLow)  { query = query.gte('population', filterPopLow) }\nif (filterPopHigh) { query = query.lt('population', filterPopHigh) }\n\nconst { data, error } = await query\n```\n",
         "code": "```ts\nconst filterByName = null\nconst filterPopLow = 1000\nconst filterPopHigh = 10000\n\nlet query = supabase\n  .from('cities')\n  .select('name, country_id')\n\nif (filterByName)  { query = query.eq('name', filterByName) }\nif (filterPopLow)  { query = query.gte('population', filterPopLow) }\nif (filterPopHigh) { query = query.lt('population', filterPopHigh) }\n\nconst { data, error } = await query\n```\n",
+        "data": {
+          "sql": "```sql\nCREATE TABLE\n  cities (\n    id int8 primary key,\n    name text,\n    country_id int8,\n    population int8\n  );\n\nINSERT INTO\n  cities (id, name, country_id, population)\nVALUES\n  (1, 'Small Town', 1, 500),\n  (2, 'Medium City', 1, 2500),\n  (3, 'Big City', 1, 15000),\n  (4, 'Village', 1, 800),\n  (5, 'Growing Town', 1, 5500),\n  (6, 'Tiny Village', 1, 200),\n  (7, 'Mid Town', 1, 7500),\n  (8, 'Large City', 1, 25000),\n  (9, 'Small City', 1, 3200),\n  (10, 'Rural Town', 1, 1200);\n```\n"
+        },
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"Medium City\",\n      \"country_id\": 1\n    },\n    {\n      \"name\": \"Growing Town\",\n      \"country_id\": 1\n    },\n    {\n      \"name\": \"Mid Town\",\n      \"country_id\": 1\n    },\n    {\n      \"name\": \"Small City\",\n      \"country_id\": 1\n    },\n    {\n      \"name\": \"Rural Town\",\n      \"country_id\": 1\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Conditional Chaining",
-              "timestamp": "2025-09-09T17:15:24.473Z"
+              "timestamp": "2025-09-09T17:42:14.405Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T17:15:24.809Z"
+              "timestamp": "2025-09-09T17:42:14.755Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T17:15:24.964Z"
+              "timestamp": "2025-09-09T17:42:14.915Z"
             },
             {
-              "type": "error",
-              "message": "Test execution error: Cannot read properties of undefined (reading 'sql')",
-              "timestamp": "2025-09-09T17:15:24.964Z"
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T17:42:16.226Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T17:42:16.228Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T17:42:16.303Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -1558,40 +1586,45 @@
         "name": "Filter referenced tables",
         "code": "```ts\nconst { data, error } = await supabase\n  .from('orchestral_sections')\n  .select(`\n    name,\n    instruments!inner (\n      name\n    )\n  `)\n  .eq('instruments.name', 'flute')\n```\n",
         "data": {
-          "sql": "```sql\nCREATE TABLE\n  orchestral_sections (id int8 primary key, name text);\nCREATE TABLE\n  instruments (\n    id int8 primary key,\n    section_id int8 not null references orchestral_sections,\n    name text\n  );\n\nINSERT INTO\n  orchestral_sections (id, name)\nVALUES\n  (1, 'strings'),\n  (2, 'woodwinds');\nINSERT INTO\n  instruments (id, section_id, name)\nVALUES\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n",
-          "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"woodwinds\",\n      \"characters\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n"
+          "sql": "```sql\nCREATE TABLE\n  orchestral_sections (id int8 primary key, name text);\nCREATE TABLE\n  instruments (\n    id int8 primary key,\n    section_id int8 not null references orchestral_sections,\n    name text\n  );\n\nINSERT INTO\n  orchestral_sections (id, name)\nVALUES\n  (1, 'strings'),\n  (2, 'woodwinds');\nINSERT INTO\n  instruments (id, section_id, name)\nVALUES\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n"
         },
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": {\n        \"name\": \"flute\"\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "You can filter on referenced tables in your `select()` query using dot\nnotation.\n",
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Filter referenced tables",
-              "timestamp": "2025-09-09T17:15:27.660Z"
+              "timestamp": "2025-09-09T17:43:38.342Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T17:15:28.013Z"
+              "timestamp": "2025-09-09T17:43:38.712Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T17:15:28.193Z"
+              "timestamp": "2025-09-09T17:43:38.890Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T17:15:30.297Z"
+              "timestamp": "2025-09-09T17:43:40.339Z"
             },
             {
-              "type": "error",
-              "message": "Test execution error: Cannot read properties of undefined (reading 'replace')",
-              "timestamp": "2025-09-09T17:15:30.297Z"
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T17:43:40.343Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T17:43:40.481Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       }
     ]
@@ -2041,45 +2074,45 @@
         "data": {
           "sql": "```sql\nCREATE TABLE\n  countries (id int8 primary key, name text);\n\nINSERT INTO\n  countries (id, name)\nVALUES\n  (1, 'null'),\n  (2, null);\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": \"null\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "Using the `eq()` filter doesn't work when filtering for `null`.\n\nInstead, you need to use `is()`.\n",
         "hideCodeBlock": true,
         "isSpotlight": true,
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Checking for nullness, true or false",
-              "timestamp": "2025-09-09T17:15:52.271Z"
+              "timestamp": "2025-09-09T17:44:17.141Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T17:15:52.627Z"
+              "timestamp": "2025-09-09T17:44:17.538Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T17:15:52.783Z"
+              "timestamp": "2025-09-09T17:44:17.740Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T17:15:54.828Z"
+              "timestamp": "2025-09-09T17:44:19.155Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-09T17:15:54.829Z"
+              "timestamp": "2025-09-09T17:44:19.156Z"
             },
             {
-              "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": \"null\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
-              "timestamp": "2025-09-09T17:15:54.906Z"
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T17:44:19.251Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       }
     ]
@@ -2150,44 +2183,44 @@
         "data": {
           "sql": "```sql\nCREATE TABLE\n  issues (\n    id int8 primary key,\n    title text,\n    tags text[]\n  );\n\nINSERT INTO\n  issues (id, title, tags)\nVALUES\n  (1, 'Cache invalidation is not working', array['is:open', 'severity:high', 'priority:low']),\n  (2, 'Use better names', array['is:open', 'severity:low', 'priority:medium']);\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"title\": \"Cache invalidation is not working\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"Cache invalidation is not working\",\n      \"tags\": [\n        \"is:open\",\n        \"severity:high\",\n        \"priority:low\"\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
         "isSpotlight": true,
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: On array columns",
-              "timestamp": "2025-09-09T17:15:57.542Z"
+              "timestamp": "2025-09-09T17:45:19.539Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T17:15:57.912Z"
+              "timestamp": "2025-09-09T17:45:19.879Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T17:15:58.070Z"
+              "timestamp": "2025-09-09T17:45:20.039Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T17:16:00.169Z"
+              "timestamp": "2025-09-09T17:45:21.439Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-09T17:16:00.172Z"
+              "timestamp": "2025-09-09T17:45:21.441Z"
             },
             {
-              "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"title\": \"Cache invalidation is not working\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"Cache invalidation is not working\",\n      \"tags\": [\n        \"is:open\",\n        \"severity:high\",\n        \"priority:low\"\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
-              "timestamp": "2025-09-09T17:16:00.241Z"
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T17:45:21.513Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -2728,32 +2761,22 @@
             {
               "type": "info",
               "message": "Starting test: On array columns",
-              "timestamp": "2025-09-09T17:16:27.250Z"
+              "timestamp": "2025-09-09T17:46:14.502Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T17:16:27.588Z"
+              "timestamp": "2025-09-09T17:46:15.275Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T17:16:27.747Z"
-            },
-            {
-              "type": "info",
-              "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T17:16:29.846Z"
-            },
-            {
-              "type": "info",
-              "message": "Test script generated",
-              "timestamp": "2025-09-09T17:16:29.848Z"
+              "timestamp": "2025-09-09T17:46:15.458Z"
             },
             {
               "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"title\": \"Cache invalidation is not working\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"22P02\",\n    \"details\": \"Array value must start with \\\"{\\\" or dimension information.\",\n    \"hint\": null,\n    \"message\": \"malformed array literal: \\\"is:closed,severity:high\\\"\"\n  },\n  \"status\": 400,\n  \"statusText\": \"Bad Request\"\n}",
-              "timestamp": "2025-09-09T17:16:29.947Z"
+              "message": "Test execution error: Database seeding failed on statement 1: SQL execution failed with status 404: {\"error\":\"Project not found\",\"message\":\"Failed to switch to project database: Database switch already in progress\"}",
+              "timestamp": "2025-09-09T17:46:19.502Z"
             }
           ],
           "skip": false
