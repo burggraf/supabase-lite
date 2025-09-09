@@ -456,7 +456,8 @@ function websocketBridge(): Plugin {
               'Access-Control-Allow-Origin': '*',
               ...response.headers
             })
-            res.end(typeof response.body === 'string' ? response.body : JSON.stringify(response.body))
+            // Always JSON.stringify for application/json content type to maintain correct Content-Length
+            res.end(JSON.stringify(response.body))
             
           } catch (error: unknown) {
             console.error(`❌ Error processing request ${req.method} ${req.url}:`, error)

@@ -176,23 +176,32 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
 // Helper functions for RPC operations
 const createRpcHandler = () => async ({ params, request }: any) => {
   try {
+    console.log('🔍 RPC Handler - Function:', params.functionName)
     const body = await safeJsonParse(request)
+    console.log('🔍 RPC Handler - Body:', body)
+    
     const response = await enhancedBridge.handleRpc(
       params.functionName as string,
       body
     )
     
+    console.log('🔍 RPC Handler - Response:', response)
+    console.log('🔍 RPC Handler - Response data:', response.data)
+    console.log('🔍 RPC Handler - Response status:', response.status)
+    
+    // For scalar RPC responses, return the value directly as JSON
     return HttpResponse.json(response.data, {
       status: response.status,
       headers: {
         ...response.headers,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
         'Access-Control-Allow-Methods': 'POST'
       }
     })
   } catch (error: any) {
+    console.error('❌ RPC Handler Error:', error)
     return createPostgreSQLErrorResponse(error)
   }
 }
