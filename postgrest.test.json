@@ -19,22 +19,32 @@
             {
               "type": "info",
               "message": "Starting test: Getting your data",
-              "timestamp": "2025-09-08T14:06:05.445Z"
+              "timestamp": "2025-09-09T13:24:25.974Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:24:26.300Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:24:26.461Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T14:06:06.991Z"
+              "timestamp": "2025-09-09T13:24:28.588Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T14:06:06.992Z"
+              "timestamp": "2025-09-09T13:24:28.592Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T14:06:07.130Z"
+              "timestamp": "2025-09-09T13:24:28.656Z"
             }
           ],
           "skip": true
@@ -54,22 +64,32 @@
             {
               "type": "info",
               "message": "Starting test: Selecting specific columns",
-              "timestamp": "2025-09-08T14:06:45.119Z"
+              "timestamp": "2025-09-09T13:24:28.657Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:24:29.024Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:24:29.181Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T14:06:47.797Z"
+              "timestamp": "2025-09-09T13:24:31.226Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T14:06:47.799Z"
+              "timestamp": "2025-09-09T13:24:31.227Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T14:06:47.885Z"
+              "timestamp": "2025-09-09T13:24:31.298Z"
             }
           ],
           "skip": true
@@ -90,22 +110,32 @@
             {
               "type": "info",
               "message": "Starting test: Query referenced tables",
-              "timestamp": "2025-09-08T14:12:45.351Z"
+              "timestamp": "2025-09-09T13:43:49.649Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:43:49.991Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:43:50.147Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T14:12:47.121Z"
+              "timestamp": "2025-09-09T13:43:52.303Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T14:12:47.122Z"
+              "timestamp": "2025-09-09T13:43:52.304Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T14:12:47.220Z"
+              "timestamp": "2025-09-09T13:43:52.383Z"
             }
           ],
           "skip": true
@@ -163,22 +193,32 @@
             {
               "type": "info",
               "message": "Starting test: Query referenced tables through a join table",
-              "timestamp": "2025-09-08T14:27:58.600Z"
+              "timestamp": "2025-09-09T13:43:52.384Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:43:52.745Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:43:52.908Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T14:28:01.340Z"
+              "timestamp": "2025-09-09T13:43:55.007Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T14:28:01.341Z"
+              "timestamp": "2025-09-09T13:43:55.008Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T14:28:01.540Z"
+              "timestamp": "2025-09-09T13:43:55.137Z"
             }
           ],
           "skip": true
@@ -200,22 +240,32 @@
             {
               "type": "info",
               "message": "Starting test: Query the same referenced table multiple times",
-              "timestamp": "2025-09-08T14:30:10.298Z"
+              "timestamp": "2025-09-09T13:43:55.138Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:43:55.483Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:43:55.647Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T14:30:11.965Z"
+              "timestamp": "2025-09-09T13:43:57.730Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T14:30:11.965Z"
+              "timestamp": "2025-09-09T13:43:57.731Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T14:30:12.048Z"
+              "timestamp": "2025-09-09T13:43:57.808Z"
             }
           ],
           "skip": true
@@ -237,22 +287,32 @@
             {
               "type": "info",
               "message": "Starting test: Query nested foreign tables through a join table",
-              "timestamp": "2025-09-08T14:30:12.048Z"
+              "timestamp": "2025-09-09T13:43:57.809Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:43:58.153Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:43:58.305Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T14:30:12.322Z"
+              "timestamp": "2025-09-09T13:44:00.416Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T14:30:12.323Z"
+              "timestamp": "2025-09-09T13:44:00.417Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T14:30:12.429Z"
+              "timestamp": "2025-09-09T13:44:00.562Z"
             }
           ],
           "skip": true
@@ -338,22 +398,32 @@
             {
               "type": "info",
               "message": "Starting test: Querying with count option",
-              "timestamp": "2025-09-08T15:47:26.840Z"
+              "timestamp": "2025-09-09T13:24:42.049Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:24:42.393Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:24:42.549Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T15:47:28.637Z"
+              "timestamp": "2025-09-09T13:24:44.574Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T15:47:28.639Z"
+              "timestamp": "2025-09-09T13:24:44.577Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T15:47:28.800Z"
+              "timestamp": "2025-09-09T13:24:44.653Z"
             }
           ],
           "skip": true
@@ -375,22 +445,32 @@
             {
               "type": "info",
               "message": "Starting test: Querying JSON data",
-              "timestamp": "2025-09-08T15:47:28.801Z"
+              "timestamp": "2025-09-09T13:44:00.562Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:44:00.910Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:44:01.068Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T15:47:29.120Z"
+              "timestamp": "2025-09-09T13:44:03.125Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T15:47:29.121Z"
+              "timestamp": "2025-09-09T13:44:03.126Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T15:47:29.186Z"
+              "timestamp": "2025-09-09T13:44:03.205Z"
             }
           ],
           "skip": true
@@ -412,22 +492,32 @@
             {
               "type": "info",
               "message": "Starting test: Querying referenced table with inner join",
-              "timestamp": "2025-09-08T15:47:29.187Z"
+              "timestamp": "2025-09-09T13:24:47.234Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:24:47.610Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:24:47.775Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T15:47:29.422Z"
+              "timestamp": "2025-09-09T13:24:49.839Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T15:47:29.422Z"
+              "timestamp": "2025-09-09T13:24:49.840Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T15:47:29.504Z"
+              "timestamp": "2025-09-09T13:24:49.957Z"
             }
           ],
           "skip": true
@@ -493,22 +583,32 @@
             {
               "type": "info",
               "message": "Starting test: Create a record",
-              "timestamp": "2025-09-08T15:49:28.925Z"
+              "timestamp": "2025-09-09T13:24:49.958Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:24:50.307Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:24:50.464Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T15:49:30.678Z"
+              "timestamp": "2025-09-09T13:24:52.501Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T15:49:30.683Z"
+              "timestamp": "2025-09-09T13:24:52.502Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T15:49:30.894Z"
+              "timestamp": "2025-09-09T13:24:52.587Z"
             }
           ],
           "skip": true
@@ -529,22 +629,32 @@
             {
               "type": "info",
               "message": "Starting test: Create a record and return it",
-              "timestamp": "2025-09-08T16:13:03.402Z"
+              "timestamp": "2025-09-09T13:24:52.588Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:24:52.948Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:24:53.112Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T16:13:05.097Z"
+              "timestamp": "2025-09-09T13:24:55.145Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T16:13:05.103Z"
+              "timestamp": "2025-09-09T13:24:55.146Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T16:13:05.319Z"
+              "timestamp": "2025-09-09T13:24:55.233Z"
             }
           ],
           "skip": true
@@ -566,22 +676,32 @@
             {
               "type": "info",
               "message": "Starting test: Bulk create",
-              "timestamp": "2025-09-08T16:40:47.668Z"
+              "timestamp": "2025-09-09T13:24:55.234Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:24:55.584Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:24:55.781Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T16:40:49.176Z"
+              "timestamp": "2025-09-09T13:24:57.804Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T16:40:49.177Z"
+              "timestamp": "2025-09-09T13:24:57.805Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-08T16:40:49.249Z"
+              "timestamp": "2025-09-09T13:24:57.890Z"
             }
           ],
           "skip": true
@@ -606,30 +726,40 @@
         "hideCodeBlock": true,
         "isSpotlight": true,
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Updating your data",
-              "timestamp": "2025-09-08T18:03:42.976Z"
+              "timestamp": "2025-09-09T13:44:03.206Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:44:03.572Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:44:03.726Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-08T18:03:45.289Z"
+              "timestamp": "2025-09-09T13:44:05.771Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-08T18:03:45.291Z"
+              "timestamp": "2025-09-09T13:44:05.772Z"
             },
             {
-              "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"status\": 204,\n  \"statusText\": \"No Content\"\n}\n\nActual:\n{\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
-              "timestamp": "2025-09-08T18:03:45.396Z"
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:44:05.853Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -640,7 +770,43 @@
           "sql": "```sql\ncreate table\n  instruments (id int8 primary key, name text);\n\ninsert into\n  instruments (id, name)\nvalues\n  (1, 'harpsichord');\n```\n"
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"piano\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Update a record and return it",
+              "timestamp": "2025-09-09T13:25:00.525Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:00.877Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:01.045Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:25:03.093Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:25:03.094Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:25:03.176Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "updating-json-data",
@@ -651,7 +817,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Michael\",\n      \"address\": {\n        \"street\": \"Melrose Place\",\n        \"postcode\": 90210\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "Postgres offers some\n[operators](/docs/guides/database/json#query-the-jsonb-data) for\nworking with JSON data. Currently, it is only possible to update the entire JSON document.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Updating JSON data",
+              "timestamp": "2025-09-09T13:25:03.176Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:03.521Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:03.688Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:25:05.730Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:25:05.730Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:25:05.809Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -670,7 +872,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"piano\"\n    }\n  ],\n  \"status\": 201,\n  \"statusText\": \"Created\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Upsert your data",
+              "timestamp": "2025-09-09T13:25:05.809Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:06.164Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:06.333Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:25:08.380Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:25:08.381Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:25:08.469Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "bulk-upsert-your-data",
@@ -680,7 +918,43 @@
           "sql": "```sql\ncreate table\n  instruments (id int8 primary key, name text);\n\ninsert into\n  instruments (id, name)\nvalues\n  (1, 'harpsichord');\n```\n"
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"piano\"\n    },\n    {\n      \"id\": 2,\n      \"name\": \"harp\"\n    }\n  ],\n  \"status\": 201,\n  \"statusText\": \"Created\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Bulk Upsert your data",
+              "timestamp": "2025-09-09T13:25:08.470Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:08.822Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:08.999Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:25:11.055Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:25:11.059Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:25:11.145Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "upserting-into-tables-with-constraints",
@@ -691,7 +965,43 @@
         },
         "response": "```json\n{\n  \"error\": {\n    \"code\": \"23505\",\n    \"details\": \"Key (handle)=(saoirse) already exists.\",\n    \"hint\": null,\n    \"message\": \"duplicate key value violates unique constraint \\\"users_handle_key\\\"\"\n  },\n  \"status\": 409,\n  \"statusText\": \"Conflict\"\n}\n```\n",
         "description": "In the following query, `upsert()` implicitly uses the `id`\n(primary key) column to determine conflicts. If there is no existing\nrow with the same `id`, `upsert()` inserts a new row, which\nwill fail in this case as there is already a row with `handle` `\"saoirse\"`.\nUsing the `onConflict` option, you can instruct `upsert()` to use\nanother column with a unique constraint to determine conflicts.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Upserting into tables with constraints",
+              "timestamp": "2025-09-09T13:44:05.854Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:44:06.199Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:44:06.353Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:44:08.440Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:44:08.440Z"
+            },
+            {
+              "type": "error",
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"error\": {\n    \"code\": \"23505\",\n    \"details\": \"Key (handle)=(saoirse) already exists.\",\n    \"hint\": null,\n    \"message\": \"duplicate key value violates unique constraint \\\"users_handle_key\\\"\"\n  },\n  \"status\": 409,\n  \"statusText\": \"Conflict\"\n}\n\nActual:\n{\n  \"data\": [\n    {\n      \"id\": 42,\n      \"handle\": \"saoirse\",\n      \"display_name\": \"Saoirse\"\n    }\n  ],\n  \"status\": 201,\n  \"statusText\": \"Created\"\n}",
+              "timestamp": "2025-09-09T13:44:08.525Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },
@@ -710,7 +1020,43 @@
         },
         "response": "```json\n{\n  \"status\": 204,\n  \"statusText\": \"No Content\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Delete a single record",
+              "timestamp": "2025-09-09T13:25:13.803Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:14.146Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:14.312Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:25:16.356Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:25:16.357Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution failed: \u001b[0m\u001b[1m\u001b[31merror\u001b[0m: Uncaught SyntaxError: Identifier 'response' has already been declared\n        let response;\n\u001b[0m\u001b[31m            ^\u001b[0m\n    at \u001b[0m\u001b[1m\u001b[3m<anonymous>\u001b[0m (\u001b[0m\u001b[36mfile:///Users/markb/dev/supabase-lite-split/supabase-lite/tmp-script.ts\u001b[0m:\u001b[0m\u001b[33m117\u001b[0m:\u001b[0m\u001b[33m13\u001b[0m)\n",
+              "timestamp": "2025-09-09T13:25:16.387Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "delete-records-and-return-it",
@@ -720,7 +1066,43 @@
           "sql": "```sql\ncreate table\n  countries (id int8 primary key, name text);\n\ninsert into\n  countries (id, name)\nvalues\n  (1, 'Mordor');\n```\n"
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Mordor\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Delete a record and return it",
+              "timestamp": "2025-09-09T13:25:16.388Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:16.748Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:16.905Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:25:18.964Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:25:18.965Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:25:19.043Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "delete-multiple-records",
@@ -730,7 +1112,43 @@
           "sql": "```sql\ncreate table\n  countries (id int8 primary key, name text);\n\ninsert into\n  countries (id, name)\nvalues\n  (1, 'Rohan'), (2, 'The Shire'), (3, 'Mordor');\n```\n"
         },
         "response": "```json\n{\n  \"status\": 204,\n  \"statusText\": \"No Content\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Delete multiple records",
+              "timestamp": "2025-09-09T13:25:19.044Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:19.431Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:19.592Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:25:21.665Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:25:21.666Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution failed: \u001b[0m\u001b[1m\u001b[31merror\u001b[0m: Uncaught SyntaxError: Identifier 'response' has already been declared\n        let response;\n\u001b[0m\u001b[31m            ^\u001b[0m\n    at \u001b[0m\u001b[1m\u001b[3m<anonymous>\u001b[0m (\u001b[0m\u001b[36mfile:///Users/markb/dev/supabase-lite-split/supabase-lite/tmp-script.ts\u001b[0m:\u001b[0m\u001b[33m117\u001b[0m:\u001b[0m\u001b[33m13\u001b[0m)\n",
+              "timestamp": "2025-09-09T13:25:21.706Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },
@@ -749,7 +1167,33 @@
         },
         "response": "```json\n{\n  \"data\": \"Hello world\",\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Call a Postgres function without arguments",
+              "timestamp": "2025-09-09T13:25:21.707Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:22.067Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:22.241Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Database seeding failed on statement 1: SQL execution failed with status 400: {\"error\":\"SQL execution failed\",\"message\":\"unterminated dollar-quoted string at or near \\\"$$\\n  select 'Hello world';\\\"\"}",
+              "timestamp": "2025-09-09T13:25:28.331Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "call-a-postgres-function-with-arguments",
@@ -759,7 +1203,33 @@
           "sql": "```sql\ncreate function echo(say text) returns text as $$\n  select say;\n$$ language sql;\n```\n"
         },
         "response": "```json\n  {\n    \"data\": \"👋\",\n    \"status\": 200,\n    \"statusText\": \"OK\"\n  }\n  ```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Call a Postgres function with arguments",
+              "timestamp": "2025-09-09T13:25:28.333Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:28.686Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:28.841Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Database seeding failed on statement 1: SQL execution failed with status 400: {\"error\":\"SQL execution failed\",\"message\":\"unterminated dollar-quoted string at or near \\\"$$\\n  select say;\\\"\"}",
+              "timestamp": "2025-09-09T13:25:34.932Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "bulk-processing",
@@ -770,7 +1240,33 @@
         },
         "response": "```json\n{\n  \"data\": [\n    2,\n    3,\n    4\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "You can process large payloads by passing in an array as an argument.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Bulk processing",
+              "timestamp": "2025-09-09T13:25:34.934Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:35.319Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:35.486Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Database seeding failed on statement 1: SQL execution failed with status 400: {\"error\":\"SQL execution failed\",\"message\":\"unterminated dollar-quoted string at or near \\\"$$\\n  select array_agg(n + 1) from unnest(arr) as n;\\\"\"}",
+              "timestamp": "2025-09-09T13:25:41.550Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "call-a-postgres-function-with-filters",
@@ -781,7 +1277,33 @@
         },
         "response": "```json\n{\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Rohan\"\n  },\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "Postgres functions that return tables can also be combined with [Filters](/docs/reference/javascript/using-filters) and [Modifiers](/docs/reference/javascript/using-modifiers).\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Call a Postgres function with filters",
+              "timestamp": "2025-09-09T13:25:41.551Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:41.905Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:42.077Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Database seeding failed on statement 3: SQL execution failed with status 400: {\"error\":\"SQL execution failed\",\"message\":\"unterminated dollar-quoted string at or near \\\"$$\\n  select * from countries;\\\"\"}",
+              "timestamp": "2025-09-09T13:25:48.202Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "call-a-read-only-postgres-function",
@@ -791,7 +1313,33 @@
           "sql": "```sql\ncreate function hello_world() returns text as $$\n  select 'Hello world';\n$$ language sql;\n```\n"
         },
         "response": "```json\n{\n  \"data\": \"Hello world\",\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Call a read-only Postgres function",
+              "timestamp": "2025-09-09T13:25:48.203Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:48.567Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:48.731Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Database seeding failed on statement 1: SQL execution failed with status 400: {\"error\":\"SQL execution failed\",\"message\":\"unterminated dollar-quoted string at or near \\\"$$\\n  select 'Hello world';\\\"\"}",
+              "timestamp": "2025-09-09T13:25:54.799Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },
@@ -804,19 +1352,97 @@
         "id": "applying-filters",
         "name": "Applying Filters",
         "description": "Filters must be applied after any of `select()`, `update()`, `upsert()`,\n`delete()`, and `rpc()` and before\n[modifiers](/docs/reference/javascript/using-modifiers).\n",
-        "code": "```ts\nconst { data, error } = await supabase\n  .from('instruments')\n  .select('name, section_id')\n  .eq('name', 'violin')    // Correct\n\nconst { data, error } = await supabase\n  .from('instruments')\n  .eq('name', 'violin')    // Incorrect\n  .select('name, section_id')\n```\n"
+        "code": "```ts\nconst { data, error } = await supabase\n  .from('instruments')\n  .select('name, section_id')\n  .eq('name', 'violin')    // Correct\n\nconst { data, error } = await supabase\n  .from('instruments')\n  .eq('name', 'violin')    // Incorrect\n  .select('name, section_id')\n```\n",
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Applying Filters",
+              "timestamp": "2025-09-09T13:25:54.800Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:55.155Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:55.314Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Cannot read properties of undefined (reading 'sql')",
+              "timestamp": "2025-09-09T13:25:55.314Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "chaining-filters",
         "name": "Chaining",
         "description": "Filters can be chained together to produce advanced queries. For example,\nto query cities with population between 1,000 and 10,000:\n\n```ts\nconst { data, error } = await supabase\n  .from('cities')\n  .select('name, country_id')\n  .gte('population', 1000)\n  .lt('population', 10000)\n```\n",
-        "code": "```ts\nconst { data, error } = await supabase\n  .from('cities')\n  .select('name, country_id')\n  .gte('population', 1000)\n  .lt('population', 10000)\n```\n"
+        "code": "```ts\nconst { data, error } = await supabase\n  .from('cities')\n  .select('name, country_id')\n  .gte('population', 1000)\n  .lt('population', 10000)\n```\n",
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Chaining",
+              "timestamp": "2025-09-09T13:25:55.315Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:55.663Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:55.836Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Cannot read properties of undefined (reading 'sql')",
+              "timestamp": "2025-09-09T13:25:55.836Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "conditional-chaining",
         "name": "Conditional Chaining",
         "description": "Filters can be built up one step at a time and then executed. For example:\n\n```ts\nconst filterByName = null\nconst filterPopLow = 1000\nconst filterPopHigh = 10000\n\nlet query = supabase\n  .from('cities')\n  .select('name, country_id')\n\nif (filterByName)  { query = query.eq('name', filterByName) }\nif (filterPopLow)  { query = query.gte('population', filterPopLow) }\nif (filterPopHigh) { query = query.lt('population', filterPopHigh) }\n\nconst { data, error } = await query\n```\n",
-        "code": "```ts\nconst filterByName = null\nconst filterPopLow = 1000\nconst filterPopHigh = 10000\n\nlet query = supabase\n  .from('cities')\n  .select('name, country_id')\n\nif (filterByName)  { query = query.eq('name', filterByName) }\nif (filterPopLow)  { query = query.gte('population', filterPopLow) }\nif (filterPopHigh) { query = query.lt('population', filterPopHigh) }\n\nconst { data, error } = await query\n```\n"
+        "code": "```ts\nconst filterByName = null\nconst filterPopLow = 1000\nconst filterPopHigh = 10000\n\nlet query = supabase\n  .from('cities')\n  .select('name, country_id')\n\nif (filterByName)  { query = query.eq('name', filterByName) }\nif (filterPopLow)  { query = query.gte('population', filterPopLow) }\nif (filterPopHigh) { query = query.lt('population', filterPopHigh) }\n\nconst { data, error } = await query\n```\n",
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Conditional Chaining",
+              "timestamp": "2025-09-09T13:25:55.837Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:56.191Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:56.370Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Cannot read properties of undefined (reading 'sql')",
+              "timestamp": "2025-09-09T13:25:56.370Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "filter-by-value-within-json-column",
@@ -825,7 +1451,43 @@
         "data": {
           "sql": "```sql\ncreate table\n  users (\n    id int8 primary key,\n    name text,\n    address jsonb\n  );\n\ninsert into\n  users (id, name, address)\nvalues\n  (1, 'Michael', '{ \"postcode\": 90210 }'),\n  (2, 'Jane', null);\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Michael\",\n      \"address\": {\n        \"postcode\": 90210\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n"
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Michael\",\n      \"address\": {\n        \"postcode\": 90210\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Filter by values within a JSON column",
+              "timestamp": "2025-09-09T13:25:56.371Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:56.712Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:56.885Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:25:58.978Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:25:58.979Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:25:59.060Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "filter-referenced-tables",
@@ -835,7 +1497,38 @@
           "sql": "```sql\ncreate table\n  orchestral_sections (id int8 primary key, name text);\ncreate table\n  instruments (\n    id int8 primary key,\n    section_id int8 not null references orchestral_sections,\n    name text\n  );\n\ninsert into\n  orchestral_sections (id, name)\nvalues\n  (1, 'strings'),\n  (2, 'woodwinds');\ninsert into\n  instruments (id, section_id, name)\nvalues\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n",
           "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"woodwinds\",\n      \"characters\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n"
         },
-        "description": "You can filter on referenced tables in your `select()` query using dot\nnotation.\n"
+        "description": "You can filter on referenced tables in your `select()` query using dot\nnotation.\n",
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Filter referenced tables",
+              "timestamp": "2025-09-09T13:25:59.062Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:25:59.415Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:25:59.588Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:01.644Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Cannot read properties of undefined (reading 'replace')",
+              "timestamp": "2025-09-09T13:26:01.644Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },
@@ -853,7 +1546,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": \"Leia\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:01.645Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:02.007Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:02.184Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:04.254Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:04.256Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:04.334Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -871,7 +1600,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Luke\"\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Han\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:04.335Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:04.706Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:04.884Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:06.922Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:06.924Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:07.005Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -890,7 +1655,43 @@
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 3,\n      \"name\": \"Han\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
         "isSpotlight": true,
-        "description": "When using [reserved words](https://www.postgresql.org/docs/current/sql-keywords-appendix.html) for column names you need\nto add double quotes e.g. `.gt('\"order\"', 2)`\n"
+        "description": "When using [reserved words](https://www.postgresql.org/docs/current/sql-keywords-appendix.html) for column names you need\nto add double quotes e.g. `.gt('\"order\"', 2)`\n",
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:07.006Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:07.361Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:07.531Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:09.578Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:09.579Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:09.667Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -908,7 +1709,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": \"Leia\"\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Han\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:09.668Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:10.017Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:10.176Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:12.236Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:12.237Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:12.324Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -926,7 +1763,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Luke\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:12.325Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:12.693Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:12.858Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:14.932Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:14.933Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:15.027Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -944,7 +1817,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Luke\"\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Leia\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:15.029Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:15.394Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:15.552Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:17.586Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:17.588Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:17.667Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -962,7 +1871,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Luke\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:17.668Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:18.007Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:18.168Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:20.202Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:20.204Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:20.283Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -980,7 +1925,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Luke\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:20.284Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:20.620Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:20.779Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:22.794Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:22.795Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:22.884Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -999,7 +1980,43 @@
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": \"null\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "Using the `eq()` filter doesn't work when filtering for `null`.\n\nInstead, you need to use `is()`.\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Checking for nullness, true or false",
+              "timestamp": "2025-09-09T13:26:22.885Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:23.216Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:23.374Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:25.435Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:25.436Z"
+            },
+            {
+              "type": "error",
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": \"null\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+              "timestamp": "2025-09-09T13:26:25.515Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },
@@ -1017,7 +2034,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 2,\n      \"name\": \"Leia\"\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Han\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:25.516Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:25.881Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:26.043Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:28.123Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:28.124Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:28.208Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1035,7 +2088,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"title\": \"Cache invalidation is not working\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: On array columns",
+              "timestamp": "2025-09-09T13:26:28.209Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:28.552Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:28.718Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:30.768Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:30.769Z"
+            },
+            {
+              "type": "error",
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"title\": \"Cache invalidation is not working\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"Cache invalidation is not working\",\n      \"tags\": [\n        \"is:open\",\n        \"severity:high\",\n        \"priority:low\"\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+              "timestamp": "2025-09-09T13:26:30.850Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "on-range-columns",
@@ -1046,7 +2135,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"room_name\": \"Emerald\",\n      \"during\": \"[\\\"2000-01-01 13:00:00\\\",\\\"2000-01-01 15:00:00\\\")\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "Postgres supports a number of [range\ntypes](https://www.postgresql.org/docs/current/rangetypes.html). You\ncan filter on range columns using the string representation of range\nvalues.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: On range columns",
+              "timestamp": "2025-09-09T13:26:30.850Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:31.200Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:31.362Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:33.396Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:33.398Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:33.477Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "on-jsonb-columns",
@@ -1056,7 +2181,43 @@
           "sql": "```sql\ncreate table\n  users (\n    id int8 primary key,\n    name text,\n    address jsonb\n  );\n\ninsert into\n  users (id, name, address)\nvalues\n  (1, 'Michael', '{ \"postcode\": 90210, \"street\": \"Melrose Place\" }'),\n  (2, 'Jane', '{}');\n```\n"
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"Michael\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: On `jsonb` columns",
+              "timestamp": "2025-09-09T13:26:33.478Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:33.835Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:34.007Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:36.074Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:36.076Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:36.162Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1074,7 +2235,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"Chemistry\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: On array columns",
+              "timestamp": "2025-09-09T13:26:36.163Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:36.496Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:36.654Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:38.704Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:38.706Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:38.784Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "on-range-columns",
@@ -1085,7 +2282,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"room_name\": \"Emerald\",\n      \"during\": \"[\\\"2000-01-01 13:00:00\\\",\\\"2000-01-01 15:00:00\\\")\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "Postgres supports a number of [range\ntypes](https://www.postgresql.org/docs/current/rangetypes.html). You\ncan filter on range columns using the string representation of range\nvalues.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: On range columns",
+              "timestamp": "2025-09-09T13:26:38.785Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:39.130Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:39.323Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:41.372Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:41.372Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:41.467Z"
+            }
+          ],
+          "skip": true
+        }
       },
       {
         "id": "on-jsonb-columns",
@@ -1095,7 +2328,43 @@
           "sql": "```sql\ncreate table\n  users (\n    id int8 primary key,\n    name text,\n    address jsonb\n  );\n\ninsert into\n  users (id, name, address)\nvalues\n  (1, 'Michael', '{ \"postcode\": 90210, \"street\": \"Melrose Place\" }'),\n  (2, 'Jane', '{}');\n```\n"
         },
         "response": "```json\n  {\n    \"data\": [\n      {\n        \"name\": \"Jane\"\n      }\n    ],\n    \"status\": 200,\n    \"statusText\": \"OK\"\n  }\n  ```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: On `jsonb` columns",
+              "timestamp": "2025-09-09T13:26:41.468Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:41.813Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:41.979Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:44.056Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:44.057Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:44.140Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1114,7 +2383,43 @@
         "response": "```json\n  {\n    \"data\": [\n      {\n        \"id\": 2,\n        \"room_name\": \"Topaz\",\n        \"during\": \"[\\\"2000-01-02 09:00:00\\\",\\\"2000-01-02 10:00:00\\\")\"\n      }\n    ],\n    \"status\": 200,\n    \"statusText\": \"OK\"\n  }\n  ```\n",
         "description": "Postgres supports a number of [range\ntypes](https://www.postgresql.org/docs/current/rangetypes.html). You\ncan filter on range columns using the string representation of range\nvalues.\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:44.141Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:44.576Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:44.741Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:46.791Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:46.792Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:46.881Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1133,7 +2438,43 @@
         "response": "```json\n  {\n    \"data\": [\n      {\n        \"id\": 2,\n        \"room_name\": \"Topaz\",\n        \"during\": \"[\\\"2000-01-02 09:00:00\\\",\\\"2000-01-02 10:00:00\\\")\"\n      }\n    ],\n    \"status\": 200,\n    \"statusText\": \"OK\"\n  }\n  ```\n",
         "description": "Postgres supports a number of [range\ntypes](https://www.postgresql.org/docs/current/rangetypes.html). You\ncan filter on range columns using the string representation of range\nvalues.\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:46.882Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:47.236Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:47.413Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:49.455Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:49.458Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:49.543Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1152,7 +2493,43 @@
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"room_name\": \"Emerald\",\n      \"during\": \"[\\\"2000-01-01 13:00:00\\\",\\\"2000-01-01 15:00:00\\\")\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "Postgres supports a number of [range\ntypes](https://www.postgresql.org/docs/current/rangetypes.html). You\ncan filter on range columns using the string representation of range\nvalues.\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:49.544Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:49.914Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:50.096Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:52.169Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:52.170Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:52.245Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1171,7 +2548,43 @@
         "response": "```json\n  {\n    \"data\": [\n      {\n        \"id\": 1,\n        \"room_name\": \"Emerald\",\n        \"during\": \"[\\\"2000-01-01 13:00:00\\\",\\\"2000-01-01 15:00:00\\\")\"\n      }\n    ],\n    \"status\": 200,\n    \"statusText\": \"OK\"\n  }\n  ```\n",
         "description": "Postgres supports a number of [range\ntypes](https://www.postgresql.org/docs/current/rangetypes.html). You\ncan filter on range columns using the string representation of range\nvalues.\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:52.246Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:52.588Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:52.776Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:54.810Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:54.810Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:54.892Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1190,7 +2603,43 @@
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"room_name\": \"Emerald\",\n      \"during\": \"[\\\"2000-01-01 13:00:00\\\",\\\"2000-01-01 15:00:00\\\")\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "Postgres supports a number of [range\ntypes](https://www.postgresql.org/docs/current/rangetypes.html). You\ncan filter on range columns using the string representation of range\nvalues.\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:26:54.893Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:55.258Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:55.449Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:26:57.510Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:26:57.511Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:26:57.595Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1208,7 +2657,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"title\": \"Cache invalidation is not working\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: On array columns",
+              "timestamp": "2025-09-09T13:26:57.596Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:26:57.949Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:26:58.112Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:00.182Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:27:00.183Z"
+            },
+            {
+              "type": "error",
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"title\": \"Cache invalidation is not working\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"22P02\",\n    \"details\": \"Array value must start with \\\"{\\\" or dimension information.\",\n    \"hint\": null,\n    \"message\": \"malformed array literal: \\\"is:closed,severity:high\\\"\"\n  },\n  \"status\": 400,\n  \"statusText\": \"Bad Request\"\n}",
+              "timestamp": "2025-09-09T13:27:00.258Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "on-range-columns",
@@ -1219,7 +2704,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"room_name\": \"Emerald\",\n      \"during\": \"[\\\"2000-01-01 13:00:00\\\",\\\"2000-01-01 15:00:00\\\")\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "Postgres supports a number of [range\ntypes](https://www.postgresql.org/docs/current/rangetypes.html). You\ncan filter on range columns using the string representation of range\nvalues.\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: On range columns",
+              "timestamp": "2025-09-09T13:27:00.259Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:00.612Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:00.780Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:02.839Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:27:02.839Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:27:02.928Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1236,25 +2757,139 @@
         "data": {
           "sql": "```sql\ncreate table texts (\n  id      bigint\n          primary key\n          generated always as identity,\n  content text\n);\n\ninsert into texts (content) values\n    ('Four score and seven years ago'),\n    ('The road goes ever on and on'),\n    ('Green eggs and ham')\n;\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"content\": \"Green eggs and ham\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n"
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"content\": \"Green eggs and ham\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Text search",
+              "timestamp": "2025-09-09T13:27:02.929Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:03.292Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:03.458Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:05.496Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:27:05.498Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution failed: \u001b[0m\u001b[1m\u001b[31merror\u001b[0m: Expected a semicolon at file:///Users/markb/dev/supabase-lite-split/supabase-lite/tmp-script.ts:130:27\n\n    .textSearch(\"content\", `'eggs' & 'ham'`, {\n                            ~~~~~~\n",
+              "timestamp": "2025-09-09T13:27:05.540Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "basic-normalization",
         "name": "Basic normalization",
         "description": "Uses PostgreSQL's `plainto_tsquery` function.",
-        "code": "```ts\nconst { data, error } = await supabase\n  .from('quotes')\n  .select('catchphrase')\n  .textSearch('catchphrase', `'fat' & 'cat'`, {\n    type: 'plain',\n    config: 'english'\n  })\n```\n"
+        "code": "```ts\nconst { data, error } = await supabase\n  .from('quotes')\n  .select('catchphrase')\n  .textSearch('catchphrase', `'fat' & 'cat'`, {\n    type: 'plain',\n    config: 'english'\n  })\n```\n",
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Basic normalization",
+              "timestamp": "2025-09-09T13:27:05.544Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:05.889Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:06.053Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Cannot read properties of undefined (reading 'sql')",
+              "timestamp": "2025-09-09T13:27:06.053Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "full-normalization",
         "name": "Full normalization",
         "description": "Uses PostgreSQL's `phraseto_tsquery` function.",
-        "code": "```ts\nconst { data, error } = await supabase\n  .from('quotes')\n  .select('catchphrase')\n  .textSearch('catchphrase', `'fat' & 'cat'`, {\n    type: 'phrase',\n    config: 'english'\n  })\n```\n"
+        "code": "```ts\nconst { data, error } = await supabase\n  .from('quotes')\n  .select('catchphrase')\n  .textSearch('catchphrase', `'fat' & 'cat'`, {\n    type: 'phrase',\n    config: 'english'\n  })\n```\n",
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Full normalization",
+              "timestamp": "2025-09-09T13:27:06.054Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:06.406Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:06.558Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Cannot read properties of undefined (reading 'sql')",
+              "timestamp": "2025-09-09T13:27:06.559Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "web-search",
         "name": "Websearch",
         "description": "Uses PostgreSQL's `websearch_to_tsquery` function.\nThis function will never raise syntax errors, which makes it possible to use raw user-supplied input for search, and can be used\nwith advanced operators.\n\n- `unquoted text`: text not inside quote marks will be converted to terms separated by & operators, as if processed by plainto_tsquery.\n- `\"quoted text\"`: text inside quote marks will be converted to terms separated by `<->` operators, as if processed by phraseto_tsquery.\n- `OR`: the word “or” will be converted to the | operator.\n- `-`: a dash will be converted to the ! operator.\n",
-        "code": "```ts\nconst { data, error } = await supabase\n  .from('quotes')\n  .select('catchphrase')\n  .textSearch('catchphrase', `'fat or cat'`, {\n    type: 'websearch',\n    config: 'english'\n  })\n```\n"
+        "code": "```ts\nconst { data, error } = await supabase\n  .from('quotes')\n  .select('catchphrase')\n  .textSearch('catchphrase', `'fat or cat'`, {\n    type: 'websearch',\n    config: 'english'\n  })\n```\n",
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Websearch",
+              "timestamp": "2025-09-09T13:27:06.559Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:06.897Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:07.057Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Cannot read properties of undefined (reading 'sql')",
+              "timestamp": "2025-09-09T13:27:07.057Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },
@@ -1272,7 +2907,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"Leia\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": true,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:27:07.058Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:07.390Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:07.546Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:09.580Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:27:09.582Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T13:27:09.662Z"
+            }
+          ],
+          "skip": true
+        }
       }
     ]
   },
@@ -1291,7 +2962,43 @@
         },
         "response": "```json\n  {\n    \"data\": [\n      {\n        \"id\": 1,\n        \"name\": \"null\"\n      }\n    ],\n    \"status\": 200,\n    \"statusText\": \"OK\"\n  }\n  ```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:27:09.663Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:09.999Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:10.165Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:12.262Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:27:12.264Z"
+            },
+            {
+              "type": "error",
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"null\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"42601\",\n    \"details\": null,\n    \"hint\": null,\n    \"message\": \"syntax error at end of input\"\n  },\n  \"status\": 400,\n  \"statusText\": \"Bad Request\"\n}",
+              "timestamp": "2025-09-09T13:27:12.347Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },
@@ -1310,7 +3017,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"Leia\"\n    },\n    {\n      \"name\": \"Han\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:27:12.348Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:12.685Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:12.853Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:14.892Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:27:14.893Z"
+            },
+            {
+              "type": "error",
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"Leia\"\n    },\n    {\n      \"name\": \"Han\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"42601\",\n    \"details\": null,\n    \"hint\": null,\n    \"message\": \"syntax error at or near \\\"or\\\"\"\n  },\n  \"status\": 400,\n  \"statusText\": \"Bad Request\"\n}",
+              "timestamp": "2025-09-09T13:27:14.986Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "use-or-with-and",
@@ -1320,7 +3063,38 @@
           "sql": "```sql\ncreate table\n  characters (id int8 primary key, name text);\n\ninsert into\n  characters (id, name)\nvalues\n  (1, 'Luke'),\n  (2, 'Leia'),\n  (3, 'Han');\n```\n"
         },
         "reponse": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"Luke\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Use `or` with `and`",
+              "timestamp": "2025-09-09T13:27:14.987Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:15.401Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:15.573Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:17.627Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Cannot read properties of undefined (reading 'replace')",
+              "timestamp": "2025-09-09T13:27:17.627Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "use-or-on-referenced-tables",
@@ -1330,7 +3104,43 @@
           "sql": "```sql\ncreate table\n  orchestral_sections (id int8 primary key, name text);\ncreate table\n  instruments (\n    id int8 primary key,\n    section_id int8 not null references orchestral_sections,\n    name text\n  );\n\ninsert into\n  orchestral_sections (id, name)\nvalues\n  (1, 'strings'),\n  (2, 'woodwinds');\ninsert into\n  instruments (id, section_id, name)\nvalues\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n"
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: Use `or` on referenced tables",
+              "timestamp": "2025-09-09T13:27:17.628Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:17.991Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:18.161Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:20.207Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:27:20.208Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution failed: \u001b[0m\u001b[1m\u001b[31merror\u001b[0m: The module's source code could not be parsed: Expected ';', '}' or <eof> at file:///Users/markb/dev/supabase-lite-split/supabase-lite/tmp-script.ts:139:17\n\n      instruments!inner (\n                  ~~~~~\n",
+              "timestamp": "2025-09-09T13:27:20.244Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },
@@ -1349,7 +3159,43 @@
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": 3,\n      \"name\": \"Han\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
-        "isSpotlight": true
+        "isSpotlight": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: With `select()`",
+              "timestamp": "2025-09-09T13:27:20.245Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:20.596Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:20.778Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:22.860Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T13:27:22.861Z"
+            },
+            {
+              "type": "error",
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"id\": 3,\n      \"name\": \"Han\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
+              "timestamp": "2025-09-09T13:27:22.941Z"
+            }
+          ],
+          "skip": false
+        }
       },
       {
         "id": "on-a-referenced-table",
@@ -1359,7 +3205,38 @@
           "sql": "```sql\ncreate table\n  orchestral_sections (id int8 primary key, name text);\ncreate table\n   instruments (\n    id int8 primary key,\n    section_id int8 not null references orchestral_sections,\n    name text\n  );\n\ninsert into\n  orchestral_sections (id, name)\nvalues\n  (1, 'strings'),\n  (2, 'woodwinds');\ninsert into\n  instruments (id, section_id, name)\nvalues\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n"
         },
         "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\":\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
-        "hideCodeBlock": true
+        "hideCodeBlock": true,
+        "results": {
+          "passed": false,
+          "log": [
+            {
+              "type": "info",
+              "message": "Starting test: On a referenced table",
+              "timestamp": "2025-09-09T13:27:22.942Z"
+            },
+            {
+              "type": "info",
+              "message": "Existing project deleted",
+              "timestamp": "2025-09-09T13:27:23.284Z"
+            },
+            {
+              "type": "info",
+              "message": "Fresh project created",
+              "timestamp": "2025-09-09T13:27:23.449Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T13:27:25.509Z"
+            },
+            {
+              "type": "error",
+              "message": "Test execution error: Failed to parse expected response JSON: Expected ',' or '}' after property value in JSON at position 120 (line 9 column 7)",
+              "timestamp": "2025-09-09T13:27:25.509Z"
+            }
+          ],
+          "skip": false
+        }
       }
     ]
   },

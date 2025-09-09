@@ -92,16 +92,16 @@ class PostgRESTTestRunner {
    */
   private async killExistingServers(): Promise<void> {
     this.log('info', 'Killing existing servers on ports 5173-5179...');
-    
+
     try {
       const lsofProcess = new Deno.Command('lsof', {
         args: ['-ti:5173-5179'],
         stdout: 'piped',
         stderr: 'piped'
       });
-      
+
       const lsofResult = await lsofProcess.output();
-      
+
       if (lsofResult.code === 0) {
         const pids = new TextDecoder().decode(lsofResult.stdout).trim();
         if (pids) {
@@ -110,7 +110,7 @@ class PostgRESTTestRunner {
             stdout: 'piped',
             stderr: 'piped'
           });
-          
+
           const killResult = await killProcess.output();
           if (killResult.code === 0) {
             this.log('info', `Killed processes: ${pids.replace(/\n/g, ', ')}`);
@@ -136,7 +136,7 @@ class PostgRESTTestRunner {
    */
   private async startServer(): Promise<void> {
     this.log('info', 'Starting Supabase Lite development server...');
-    
+
     try {
       const process = new Deno.Command('npm', {
         args: ['run', 'dev'],
@@ -144,13 +144,13 @@ class PostgRESTTestRunner {
         stdout: 'piped',
         stderr: 'piped'
       });
-      
+
       // Start the process in the background
       process.spawn();
-      
+
       // Don't wait for the process to complete, just let it run in background
       this.log('info', 'Server starting in background...');
-      
+
     } catch (error) {
       throw new Error(`Failed to start server: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -161,16 +161,16 @@ class PostgRESTTestRunner {
    */
   private async openBrowserTab(): Promise<void> {
     this.log('info', 'Initializing browser context for database...');
-    
+
     try {
       // Use MCP browser tools to navigate/refresh the page
       await this.navigateToBrowser(this.config.supabaseLiteUrl);
       this.browserTabOpen = true;
       this.log('info', 'Browser context initialized successfully');
-      
+
       // Wait for the database to initialize
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
+
     } catch (error) {
       throw new Error(`Failed to initialize browser context: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -199,7 +199,7 @@ class PostgRESTTestRunner {
     // Simply log that the page should be refreshed - the MCP browser tools
     // will handle refreshing the existing tab instead of opening new windows
     this.log('info', `Refreshing browser to: ${url}`);
-    
+
     // Give a brief moment for any pending operations to complete
     await new Promise(resolve => setTimeout(resolve, 500));
   }
@@ -218,11 +218,11 @@ class PostgRESTTestRunner {
    */
   private async waitForServerReady(): Promise<void> {
     this.log('info', 'Waiting for server to be ready...');
-    
+
     for (let attempt = 1; attempt <= this.config.healthCheckRetries; attempt++) {
       try {
         const response = await fetch(`${this.config.supabaseLiteUrl}/health`);
-        
+
         if (response.ok) {
           const health = await response.json();
           if (health.status === 'ok') {
@@ -233,14 +233,45 @@ class PostgRESTTestRunner {
       } catch (error) {
         this.log('debug', `Health check attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`);
       }
-      
+
       if (attempt < this.config.healthCheckRetries) {
         this.log('info', `Health check attempt ${attempt} failed, waiting ${this.config.healthCheckDelay}ms...`);
         await new Promise(resolve => setTimeout(resolve, this.config.healthCheckDelay));
       }
     }
-    
+
     throw new Error('Server failed to start within timeout period');
+  }
+
+  /**
+   * Wait for a specific project to be ready by checking its health endpoint
+   */
+  private async waitForProjectReady(projectId: string): Promise<void> {
+    this.log('info', `Waiting for project ${projectId} to be ready...`);
+
+    for (let attempt = 1; attempt <= this.config.healthCheckRetries; attempt++) {
+      try {
+        const projectUrl = `${this.config.supabaseLiteUrl}/${projectId}`;
+        const response = await fetch(`${projectUrl}/health`);
+
+        if (response.ok) {
+          const health = await response.json();
+          if (health.status === 'ok') {
+            this.log('info', `Project is ready! Response: ${JSON.stringify(health)}`);
+            return;
+          }
+        }
+      } catch (error) {
+        this.log('debug', `Project health check attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      if (attempt < this.config.healthCheckRetries) {
+        this.log('info', `Project health check attempt ${attempt} failed, waiting ${this.config.healthCheckDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, this.config.healthCheckDelay));
+      }
+    }
+
+    throw new Error(`Project ${projectId} failed to be ready within timeout period`);
   }
 
   /**
@@ -253,14 +284,14 @@ class PostgRESTTestRunner {
         stdout: 'piped',
         stderr: 'piped'
       });
-      
+
       const result = await process.output();
       const stdout = new TextDecoder().decode(result.stdout);
-      
+
       if (result.code !== 0) {
         return null;
       }
-      
+
       // Parse the table output to find project ID
       // Looking for a line containing the project name
       const lines = stdout.split('\n');
@@ -273,9 +304,9 @@ class PostgRESTTestRunner {
           }
         }
       }
-      
+
       return null;
-      
+
     } catch (error) {
       this.log('debug', `Project lookup failed: ${error instanceof Error ? error.message : String(error)}`);
       return null;
@@ -287,35 +318,35 @@ class PostgRESTTestRunner {
    */
   private async deleteExistingProject(projectName: string): Promise<void> {
     this.log('info', `Cleaning up existing project: ${projectName}`);
-    
+
     try {
       // First, find the project ID
       const projectId = await this.findProjectId(projectName);
-      
+
       if (!projectId) {
         this.log('debug', `Project ${projectName} not found - nothing to delete`);
         return;
       }
-      
+
       this.log('info', `Found existing project ${projectName} with ID: ${projectId}`);
-      
+
       // Delete using the project ID with auto-confirmation
       const process = new Deno.Command('bash', {
         args: ['-c', `echo "y" | supabase-lite admin delete-project ${projectId} -u ${this.config.supabaseLiteUrl}`],
         stdout: 'piped',
         stderr: 'piped'
       });
-      
+
       const result = await process.output();
       const stdout = new TextDecoder().decode(result.stdout);
       const stderr = new TextDecoder().decode(result.stderr);
-      
+
       if (result.code === 0) {
         this.log('info', `Existing project deleted successfully`);
       } else {
         this.log('debug', `Project deletion failed: ${stderr}`);
       }
-      
+
     } catch (error) {
       this.log('debug', `Project deletion failed: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -326,34 +357,34 @@ class PostgRESTTestRunner {
    */
   private async createProject(projectName: string): Promise<string> {
     this.log('info', `Creating project: ${projectName}`);
-    
+
     try {
       const process = new Deno.Command('supabase-lite', {
         args: ['admin', 'create-project', projectName, '-u', this.config.supabaseLiteUrl],
         stdout: 'piped',
         stderr: 'piped'
       });
-      
+
       const result = await process.output();
       const stdout = new TextDecoder().decode(result.stdout);
       const stderr = new TextDecoder().decode(result.stderr);
-      
+
       if (result.code !== 0) {
         throw new Error(`Failed to create project: ${stderr}`);
       }
-      
+
       // Extract project ID from output
       // Expected format: "ID: c0fdaae9-c161-490a-ae46-463d5f81500d"
       const idMatch = stdout.match(/ID:\s+([a-f0-9-]+)/);
       if (!idMatch) {
         throw new Error(`Could not extract project ID from output: ${stdout}`);
       }
-      
+
       const projectId = idMatch[1];
       this.currentProjectId = projectId;
       this.log('info', `Project created successfully with ID: ${projectId}`);
       return projectId;
-      
+
     } catch (error) {
       throw new Error(`Failed to create project: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -368,7 +399,7 @@ class PostgRESTTestRunner {
       .replace(/^```sql\s*/m, '')
       .replace(/\s*```\s*$/m, '')
       .trim();
-    
+
     return cleanedSql;
   }
 
@@ -377,8 +408,8 @@ class PostgRESTTestRunner {
    */
   private async isServerResponding(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.config.supabaseLiteUrl}/health`, { 
-        signal: AbortSignal.timeout(5000) 
+      const response = await fetch(`${this.config.supabaseLiteUrl}/health`, {
+        signal: AbortSignal.timeout(5000)
       });
       return response.ok;
     } catch (error) {
@@ -405,27 +436,30 @@ class PostgRESTTestRunner {
       this.isRestarting = true;
       try {
         this.log('info', '🔧 Server appears to have crashed, restarting...');
-        
+
         // Kill any remaining processes and restart
         await this.killExistingServers();
         await this.startServer();
-        
+
         // Only reopen browser tab if we had one open before
         if (this.browserTabOpen) {
           await this.closeBrowserTab();
           await this.openBrowserTab();
         }
-        
+
         // Wait for server to be ready
         await this.waitForServerReady();
-        
+
         // Recreate the project since the database was reset
         if (this.currentProjectId) {
           this.log('info', '♻️ Recreating project after server restart...');
+          console.log("deleteExistingProject", this.currentProjectId);
           await this.deleteExistingProject('postgrest-test-project');
+          console.log("createProject");
           await this.createProject('postgrest-test-project');
+          console.log('project recreated');
         }
-        
+
         this.log('info', '✅ Server restarted successfully');
       } finally {
         this.isRestarting = false;
@@ -434,55 +468,91 @@ class PostgRESTTestRunner {
   }
 
   /**
+   * Execute a single SQL statement via the debug endpoint
+   */
+  private async executeSingleSQL(statement: string): Promise<any> {
+    const projectUrl = `${this.config.supabaseLiteUrl}/${this.currentProjectId}`;
+    const debugUrl = `${projectUrl}/debug/sql`;
+
+    const response = await fetch(debugUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ sql: statement })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`SQL execution failed with status ${response.status}: ${errorText}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.error) {
+      throw new Error(`SQL execution failed: ${result.error}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Split SQL into individual statements
+   */
+  private splitSQLStatements(sql: string): string[] {
+    // Split by semicolon and clean up each statement
+    return sql
+      .split(';')
+      .map(stmt => stmt.trim())
+      .filter(stmt => stmt.length > 0)
+      .map(stmt => stmt.endsWith(';') ? stmt : stmt + ';');
+  }
+
+  /**
    * Seed the database with test data
    */
   private async seedDatabase(sqlData: string): Promise<void> {
     // Ensure server is still running before seeding
     await this.ensureServerRunning();
-    
+
     const sql = this.extractSQLFromData(sqlData);
-    const tempSqlFile = join(this.config.workingDir, 'tmp-seed.sql');
-    
-    try {
-      // Write SQL to temporary file
-      await Deno.writeTextFile(tempSqlFile, sql);
-      this.log('info', 'Created temporary seed file');
+    const statements = this.splitSQLStatements(sql);
+
+    this.log('info', `Seeding database with ${statements.length} SQL statements`);
+
+    // Execute each statement individually with retry logic
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 seconds
+
+    for (let i = 0; i < statements.length; i++) {
+      const statement = statements[i];
       
-      // Execute SQL using supabase-lite psql
-      // After creating a project, it becomes the default, so we don't need the project ID in the URL
-      const projectUrl = this.config.supabaseLiteUrl;
-        
-      const process = new Deno.Command('supabase-lite', {
-        args: ['psql', '--url', projectUrl, '-f', tempSqlFile],
-        stdout: 'piped',
-        stderr: 'piped'
-      });
-      
-      const result = await process.output();
-      const stdout = new TextDecoder().decode(result.stdout);
-      const stderr = new TextDecoder().decode(result.stderr);
-      
-      if (result.code !== 0) {
-        this.log('error', `SQL execution failed:`);
-        this.log('error', `STDOUT: ${stdout}`);
-        this.log('error', `STDERR: ${stderr}`);
-        this.log('error', `SQL content:`);
-        console.log(sql);
-        throw new Error(`Database seeding failed: ${stderr}`);
-      }
-      
-      this.log('info', 'Database seeded successfully');
-      this.log('debug', `Seed result: ${stdout}`);
-      
-    } finally {
-      // Clean up temporary file
-      try {
-        await Deno.remove(tempSqlFile);
-        this.log('debug', 'Temporary seed file removed');
-      } catch (error) {
-        this.log('error', `Failed to remove temporary seed file: ${error instanceof Error ? error.message : String(error)}`);
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          this.log('debug', `Executing statement ${i + 1}/${statements.length} (attempt ${attempt}/${maxRetries}): ${statement.substring(0, 50)}...`);
+
+          const result = await this.executeSingleSQL(statement);
+          
+          this.log('debug', `Statement ${i + 1} executed successfully`);
+          break; // Success - move to next statement
+
+        } catch (error) {
+          // If it's the last attempt, throw the error
+          if (attempt === maxRetries) {
+            this.log('error', `Failed to execute statement ${i + 1}:`);
+            this.log('error', `SQL: ${statement}`);
+            this.log('error', `Error: ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(`Database seeding failed on statement ${i + 1}: ${error instanceof Error ? error.message : String(error)}`);
+          }
+          
+          // For other attempts, log and continue to retry
+          this.log('debug', `Statement ${i + 1} attempt ${attempt} failed, retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
       }
     }
+
+    this.log('info', 'Database seeded successfully');
   }
 
   /**
@@ -494,25 +564,38 @@ class PostgRESTTestRunner {
       .replace(/^```(?:js|ts)?\s*/m, '')
       .replace(/\s*```\s*$/m, '')
       .trim();
-    
+
     // Handle duplicate const { data, error } declarations by using only the last one
     const lines = cleanedCode.split('\n');
     const queryLines: number[] = [];
-    
+
     // Find all lines with const { data, error } declarations
     lines.forEach((line, index) => {
       if (line.trim().startsWith('const { data, error }')) {
         queryLines.push(index);
       }
     });
-    
+
     // If there are multiple queries, extract only the last complete query block
     if (queryLines.length > 1) {
       const lastQueryStart = queryLines[queryLines.length - 1];
       const relevantLines = lines.slice(lastQueryStart);
       cleanedCode = relevantLines.join('\n');
     }
-    
+
+    // Ensure we always destructure both data and error for status code extraction
+    // Transform "const { error }" to "const { data, error }"
+    // Transform "const { count, error }" to "const { data, count, error }"
+    cleanedCode = cleanedCode.replace(
+      /const\s*{\s*error\s*}/g,
+      'const { data, error }'
+    );
+
+    cleanedCode = cleanedCode.replace(
+      /const\s*{\s*count,\s*error\s*}/g,
+      'const { data, count, error }'
+    );
+
     return cleanedCode;
   }
 
@@ -525,7 +608,7 @@ class PostgRESTTestRunner {
       .replace(/^```json\s*/m, '')
       .replace(/\s*```\s*$/m, '')
       .trim();
-    
+
     try {
       return JSON.parse(cleanedJson);
     } catch (error) {
@@ -540,21 +623,24 @@ class PostgRESTTestRunner {
     const templateContent = await Deno.readTextFile(this.config.templateFile);
     const code = this.extractCodeFromExample(example.code);
     const expectedResponse = this.extractExpectedResponse(example.response);
-    
-    // Use base URL since the created project becomes the default
-    const projectUrl = this.config.supabaseLiteUrl;
+
+    // Use the specific project URL to ensure we're testing against the correct database
+    const projectUrl = `${this.config.supabaseLiteUrl}/${this.currentProjectId}`;
+
+    // Use JSON.stringify for code_content (string analysis) but raw code for execution
+    const escapedCodeContent = JSON.stringify(code);
     
     const testScript = templateContent
       .replace('<id>', example.id)
       .replace('<name>', example.name)
       .replace('<project_url>', projectUrl)
-      .replace('<code>', code)
-      .replace('<code_content>', code)
+      .replaceAll('<code>', code)
+      .replaceAll('<code_content>', escapedCodeContent)
       .replace('<response>', JSON.stringify(expectedResponse, null, 2));
-    
+
     const tempScriptFile = join(this.config.workingDir, 'tmp-script.ts');
     await Deno.writeTextFile(tempScriptFile, testScript);
-    
+
     return tempScriptFile;
   }
 
@@ -568,17 +654,17 @@ class PostgRESTTestRunner {
         stdout: 'piped',
         stderr: 'piped'
       });
-      
+
       const result = await process.output();
       const stdout = new TextDecoder().decode(result.stdout);
       const stderr = new TextDecoder().decode(result.stderr);
-      
+
       return {
         success: result.code === 0,
         output: stdout,
         error: stderr || undefined
       };
-      
+
     } catch (error) {
       return {
         success: false,
@@ -594,9 +680,65 @@ class PostgRESTTestRunner {
   private displayTestHeader(item: TestItem, example: Example): void {
     const headerText = `Running Test: ${item.id} - ${example.name}`;
     const border = '*'.repeat(headerText.length + 4);
-    
+
     console.log('\n' + border);
     console.log(`* ${headerText} *`);
+    console.log(border + '\n');
+  }
+
+  /**
+   * Display clean test result without timestamps and log prefixes
+   */
+  private displayTestResult(passed: boolean, testName: string, isRetestContinue = false): void {
+    const emoji = passed ? '✅' : '❌';
+    const status = passed ? 'PASSED' : 'FAILED';
+    const suffix = isRetestContinue ? ' (continuing in retest mode)' : '';
+    const resultText = `${emoji} ${status}: ${testName}${suffix}`;
+    const border = '*'.repeat(resultText.length + 4);
+
+    console.log('\n' + border);
+    console.log(`* ${resultText} *`);
+    console.log(border + '\n');
+  }
+
+  /**
+   * Display comprehensive failure details for debugging
+   */
+  private displayFailureDetails(item: TestItem, example: Example, results: TestResults): void {
+    const border = '='.repeat(80);
+    
+    console.log('\n' + border);
+    console.log('🔍 COMPREHENSIVE FAILURE REPORT');
+    console.log(border);
+    
+    console.log('\n📋 TEST INFORMATION:');
+    console.log(`ID: ${example.id}`);
+    console.log(`Name: ${example.name}`);
+    console.log(`Category: ${item.id} - ${item.title}`);
+    
+    if (example.description) {
+      console.log(`Description: ${example.description}`);
+    }
+    
+    console.log('\n💻 TEST CODE:');
+    console.log(this.extractCodeFromExample(example.code));
+    
+    console.log('\n🗃️ SEED DATA:');
+    console.log(this.extractSQLFromData(example.data.sql));
+    
+    console.log('\n🎯 EXPECTED RESPONSE:');
+    const expectedData = this.extractExpectedResponse(example.response);
+    console.log(JSON.stringify(expectedData, null, 2));
+    
+    console.log('\n❌ FAILURE DETAILS:');
+    for (const logEntry of results.log) {
+      if (logEntry.type === 'error') {
+        console.log(`• ${logEntry.message}`);
+      }
+    }
+    
+    console.log('\n' + border);
+    console.log('END FAILURE REPORT');
     console.log(border + '\n');
   }
 
@@ -605,12 +747,12 @@ class PostgRESTTestRunner {
    */
   private shouldSkipTest(example: Example): string | null {
     const results = example.results;
-    
+
     if (!results) {
       // No previous results, don't skip
       return null;
     }
-    
+
     if (this.isRetestMode) {
       // In retest mode, only skip tests that previously failed and are marked to skip
       if (!results.passed && results.skip) {
@@ -635,16 +777,16 @@ class PostgRESTTestRunner {
       // Deep comparison of objects
       const actualStr = JSON.stringify(actual, null, 2);
       const expectedStr = JSON.stringify(expected, null, 2);
-      
+
       if (actualStr === expectedStr) {
         return { match: true };
       }
-      
+
       return {
         match: false,
         differences: `Expected:\n${expectedStr}\n\nActual:\n${actualStr}`
       };
-      
+
     } catch (error) {
       return {
         match: false,
@@ -658,21 +800,28 @@ class PostgRESTTestRunner {
    */
   private async processExample(_item: TestItem, example: Example): Promise<TestResults> {
     const log: TestLog[] = [];
-    
+
     try {
       this.log('info', `Processing example: ${example.id} - ${example.name}`);
       log.push(this.createTestLog('info', `Starting test: ${example.name}`));
+
+      // Delete and recreate project for each test to ensure complete isolation
+      await this.deleteExistingProject('postgrest-test-project');
+      log.push(this.createTestLog('info', 'Existing project deleted'));
       
+      await this.createProject('postgrest-test-project');
+      log.push(this.createTestLog('info', 'Fresh project created'));
+
       // Seed the database
       await this.seedDatabase(example.data.sql);
       log.push(this.createTestLog('info', 'Database seeded successfully'));
-      
+
       // Generate and run test script
       const scriptPath = await this.generateTestScript(example);
       log.push(this.createTestLog('info', 'Test script generated'));
-      
+
       const testResult = await this.runTest(scriptPath);
-      
+
       if (!testResult.success) {
         // Don't clean up test script on failure so we can inspect it
         this.log('info', `Test script preserved for debugging: ${scriptPath}`);
@@ -680,14 +829,14 @@ class PostgRESTTestRunner {
         log.push(this.createTestLog('error', errorMsg));
         return { passed: false, log, skip: false };
       }
-      
+
       // Clean up test script only on success
       try {
         await Deno.remove(scriptPath);
       } catch (error) {
         this.log('error', `Failed to remove test script: ${error instanceof Error ? error.message : String(error)}`);
       }
-      
+
       // Parse actual output (should be JSON)
       let actualData: any;
       try {
@@ -703,11 +852,11 @@ class PostgRESTTestRunner {
         log.push(this.createTestLog('error', errorMsg));
         return { passed: false, log, skip: false };
       }
-      
+
       // Compare results
       const expectedData = this.extractExpectedResponse(example.response);
       const comparison = this.compareResults(actualData, expectedData);
-      
+
       if (comparison.match) {
         log.push(this.createTestLog('info', 'Test passed - results match expected output'));
         return { passed: true, log, skip: true }; // Mark as skip for future runs
@@ -716,7 +865,7 @@ class PostgRESTTestRunner {
         log.push(this.createTestLog('error', errorMsg));
         return { passed: false, log, skip: false };
       }
-      
+
     } catch (error) {
       const errorMsg = `Test execution error: ${error instanceof Error ? error.message : String(error)}`;
       log.push(this.createTestLog('error', errorMsg));
@@ -728,25 +877,25 @@ class PostgRESTTestRunner {
    * Process all test items and examples
    */
   private async processTests(testData: TestItem[]): Promise<void> {
-    let regressionFailures: Array<{item: TestItem, example: Example, error: string}> = [];
-    
+    let regressionFailures: Array<{ item: TestItem, example: Example, error: string }> = [];
+
     for (const item of testData) {
       this.log('info', `\n=== Processing item: ${item.id} - ${item.title} ===`);
-      
+
       for (const example of item.examples) {
         const shouldSkip = this.shouldSkipTest(example);
-        
+
         if (shouldSkip) {
           this.log('info', `Skipping example: ${example.id} (${shouldSkip})`);
           continue;
         }
-        
+
         // Display prominent header for current test
         this.displayTestHeader(item, example);
-        
+
         // Process this example
         const results = await this.processExample(item, example);
-        
+
         // Handle regression testing logic
         if (this.isRetestMode && example.results?.passed && !results.passed) {
           // This is a regression - test previously passed but now fails
@@ -758,34 +907,31 @@ class PostgRESTTestRunner {
             error: results.log.filter(log => log.type === 'error').map(log => log.message).join('\n')
           });
         }
-        
+
         // Update the example with results
         example.results = results;
-        
+
         // Save results after each test
         await this.saveResults(testData);
-        
+
         // In normal mode, stop on first failure. In retest mode, continue collecting regressions
         if (!results.passed && !this.isRetestMode) {
-          this.log('error', `Test failed for example: ${example.id}`);
+          const testName = `${item.id} - ${example.name}`;
+          this.displayTestResult(false, testName);
           this.log('error', 'Stopping execution on first failure for debugging');
-          
-          // Log the failure details
-          for (const logEntry of results.log) {
-            this.log(logEntry.type, logEntry.message);
-          }
-          
+
+          // Display comprehensive failure information
+          this.displayFailureDetails(item, example, results);
+
           Deno.exit(1);
         }
-        
-        if (results.passed) {
-          this.log('info', `Test passed for example: ${example.id}`);
-        } else {
-          this.log('error', `Test failed for example: ${example.id} (continuing in retest mode)`);
-        }
+
+        // Display clean test result
+        const testName = `${item.id} - ${example.name}`;
+        this.displayTestResult(results.passed, testName, this.isRetestMode && !results.passed);
       }
     }
-    
+
     // Handle regression failures
     if (this.isRetestMode && regressionFailures.length > 0) {
       this.log('error', `\n=== REGRESSION TEST FAILURES (${regressionFailures.length}) ===`);
@@ -796,7 +942,7 @@ class PostgRESTTestRunner {
       }
       throw new Error(`${regressionFailures.length} regression test(s) failed`);
     }
-    
+
     this.log('info', '\n=== All tests completed successfully! ===');
   }
 
@@ -831,36 +977,36 @@ class PostgRESTTestRunner {
   async run(): Promise<void> {
     try {
       this.log('info', '🚀 Starting PostgREST Test Runner');
-      
+
       // Load test data
       const testData = await this.loadTestData();
       this.log('info', `Loaded ${testData.length} test items`);
-      
+
       // Setup test environment
       await this.killExistingServers();
       await this.startServer();
-      
+
       // Open browser tab to initialize PGLite database context
       await this.openBrowserTab();
-      
+
       await this.waitForServerReady();
-      
+
       // Clean up any existing test project and create a new one
       await this.deleteExistingProject('postgrest-test-project');
       await this.createProject('postgrest-test-project');
-      
+
       // Process all tests
       await this.processTests(testData);
-      
+
       // Clean up browser tab
       await this.closeBrowserTab();
-      
+
     } catch (error) {
       this.log('error', `Test runner failed: ${error instanceof Error ? error.message : String(error)}`);
-      
+
       // Make sure to clean up browser tab on error too
       await this.closeBrowserTab();
-      
+
       Deno.exit(1);
     }
   }
@@ -871,7 +1017,7 @@ if (import.meta.main) {
   // Parse command line arguments
   const args = Deno.args;
   const isRetestMode = args.includes('--retest');
-  
+
   if (isRetestMode) {
     console.log('🔄 Running in regression test mode (--retest)');
     console.log('   - Will run all tests except those that previously failed with skip=true');
@@ -882,7 +1028,7 @@ if (import.meta.main) {
     console.log('   - Will skip tests that previously passed (skip=true)');
     console.log('   - Will stop on first failure for debugging\n');
   }
-  
+
   const runner = new PostgRESTTestRunner(isRetestMode);
   await runner.run();
 }

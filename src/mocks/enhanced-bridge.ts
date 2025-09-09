@@ -342,7 +342,21 @@ export class EnhancedSupabaseAPIBridge {
       logger.debug('Built UPDATE SQL', sqlQuery)
 
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
-      return ResponseFormatter.formatUpdateResponse(result.rows, query)
+      console.log('🐛 HandleUpdate Debug:', {
+        query: query,
+        hasSelect: !!query.select,
+        selectValue: query.select,
+        preferReturn: query.preferReturn,
+        resultRowsLength: result.rows.length
+      })
+      const formattedResponse = ResponseFormatter.formatUpdateResponse(result.rows, query)
+      console.log('🐛 Formatted UPDATE response:', {
+        status: formattedResponse.status,
+        dataType: typeof formattedResponse.data,
+        data: formattedResponse.data,
+        hasStatusInjection: formattedResponse.data && typeof formattedResponse.data === 'object' && '__supabase_status' in formattedResponse.data
+      })
+      return formattedResponse
     } catch (error) {
       logError('UPDATE query failed', error as Error, { table, body, filters: query.filters })
       return ResponseFormatter.formatErrorResponse(error)

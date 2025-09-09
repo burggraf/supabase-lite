@@ -327,17 +327,34 @@ export class ResponseFormatter {
 
   /**
    * Format RPC response
+   * PostgREST extracts scalar values from function results for proper API compatibility
    */
   static formatRpcResponse(
     result: any,
-    _functionName: string
+    functionName: string
   ): FormattedResponse {
     const headers: Record<string, string> = {
       ...this.getCorsHeaders(),
     }
 
+    let data = result
+
+    // PostgREST behavior: For scalar-returning functions, extract the actual value
+    // The SQL query "SELECT * FROM function_name()" returns [{function_name: value}]
+    // PostgREST extracts just the value for scalar functions
+    if (Array.isArray(result) && result.length === 1) {
+      const row = result[0]
+      if (typeof row === 'object' && row !== null) {
+        const keys = Object.keys(row)
+        // If there's only one column and it matches the function name, extract the value
+        if (keys.length === 1 && keys[0] === functionName) {
+          data = row[functionName]
+        }
+      }
+    }
+
     return {
-      data: result,
+      data,
       status: 200,
       headers
     }

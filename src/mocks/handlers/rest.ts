@@ -98,6 +98,18 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
       url: new URL(request.url)
     })
     
+    // For 204 No Content responses, return empty body (correct HTTP semantics)
+    if (response.status === 204) {
+      return new HttpResponse(null, {
+        status: response.status,
+        headers: {
+          ...response.headers,
+          ...REST_CORS_HEADERS
+        }
+      })
+    }
+    
+    // For other responses, return data normally
     return HttpResponse.json(response.data, {
       status: response.status,
       headers: {
@@ -109,6 +121,7 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
     return createPostgreSQLErrorResponse(error)
   }
 }
+
 
 const createRestDeleteHandler = () => async ({ params, request }: any) => {
   try {
@@ -144,6 +157,7 @@ const createRpcHandler = () => async ({ params, request }: any) => {
       status: response.status,
       headers: {
         ...response.headers,
+        'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
         'Access-Control-Allow-Methods': 'POST'

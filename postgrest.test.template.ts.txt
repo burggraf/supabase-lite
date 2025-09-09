@@ -62,12 +62,56 @@ async function run() {
             return;
         }
         
+        // Extract status information from response data (injected by ResponseFormatter for testing)
+        let extractedStatus, extractedStatusText;
+        if (data && typeof data === 'object' && data.__supabase_status) {
+            extractedStatus = data.__supabase_status;
+            extractedStatusText = data.__supabase_status_text;
+            // Replace the data with the actual data value for compatibility
+            data = data.__supabase_data;
+        }
+        
+        // Helper functions to extract parts from code
+        function extractTableFromCode(code) {
+            const match = code.match(/\.from\(['"`]([^'"`]+)['"`]\)/);
+            return match ? match[1] : 'unknown';
+        }
+        
+        function extractFilterFromCode(code) {
+            const match = code.match(/\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in|contains)\(['"`]([^'"`]+)['"`],\s*([^)]+)\)/);
+            if (match) {
+                const [, operator, column, value] = match;
+                const cleanValue = value.replace(/['"`]/g, '');
+                return `?${column}=${operator}.${cleanValue}`;
+            }
+            return '';
+        }
+        
+        function extractBodyFromCode(code) {
+            const match = code.match(/\.update\(([^)]+)\)/);
+            if (match) {
+                try {
+                    return JSON.parse(match[1]);
+                } catch {
+                    // If parsing fails, try to extract simple object
+                    const objMatch = match[1].match(/\{\s*([^}]+)\s*\}/);
+                    if (objMatch) {
+                        const keyValue = objMatch[1].match(/(\w+):\s*['"`]([^'"`]+)['"`]/);
+                        if (keyValue) {
+                            return { [keyValue[1]]: keyValue[2] };
+                        }
+                    }
+                }
+            }
+            return {};
+        }
+
         // Create Supabase-compatible response structure
         // Handle different response types (data queries vs count queries vs mutation operations)
         let response;
         if (typeof data !== 'undefined' && data !== null) {
             // Check if this is an INSERT/UPDATE/DELETE operation by examining the code
-            const codeString = `<code_content>`;
+            const codeString = <code_content>;
             const isInsertOperation = codeString.includes('.insert(');
             const isUpdateOperation = codeString.includes('.update(');
             const isUpsertOperation = codeString.includes('.upsert(');
@@ -120,8 +164,14 @@ async function run() {
                 statusText: "OK"
             };
         } else if (typeof error === 'undefined' || error === null) {
-            // Check if the API response has status info directly
-            if (typeof status !== 'undefined' && typeof statusText !== 'undefined') {
+            // Check if we extracted status info from the response data
+            if (extractedStatus && extractedStatusText) {
+                // Use the extracted status from MSW handler injection
+                response = {
+                    status: extractedStatus,
+                    statusText: extractedStatusText
+                };
+            } else if (typeof status !== 'undefined' && typeof statusText !== 'undefined') {
                 // Use the API response status directly when available
                 response = {
                     status: status,
@@ -129,7 +179,7 @@ async function run() {
                 };
             } else {
                 // INSERT/UPDATE/DELETE operations that succeed (no data/count returned, no error)
-                const codeString = `<code_content>`;
+                const codeString = <code_content>;
                 const isInsertOperation = codeString.includes('.insert(');
                 const isUpsertOperation = codeString.includes('.upsert(');
                 const isUpdateOperation = codeString.includes('.update(');
