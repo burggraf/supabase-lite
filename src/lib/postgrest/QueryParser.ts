@@ -563,11 +563,48 @@ export class QueryParser {
    * Parse logical filters (and, or, not)
    */
   private static parseLogicalFilter(key: string, value: string): ParsedFilter | null {
-    // This is a complex case that would need recursive parsing
-    // For now, return a placeholder that will be handled by the SQL builder
     const operator = key.match(/^(and|or|not)/)?.[1]
     if (!operator) return null
 
+    if (operator === 'not') {
+      // Parse not() operator: not(column,operator,value)
+      // Example: not(name,is,null) -> { column: 'name', operator: 'is', value: null, negated: true }
+      
+      // Extract the inner filter from not(...)
+      const match = key.match(/^not\((.+)\)$/)
+      if (!match) return null
+      
+      const innerExpression = match[1]
+      
+      // Parse inner expression: column,operator,value
+      const parts = innerExpression.split(',')
+      if (parts.length !== 3) return null
+      
+      const [column, innerOperator, innerValue] = parts.map(p => p.trim())
+      
+      // Validate that the operator exists
+      if (!POSTGREST_OPERATORS[innerOperator]) {
+        throw new Error(`Unknown operator in not() filter: ${innerOperator}`)
+      }
+      
+      try {
+        // Parse the value according to the operator
+        const { parsedValue } = parseOperatorValue(innerOperator, innerValue)
+        
+        return {
+          column: column,
+          operator: innerOperator,
+          value: parsedValue,
+          negated: true
+        }
+      } catch (error) {
+        console.error(`Error parsing not() filter ${key}:`, error)
+        return null
+      }
+    }
+    
+    // For and/or operators, return a placeholder for now
+    // These would need more complex recursive parsing
     return {
       column: '__logical__',
       operator,

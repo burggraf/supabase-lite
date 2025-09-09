@@ -1018,10 +1018,10 @@ export class SQLBuilder {
    * Build single filter condition
    */
   private buildFilterCondition(filter: ParsedFilter): string {
-    console.log(`🔍 Building filter condition for:`, { column: filter.column, operator: filter.operator, value: filter.value, hasJsonPath: !!filter.jsonPath })
+    console.log(`🔍 Building filter condition for:`, { column: filter.column, operator: filter.operator, value: filter.value, negated: filter.negated, hasJsonPath: !!filter.jsonPath })
     
     if (filter.column === '__logical__') {
-      // Handle logical operators (complex case)
+      // Handle logical operators (complex case) - but not 'not' since that's handled as negated flag
       return this.buildLogicalCondition(filter)
     }
 
