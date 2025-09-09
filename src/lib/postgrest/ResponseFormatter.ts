@@ -266,10 +266,10 @@ export class ResponseFormatter {
   }
 
   /**
-   * Check if select is effectively empty (no select, empty array, or just '*')
+   * Check if select is effectively empty (no select or empty array, but NOT when select includes '*')
    */
   private static isSelectEmpty(select?: string[]): boolean {
-    return !select || select.length === 0 || (select.length === 1 && select[0] === '*')
+    return !select || select.length === 0
   }
 
   /**
