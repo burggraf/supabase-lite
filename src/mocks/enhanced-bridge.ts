@@ -105,17 +105,79 @@ export class EnhancedSupabaseAPIBridge {
   /**
    * Handle RPC (stored procedure) calls
    */
-  async handleRpc(functionName: string, params: Record<string, any> = {}): Promise<FormattedResponse> {
+  async handleRpc(
+    functionName: string, 
+    params: Record<string, any> = {},
+    headers?: Record<string, string>,
+    url?: URL
+  ): Promise<FormattedResponse> {
     await this.ensureInitialized()
 
-    logger.debug('Handling RPC call', { functionName, params })
+    logger.debug('Handling RPC call', { functionName, params, url: url?.toString() })
+
+    // If database is not connected (HTTP middleware context), serve mock data
+    if (!this.dbManager.isConnected()) {
+      logger.debug('Database not connected, serving mock RPC data')
+      return ResponseFormatter.formatRpcResponse([], functionName)
+    }
 
     try {
+      // Parse query parameters for filters and modifiers if URL is provided
+      let query = null
+      let context = null
+      
+      if (url && headers) {
+        query = QueryParser.parseQuery(url, headers)
+        const rlsResult = await this.applyRLSFiltering('rpc_function', query, headers)
+        query = rlsResult.query
+        context = rlsResult.context
+        logger.debug('Parsed RPC query with filters', { query, context: context.role })
+      }
+
+      // Build and execute the RPC query
       const sqlQuery = this.sqlBuilder.buildRpcQuery(functionName, params)
       logger.debug('Built RPC SQL', sqlQuery)
 
-      const result = await this.executeQuery(sqlQuery.sql, sqlQuery.parameters)
-      return ResponseFormatter.formatRpcResponse(result.rows, functionName)
+      const result = context 
+        ? await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
+        : await this.executeQuery(sqlQuery.sql, sqlQuery.parameters)
+
+      logger.debug('RPC result before filtering', { rows: result.rows, query })
+
+      // Apply filters and modifiers to the result if query is parsed
+      if (query && result.rows && result.rows.length > 0) {
+        let filteredRows = result.rows
+
+        // Apply filters to the result set
+        if (query.filters && query.filters.length > 0) {
+          filteredRows = this.applyFiltersToRows(filteredRows, query.filters)
+          logger.debug('Applied filters to RPC result', { 
+            originalCount: result.rows.length, 
+            filteredCount: filteredRows.length,
+            filters: query.filters
+          })
+        }
+
+        // Apply ordering
+        if (query.order && query.order.length > 0) {
+          filteredRows = this.applyOrderingToRows(filteredRows, query.order)
+          logger.debug('Applied ordering to RPC result', { ordering: query.order })
+        }
+
+        // Apply limit and offset
+        if (query.limit !== undefined || query.offset !== undefined) {
+          const offset = query.offset || 0
+          const limit = query.limit
+          filteredRows = limit !== undefined 
+            ? filteredRows.slice(offset, offset + limit)
+            : filteredRows.slice(offset)
+          logger.debug('Applied pagination to RPC result', { offset, limit, finalCount: filteredRows.length })
+        }
+
+        return ResponseFormatter.formatRpcResponse(filteredRows, functionName, query)
+      }
+
+      return ResponseFormatter.formatRpcResponse(result.rows, functionName, query)
     } catch (error) {
       logError('RPC call failed', error as Error, { functionName, params })
       return ResponseFormatter.formatErrorResponse(error)
@@ -385,6 +447,114 @@ export class EnhancedSupabaseAPIBridge {
 
 
 
+
+  /**
+   * Apply filters to result rows (client-side filtering for RPC results)
+   */
+  private applyFiltersToRows(rows: any[], filters: any[]): any[] {
+    return rows.filter(row => {
+      return filters.every(filter => {
+        const { column, operator, value } = filter
+        const rowValue = row[column]
+
+        switch (operator) {
+          case 'eq':
+            // Handle type coercion for number/string comparison
+            if (typeof rowValue === 'number' && typeof value === 'string') {
+              return rowValue === parseFloat(value)
+            }
+            if (typeof rowValue === 'string' && typeof value === 'number') {
+              return parseFloat(rowValue) === value
+            }
+            return rowValue === value
+          case 'neq':
+            // Handle type coercion for number/string comparison
+            if (typeof rowValue === 'number' && typeof value === 'string') {
+              return rowValue !== parseFloat(value)
+            }
+            if (typeof rowValue === 'string' && typeof value === 'number') {
+              return parseFloat(rowValue) !== value
+            }
+            return rowValue !== value
+          case 'gt':
+            // Handle type coercion for number/string comparison
+            if (typeof rowValue === 'number' && typeof value === 'string') {
+              return rowValue > parseFloat(value)
+            }
+            if (typeof rowValue === 'string' && typeof value === 'number') {
+              return parseFloat(rowValue) > value
+            }
+            return rowValue > value
+          case 'gte':
+            // Handle type coercion for number/string comparison
+            if (typeof rowValue === 'number' && typeof value === 'string') {
+              return rowValue >= parseFloat(value)
+            }
+            if (typeof rowValue === 'string' && typeof value === 'number') {
+              return parseFloat(rowValue) >= value
+            }
+            return rowValue >= value
+          case 'lt':
+            // Handle type coercion for number/string comparison
+            if (typeof rowValue === 'number' && typeof value === 'string') {
+              return rowValue < parseFloat(value)
+            }
+            if (typeof rowValue === 'string' && typeof value === 'number') {
+              return parseFloat(rowValue) < value
+            }
+            return rowValue < value
+          case 'lte':
+            // Handle type coercion for number/string comparison
+            if (typeof rowValue === 'number' && typeof value === 'string') {
+              return rowValue <= parseFloat(value)
+            }
+            if (typeof rowValue === 'string' && typeof value === 'number') {
+              return parseFloat(rowValue) <= value
+            }
+            return rowValue <= value
+          case 'like':
+            return typeof rowValue === 'string' && new RegExp(value.replace(/%/g, '.*'), 'i').test(rowValue)
+          case 'ilike':
+            return typeof rowValue === 'string' && new RegExp(value.replace(/%/g, '.*'), 'i').test(rowValue)
+          case 'in':
+            return Array.isArray(value) && value.includes(rowValue)
+          case 'is':
+            return value === 'null' ? rowValue === null : rowValue === value
+          default:
+            logger.warn('Unsupported filter operator', { operator })
+            return true
+        }
+      })
+    })
+  }
+
+  /**
+   * Apply ordering to result rows (client-side ordering for RPC results)
+   */
+  private applyOrderingToRows(rows: any[], orders: any[]): any[] {
+    return rows.sort((a, b) => {
+      for (const order of orders) {
+        const { column, ascending } = order
+        let aVal = a[column]
+        let bVal = b[column]
+
+        // Handle nulls (nulls last by default)
+        if (aVal === null && bVal === null) continue
+        if (aVal === null) return 1
+        if (bVal === null) return -1
+
+        // Compare values
+        let comparison = 0
+        if (aVal < bVal) comparison = -1
+        else if (aVal > bVal) comparison = 1
+
+        if (comparison !== 0) {
+          return ascending ? comparison : -comparison
+        }
+      }
+      return 0
+    })
+  }
 
   /**
    * Execute SQL query with parameters

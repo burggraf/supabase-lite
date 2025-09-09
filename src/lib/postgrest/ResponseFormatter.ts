@@ -355,7 +355,8 @@ export class ResponseFormatter {
    */
   static formatRpcResponse(
     result: any,
-    functionName: string
+    functionName: string,
+    query?: ParsedQuery
   ): FormattedResponse {
     const headers: Record<string, string> = {
       ...this.getCorsHeaders(),
@@ -375,6 +376,44 @@ export class ResponseFormatter {
           data = row[functionName]
         }
       }
+    }
+
+    // Handle single object response (.single() method) for table-returning functions
+    if (query && query.returnSingle && Array.isArray(data)) {
+      if (data.length === 0) {
+        // No rows found - return 406 error as per PostgREST
+        return {
+          data: {
+            code: 'PGRST116',
+            message: 'JSON object requested, multiple (or no) rows returned',
+            details: null,
+            hint: null
+          },
+          status: 406,
+          headers: {
+            ...this.getCorsHeaders(),
+            'Content-Type': 'application/json; charset=utf-8'
+          }
+        }
+      } else if (data.length > 1) {
+        // Multiple rows found - return 406 error as per PostgREST
+        return {
+          data: {
+            code: 'PGRST116',
+            message: 'JSON object requested, multiple (or no) rows returned',
+            details: null,
+            hint: null
+          },
+          status: 406,
+          headers: {
+            ...this.getCorsHeaders(),
+            'Content-Type': 'application/json; charset=utf-8'
+          }
+        }
+      }
+      
+      // Single row found - return the object directly, not in an array
+      data = data[0]
     }
 
     return {

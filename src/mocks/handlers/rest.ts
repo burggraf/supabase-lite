@@ -176,13 +176,13 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
 // Helper functions for RPC operations
 const createRpcHandler = () => async ({ params, request }: any) => {
   try {
-    console.log('🔍 RPC Handler - Function:', params.functionName)
     const body = await safeJsonParse(request)
-    console.log('🔍 RPC Handler - Body:', body)
     
     const response = await enhancedBridge.handleRpc(
       params.functionName as string,
-      body
+      body,
+      extractHeaders(request),
+      new URL(request.url)
     )
     
     console.log('🔍 RPC Handler - Response:', response)

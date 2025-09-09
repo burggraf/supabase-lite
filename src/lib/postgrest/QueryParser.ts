@@ -505,9 +505,7 @@ export class QueryParser {
     }
 
     // Check if the column key contains JSON path operators
-    console.log(`🔍 Parsing filter - key: "${key}", value: "${value}"`)
     const jsonPathInfo = this.parseJSONPathExpression(key)
-    console.log(`🔍 JSON Path info:`, jsonPathInfo)
 
     // Handle regular filters: column=operator.value
     const match = value.match(/^([a-z]+)\.(.*)$/i)

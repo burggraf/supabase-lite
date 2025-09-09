@@ -1309,40 +1309,40 @@
         "description": "Postgres functions that return tables can also be combined with [Filters](/docs/reference/javascript/using-filters) and [Modifiers](/docs/reference/javascript/using-modifiers).\n",
         "hideCodeBlock": true,
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Call a Postgres function with filters",
-              "timestamp": "2025-09-09T16:42:00.220Z"
+              "timestamp": "2025-09-09T17:08:17.619Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T16:42:00.557Z"
+              "timestamp": "2025-09-09T17:08:17.943Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T16:42:00.710Z"
+              "timestamp": "2025-09-09T17:08:18.099Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-09T16:42:02.789Z"
+              "timestamp": "2025-09-09T17:08:20.255Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-09T16:42:02.791Z"
+              "timestamp": "2025-09-09T17:08:20.256Z"
             },
             {
-              "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Rohan\"\n  },\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Rohan\"\n    },\n    {\n      \"id\": 2,\n      \"name\": \"The Shire\"\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
-              "timestamp": "2025-09-09T16:42:02.893Z"
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-09T17:08:20.329Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -1360,22 +1360,32 @@
             {
               "type": "info",
               "message": "Starting test: Call a read-only Postgres function",
-              "timestamp": "2025-09-09T15:13:43.229Z"
+              "timestamp": "2025-09-09T17:08:20.330Z"
             },
             {
               "type": "info",
               "message": "Existing project deleted",
-              "timestamp": "2025-09-09T15:13:43.601Z"
+              "timestamp": "2025-09-09T17:08:20.671Z"
             },
             {
               "type": "info",
               "message": "Fresh project created",
-              "timestamp": "2025-09-09T15:13:43.761Z"
+              "timestamp": "2025-09-09T17:08:20.836Z"
+            },
+            {
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-09T17:08:22.884Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-09T17:08:22.885Z"
             },
             {
               "type": "error",
-              "message": "Test execution error: Database seeding failed on statement 1: SQL execution failed with status 400: {\"error\":\"SQL execution failed\",\"message\":\"unterminated dollar-quoted string at or near \\\"$$\\n  select 'Hello world';\\\"\"}",
-              "timestamp": "2025-09-09T15:13:49.829Z"
+              "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": \"Hello world\",\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"UNKNOWN\",\n    \"details\": null,\n    \"hint\": null,\n    \"message\": \"Request timeout\"\n  },\n  \"status\": 400,\n  \"statusText\": \"Bad Request\"\n}",
+              "timestamp": "2025-09-09T17:08:52.951Z"
             }
           ],
           "skip": false
