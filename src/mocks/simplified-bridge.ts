@@ -896,6 +896,9 @@ export class SimplifiedSupabaseAPIBridge {
             return rowValue <= filter.value
           case 'like':
           case 'ilike':
+            if (typeof filter.value !== 'string') {
+              return false
+            }
             const pattern = filter.value.replace(/%/g, '.*')
             const regex = new RegExp(pattern, filter.operator === 'ilike' ? 'i' : '')
             return typeof rowValue === 'string' && regex.test(rowValue)

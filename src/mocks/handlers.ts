@@ -12,7 +12,7 @@ import { vfsManager, VFSManager } from '../lib/vfs/VFSManager';
 import { logger } from '../lib/infrastructure/Logger';
 
 // Feature flag to toggle between enhanced and simplified bridges
-const USE_SIMPLIFIED_BRIDGE = true // Set to true to use simplified bridge
+const USE_SIMPLIFIED_BRIDGE = false // Set to true to use simplified bridge
 
 // const bridge = new SupabaseAPIBridge()
 const enhancedBridge = new EnhancedSupabaseAPIBridge()

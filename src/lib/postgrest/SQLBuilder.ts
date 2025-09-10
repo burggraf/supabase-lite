@@ -320,7 +320,16 @@ export class SQLBuilder {
     const embeddedTableFilters: ParsedFilter[] = []
     
     query.filters.forEach(filter => {
-      if (filter.column.includes('.')) {
+      // Check if filter has explicit referenced table property (from table-prefixed params)
+      if (filter.referencedTable) {
+        if (embeddedTables.has(filter.referencedTable)) {
+          embeddedTableFilters.push(filter)
+        } else {
+          // Referenced table is not embedded, treat as main table filter
+          mainTableFilters.push(filter)
+        }
+      } else if (filter.column.includes('.')) {
+        // Check dot notation for table.column format
         const [tableName] = filter.column.split('.')
         if (embeddedTables.has(tableName)) {
           embeddedTableFilters.push(filter)
@@ -329,7 +338,7 @@ export class SQLBuilder {
           mainTableFilters.push(filter)
         }
       } else {
-        // No dot notation, assume it's a main table filter
+        // No dot notation and no referenced table, assume it's a main table filter
         mainTableFilters.push(filter)
       }
     })

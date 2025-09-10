@@ -431,9 +431,9 @@ export class EnhancedSupabaseAPIBridge {
             }
             return rowValue <= value
           case 'like':
-            return typeof rowValue === 'string' && new RegExp(value.replace(/%/g, '.*'), 'i').test(rowValue)
+            return typeof rowValue === 'string' && typeof value === 'string' && new RegExp(value.replace(/%/g, '.*'), 'i').test(rowValue)
           case 'ilike':
-            return typeof rowValue === 'string' && new RegExp(value.replace(/%/g, '.*'), 'i').test(rowValue)
+            return typeof rowValue === 'string' && typeof value === 'string' && new RegExp(value.replace(/%/g, '.*'), 'i').test(rowValue)
           case 'in':
             return Array.isArray(value) && value.includes(rowValue)
           case 'is':

@@ -30,7 +30,7 @@ async function runTest() {
   console.log('='.repeat(60));
   console.log(`Running test: 066-use-or-with-and`);
   console.log(`Function: or`);
-  console.log(`Test: Use `or` with `and``);
+  console.log(`Test: Use \`or\` with \`and\``);
   console.log('='.repeat(60));
 
   // Track tables created for cleanup
@@ -60,10 +60,24 @@ values
 
     // Execute test code
     console.log('🧪 Executing test code...');
-    const { data, error } = await supabase
-  .from('characters')
-  .select('name')
-  .or('id.gt.3,and(id.eq.1,name.eq.Luke)')
+    let data, error;
+    try {
+      console.log('🔍 About to call supabase.from...');
+      const result = await supabase
+        .from('characters')
+        .select('name')
+        .or('id.gt.3,and(id.eq.1,name.eq.Luke)');
+      data = result.data;
+      error = result.error;
+      console.log('✅ Supabase call completed successfully');
+      console.log('📊 Result data:', data);
+      console.log('📊 Result error:', error);
+    } catch (catchError) {
+      console.error('❌ Exception during supabase call:', catchError.message);
+      console.error('❌ Exception stack:', catchError.stack);
+      error = { message: catchError.message, details: catchError.stack };
+      data = null;
+    }
 
     // Expected response for comparison
     const expectedResponse = null;

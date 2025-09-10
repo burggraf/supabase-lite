@@ -5,6 +5,7 @@ export interface ParsedFilter {
   operator: string
   value: any
   negated?: boolean
+  referencedTable?: string  // Table to apply the filter to (for table-prefixed filters)
   jsonPath?: {
     columnName: string
     jsonOperator: string
@@ -65,9 +66,32 @@ export class QueryParser {
       query.embedded = embedded
     }
 
-    // Parse filters
+    // Parse filters and table-prefixed logical operators
     for (const [key, value] of params.entries()) {
-      if (this.isFilterParam(key)) {
+      // Check for table-prefixed logical operators (e.g., instruments.or=, table.and=)
+      const tablePrefixMatch = key.match(/^([^.]+)\.(or|and|not)$/)
+      if (tablePrefixMatch) {
+        const [, referencedTable, operator] = tablePrefixMatch
+        let filter: ParsedFilter | null = null
+        
+        switch (operator) {
+          case 'or':
+            filter = this.parseOrOperator(value)
+            break
+          case 'and':
+            filter = this.parseAndOperator(value)
+            break
+          case 'not':
+            filter = this.parseNotOperator(value)
+            break
+        }
+        
+        if (filter) {
+          // Mark this filter as applying to a specific referenced table
+          filter.referencedTable = referencedTable
+          query.filters.push(filter)
+        }
+      } else if (this.isFilterParam(key)) {
         const filter = this.parseFilter(key, value)
         if (filter) {
           query.filters.push(filter)
@@ -75,7 +99,7 @@ export class QueryParser {
       }
     }
     
-    // Parse logical operators (or, and) as special query parameters
+    // Parse top-level logical operators (or, and) as special query parameters
     const orParam = params.get('or')
     if (orParam) {
       const orFilter = this.parseOrOperator(orParam)
@@ -457,6 +481,11 @@ export class QueryParser {
     }
     
     const [, columnName, operator, path] = match
+    
+    // Check if any captured group is undefined (this can happen with malformed expressions)
+    if (!columnName || !operator || !path) {
+      return null
+    }
     
     // For simple path like 'city', create alias as just 'city'
     // For complex paths like '{city,name}', we'll need to handle differently
