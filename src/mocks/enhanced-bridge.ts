@@ -135,23 +135,12 @@ export class EnhancedSupabaseAPIBridge {
       })
     }
     } catch (outerError) {
-      console.error('❌ Critical error in handleRestRequest outer catch:', {
-        error: outerError.message,
-        stack: outerError.stack,
-        type: typeof outerError,
-        name: outerError.name
+      console.error('❌ Critical outer error in handleRestRequest:', outerError)
+      return ErrorMapper.mapAndLogError(outerError, {
+        operation: 'handleRestRequest outer error',
+        method: request?.method || 'unknown',
+        table: request?.table || 'unknown',
       })
-      
-      // Check if this is the replace() error we're hunting for
-      if (outerError.message && outerError.message.includes('replace')) {
-        console.error('🔍 Found the replace() error in outer catch:', {
-          message: outerError.message,
-          stack: outerError.stack,
-          request: request ? { method: request.method, table: request.table, url: request.url?.toString() } : 'undefined'
-        })
-      }
-      
-      throw outerError
     }
   }
 
