@@ -23,13 +23,35 @@ export class SQLBuilder {
   }
 
   /**
+   * Quote PostgreSQL identifier if it contains spaces or special characters
+   * Supports both table names and column names
+   */
+  private quoteIdentifier(identifier: string): string {
+    // If already quoted, return as-is
+    if (identifier.startsWith('"') && identifier.endsWith('"')) {
+      return identifier
+    }
+    
+    // If contains spaces or special chars, quote it
+    if (/\s/.test(identifier) || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(identifier)) {
+      return `"${identifier.replace(/"/g, '""')}"`
+    }
+    
+    return identifier
+  }
+
+  /**
    * Build SQL query from parsed PostgREST query
    */
   async buildQuery(table: string, query: ParsedQuery): Promise<SQLQuery> {
     this.paramIndex = 1
     this.parameters = []
 
-    const { sql } = await this.buildSelectQuery(table, query)
+    // URL decode and quote the table name for PostgreSQL compatibility
+    const decodedTable = decodeURIComponent(table)
+    const quotedTable = this.quoteIdentifier(decodedTable)
+    
+    const { sql } = await this.buildSelectQuery(quotedTable, query)
     
     return {
       sql,
@@ -1557,6 +1579,10 @@ export class SQLBuilder {
     this.paramIndex = 1
     this.parameters = []
 
+    // URL decode and quote the table name for PostgreSQL compatibility
+    const decodedTable = decodeURIComponent(table)
+    const quotedTable = this.quoteIdentifier(decodedTable)
+
     const firstRow = data[0]
     const columns = Object.keys(firstRow)
     const columnsList = columns.join(', ')
@@ -1569,7 +1595,7 @@ export class SQLBuilder {
       return `(${valuePlaceholders.join(', ')})`
     })
 
-    const sql = `INSERT INTO ${table} (${columnsList}) VALUES ${valueRows.join(', ')} RETURNING *`
+    const sql = `INSERT INTO ${quotedTable} (${columnsList}) VALUES ${valueRows.join(', ')} RETURNING *`
 
     return {
       sql,
@@ -1584,6 +1610,10 @@ export class SQLBuilder {
   async buildUpsertQuery(table: string, data: Record<string, any>[], onConflictColumn?: string): Promise<SQLQuery> {
     this.paramIndex = 1
     this.parameters = []
+
+    // URL decode and quote the table name for PostgreSQL compatibility
+    const decodedTable = decodeURIComponent(table)
+    const quotedTable = this.quoteIdentifier(decodedTable)
 
     const firstRow = data[0]
     const columns = Object.keys(firstRow)
@@ -1607,10 +1637,10 @@ export class SQLBuilder {
       console.log(`🎯 Using custom conflict column: ${onConflictColumn}`)
     } else {
       // Fallback to primary key constraint discovery
-      const primaryKeyColumns = await this.discoverPrimaryKeyColumns(table)
+      const primaryKeyColumns = await this.discoverPrimaryKeyColumns(decodedTable)
       
       if (primaryKeyColumns.length === 0) {
-        throw new Error(`Cannot perform upsert on table ${table}: no primary key constraint found and no onConflict column specified`)
+        throw new Error(`Cannot perform upsert on table ${decodedTable}: no primary key constraint found and no onConflict column specified`)
       }
       
       conflictTargetColumns = primaryKeyColumns
@@ -1618,7 +1648,7 @@ export class SQLBuilder {
     }
 
     // Discover primary key columns to detect invalid upsert scenarios
-    const primaryKeyColumns = await this.discoverPrimaryKeyColumns(table)
+    const primaryKeyColumns = await this.discoverPrimaryKeyColumns(decodedTable)
     
     // PostgREST validation: If using a custom conflict column (not primary key),
     // check if the upsert would update primary key fields. This should fail.
@@ -1630,11 +1660,11 @@ export class SQLBuilder {
         console.log(`🚨 UPSERT validation failed: Cannot update primary key columns ${primaryKeyColumns.join(', ')} when using conflict resolution on ${onConflictColumn}`)
         
         // Create a PostgreSQL-style error to match expected behavior
-        const error = new Error(`duplicate key value violates unique constraint "${table}_${onConflictColumn}_key"`)
+        const error = new Error(`duplicate key value violates unique constraint "${decodedTable}_${onConflictColumn}_key"`)
         ;(error as any).code = '23505'
         ;(error as any).detail = `Key (${onConflictColumn})=(${firstRow[onConflictColumn]}) already exists.` // PostgreSQL uses 'detail', not 'details'
         ;(error as any).hint = null
-        ;(error as any).constraint = `${table}_${onConflictColumn}_key`
+        ;(error as any).constraint = `${decodedTable}_${onConflictColumn}_key`
         ;(error as any).severity = 'ERROR'  // Make it look like a PostgreSQL error
         throw error
       }
@@ -1650,10 +1680,10 @@ export class SQLBuilder {
     let sql: string
     if (updateColumns.length > 0) {
       // Full upsert with updates
-      sql = `INSERT INTO ${table} (${columnsList}) VALUES ${valueRows.join(', ')} ON CONFLICT (${conflictTarget}) DO UPDATE SET ${updateClause} RETURNING *`
+      sql = `INSERT INTO ${quotedTable} (${columnsList}) VALUES ${valueRows.join(', ')} ON CONFLICT (${conflictTarget}) DO UPDATE SET ${updateClause} RETURNING *`
     } else {
       // Only conflict target columns, just ignore conflicts
-      sql = `INSERT INTO ${table} (${columnsList}) VALUES ${valueRows.join(', ')} ON CONFLICT (${conflictTarget}) DO NOTHING RETURNING *`
+      sql = `INSERT INTO ${quotedTable} (${columnsList}) VALUES ${valueRows.join(', ')} ON CONFLICT (${conflictTarget}) DO NOTHING RETURNING *`
     }
 
     return {
@@ -1710,6 +1740,10 @@ export class SQLBuilder {
     this.paramIndex = 1
     this.parameters = []
 
+    // URL decode and quote the table name for PostgreSQL compatibility
+    const decodedTable = decodeURIComponent(table)
+    const quotedTable = this.quoteIdentifier(decodedTable)
+
     const columns = Object.keys(data)
     const setClause = columns.map(col => {
       this.parameters.push(data[col])
@@ -1718,7 +1752,7 @@ export class SQLBuilder {
 
     const whereClause = this.buildWhereClause(filters)
 
-    const sql = `UPDATE ${table} SET ${setClause} ${whereClause} RETURNING *`
+    const sql = `UPDATE ${quotedTable} SET ${setClause} ${whereClause} RETURNING *`
 
     return {
       sql,
@@ -1793,13 +1827,17 @@ export class SQLBuilder {
     this.paramIndex = 1
     this.parameters = []
 
+    // URL decode and quote the table name for PostgreSQL compatibility
+    const decodedTable = decodeURIComponent(table)
+    const quotedTable = this.quoteIdentifier(decodedTable)
+
     const whereClause = this.buildWhereClause(filters)
 
     if (!whereClause) {
       throw new Error('DELETE requires WHERE conditions')
     }
 
-    const sql = `DELETE FROM ${table} ${whereClause} RETURNING *`
+    const sql = `DELETE FROM ${quotedTable} ${whereClause} RETURNING *`
 
     return {
       sql,

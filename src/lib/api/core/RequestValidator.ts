@@ -11,12 +11,21 @@ export class RequestValidator {
         message: 'Table name is required and must be a string',
         code: 'INVALID_TABLE'
       })
-    } else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(request.table)) {
-      errors.push({
-        field: 'table',
-        message: 'Table name must be a valid identifier',
-        code: 'INVALID_TABLE_FORMAT'
-      })
+    } else {
+      // URL decode the table name first to handle encoded spaces
+      const decodedTable = decodeURIComponent(request.table)
+      
+      // Enhanced validation for PostgreSQL identifiers
+      const isValidBareIdentifier = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(decodedTable)
+      const isValidQuotedIdentifier = /^[a-zA-Z_][\w\s]*$/.test(decodedTable) && decodedTable.length <= 63
+      
+      if (!isValidBareIdentifier && !isValidQuotedIdentifier) {
+        errors.push({
+          field: 'table',
+          message: 'Table name must be a valid PostgreSQL identifier',
+          code: 'INVALID_TABLE_FORMAT'
+        })
+      }
     }
 
     // Validate HTTP method
