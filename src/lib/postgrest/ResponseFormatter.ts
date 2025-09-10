@@ -494,9 +494,17 @@ export class ResponseFormatter {
             }
           }
           
-          // Ensure empty arrays for null/empty results
+          // PostgREST compatibility: Handle empty results based on query context
           if (!embeddedData || (Array.isArray(embeddedData) && embeddedData.length === 0)) {
-            embeddedData = []
+            // Check if there are filters on this embedded table
+            const embeddedTableName = embedded.table.replace(/^"(.*)"$/, '$1')
+            const hasFiltersOnEmbeddedTable = query.filters.some(filter => 
+              filter.column.startsWith(`${embeddedTableName}.`)
+            )
+            
+            // If there are filters on the embedded table that prevent matches,
+            // return null (PostgREST behavior). Otherwise return empty array.
+            embeddedData = hasFiltersOnEmbeddedTable ? null : []
           }
           
           // Set the data using the final field name (alias if available, otherwise table name)
@@ -507,8 +515,14 @@ export class ResponseFormatter {
             delete formattedRow[keyFound]
           }
         } else {
-          // No embedded data found - set empty array using the final field name
-          formattedRow[fieldName] = []
+          // No embedded data found - check if we should return null or empty array
+          const embeddedTableName = embedded.table.replace(/^"(.*)"$/, '$1')
+          const hasFiltersOnEmbeddedTable = query.filters.some(filter => 
+            filter.column.startsWith(`${embeddedTableName}.`)
+          )
+          
+          // PostgREST compatibility: null for filtered queries, empty array for normal embedding
+          formattedRow[fieldName] = hasFiltersOnEmbeddedTable ? null : []
         }
       }
 
