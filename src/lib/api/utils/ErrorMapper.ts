@@ -32,7 +32,13 @@ export class ErrorMapper {
   static mapDatabaseError(error: Error, context: ErrorContext): Error {
     const message = error.message.toLowerCase()
     
-    // Handle common PostgreSQL errors
+    // Check if this is a PostgreSQL error that should be handled by PostgRESTErrorMapper
+    // Preserve PostgreSQL errors to maintain their structure and error details
+    if (this.isPostgreSQLError(error)) {
+      return error
+    }
+    
+    // Handle common PostgreSQL errors (fallback for cases where PGlite error structure is lost)
     if (message.includes('relation') && message.includes('does not exist')) {
       return createAPIError(`Table '${context.table}' does not exist`, 404)
     }
@@ -98,6 +104,25 @@ export class ErrorMapper {
     
     // Return original error if no mapping found
     return error
+  }
+
+  /**
+   * Check if an error is a PostgreSQL error that should be preserved
+   */
+  private static isPostgreSQLError(error: any): boolean {
+    return (
+      error &&
+      typeof error === 'object' &&
+      (error.code || error.severity || error.detail || error.hint ||
+       // Check for PostgreSQL error message patterns
+       (error.message && (
+         error.message.includes('duplicate key value violates unique constraint') ||
+         error.message.includes('violates foreign key constraint') ||
+         error.message.includes('violates not-null constraint') ||
+         error.message.includes('violates check constraint') ||
+         error.message.includes('relation') && error.message.includes('does not exist')
+       )))
+    )
   }
 
   static createValidationError(message: string): Error {

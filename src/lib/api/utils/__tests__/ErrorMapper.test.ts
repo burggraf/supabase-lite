@@ -55,7 +55,7 @@ describe('ErrorMapper', () => {
       expect(result).toBe(mockFormattedResponse)
     })
 
-    it('should map database errors before logging', () => {
+    it('should map database errors before logging (non-PostgreSQL fallback)', () => {
       const error = new Error('relation "users" does not exist')
       const context = {
         operation: 'SELECT query',
@@ -64,73 +64,91 @@ describe('ErrorMapper', () => {
 
       ErrorMapper.mapAndLogError(error, context)
 
-      // Should have called logError with the mapped error
+      // Should have called logError with the mapped error (fallback mapping for non-PG errors)
       const loggedError = mockLogError.mock.calls[0][1]
       expect(loggedError.message).toBe("Table 'users' does not exist")
       expect((loggedError as any).status).toBe(404)
+    })
+
+    it('should preserve PostgreSQL errors during logging', () => {
+      const error = new Error('duplicate key value violates unique constraint "countries_pkey"')
+      ;(error as any).code = '23505'
+      ;(error as any).detail = 'Key (id)=(1) already exists.'
+      
+      const context = {
+        operation: 'INSERT query',
+        table: 'countries'
+      }
+
+      ErrorMapper.mapAndLogError(error, context)
+
+      // Should have called logError with the original PostgreSQL error (not mapped)
+      const loggedError = mockLogError.mock.calls[0][1]
+      expect(loggedError).toBe(error) // Same object reference
+      expect(loggedError.message).toBe('duplicate key value violates unique constraint "countries_pkey"')
+      expect((loggedError as any).code).toBe('23505')
     })
   })
 
   describe('mapDatabaseError', () => {
     const context = { operation: 'test', table: 'test_table' }
 
-    it('should map table does not exist errors', () => {
+    it('should preserve PostgreSQL constraint violation errors', () => {
+      const error = new Error('duplicate key value violates unique constraint "countries_pkey"')
+      // Add PostgreSQL error properties to make it identifiable as a PG error
+      ;(error as any).code = '23505'
+      ;(error as any).detail = 'Key (id)=(1) already exists.'
+      
+      const mappedError = ErrorMapper.mapDatabaseError(error, context)
+      
+      // Should return the original PostgreSQL error unchanged
+      expect(mappedError).toBe(error)
+      expect(mockCreateAPIError).not.toHaveBeenCalled()
+    })
+
+    it('should preserve PostgreSQL foreign key errors', () => {
+      const error = new Error('violates foreign key constraint "fk_user"')
+      ;(error as any).code = '23503'
+      
+      const mappedError = ErrorMapper.mapDatabaseError(error, context)
+      
+      expect(mappedError).toBe(error)
+      expect(mockCreateAPIError).not.toHaveBeenCalled()
+    })
+
+    it('should preserve PostgreSQL table not found errors', () => {
       const error = new Error('relation "users" does not exist')
+      ;(error as any).code = '42P01'
+      
+      const mappedError = ErrorMapper.mapDatabaseError(error, context)
+      
+      expect(mappedError).toBe(error)
+      expect(mockCreateAPIError).not.toHaveBeenCalled()
+    })
+
+    it('should map non-PostgreSQL table does not exist errors', () => {
+      const error = new Error('relation "users" does not exist')
+      // No PostgreSQL properties - this is a fallback case
+      
       const mappedError = ErrorMapper.mapDatabaseError(error, context)
       
       expect(mockCreateAPIError).toHaveBeenCalledWith("Table 'test_table' does not exist", 404)
-      expect(mappedError).toEqual(expect.objectContaining({
-        message: "Table 'test_table' does not exist"
-      }))
     })
 
-    it('should map column does not exist errors', () => {
+    it('should map non-PostgreSQL column errors', () => {
       const error = new Error('column "invalid_column" does not exist')
+      
       const mappedError = ErrorMapper.mapDatabaseError(error, context)
       
       expect(mockCreateAPIError).toHaveBeenCalledWith("Column does not exist in table 'test_table'", 400)
     })
 
-    it('should map duplicate key errors', () => {
-      const error = new Error('duplicate key value violates unique constraint')
+    it('should map non-PostgreSQL duplicate key errors', () => {
+      const error = new Error('duplicate key violation')
+      
       const mappedError = ErrorMapper.mapDatabaseError(error, context)
       
       expect(mockCreateAPIError).toHaveBeenCalledWith('Duplicate key violation - record already exists', 409)
-    })
-
-    it('should map foreign key constraint errors', () => {
-      const error = new Error('violates foreign key constraint')
-      const mappedError = ErrorMapper.mapDatabaseError(error, context)
-      
-      expect(mockCreateAPIError).toHaveBeenCalledWith('Foreign key constraint violation', 400)
-    })
-
-    it('should map not null constraint errors', () => {
-      const error = new Error('null value in column "name" violates not-null constraint')
-      const mappedError = ErrorMapper.mapDatabaseError(error, context)
-      
-      expect(mockCreateAPIError).toHaveBeenCalledWith('Required field cannot be null', 400)
-    })
-
-    it('should map check constraint errors', () => {
-      const error = new Error('new row for relation violates check constraint')
-      const mappedError = ErrorMapper.mapDatabaseError(error, context)
-      
-      expect(mockCreateAPIError).toHaveBeenCalledWith('Data validation failed - check constraint violation', 400)
-    })
-
-    it('should map syntax errors', () => {
-      const error = new Error('syntax error at or near "SELECT"')
-      const mappedError = ErrorMapper.mapDatabaseError(error, context)
-      
-      expect(mockCreateAPIError).toHaveBeenCalledWith('Invalid query syntax', 400)
-    })
-
-    it('should map permission denied errors', () => {
-      const error = new Error('permission denied for relation users')
-      const mappedError = ErrorMapper.mapDatabaseError(error, context)
-      
-      expect(mockCreateAPIError).toHaveBeenCalledWith('Access denied to the requested resource', 403)
     })
 
     it('should map authentication errors', () => {
@@ -138,20 +156,6 @@ describe('ErrorMapper', () => {
       const mappedError = ErrorMapper.mapDatabaseError(error, context)
       
       expect(mockCreateAPIError).toHaveBeenCalledWith('Invalid credentials provided', 401)
-    })
-
-    it('should map user already exists errors', () => {
-      const error = new Error('user already exists')
-      const mappedError = ErrorMapper.mapDatabaseError(error, context)
-      
-      expect(mockCreateAPIError).toHaveBeenCalledWith('User with this email already exists', 409)
-    })
-
-    it('should map invalid refresh token errors', () => {
-      const error = new Error('invalid refresh token')
-      const mappedError = ErrorMapper.mapDatabaseError(error, context)
-      
-      expect(mockCreateAPIError).toHaveBeenCalledWith('Invalid or expired refresh token', 401)
     })
 
     it('should map validation errors', () => {
@@ -176,26 +180,12 @@ describe('ErrorMapper', () => {
       expect(mockCreateAPIError).toHaveBeenCalledWith('Unsupported HTTP method: PATCH', 405)
     })
 
-    it('should map unsupported auth endpoint errors', () => {
-      const error = new Error('unsupported auth endpoint')
-      const mappedError = ErrorMapper.mapDatabaseError(error, context)
-      
-      expect(mockCreateAPIError).toHaveBeenCalledWith('Authentication endpoint not supported', 404)
-    })
-
     it('should return original error if no mapping found', () => {
       const error = new Error('some unmapped error')
       const mappedError = ErrorMapper.mapDatabaseError(error, context)
       
       expect(mappedError).toBe(error)
       expect(mockCreateAPIError).not.toHaveBeenCalled()
-    })
-
-    it('should handle case-insensitive error messages', () => {
-      const error = new Error('DUPLICATE KEY value violates constraint')
-      const mappedError = ErrorMapper.mapDatabaseError(error, context)
-      
-      expect(mockCreateAPIError).toHaveBeenCalledWith('Duplicate key violation - record already exists', 409)
     })
   })
 

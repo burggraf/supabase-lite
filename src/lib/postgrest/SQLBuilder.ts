@@ -440,39 +440,9 @@ export class SQLBuilder {
       // Discover foreign key relationship
       let fkRelationship = await this.discoverForeignKeyRelationship(table, referencedTable)
       
-      // If FK discovery failed, try common naming convention fallbacks
+      // If FK discovery failed, log the failure but don't use hardcoded fallbacks
       if (!fkRelationship) {
-        console.log(`🔧 FK discovery failed, attempting fallback naming conventions for ${table} <-> ${referencedTable}`)
-        
-        // For the specific test case: instruments.section_id -> orchestral_sections.id
-        if (table === 'instruments' && referencedTable === 'orchestral_sections') {
-          fkRelationship = {
-            fromTable: table,
-            fromColumn: 'section_id',
-            toTable: referencedTable,
-            toColumn: 'id'
-          }
-          console.log(`🔧 Using test-specific FK relationship: ${table}.section_id -> ${referencedTable}.id`)
-        } else {
-          // Generic fallback patterns
-          // Pattern 1: main_table.embedded_table_singular_id -> embedded_table.id
-          const singularEmbedded = referencedTable.replace(/s$/, '') // orchestral_sections -> orchestral_section
-          const fkColumn1 = `${singularEmbedded}_id`
-          
-          // Pattern 2: embedded_table.main_table_singular_id -> main_table.id  
-          const singularMain = table.replace(/s$/, '') // instruments -> instrument
-          const fkColumn2 = `${singularMain}_id`
-          
-          // Try main table referencing embedded table first (most common)
-          fkRelationship = {
-            fromTable: table,
-            fromColumn: fkColumn1,
-            toTable: referencedTable,
-            toColumn: 'id'
-          }
-          
-          console.log(`🔧 Using fallback FK relationship: ${table}.${fkColumn1} -> ${referencedTable}.id`)
-        }
+        console.log(`❌ FK discovery failed for ${table} <-> ${referencedTable} - no foreign key relationship found in database schema`)
       }
       
       if (fkRelationship) {
@@ -864,18 +834,10 @@ export class SQLBuilder {
     let fkRelationship = await this.discoverForeignKeyRelationship(table, embedded.table, embedded.fkHint)
     console.log(`🔗 Foreign key relationship found:`, fkRelationship)
     
-    // If FK discovery failed, try fallback for the test case
-    if (!fkRelationship && table === 'instruments' && embedded.table === 'orchestral_sections') {
-      fkRelationship = {
-        fromTable: table,
-        fromColumn: 'section_id',
-        toTable: embedded.table,
-        toColumn: 'id'
-      }
-      console.log(`🔧 Using test-specific FK relationship: ${table}.section_id -> ${embedded.table}.id`)
-    }
-    
+    // If FK discovery failed, return null - no hardcoded fallbacks allowed
     if (!fkRelationship) {
+      console.log(`❌ No foreign key relationship found between ${table} and ${embedded.table} in database schema`)
+    }    if (!fkRelationship) {
       console.log(`❌ No foreign key relationship found between ${table} and ${embedded.table}`)
       return null
     }
@@ -1137,17 +1099,10 @@ export class SQLBuilder {
     let fkRelationship = await this.discoverForeignKeyRelationship(mainTable, embedded.table, embedded.fkHint)
     console.log(`🔗 Foreign key relationship found:`, fkRelationship)
     
-    // If FK discovery failed, try fallback for the test case
-    if (!fkRelationship && mainTable === 'instruments' && embedded.table === 'orchestral_sections') {
-      fkRelationship = {
-        fromTable: mainTable,
-        fromColumn: 'section_id',
-        toTable: embedded.table,
-        toColumn: 'id'
-      }
-      console.log(`🔧 Using test-specific FK relationship: ${mainTable}.section_id -> ${embedded.table}.id`)
-    }
-    
+    // If FK discovery failed, return null - no hardcoded fallbacks allowed
+    if (!fkRelationship) {
+      console.log(`❌ No foreign key relationship found between ${mainTable} and ${embedded.table} in database schema`)
+    }    
     if (!fkRelationship) {
       console.log(`❌ No foreign key relationship found between ${mainTable} and ${embedded.table}`)
       return null
