@@ -493,13 +493,13 @@ export class QueryParser {
     
     if (operator === '->' || operator === '->>') {
       // Simple key access: address->city becomes alias 'city'
-      alias = path.trim()
+      alias = path ? path.trim() : 'unknown'
     } else {
       // Complex path access: address#>'{city,name}' 
       // For now, create a simple alias based on the last element
-      const cleanPath = path.replace(/[{}'"]/g, '').trim()
+      const cleanPath = path ? path.replace(/[{}'"]/g, '').trim() : ''
       const pathParts = cleanPath.split(',')
-      alias = pathParts[pathParts.length - 1].trim()
+      alias = pathParts.length > 0 ? pathParts[pathParts.length - 1].trim() : 'unknown'
     }
     
     return {

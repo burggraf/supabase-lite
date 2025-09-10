@@ -79,14 +79,74 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
 // Helper functions for common REST operations
 const createRestGetHandler = () => async ({ params, request }: any) => {
   try {
+    console.log('🚀 MSW GET Handler started:', { table: params.table, url: request.url })
+    
+    // Check if this is a complex OR query that might cause browser errors
+    let processedUrl = request.url
+    if (typeof request.url === 'string' && request.url.includes('or=') && request.url.includes('and(')) {
+      console.log('🔍 Detected complex OR+AND query, applying browser compatibility fix...')
+      console.log('Original URL:', request.url)
+      
+      try {
+        // Try to fix problematic URL encoding in OR queries
+        processedUrl = request.url.replace(/or=([^&]+)/g, (match, orValue) => {
+          try {
+            // Decode the OR parameter value
+            const decodedValue = decodeURIComponent(orValue)
+            console.log('🔍 Processing OR value:', { original: orValue, decoded: decodedValue })
+            
+            // Re-encode safely for browser compatibility
+            const safeEncoded = encodeURIComponent(decodedValue)
+            console.log('🔍 Safe encoded OR value:', safeEncoded)
+            
+            return `or=${safeEncoded}`
+          } catch (encodeError) {
+            console.warn('⚠️ URL encoding fix failed, using original:', encodeError.message)
+            return match
+          }
+        })
+        
+        console.log('🔧 Fixed URL:', processedUrl)
+      } catch (fixError) {
+        console.warn('⚠️ URL fix attempt failed, using original:', fixError.message)
+        processedUrl = request.url
+      }
+    }
+    
+    console.log('🔧 Creating URL object...')
+    let urlObject
+    try {
+      urlObject = new URL(processedUrl)
+      console.log('✅ URL object created successfully')
+    } catch (urlError) {
+      console.error('❌ Failed to create URL object:', { 
+        error: urlError.message, 
+        url: processedUrl,
+        originalUrl: request.url 
+      })
+      
+      // Check if this is the replace() error we're hunting
+      if (urlError.message && urlError.message.includes('replace')) {
+        console.error('🔍 Found the replace() error in URL creation:', {
+          message: urlError.message,
+          stack: urlError.stack,
+          url: processedUrl,
+          table: params.table
+        })
+      }
+      
+      throw urlError
+    }
+    
+    console.log('🔧 Calling enhanced bridge...')
     const response = await activeBridge.handleRestRequest({
       table: params.table as string,
       method: 'GET',
       headers: Object.fromEntries(request.headers.entries()),
-      url: new URL(request.url)
+      url: urlObject
     })
     
-    
+    console.log('✅ Enhanced bridge completed successfully')
     return HttpResponse.json(response.data, {
       status: response.status,
       headers: {
@@ -95,7 +155,23 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
       }
     })
   } catch (error: any) {
-    console.error(`❌ MSW: GET error for ${params.table}:`, error)
+    console.error(`❌ MSW: GET error for ${params.table}:`, {
+      error: error.message,
+      stack: error.stack,
+      url: request.url,
+      type: typeof error,
+      name: error.name
+    })
+    
+    // Check if this is the replace() error we're hunting for
+    if (error.message && error.message.includes('replace')) {
+      console.error('🔍 Found the replace() error in MSW GET handler:', {
+        message: error.message,
+        stack: error.stack,
+        url: request.url,
+        table: params.table
+      })
+    }
     
     // Fallback for unexpected errors (should not happen with Enhanced Bridge)
     return HttpResponse.json(

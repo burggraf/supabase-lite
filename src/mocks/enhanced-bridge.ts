@@ -48,29 +48,41 @@ export class EnhancedSupabaseAPIBridge {
    * Handle REST requests with full PostgREST compatibility
    */
   async handleRestRequest(request: SupabaseRequest): Promise<FormattedResponse> {
-    await this.ensureInitialized()
-
-
-    // If database is not connected (HTTP middleware context), serve mock data
-    if (!this.dbManager.isConnected()) {
-      return this.serveMockData(request)
-    }
-
-    logger.debug('Handling enhanced REST request', {
-      method: request.method,
-      table: request.table,
-      url: request.url.toString(),
-      headers: request.headers
-    })
-
     try {
-      // Parse the request into structured query
-      const query = QueryParser.parseQuery(request.url, request.headers)
+      console.log('🚀 Enhanced bridge handleRestRequest started:', { 
+        method: request.method, 
+        table: request.table, 
+        url: request.url.toString(),
+        headers: request.headers 
+      })
+      
+      await this.ensureInitialized()
 
-      // Apply RLS filtering for user-scoped tables
-      const { query: enhancedQuery, context } = await this.rlsFilteringService.applyRLSFiltering(request.table, query, request.headers)
+      // If database is not connected (HTTP middleware context), serve mock data
+      if (!this.dbManager.isConnected()) {
+        console.log('📡 Database not connected, serving mock data')
+        return this.serveMockData(request)
+      }
 
-      logger.debug('Parsed query with RLS', { query: enhancedQuery, context: context.role })
+      logger.debug('Handling enhanced REST request', {
+        method: request.method,
+        table: request.table,
+        url: request.url.toString(),
+        headers: request.headers
+      })
+
+      try {
+        // Parse the request into structured query
+        console.log('📝 About to parse query...')
+        const query = QueryParser.parseQuery(request.url, request.headers)
+        console.log('📝 Query parsed successfully:', JSON.stringify(query, null, 2))
+
+        // Apply RLS filtering for user-scoped tables
+        console.log('🔒 About to apply RLS filtering...')
+        const { query: enhancedQuery, context } = await this.rlsFilteringService.applyRLSFiltering(request.table, query, request.headers)
+        console.log('🔒 RLS filtering completed:', { enhancedQuery, context: context.role })
+
+        logger.debug('Parsed query with RLS', { query: enhancedQuery, context: context.role })
 
       switch (request.method) {
         case 'GET':
@@ -97,12 +109,49 @@ export class EnhancedSupabaseAPIBridge {
           throw ErrorMapper.createMethodNotAllowedError(`Unsupported method: ${request.method}`)
       }
     } catch (error) {
-      console.error(`❌ EnhancedBridge error for ${request.method} ${request.table}:`, error)
+      console.error(`❌ EnhancedBridge error for ${request.method} ${request.table}:`, {
+        error: error.message,
+        stack: error.stack,
+        type: typeof error,
+        name: error.name,
+        url: request.url.toString()
+      })
+      
+      // Check if this is the replace() error we're hunting for
+      if (error.message && error.message.includes('replace')) {
+        console.error('🔍 Found the replace() error in handleRestRequest:', {
+          message: error.message,
+          stack: error.stack,
+          url: request.url.toString(),
+          method: request.method,
+          table: request.table
+        })
+      }
+      
       return ErrorMapper.mapAndLogError(error, {
         operation: 'EnhancedSupabaseAPIBridge request',
         method: request.method,
         table: request.table,
       })
+    }
+    } catch (outerError) {
+      console.error('❌ Critical error in handleRestRequest outer catch:', {
+        error: outerError.message,
+        stack: outerError.stack,
+        type: typeof outerError,
+        name: outerError.name
+      })
+      
+      // Check if this is the replace() error we're hunting for
+      if (outerError.message && outerError.message.includes('replace')) {
+        console.error('🔍 Found the replace() error in outer catch:', {
+          message: outerError.message,
+          stack: outerError.stack,
+          request: request ? { method: request.method, table: request.table, url: request.url?.toString() } : 'undefined'
+        })
+      }
+      
+      throw outerError
     }
   }
 
@@ -431,9 +480,9 @@ export class EnhancedSupabaseAPIBridge {
             }
             return rowValue <= value
           case 'like':
-            return typeof rowValue === 'string' && typeof value === 'string' && new RegExp(value.replace(/%/g, '.*'), 'i').test(rowValue)
+            return typeof rowValue === 'string' && typeof value === 'string' && new RegExp((value || '').replace(/%/g, '.*'), 'i').test(rowValue)
           case 'ilike':
-            return typeof rowValue === 'string' && typeof value === 'string' && new RegExp(value.replace(/%/g, '.*'), 'i').test(rowValue)
+            return typeof rowValue === 'string' && typeof value === 'string' && new RegExp((value || '').replace(/%/g, '.*'), 'i').test(rowValue)
           case 'in':
             return Array.isArray(value) && value.includes(rowValue)
           case 'is':
@@ -542,45 +591,113 @@ export class EnhancedSupabaseAPIBridge {
    * Format parameter value for SQL injection safety
    */
   private formatParameterValue(value: any): string {
-    
-    if (value === null || value === undefined) {
-      return 'NULL'
-    }
+    try {
+      console.log('🔍 formatParameterValue called with:', { value, type: typeof value, isNull: value === null, isUndefined: value === undefined })
+      
+      if (value === null || value === undefined) {
+        console.log('✅ Returning NULL for null/undefined value')
+        return 'NULL'
+      }
 
-    if (typeof value === 'boolean') {
-      return value ? 'TRUE' : 'FALSE'
-    }
+      if (typeof value === 'boolean') {
+        console.log('✅ Returning boolean value:', value)
+        return value ? 'TRUE' : 'FALSE'
+      }
 
-    if (typeof value === 'number') {
-      return String(value)
-    }
+      if (typeof value === 'number') {
+        console.log('✅ Returning number value:', String(value))
+        return String(value)
+      }
 
-    if (typeof value === 'string') {
-      return `'${value.replace(/'/g, "''")}'`
-    }
-
-    if (Array.isArray(value)) {
-      const formattedItems = value.map(item => this.formatParameterValue(item))
-      return `ARRAY[${formattedItems.join(', ')}]`
-    }
-
-    if (typeof value === 'object') {
-      // Special handling for PostgreSQL range objects that got malformed during URL parsing
-      const keys = Object.keys(value)
-      if (keys.length === 2) {
-        const firstKey = keys[0]
-        const secondKey = keys[1]
-        // Detect if this looks like a malformed PostgreSQL range
-        if (firstKey.startsWith('[') && secondKey.endsWith(')')) {
-          // Reconstruct the range literal
-          const rangeValue = `${firstKey}, ${secondKey}`
-          return `'${rangeValue.replace(/'/g, "''")}'`
+      if (typeof value === 'string') {
+        console.log('🔍 Processing string value:', { value, length: value.length })
+        try {
+          const result = `'${value.replace(/'/g, "''")}'`
+          console.log('✅ Successfully formatted string:', result)
+          return result
+        } catch (stringError) {
+          console.error('❌ Error formatting string:', stringError, { value, type: typeof value })
+          throw new Error(`String format error: ${stringError.message}`)
         }
       }
-      return `'${JSON.stringify(value).replace(/'/g, "''")}'::jsonb`
-    }
 
-    return `'${String(value).replace(/'/g, "''")}'`
+      if (Array.isArray(value)) {
+        console.log('🔍 Processing array value:', { length: value.length, items: value })
+        try {
+          const formattedItems = value.map((item, index) => {
+            console.log(`🔍 Processing array item ${index}:`, { item, type: typeof item })
+            return this.formatParameterValue(item)
+          })
+          const result = `ARRAY[${formattedItems.join(', ')}]`
+          console.log('✅ Successfully formatted array:', result)
+          return result
+        } catch (arrayError) {
+          console.error('❌ Error formatting array:', arrayError, { value })
+          throw new Error(`Array format error: ${arrayError.message}`)
+        }
+      }
+
+      if (typeof value === 'object') {
+        console.log('🔍 Processing object value:', { value, keys: Object.keys(value || {}) })
+        try {
+          // Special handling for PostgreSQL range objects that got malformed during URL parsing
+          const keys = Object.keys(value || {})
+          if (keys.length === 2) {
+            const firstKey = keys[0]
+            const secondKey = keys[1]
+            console.log('🔍 Checking range pattern:', { firstKey, secondKey })
+            // Detect if this looks like a malformed PostgreSQL range
+            if (firstKey && firstKey.startsWith && firstKey.startsWith('[') && secondKey && secondKey.endsWith && secondKey.endsWith(')')) {
+              // Reconstruct the range literal
+              const rangeValue = `${firstKey}, ${secondKey}`
+              console.log('🔍 Reconstructing range:', { rangeValue })
+              try {
+                const result = `'${(rangeValue || '').replace(/'/g, "''")}'`
+                console.log('✅ Successfully formatted range:', result)
+                return result
+              } catch (rangeError) {
+                console.error('❌ Error formatting range:', rangeError, { rangeValue })
+                throw new Error(`Range format error: ${rangeError.message}`)
+              }
+            }
+          }
+          
+          const safeValue = value || {}
+          const jsonStr = JSON.stringify(safeValue)
+          console.log('🔍 Converting object to JSON:', { jsonStr, length: jsonStr.length })
+          try {
+            const result = `'${jsonStr.replace(/'/g, "''")}'::jsonb`
+            console.log('✅ Successfully formatted object:', result)
+            return result
+          } catch (jsonError) {
+            console.error('❌ Error formatting JSON:', jsonError, { jsonStr })
+            throw new Error(`JSON format error: ${jsonError.message}`)
+          }
+        } catch (objectError) {
+          console.error('❌ Error processing object:', objectError, { value })
+          throw new Error(`Object format error: ${objectError.message}`)
+        }
+      }
+
+      // Final fallback with comprehensive error handling
+      console.log('🔍 Using final fallback for value:', { value, type: typeof value })
+      try {
+        const stringValue = String(value || '')
+        console.log('🔍 Converted to string:', { stringValue, length: stringValue.length })
+        if (typeof stringValue !== 'string') {
+          throw new Error(`String conversion failed: got ${typeof stringValue}`)
+        }
+        const result = `'${stringValue.replace(/'/g, "''")}'`
+        console.log('✅ Successfully formatted fallback:', result)
+        return result
+      } catch (fallbackError) {
+        console.error('❌ Error in fallback formatting:', fallbackError, { value, type: typeof value })
+        throw new Error(`Fallback format error: ${fallbackError.message}`)
+      }
+    } catch (error) {
+      console.error('❌ Critical error in formatParameterValue:', error, { value, type: typeof value, stack: error.stack })
+      throw new Error(`Parameter formatting failed: ${error.message}`)
+    }
   }
 
   // Auth methods remain the same as the original bridge

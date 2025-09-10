@@ -829,7 +829,7 @@ export class SQLBuilder {
     
     // Check for embedded table filters from the query that apply to this embedded table
     const embeddedTableFilters = (queryFilters || []).filter(filter => 
-      filter.column.startsWith(`${embedded.table}.`)
+      filter.column.startsWith(`${embedded.table}.`) || filter.referencedTable === embedded.table
     )
     console.log(`🔍 Found ${embeddedTableFilters.length} filters for embedded table ${embedded.table}:`, embeddedTableFilters)
     
@@ -1382,46 +1382,180 @@ export class SQLBuilder {
   private buildLogicalCondition(filter: ParsedFilter): string {
     console.log(`🔍 Building logical condition:`, filter)
     
-    if (filter.operator === 'or' && filter.value.conditions) {
-      // Handle OR conditions: (condition1 OR condition2 OR ...)
-      const conditions = filter.value.conditions
-        .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
-        .filter(Boolean)
+    // Browser compatibility: add null checks and error handling
+    try {
+      if (filter.operator === 'or' && filter.value && filter.value.conditions) {
+        // Handle OR conditions: (condition1 OR condition2 OR ...)
+        const conditions = filter.value.conditions
+          .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
+          .filter(Boolean)
+        
+        if (conditions.length > 0) {
+          return `(${conditions.join(' OR ')})`
+        } else {
+          // Empty OR conditions should return a condition that matches nothing
+          return '(false)'
+        }
+      }
       
-      if (conditions.length > 0) {
-        return `(${conditions.join(' OR ')})`
+      if (filter.operator === 'and' && filter.value && filter.value.conditions) {
+        // Handle AND conditions: (condition1 AND condition2 AND ...)
+        const conditions = filter.value.conditions
+          .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
+          .filter(Boolean)
+        
+        if (conditions.length > 0) {
+          return `(${conditions.join(' AND ')})`
+        }
+      }
+      
+      // Handle complex logical expressions that QueryParser returns as placeholders
+      if (filter.value && typeof filter.value === 'object' && filter.value.expression && filter.value.params) {
+        const complexResult = this.parseComplexLogicalExpression(filter.operator, filter.value.params)
+        if (complexResult) {
+          return complexResult
+        }
+      }
+      
+      // Fallback for other logical operators or legacy format
+      const { expression, conditions } = filter.value || {}
+      if (conditions) {
+        // New format with structured conditions
+        const conditionStrings = conditions
+          .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
+          .filter(Boolean)
+        
+        if (conditionStrings.length > 0) {
+          const operator = (filter.operator || '').toUpperCase()
+          return `(${conditionStrings.join(` ${operator} `)})`
+        }
+      }
+      
+      return `/* Unsupported logical operator: ${filter.operator} - ${expression || 'unknown'} */`
+    } catch (error) {
+      console.error('Error building logical condition:', error)
+      return `/* Error in logical condition: ${error.message} */`
+    }
+  }
+
+  /**
+   * Parse complex logical expressions like 'id.gt.3,and(id.eq.1,name.eq.Luke)'
+   * This provides browser compatibility for complex OR+AND queries
+   */
+  private parseComplexLogicalExpression(operator: string, params: string): string | null {
+    try {
+      if (!params || typeof params !== 'string') return null
+      
+      // Handle OR with embedded AND: 'id.gt.3,and(id.eq.1,name.eq.Luke)'
+      if (operator === 'or') {
+        const parts = this.splitLogicalExpression(params)
+        const conditions: string[] = []
+        
+        for (const part of parts) {
+          const trimmedPart = (part || '').trim()
+          if (!trimmedPart) continue
+          
+          if (trimmedPart.startsWith('and(') && trimmedPart.endsWith(')')) {
+            // Handle nested AND: and(id.eq.1,name.eq.Luke)
+            const andContent = trimmedPart.slice(4, -1) // Remove 'and(' and ')'
+            const andParts = this.splitLogicalExpression(andContent)
+            const andConditions = andParts
+              .map(p => this.parseSimpleCondition(p))
+              .filter(Boolean)
+            
+            if (andConditions.length > 0) {
+              conditions.push(`(${andConditions.join(' AND ')})`)
+            }
+          } else {
+            // Handle simple condition: id.gt.3
+            const condition = this.parseSimpleCondition(trimmedPart)
+            if (condition) {
+              conditions.push(condition)
+            }
+          }
+        }
+        
+        if (conditions.length > 0) {
+          return `(${conditions.join(' OR ')})`
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Error parsing complex logical expression:', error)
+      return null
+    }
+  }
+
+  /**
+   * Split logical expression while respecting parentheses
+   */
+  private splitLogicalExpression(expr: string): string[] {
+    if (!expr) return []
+    
+    const parts: string[] = []
+    let current = ''
+    let depth = 0
+    
+    for (let i = 0; i < expr.length; i++) {
+      const char = expr[i]
+      
+      if (char === '(') {
+        depth++
+        current += char
+      } else if (char === ')') {
+        depth--
+        current += char
+      } else if (char === ',' && depth === 0) {
+        if (current.trim()) {
+          parts.push(current.trim())
+        }
+        current = ''
       } else {
-        // Empty OR conditions should return a condition that matches nothing
-        return '(false)'
+        current += char
       }
     }
     
-    if (filter.operator === 'and' && filter.value.conditions) {
-      // Handle AND conditions: (condition1 AND condition2 AND ...)
-      const conditions = filter.value.conditions
-        .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
-        .filter(Boolean)
+    if (current.trim()) {
+      parts.push(current.trim())
+    }
+    
+    return parts
+  }
+
+  /**
+   * Parse simple condition like 'id.gt.3' or 'name.eq.Luke'
+   */
+  private parseSimpleCondition(condition: string): string | null {
+    try {
+      if (!condition || typeof condition !== 'string') return null
       
-      if (conditions.length > 0) {
-        return `(${conditions.join(' AND ')})`
-      }
-    }
-    
-    // Fallback for other logical operators or legacy format
-    const { expression, conditions } = filter.value
-    if (conditions) {
-      // New format with structured conditions
-      const conditionStrings = conditions
-        .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
-        .filter(Boolean)
+      const parts = condition.split('.')
+      if (parts.length !== 3) return null
       
-      if (conditionStrings.length > 0) {
-        const operator = filter.operator.toUpperCase()
-        return `(${conditionStrings.join(` ${operator} `)})`
+      const [column, operator, value] = parts.map(p => (p || '').trim())
+      if (!column || !operator || !value) return null
+      
+      const postgrestOp = POSTGREST_OPERATORS[operator]
+      if (!postgrestOp || !postgrestOp.sqlTemplate) return null
+      
+      // Format the value appropriately
+      let formattedValue: string
+      if (value === 'null') {
+        formattedValue = 'NULL'
+      } else if (/^\d+$/.test(value)) {
+        formattedValue = value
+      } else {
+        formattedValue = `'${(value || '').replace(/'/g, "''")}'`
       }
+      
+      return postgrestOp.sqlTemplate
+        .replace('{column}', `"${column}"`)
+        .replace('{value}', formattedValue)
+    } catch (error) {
+      console.error('Error parsing simple condition:', error)
+      return null
     }
-    
-    return `/* Unsupported logical operator: ${filter.operator} - ${expression || 'unknown'} */`
   }
 
   /**
