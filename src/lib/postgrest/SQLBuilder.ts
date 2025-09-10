@@ -1304,31 +1304,36 @@ export class SQLBuilder {
     }
 
     if (operator === 'ov') {
-      // Array overlap operator - ensure proper PostgreSQL array format
+      // Array overlap operator - handle both arrays and PostgreSQL range types
       const paramPlaceholder = `$${this.paramIndex++}`
-      let arrayValue: string
+      let finalValue: string
       
       if (Array.isArray(value)) {
         // Convert JavaScript array to PostgreSQL array format
         // Quote string elements to handle values with special characters
         const quotedElements = value.map(v => `"${String(v).replace(/"/g, '""')}"`)
-        arrayValue = `{${quotedElements.join(',')}}`
+        finalValue = `{${quotedElements.join(',')}}`
       } else if (typeof value === 'string') {
-        // Handle legacy string format or already formatted PostgreSQL array
-        if (value.startsWith('{') && value.endsWith('}')) {
-          arrayValue = value // Already in PostgreSQL format
+        // Check for PostgreSQL range format first (e.g., [2000-01-01, 2000-01-02))
+        if ((value.startsWith('[') || value.startsWith('(')) && 
+            (value.endsWith(']') || value.endsWith(')'))) {
+          // This is a PostgreSQL range - pass through as-is
+          finalValue = value
+        } else if (value.startsWith('{') && value.endsWith('}')) {
+          // Already in PostgreSQL array format
+          finalValue = value
         } else {
           // Convert comma-separated string to PostgreSQL array format
           const elements = value.split(',').map(v => v.trim())
           const quotedElements = elements.map(v => `"${v.replace(/"/g, '""')}"`)
-          arrayValue = `{${quotedElements.join(',')}}`
+          finalValue = `{${quotedElements.join(',')}}`
         }
       } else {
         // Fallback - convert to string
-        arrayValue = `{"${String(value).replace(/"/g, '""')}"}`
+        finalValue = `{"${String(value).replace(/"/g, '""')}"}`
       }
       
-      this.parameters.push(arrayValue)
+      this.parameters.push(finalValue)
       return condition.replace('{value}', paramPlaceholder)
     }
 
