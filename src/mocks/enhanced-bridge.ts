@@ -542,6 +542,7 @@ export class EnhancedSupabaseAPIBridge {
    * Format parameter value for SQL injection safety
    */
   private formatParameterValue(value: any): string {
+    
     if (value === null || value === undefined) {
       return 'NULL'
     }
@@ -564,6 +565,18 @@ export class EnhancedSupabaseAPIBridge {
     }
 
     if (typeof value === 'object') {
+      // Special handling for PostgreSQL range objects that got malformed during URL parsing
+      const keys = Object.keys(value)
+      if (keys.length === 2) {
+        const firstKey = keys[0]
+        const secondKey = keys[1]
+        // Detect if this looks like a malformed PostgreSQL range
+        if (firstKey.startsWith('[') && secondKey.endsWith(')')) {
+          // Reconstruct the range literal
+          const rangeValue = `${firstKey}, ${secondKey}`
+          return `'${rangeValue.replace(/'/g, "''")}'`
+        }
+      }
       return `'${JSON.stringify(value).replace(/'/g, "''")}'::jsonb`
     }
 

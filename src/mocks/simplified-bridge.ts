@@ -61,11 +61,12 @@ const COMMON_OPERATORS: Record<string, string> = {
   is: 'IS {value}',
   cs: '@> {value}',   // contains (JSON/array)
   cd: '<@ {value}',   // contained by (JSON/array)
-  ov: '&& {value}'    // overlap (array)
+  ov: '&& {value}'    // overlap (array) and overlaps (range) - PostgreSQL overlap operator
 }
 
 export class SimplifiedSupabaseAPIBridge {
   private dbManager: DatabaseManager
+  // FORCE RELOAD - DEBUG OVERLAPS ISSUE
 
   constructor() {
     this.dbManager = DatabaseManager.getInstance()
@@ -162,7 +163,8 @@ export class SimplifiedSupabaseAPIBridge {
    * Simplified request parsing - focus on common patterns
    */
   private parseRequest(url: URL, headers: Record<string, string>): SimplifiedQuery {
-    const params = new URLSearchParams(url.search)
+    // Use custom URL parameter parser that preserves PostgreSQL ranges
+    const params = this.parseUrlParams(url.search)
     const query: SimplifiedQuery = { filters: [] }
 
     // Parse select - handle basic embedded resources
@@ -177,6 +179,11 @@ export class SimplifiedSupabaseAPIBridge {
     for (const [key, value] of params.entries()) {
       if (['select', 'limit', 'offset', 'order', 'on_conflict'].includes(key)) {
         continue
+      }
+      
+      // Debug any overlaps-related parameters
+      if (key.includes('during') || value.includes('2000-01-01') || value.includes('overlaps') || value.includes('ov.')) {
+        console.log(`[DEBUG OVERLAPS] URL param: ${key} = ${value}`)
       }
 
       const filter = this.parseSimpleFilter(key, value)
@@ -246,6 +253,7 @@ export class SimplifiedSupabaseAPIBridge {
           const [, tableName, fkHint, columnList] = match
           const embeddedColumns = columnList.split(',').map(c => c.trim()).filter(Boolean)
           
+          
           embeds[tableName.trim()] = {
             columns: embeddedColumns,
             fkHint: fkHint?.trim()
@@ -272,15 +280,31 @@ export class SimplifiedSupabaseAPIBridge {
 
     const [, operator, operatorValue] = match
     
+    // Debug overlaps operator
+    if (operator === 'ov') {
+      console.log(`[DEBUG OVERLAPS] parseSimpleFilter:`)
+      console.log(`  key: ${key}`)
+      console.log(`  value: ${value}`)
+      console.log(`  operator: ${operator}`)
+      console.log(`  operatorValue: ${operatorValue}`)
+    }
+    
     if (!COMMON_OPERATORS[operator]) {
       console.warn(`Unsupported operator: ${operator}`)
       return null
     }
 
+    const parsedValue = this.parseOperatorValue(operator, operatorValue)
+    
+    if (operator === 'ov') {
+      console.log(`  parsedValue: ${JSON.stringify(parsedValue)}`)
+      console.log(`  parsedValue type: ${typeof parsedValue}`)
+    }
+
     return {
       column: key,
       operator,
-      value: this.parseOperatorValue(operator, operatorValue)
+      value: parsedValue
     }
   }
 
@@ -293,6 +317,18 @@ export class SimplifiedSupabaseAPIBridge {
         return value.toLowerCase() === 'null' ? null : value
       case 'in':
         return value.split(',').map(v => v.trim())
+      case 'ov':
+        // PostgreSQL range/array values - handle both arrays and ranges
+        if (value.startsWith('{') && value.endsWith('}')) {
+          // PostgreSQL array format - extract array elements
+          return value.slice(1, -1).split(',').map(v => v.trim())
+        } else if (value.startsWith('[') && (value.endsWith(')') || value.endsWith(']'))) {
+          // PostgreSQL range format - keep as string, don't split on commas
+          return value
+        } else {
+          // Handle comma-separated format from URL parameters
+          return value.split(',').map(v => v.trim())
+        }
       case 'eq':
       case 'neq':
       case 'gt':
@@ -349,7 +385,22 @@ export class SimplifiedSupabaseAPIBridge {
    */
   private async handleSelect(table: string, query: SimplifiedQuery, context: SessionContext, isHead: boolean = false): Promise<FormattedResponse> {
     const sql = this.buildSelectSQL(table, query)
+    
+    // Debug overlaps SQL
+    if (sql.includes('&&') || JSON.stringify(query).includes('ov')) {
+      console.log(`[DEBUG OVERLAPS] Final SQL: ${sql}`)
+      console.log(`[DEBUG OVERLAPS] Query filters:`, JSON.stringify(query.filters))
+    }
+    
     const result = await this.executeWithContext(sql, context)
+    
+    // Debug overlaps result
+    if (sql.includes('&&') || JSON.stringify(query).includes('ov')) {
+      console.log(`[DEBUG OVERLAPS] SQL execution result:`, result)
+      if (result.error) {
+        console.log(`[DEBUG OVERLAPS] SQL error:`, result.error)
+      }
+    }
     
     let totalCount: number | undefined
     if (query.count) {
@@ -368,6 +419,129 @@ export class SimplifiedSupabaseAPIBridge {
    * Build SELECT SQL - much simpler than current implementation
    */
   private buildSelectSQL(table: string, query: SimplifiedQuery): string {
+    const quotedTable = this.quoteIdentifier(table, query.schema)
+    
+    // Check if we have inner joins - these need different handling
+    const hasInnerJoins = query.embed && Object.values(query.embed).some(config => config.fkHint === 'inner')
+    
+    if (hasInnerJoins) {
+      return this.buildInnerJoinSQL(table, query)
+    } else {
+      return this.buildSubquerySQL(table, query)
+    }
+  }
+
+  /**
+   * Build SQL with proper INNER JOINs for embedded resources
+   */
+  private buildInnerJoinSQL(table: string, query: SimplifiedQuery): string {
+    const quotedTable = this.quoteIdentifier(table, query.schema)
+    
+    // Build SELECT clause with columns from both tables
+    const selectParts: string[] = []
+    
+    // Add main table columns
+    if (query.select && query.select.length > 0) {
+      selectParts.push(...query.select.map(col => {
+        if (col.includes('->')) {
+          return this.buildJSONPathExpression(col)
+        }
+        return `${quotedTable}.${col}`
+      }))
+    } else {
+      selectParts.push(`${quotedTable}.*`)
+    }
+    
+    // Add embedded resource columns as JSON objects
+    const joinClauses: string[] = []
+    if (query.embed) {
+      for (const [embeddedTable, embeddedConfig] of Object.entries(query.embed)) {
+        if (embeddedConfig.fkHint === 'inner') {
+          const quotedEmbeddedTable = this.quoteIdentifier(embeddedTable, query.schema)
+          
+          // Build JSON object for embedded resource
+          const columnPairs = embeddedConfig.columns.map(col => 
+            `'${col}', ${quotedEmbeddedTable}.${col}`
+          ).join(', ')
+          const jsonObject = `json_build_object(${columnPairs})`
+          selectParts.push(`${jsonObject} AS ${this.quoteIdentifier(embeddedTable)}`)
+          
+          // Build JOIN clause
+          const fkColumn = this.getFKColumnName(table, embeddedTable)
+          joinClauses.push(`INNER JOIN ${quotedEmbeddedTable} ON ${quotedEmbeddedTable}.${fkColumn} = ${quotedTable}.id`)
+        }
+      }
+    }
+    
+    const selectClause = selectParts.join(', ')
+    const joinClause = joinClauses.join(' ')
+    
+    // Build WHERE clause for both main table and embedded table filters
+    let whereClause = ''
+    const allConditions = []
+    
+    // Add main table filters
+    const mainTableFilters = query.filters.filter(filter => {
+      if (query.embed) {
+        for (const embeddedTable of Object.keys(query.embed)) {
+          if (filter.column.startsWith(`${embeddedTable}.`)) {
+            return false
+          }
+        }
+      }
+      return true
+    })
+    
+    allConditions.push(...mainTableFilters.map(filter => this.buildFilterCondition(filter)).filter(Boolean))
+    
+    // Add embedded table filters
+    if (query.embed) {
+      for (const [embeddedTable, embeddedConfig] of Object.entries(query.embed)) {
+        if (embeddedConfig.fkHint === 'inner') {
+          const embeddedFilters = query.filters.filter(filter => 
+            filter.column.startsWith(`${embeddedTable}.`)
+          )
+          
+          const embeddedConditions = embeddedFilters.map(filter => {
+            const quotedEmbeddedTable = this.quoteIdentifier(embeddedTable, query.schema)
+            const columnName = filter.column.split('.').slice(1).join('.')
+            return this.buildFilterCondition({ ...filter, column: `${quotedEmbeddedTable}.${columnName}` })
+          }).filter(Boolean)
+          
+          allConditions.push(...embeddedConditions)
+        }
+      }
+    }
+    
+    if (allConditions.length > 0) {
+      whereClause = ` WHERE ${allConditions.join(' AND ')}`
+    }
+    
+    // ORDER BY clause
+    let orderClause = ''
+    if (query.order && query.order.length > 0) {
+      const orderItems = query.order.map(item => 
+        `${item.column} ${item.ascending ? 'ASC' : 'DESC'}`
+      )
+      orderClause = ` ORDER BY ${orderItems.join(', ')}`
+    }
+
+    // LIMIT/OFFSET
+    let limitClause = ''
+    if (query.limit) {
+      limitClause = ` LIMIT ${query.limit}`
+    }
+    if (query.offset) {
+      limitClause += ` OFFSET ${query.offset}`
+    }
+
+    return `SELECT ${selectClause} FROM ${quotedTable}${joinClause}${whereClause}${orderClause}${limitClause}`
+  }
+
+  /**
+   * Build SQL with subqueries for embedded resources (original approach)
+   */
+  private buildSubquerySQL(table: string, query: SimplifiedQuery): string {
     const quotedTable = this.quoteIdentifier(table, query.schema)
     
     // SELECT clause - include embedded resources as JSON subqueries
@@ -401,69 +575,28 @@ export class SimplifiedSupabaseAPIBridge {
     
     const selectClause = selectParts.join(', ')
 
-    // WHERE clause - handle both main table filters and embedded table filters for inner joins
+    // WHERE clause - only main table filters for subquery approach
     let whereClause = ''
     const mainTableFilters = query.filters.filter(filter => {
-      // Exclude filters that target embedded tables for outer joins
+      // Exclude filters that target embedded tables - they're handled in subqueries
       if (query.embed) {
-        for (const [embeddedTable, embeddedConfig] of Object.entries(query.embed)) {
-          if (filter.column.startsWith(`${embeddedTable}.`) && embeddedConfig.fkHint === 'inner') {
-            // For inner joins, we need to add the filter to the main query as an EXISTS clause
-            return false // We'll handle this separately
-          } else if (filter.column.startsWith(`${embeddedTable}.`)) {
-            return false // Regular embedded table filters are handled in subqueries
+        for (const embeddedTable of Object.keys(query.embed)) {
+          if (filter.column.startsWith(`${embeddedTable}.`)) {
+            return false
           }
         }
       }
       return true
     })
     
-    // Add EXISTS clauses for inner join filters
-    const existsConditions: string[] = []
-    if (query.embed) {
-      for (const [embeddedTable, embeddedConfig] of Object.entries(query.embed)) {
-        if (embeddedConfig.fkHint === 'inner') {
-          const embeddedFilters = query.filters.filter(filter => 
-            filter.column.startsWith(`${embeddedTable}.`)
-          )
-          
-          if (embeddedFilters.length > 0) {
-            const quotedEmbeddedTable = this.quoteIdentifier(embeddedTable, query.schema)
-            
-            // Build FK join condition
-            let joinCondition: string
-            let fkColumnName: string
-            if (table.endsWith('s')) {
-              const singular = table.slice(0, -1)
-              const parts = singular.split('_')
-              fkColumnName = `${parts[parts.length - 1]}_id`
-            } else {
-              fkColumnName = `${table}_id`
-            }
-            joinCondition = `${quotedEmbeddedTable}.${fkColumnName} = ${quotedTable}.id`
-            
-            // Add embedded filters
-            const filterConditions = embeddedFilters
-              .map(filter => {
-                const columnName = filter.column.includes('.') ? filter.column.split('.').slice(1).join('.') : filter.column
-                return this.buildFilterCondition({ ...filter, column: columnName })
-              })
-              .filter(Boolean)
-            
-            const existsClause = `EXISTS (SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${joinCondition} AND ${filterConditions.join(' AND ')})`
-            existsConditions.push(existsClause)
-          }
-        }
+    if (mainTableFilters.length > 0) {
+      const conditions = mainTableFilters
+        .map(filter => this.buildFilterCondition(filter))
+        .filter(Boolean)
+      
+      if (conditions.length > 0) {
+        whereClause = ` WHERE ${conditions.join(' AND ')}`
       }
-    }
-    
-    const allConditions = [
-      ...mainTableFilters.map(filter => this.buildFilterCondition(filter)).filter(Boolean),
-      ...existsConditions
-    ]
-    
-    if (allConditions.length > 0) {
-      whereClause = ` WHERE ${allConditions.join(' AND ')}`
     }
 
     // ORDER BY clause
@@ -527,6 +660,16 @@ export class SimplifiedSupabaseAPIBridge {
       condition = condition.replace('{value}', values)
     } else if (filter.operator === 'is') {
       condition = condition.replace('{value}', filter.value === null ? 'NULL' : `'${this.escapeSQLValue(filter.value)}'`)
+    } else if (filter.operator === 'ov') {
+      // URGENT DEBUG: Force throw error to see if this code is being reached
+      console.error(`🚨 OVERLAPS DEBUG REACHED! filter.value = ${JSON.stringify(filter.value)}`)
+      
+      // PostgreSQL range/array literals need to be quoted but not escaped as JSON
+      // For ranges: '[2000-01-01 12:45, 2000-01-01 13:15)' becomes '[2000-01-01 12:45, 2000-01-01 13:15)'
+      // For arrays: '{1,2,3}' becomes '{1,2,3}'
+      const finalValue = `'${filter.value}'`
+      console.error(`🚨 finalValue = ${finalValue}`)
+      condition = condition.replace('{value}', finalValue)
     } else {
       condition = condition.replace('{value}', `'${this.escapeSQLValue(filter.value)}'`)
     }
@@ -854,6 +997,20 @@ export class SimplifiedSupabaseAPIBridge {
   }
 
   /**
+   * Get FK column name for relationship
+   */
+  private getFKColumnName(mainTable: string, embeddedTable: string): string {
+    // For orchestral_sections -> instruments, FK should be section_id
+    if (mainTable.endsWith('s')) {
+      const singular = mainTable.slice(0, -1)
+      const parts = singular.split('_')
+      return `${parts[parts.length - 1]}_id`
+    } else {
+      return `${mainTable}_id`
+    }
+  }
+
+  /**
    * Build embedded subquery for simple one-level embedding
    */
   private buildEmbeddedSubquery(mainTable: string, embeddedTable: string, config: { columns: string[], fkHint?: string }, schema?: string, embeddedFilters?: SimplifiedFilter[]): string {
@@ -934,15 +1091,82 @@ export class SimplifiedSupabaseAPIBridge {
     
     const whereCondition = `${joinCondition}${additionalWhere}`
     
-    return `
-      SELECT CASE 
-        WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
-        THEN ${selectClause}
-        ELSE NULL 
-      END
-      FROM ${quotedEmbeddedTable} 
-      WHERE ${whereCondition}
-    `.trim()
+    // For inner joins, we want to return the actual data, not wrap in CASE WHEN
+    if (isInnerJoin) {
+      // For inner joins, we already built the selectClause correctly for single objects
+      const subquery = `
+        SELECT ${selectClause}
+        FROM ${quotedEmbeddedTable} 
+        WHERE ${whereCondition}
+        LIMIT 1
+      `.trim()
+      return subquery
+    } else {
+      // For regular joins, use the CASE WHEN pattern
+      return `
+        SELECT CASE 
+          WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
+          THEN ${selectClause}
+          ELSE NULL 
+        END
+        FROM ${quotedEmbeddedTable} 
+        WHERE ${whereCondition}
+      `.trim()
+    }
+  }
+
+  /**
+   * Custom URL parameter parser that preserves PostgreSQL ranges
+   */
+  private parseUrlParams(search: string): Map<string, string> {
+    const params = new Map<string, string>()
+    if (!search || search.length <= 1) return params
+    
+    // Remove leading ? if present
+    const queryString = search.startsWith('?') ? search.slice(1) : search
+    
+    // Split on & but preserve ranges (things between [ and ) or ])
+    const pairs: string[] = []
+    let current = ''
+    let inRange = false
+    let i = 0
+    
+    while (i < queryString.length) {
+      const char = queryString[i]
+      
+      if (char === '[') {
+        inRange = true
+      } else if (char === ')' || char === ']') {
+        inRange = false
+      } else if (char === '&' && !inRange) {
+        if (current.trim()) {
+          pairs.push(current.trim())
+        }
+        current = ''
+        i++
+        continue
+      }
+      
+      current += char
+      i++
+    }
+    
+    // Add the last pair
+    if (current.trim()) {
+      pairs.push(current.trim())
+    }
+    
+    // Parse each key=value pair
+    for (const pair of pairs) {
+      const equalIndex = pair.indexOf('=')
+      if (equalIndex === -1) continue
+      
+      const key = decodeURIComponent(pair.slice(0, equalIndex))
+      const value = decodeURIComponent(pair.slice(equalIndex + 1))
+      params.set(key, value)
+    }
+    
+    return params
   }
 
   // Keep existing auth methods for compatibility
