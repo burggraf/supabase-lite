@@ -539,7 +539,7 @@ export class QueryParser {
     // Check if the column key contains JSON path operators
     const jsonPathInfo = this.parseJSONPathExpression(key)
 
-    // Handle regular filters: column=operator.value
+    // Handle regular filters: column=operator.value or column=not.operator.value
     const match = value.match(/^([a-z]+)\.(.*)$/i)
     if (!match) {
       // Default to equality if no operator specified
@@ -562,6 +562,43 @@ export class QueryParser {
     }
 
     const [, operator, operatorValue] = match
+    
+    // Check if this is a NOT operator pattern: not.operator.value
+    if (operator === 'not') {
+      // Parse not.operator.value format
+      const notMatch = operatorValue.match(/^([a-z]+)\.(.*)$/i)
+      if (notMatch) {
+        const [, innerOperator, innerValue] = notMatch
+        
+        // Validate the inner operator exists
+        if (!POSTGREST_OPERATORS[innerOperator]) {
+          throw new Error(`Unknown operator in NOT filter: ${innerOperator}`)
+        }
+
+        try {
+          const { parsedValue } = parseOperatorValue(innerOperator, innerValue)
+          const filter: ParsedFilter = {
+            column: key,
+            operator: innerOperator,
+            value: parsedValue,
+            negated: true
+          }
+
+          // Add JSON path information if detected
+          if (jsonPathInfo) {
+            filter.jsonPath = {
+              columnName: jsonPathInfo.columnName,
+              jsonOperator: jsonPathInfo.operator,
+              path: jsonPathInfo.path
+            }
+          }
+
+          return filter
+        } catch (error) {
+          throw new Error(`Error parsing NOT filter for column '${key}': ${error}`)
+        }
+      }
+    }
     
     if (!POSTGREST_OPERATORS[operator]) {
       throw new Error(`Unknown operator: ${operator}`)
@@ -713,27 +750,56 @@ export class QueryParser {
    */
   private static parseOrOperator(orValue: string): ParsedFilter | null {
     try {
-      // Remove parentheses if present: "(id.eq.1,name.eq.woodwinds)" -> "id.eq.1,name.eq.woodwinds"
+      // Handle both formats: 
+      // PostgREST standard: "(id.eq.1,name.eq.woodwinds)" -> "id.eq.1,name.eq.woodwinds"
+      // Supabase.js format: "id.eq.1,name.eq.woodwinds" (missing outer parentheses)
       let cleanValue = orValue.trim()
       if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
         cleanValue = cleanValue.slice(1, -1)
       }
       
-      const conditions = cleanValue.split(',')
+      const conditions = this.parseLogicalConditions(cleanValue)
       const parsedConditions: ParsedFilter[] = []
       
       for (const condition of conditions) {
         const trimmed = condition.trim()
-        // Parse each condition as column.operator.value
-        const match = trimmed.match(/^([^.]+)\.([^.]+)\.(.+)$/)
-        if (match) {
-          const [, column, operator, value] = match
-          const { parsedValue } = parseOperatorValue(operator, value)
-          parsedConditions.push({
-            column,
-            operator,
-            value: parsedValue
-          })
+        
+        // Check for nested logical operators first like and(id.eq.1,name.eq.Luke)
+        const nestedLogicalMatch = trimmed.match(/^(and|not)\((.+)\)$/)
+        if (nestedLogicalMatch) {
+          const [, logicalOp, nestedConditions] = nestedLogicalMatch
+          
+          if (logicalOp === 'and') {
+            const nestedFilter = this.parseAndOperator(nestedConditions)
+            if (nestedFilter) {
+              parsedConditions.push(nestedFilter)
+            }
+          } else if (logicalOp === 'not') {
+            const nestedFilter = this.parseNotOperator(nestedConditions)
+            if (nestedFilter) {
+              parsedConditions.push(nestedFilter)
+            }
+          }
+        } else {
+          // Parse simple condition as column.operator.value
+          const match = trimmed.match(/^([^.]+)\.([^.]+)\.(.+)$/)
+          if (match) {
+            const [, column, operator, value] = match
+            try {
+              const { parsedValue } = parseOperatorValue(operator, value)
+              parsedConditions.push({
+                column,
+                operator,
+                value: parsedValue
+              })
+            } catch (error) {
+              console.warn(`Failed to parse OR condition: ${trimmed}`, error)
+              // Skip invalid conditions rather than failing the entire OR operation
+            }
+          } else {
+            console.warn(`Unrecognized OR condition format: ${trimmed}`)
+            // Skip unrecognized conditions rather than failing
+          }
         }
       }
       
@@ -743,11 +809,25 @@ export class QueryParser {
           operator: 'or',
           value: { conditions: parsedConditions }
         }
+      } else {
+        // If no conditions could be parsed, return a basic filter that will match nothing
+        // This prevents the query from failing completely
+        console.warn(`No valid conditions found in OR operator: ${orValue}`)
+        return {
+          column: '__logical__',
+          operator: 'or',
+          value: { conditions: [] }
+        }
       }
     } catch (error) {
       console.error('Error parsing OR operator:', error)
+      // Return a safe fallback rather than null to prevent downstream errors
+      return {
+        column: '__logical__',
+        operator: 'or',
+        value: { conditions: [] }
+      }
     }
-    return null
   }
   
   /**
@@ -761,21 +841,49 @@ export class QueryParser {
         cleanValue = cleanValue.slice(1, -1)
       }
       
-      const conditions = cleanValue.split(',')
+      // Use parseLogicalConditions to properly handle nested parentheses
+      const conditions = this.parseLogicalConditions(cleanValue)
       const parsedConditions: ParsedFilter[] = []
       
       for (const condition of conditions) {
         const trimmed = condition.trim()
-        // Parse each condition as column.operator.value
-        const match = trimmed.match(/^([^.]+)\.([^.]+)\.(.+)$/)
-        if (match) {
-          const [, column, operator, value] = match
-          const { parsedValue } = parseOperatorValue(operator, value)
-          parsedConditions.push({
-            column,
-            operator,
-            value: parsedValue
-          })
+        
+        // Check for nested logical operators first like not(id.eq.1) or or(id.eq.1,name.eq.Luke)
+        const nestedLogicalMatch = trimmed.match(/^(or|not)\((.+)\)$/)
+        if (nestedLogicalMatch) {
+          const [, logicalOp, nestedConditions] = nestedLogicalMatch
+          
+          if (logicalOp === 'or') {
+            const nestedFilter = this.parseOrOperator(nestedConditions)
+            if (nestedFilter) {
+              parsedConditions.push(nestedFilter)
+            }
+          } else if (logicalOp === 'not') {
+            const nestedFilter = this.parseNotOperator(nestedConditions)
+            if (nestedFilter) {
+              parsedConditions.push(nestedFilter)
+            }
+          }
+        } else {
+          // Parse simple condition as column.operator.value
+          const match = trimmed.match(/^([^.]+)\.([^.]+)\.(.+)$/)
+          if (match) {
+            const [, column, operator, value] = match
+            try {
+              const { parsedValue } = parseOperatorValue(operator, value)
+              parsedConditions.push({
+                column,
+                operator,
+                value: parsedValue
+              })
+            } catch (error) {
+              console.warn(`Error parsing AND condition "${trimmed}":`, error)
+              // Skip invalid conditions rather than failing the entire query
+            }
+          } else {
+            console.warn(`Unrecognized AND condition format: ${trimmed}`)
+            // Skip unrecognized conditions rather than failing
+          }
         }
       }
       
@@ -785,11 +893,24 @@ export class QueryParser {
           operator: 'and',
           value: { conditions: parsedConditions }
         }
+      } else {
+        // If no conditions could be parsed, return a basic filter that will match everything
+        console.warn(`No valid conditions found in AND operator: ${andValue}`)
+        return {
+          column: '__logical__',
+          operator: 'and',
+          value: { conditions: [] }
+        }
       }
     } catch (error) {
       console.error('Error parsing AND operator:', error)
+      // Return a safe fallback rather than null to prevent downstream errors
+      return {
+        column: '__logical__',
+        operator: 'and',
+        value: { conditions: [] }
+      }
     }
-    return null
   }
   
   /**
@@ -829,5 +950,42 @@ export class QueryParser {
   private static isFilterParam(key: string): boolean {
     const reservedParams = ['select', 'limit', 'offset', 'order', 'or', 'and', 'not']
     return !reservedParams.includes(key)
+  }
+
+  /**
+   * Parse logical conditions respecting parentheses for nested operators
+   * Example: "id.gt.3,and(id.eq.1,name.eq.Luke)" -> ["id.gt.3", "and(id.eq.1,name.eq.Luke)"]
+   */
+  private static parseLogicalConditions(value: string): string[] {
+    const conditions: string[] = []
+    let currentCondition = ''
+    let parenDepth = 0
+    
+    for (let i = 0; i < value.length; i++) {
+      const char = value[i]
+      
+      if (char === '(') {
+        parenDepth++
+        currentCondition += char
+      } else if (char === ')') {
+        parenDepth--
+        currentCondition += char
+      } else if (char === ',' && parenDepth === 0) {
+        // Split on comma only when not inside parentheses
+        if (currentCondition.trim()) {
+          conditions.push(currentCondition.trim())
+        }
+        currentCondition = ''
+      } else {
+        currentCondition += char
+      }
+    }
+    
+    // Add the last condition
+    if (currentCondition.trim()) {
+      conditions.push(currentCondition.trim())
+    }
+    
+    return conditions
   }
 }

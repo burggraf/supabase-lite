@@ -1221,7 +1221,13 @@ export class SQLBuilder {
 
     const operator = POSTGREST_OPERATORS[filter.operator]
     if (!operator) {
+      console.error('🚨 Unknown operator:', filter.operator, 'Available operators:', Object.keys(POSTGREST_OPERATORS))
       throw new Error(`Unknown operator: ${filter.operator}`)
+    }
+
+    if (!operator.sqlTemplate) {
+      console.error('🚨 Operator has no sqlTemplate:', filter.operator, operator)
+      throw new Error(`Operator ${filter.operator} has no sqlTemplate`)
     }
 
     let columnExpression = filter.column
@@ -1272,6 +1278,11 @@ export class SQLBuilder {
    * Replace value placeholder with actual parameter
    */
   private replaceValuePlaceholder(condition: string, value: any, operator: string): string {
+    if (!condition) {
+      console.error('🚨 replaceValuePlaceholder called with undefined condition!', { condition, value, operator })
+      throw new Error(`replaceValuePlaceholder called with undefined condition for operator: ${operator}`)
+    }
+    
     if (operator === 'is') {
       // IS operator doesn't use parameters for NULL, TRUE, FALSE
       return condition.replace('{value}', String(value))
@@ -1370,6 +1381,9 @@ export class SQLBuilder {
       
       if (conditions.length > 0) {
         return `(${conditions.join(' OR ')})`
+      } else {
+        // Empty OR conditions should return a condition that matches nothing
+        return '(false)'
       }
     }
     
