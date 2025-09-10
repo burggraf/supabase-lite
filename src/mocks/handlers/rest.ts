@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { EnhancedSupabaseAPIBridge } from '../enhanced-bridge'
+import { APIRequestOrchestrator } from '../../lib/api/core/APIRequestOrchestrator'
 import { withProjectResolution } from './shared/project-resolution'
 import { 
   createPostgreSQLErrorResponse, 
@@ -8,13 +8,13 @@ import {
   REST_CORS_HEADERS
 } from './shared/common-handlers'
 
-// Initialize the enhanced bridge
-const enhancedBridge = new EnhancedSupabaseAPIBridge()
+// Initialize the new modular API orchestrator
+const apiOrchestrator = new APIRequestOrchestrator()
 
 // Helper functions for common REST operations
 const createRestGetHandler = () => async ({ params, request }: any) => {
   try {
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await apiOrchestrator.handleRestRequest({
       table: params.table as string,
       method: 'GET',
       headers: extractHeaders(request),
@@ -36,7 +36,7 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
 
 const createRestHeadHandler = () => async ({ params, request }: any) => {
   try {
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await apiOrchestrator.handleRestRequest({
       table: params.table as string,
       method: 'HEAD',
       headers: extractHeaders(request),
@@ -67,7 +67,7 @@ const createRestHeadHandler = () => async ({ params, request }: any) => {
 const createRestPostHandler = () => async ({ params, request }: any) => {
   try {
     const body = await safeJsonParse(request)
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await apiOrchestrator.handleRestRequest({
       table: params.table as string,
       method: 'POST',
       body,
@@ -90,7 +90,7 @@ const createRestPostHandler = () => async ({ params, request }: any) => {
 const createRestPatchHandler = () => async ({ params, request }: any) => {
   try {
     const body = await safeJsonParse(request)
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await apiOrchestrator.handleRestRequest({
       table: params.table as string,
       method: 'PATCH',
       body,
@@ -127,7 +127,7 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
 
 const createRestDeleteHandler = () => async ({ params, request }: any) => {
   try {
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await apiOrchestrator.handleRestRequest({
       table: params.table as string,
       method: 'DELETE',
       headers: extractHeaders(request),
@@ -178,7 +178,7 @@ const createRpcHandler = () => async ({ params, request }: any) => {
   try {
     const body = await safeJsonParse(request)
     
-    const response = await enhancedBridge.handleRpc(
+    const response = await apiOrchestrator.handleRpc(
       params.functionName as string,
       body,
       extractHeaders(request),
@@ -226,7 +226,7 @@ const createRpcGetHandler = () => async ({ params, request }: any) => {
     console.log('🔍 RPC GET Handler - Function:', params.functionName)
     console.log('🔍 RPC GET Handler - Query Params:', queryParams)
     
-    const response = await enhancedBridge.handleRpc(
+    const response = await apiOrchestrator.handleRpc(
       params.functionName as string,
       queryParams,
       extractHeaders(request),
