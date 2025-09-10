@@ -382,12 +382,12 @@ export class APIRequestOrchestrator {
       return filters.every(filter => {
         const value = row[filter.column]
         switch (filter.operator) {
-          case 'eq': return value === filter.value
-          case 'neq': return value !== filter.value
-          case 'gt': return value > filter.value
-          case 'gte': return value >= filter.value
-          case 'lt': return value < filter.value
-          case 'lte': return value <= filter.value
+          case 'eq': return this.compareValues(value, filter.value, 'eq')
+          case 'neq': return this.compareValues(value, filter.value, 'neq')
+          case 'gt': return this.compareValues(value, filter.value, 'gt')
+          case 'gte': return this.compareValues(value, filter.value, 'gte')
+          case 'lt': return this.compareValues(value, filter.value, 'lt')
+          case 'lte': return this.compareValues(value, filter.value, 'lte')
           case 'like': return String(value).includes(filter.value)
           case 'ilike': return String(value).toLowerCase().includes(filter.value.toLowerCase())
           case 'in': return filter.value.includes(value)
@@ -396,6 +396,74 @@ export class APIRequestOrchestrator {
         }
       })
     })
+  }
+
+  /**
+   * Compare values with proper type coercion for database values vs URL parameters
+   */
+  private compareValues(dbValue: any, filterValue: any, operator: string): boolean {
+    // Handle null values
+    if (dbValue === null || filterValue === null) {
+      return operator === 'eq' ? dbValue === filterValue : dbValue !== filterValue
+    }
+
+    // If both are the same type, use direct comparison
+    if (typeof dbValue === typeof filterValue) {
+      switch (operator) {
+        case 'eq': return dbValue === filterValue
+        case 'neq': return dbValue !== filterValue
+        case 'gt': return dbValue > filterValue
+        case 'gte': return dbValue >= filterValue
+        case 'lt': return dbValue < filterValue
+        case 'lte': return dbValue <= filterValue
+        default: return false
+      }
+    }
+
+    // Handle numeric string comparisons (common case: DB integer vs URL string)
+    if (typeof dbValue === 'number' && typeof filterValue === 'string') {
+      const numericFilterValue = Number(filterValue)
+      if (!isNaN(numericFilterValue)) {
+        switch (operator) {
+          case 'eq': return dbValue === numericFilterValue
+          case 'neq': return dbValue !== numericFilterValue
+          case 'gt': return dbValue > numericFilterValue
+          case 'gte': return dbValue >= numericFilterValue
+          case 'lt': return dbValue < numericFilterValue
+          case 'lte': return dbValue <= numericFilterValue
+          default: return false
+        }
+      }
+    }
+
+    // Handle reverse case: DB string vs numeric filter (less common)
+    if (typeof dbValue === 'string' && typeof filterValue === 'number') {
+      const numericDbValue = Number(dbValue)
+      if (!isNaN(numericDbValue)) {
+        switch (operator) {
+          case 'eq': return numericDbValue === filterValue
+          case 'neq': return numericDbValue !== filterValue
+          case 'gt': return numericDbValue > filterValue
+          case 'gte': return numericDbValue >= filterValue
+          case 'lt': return numericDbValue < filterValue
+          case 'lte': return numericDbValue <= filterValue
+          default: return false
+        }
+      }
+    }
+
+    // Fallback to string comparison for mixed types
+    const dbStr = String(dbValue)
+    const filterStr = String(filterValue)
+    switch (operator) {
+      case 'eq': return dbStr === filterStr
+      case 'neq': return dbStr !== filterStr
+      case 'gt': return dbStr > filterStr
+      case 'gte': return dbStr >= filterStr
+      case 'lt': return dbStr < filterStr
+      case 'lte': return dbStr <= filterStr
+      default: return false
+    }
   }
 
   private applyOrderingToRows(rows: any[], ordering: any[]): any[] {
