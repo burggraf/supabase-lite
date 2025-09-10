@@ -796,6 +796,23 @@ class PostgRESTTestRunner {
   }
 
   /**
+   * Reset public schema instead of recreating entire project for faster test isolation
+   */
+  private async resetPublicSchema(): Promise<void> {
+    this.log('debug', 'Resetting public schema for test isolation');
+    
+    // Drop and recreate public schema to clean all data and tables
+    await this.executeSingleSQL('DROP SCHEMA IF EXISTS public CASCADE;');
+    await this.executeSingleSQL('CREATE SCHEMA public;');
+    
+    // Restore default permissions for public schema
+    await this.executeSingleSQL('GRANT ALL ON SCHEMA public TO postgres;');
+    await this.executeSingleSQL('GRANT ALL ON SCHEMA public TO public;');
+    
+    this.log('debug', 'Public schema reset completed');
+  }
+
+  /**
    * Process a single example
    */
   private async processExample(_item: TestItem, example: Example): Promise<TestResults> {
@@ -805,12 +822,9 @@ class PostgRESTTestRunner {
       this.log('info', `Processing example: ${example.id} - ${example.name}`);
       log.push(this.createTestLog('info', `Starting test: ${example.name}`));
 
-      // Delete and recreate project for each test to ensure complete isolation
-      await this.deleteExistingProject('postgrest-test-project');
-      log.push(this.createTestLog('info', 'Existing project deleted'));
-      
-      await this.createProject('postgrest-test-project');
-      log.push(this.createTestLog('info', 'Fresh project created'));
+      // Fast schema reset instead of project recreation for better performance
+      await this.resetPublicSchema();
+      log.push(this.createTestLog('info', 'Public schema reset for test isolation'));
 
       // Seed the database
       await this.seedDatabase(example.data.sql);
@@ -1031,7 +1045,7 @@ class PostgRESTTestRunner {
 
       await this.waitForServerReady();
 
-      // Clean up any existing test project and create a new one
+      // Create test project once at startup - we'll reset schema between tests for efficiency  
       await this.deleteExistingProject('postgrest-test-project');
       await this.createProject('postgrest-test-project');
 
