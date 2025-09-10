@@ -58,6 +58,7 @@ class PostgRESTTestRunner {
   private browserTabOpen = false;
   private isRestarting = false;
   private isRetestMode = false;
+  private testStats = { passed: 0, failed: 0, skipped: 0 };
 
   constructor(isRetestMode = false) {
     this.isRetestMode = isRetestMode;
@@ -468,11 +469,53 @@ class PostgRESTTestRunner {
   }
 
   /**
+   * Optimized server initialization: Check health first, only restart if needed
+   */
+  private async ensureServerReady(): Promise<void> {
+    this.log('info', '🔍 Checking server health...');
+    
+    try {
+      // Try a simple health check first
+      const response = await fetch(this.config.supabaseLiteUrl + '/health', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (response.ok) {
+        this.log('info', '✅ Server is healthy, using existing setup');
+        
+        // Server is healthy, just ensure browser tab is open for database initialization
+        if (!this.browserTabOpen) {
+          await this.openBrowserTab();
+        }
+        
+        // Set a default project ID since we're not creating new projects
+        this.currentProjectId = 'default';
+        return;
+      }
+    } catch (error) {
+      this.log('debug', `Health check failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    
+    // Health check failed, need to restart everything
+    this.log('info', '⚠️ Server health check failed, restarting...');
+    
+    await this.killExistingServers();
+    await this.startServer();
+    await this.openBrowserTab();
+    await this.waitForServerReady();
+    
+    // Set a default project ID since we're not creating new projects
+    this.currentProjectId = 'default';
+    
+    this.log('info', '✅ Server restart completed');
+  }
+
+  /**
    * Execute a single SQL statement via the debug endpoint
    */
   private async executeSingleSQL(statement: string): Promise<any> {
-    const projectUrl = `${this.config.supabaseLiteUrl}/${this.currentProjectId}`;
-    const debugUrl = `${projectUrl}/debug/sql`;
+    const debugUrl = `${this.config.supabaseLiteUrl}/debug/sql`;
 
     const response = await fetch(debugUrl, {
       method: 'POST',
@@ -624,8 +667,8 @@ class PostgRESTTestRunner {
     const code = this.extractCodeFromExample(example.code);
     const expectedResponse = this.extractExpectedResponse(example.response);
 
-    // Use the specific project URL to ensure we're testing against the correct database
-    const projectUrl = `${this.config.supabaseLiteUrl}/${this.currentProjectId}`;
+    // Use the base Supabase Lite URL (no project ID needed)
+    const projectUrl = this.config.supabaseLiteUrl;
 
     // Use JSON.stringify for code_content (string analysis) but raw code for execution
     const escapedCodeContent = JSON.stringify(code);
@@ -886,6 +929,13 @@ class PostgRESTTestRunner {
    */
   private async processTests(testData: TestItem[], targetTestId?: string): Promise<void> {
     let regressionFailures: Array<{ item: TestItem, example: Example, error: string }> = [];
+    
+    // Initialize test statistics for retest mode
+    if (this.isRetestMode) {
+      this.testStats = { passed: 0, failed: 0, skipped: 0 };
+    }
+
+    try {
 
     // If a specific test ID is provided, find and run only that test
     if (targetTestId) {
@@ -936,11 +986,23 @@ class PostgRESTTestRunner {
     for (const item of testData) {
       this.log('info', `\n=== Processing item: ${item.id} - ${item.title} ===`);
 
+      // Check if examples exists and is iterable
+      if (!item.examples || !Array.isArray(item.examples)) {
+        this.log('error', `Skipping item ${item.id}: examples is ${item.examples ? 'not an array' : 'missing'}`);
+        continue;
+      }
+
       for (const example of item.examples) {
         const shouldSkip = this.shouldSkipTest(example);
 
         if (shouldSkip) {
           this.log('info', `Skipping example: ${example.id} (${shouldSkip})`);
+          
+          // Track skipped test statistics in retest mode
+          if (this.isRetestMode) {
+            this.testStats.skipped++;
+          }
+          
           continue;
         }
 
@@ -983,7 +1045,34 @@ class PostgRESTTestRunner {
         // Display clean test result
         const testName = `${item.id} - ${example.name}`;
         this.displayTestResult(results.passed, testName, this.isRetestMode && !results.passed);
+        
+        // Track test statistics in retest mode
+        if (this.isRetestMode) {
+          if (results.passed) {
+            this.testStats.passed++;
+          } else {
+            this.testStats.failed++;
+          }
+        }
       }
+    }
+
+    // Display test statistics in retest mode (always show, even if there are failures)
+    if (this.isRetestMode) {
+      const executed = this.testStats.passed + this.testStats.failed;
+      const total = executed + this.testStats.skipped;
+      this.log('info', `\n=== RETEST STATISTICS ===`);
+      this.log('info', `Total tests: ${total}`);
+      this.log('info', `✅ Passed: ${this.testStats.passed}`);
+      this.log('info', `❌ Failed: ${this.testStats.failed}`);
+      this.log('info', `⏭️  Skipped: ${this.testStats.skipped}`);
+      this.log('info', `Tests executed: ${executed}`);
+      if (executed > 0) {
+        this.log('info', `Success rate: ${((this.testStats.passed / executed) * 100).toFixed(1)}%`);
+      } else {
+        this.log('info', `Success rate: N/A (no tests executed)`);
+      }
+      this.log('info', '========================');
     }
 
     // Handle regression failures
@@ -996,8 +1085,34 @@ class PostgRESTTestRunner {
       }
       throw new Error(`${regressionFailures.length} regression test(s) failed`);
     }
-
+    
     this.log('info', '\n=== All tests completed successfully! ===');
+    
+    } catch (error) {
+      this.log('error', `Test runner failed: ${error instanceof Error ? error.message : String(error)}`);
+      
+      // Still display statistics in retest mode even if there's an error
+      if (this.isRetestMode) {
+        const executed = this.testStats.passed + this.testStats.failed;
+        const total = executed + this.testStats.skipped;
+        if (total > 0) {
+          this.log('info', `\n=== RETEST STATISTICS (partial due to error) ===`);
+          this.log('info', `Total tests processed: ${total}`);
+          this.log('info', `✅ Passed: ${this.testStats.passed}`);
+          this.log('info', `❌ Failed: ${this.testStats.failed}`);
+          this.log('info', `⏭️  Skipped: ${this.testStats.skipped}`);
+          this.log('info', `Tests executed: ${executed}`);
+          if (executed > 0) {
+            this.log('info', `Success rate: ${((this.testStats.passed / executed) * 100).toFixed(1)}%`);
+          } else {
+            this.log('info', `Success rate: N/A (no tests executed)`);
+          }
+          this.log('info', '================================================');
+        }
+      }
+      
+      throw error; // Re-throw the error after displaying stats
+    }
   }
 
   /**
@@ -1036,18 +1151,8 @@ class PostgRESTTestRunner {
       const testData = await this.loadTestData();
       this.log('info', `Loaded ${testData.length} test items`);
 
-      // Setup test environment
-      await this.killExistingServers();
-      await this.startServer();
-
-      // Open browser tab to initialize PGLite database context
-      await this.openBrowserTab();
-
-      await this.waitForServerReady();
-
-      // Create test project once at startup - we'll reset schema between tests for efficiency  
-      await this.deleteExistingProject('postgrest-test-project');
-      await this.createProject('postgrest-test-project');
+      // Optimized setup: Check health first, only restart if needed
+      await this.ensureServerReady();
 
       // Process tests (single test if targetTestId provided, all tests otherwise)
       await this.processTests(testData, targetTestId);

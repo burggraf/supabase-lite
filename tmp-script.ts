@@ -1,23 +1,14 @@
-// id: filtering-through-referenced-tables
-// name: Filtering through referenced tables       
+// id: return-data-as-csv
+// name: Return data as CSV       
 import { createClient } from '@supabase/supabase-js';
 const SUPABASE_CONFIG = {
-    url: 'http://localhost:5173/b0cdc8d9-d9ef-4700-8fe0-7061dc914e48',
+    url: 'http://localhost:5173',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
     debugSqlEndpoint: 'http://localhost:5173/debug/sql'
 };
 const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 const expected_response = {
-  "data": [
-    {
-      "name": "flute",
-      "orchestral_sections": null
-    },
-    {
-      "name": "violin",
-      "orchestral_sections": null
-    }
-  ],
+  "data": "id,name\n1,Luke\n2,Leia\n3,Han",
   "status": 200,
   "statusText": "OK"
 };
@@ -59,9 +50,9 @@ async function run() {
         
         try {
             const { data, error } = await supabase
-  .from('instruments')
-  .select('name, orchestral_sections(*)')
-  .eq('orchestral_sections.name', 'percussion')
+  .from('characters')
+  .select()
+  .csv()
             
             // Extract response components for compatibility
             // Handle both destructuring and direct response patterns
@@ -155,7 +146,7 @@ async function run() {
         let testResponse;
         if (typeof responseData !== 'undefined' && responseData !== null) {
             // Check if this is an INSERT/UPDATE/DELETE operation by examining the code
-            const codeString = "const { data, error } = await supabase\n  .from('instruments')\n  .select('name, orchestral_sections(*)')\n  .eq('orchestral_sections.name', 'percussion')";
+            const codeString = "const { data, error } = await supabase\n  .from('characters')\n  .select()\n  .csv()";
             const isInsertOperation = codeString.includes('.insert(');
             const isUpdateOperation = codeString.includes('.update(');
             const isUpsertOperation = codeString.includes('.upsert(');
@@ -202,7 +193,7 @@ async function run() {
             }
         } else if (typeof responseCount !== 'undefined') {
             // Check if this is a DELETE/UPDATE operation with null count (should return 204, not count response)
-            const codeString = "const { data, error } = await supabase\n  .from('instruments')\n  .select('name, orchestral_sections(*)')\n  .eq('orchestral_sections.name', 'percussion')";
+            const codeString = "const { data, error } = await supabase\n  .from('characters')\n  .select()\n  .csv()";
             const isDeleteOperation = codeString.includes('.delete(');
             const isUpdateOperation = codeString.includes('.update(');
             const hasSelectClause = codeString.includes('.select(');
@@ -237,7 +228,7 @@ async function run() {
                 };
             } else {
                 // INSERT/UPDATE/DELETE operations that succeed (no data/count returned, no error)
-                const codeString = "const { data, error } = await supabase\n  .from('instruments')\n  .select('name, orchestral_sections(*)')\n  .eq('orchestral_sections.name', 'percussion')";
+                const codeString = "const { data, error } = await supabase\n  .from('characters')\n  .select()\n  .csv()";
                 const isInsertOperation = codeString.includes('.insert(');
                 const isUpsertOperation = codeString.includes('.upsert(');
                 const isUpdateOperation = codeString.includes('.update(');
