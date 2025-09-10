@@ -57,6 +57,45 @@ export class SQLBuilder {
   }
 
   /**
+   * Build schema-qualified table name with proper PostgreSQL identifier quoting
+   * Quotes schema and table components separately to avoid invalid SQL like "public.table"
+   */
+  private buildQuotedQualifiedTableName(tableName: string, schema?: string): string {
+    if (!schema) {
+      return this.quoteIdentifier(tableName)
+    }
+    
+    // If table name already includes schema (contains a dot), assume it's already properly formatted
+    if (tableName.includes('.')) {
+      return tableName
+    }
+    
+    const quotedSchema = this.quoteIdentifier(schema)
+    const quotedTable = this.quoteIdentifier(tableName)
+    return `${quotedSchema}.${quotedTable}`
+  }
+
+  /**
+   * Extract clean table name from schema-qualified quoted table name
+   * Examples: 
+   * - "public"."table_name" -> table_name
+   * - "table_name" -> table_name
+   * - table_name -> table_name
+   * - public.table_name -> table_name
+   */
+  private extractTableNameFromQualified(qualifiedTableName: string): string {
+    // Handle schema-qualified quoted names: "schema"."table" -> table
+    if (qualifiedTableName.includes('.')) {
+      const parts = qualifiedTableName.split('.')
+      const tablePart = parts[parts.length - 1] // Get last part (table name)
+      return tablePart.replace(/^"(.*)"$/, '$1') // Remove quotes
+    }
+    
+    // Handle simple quoted names: "table" -> table
+    return qualifiedTableName.replace(/^"(.*)"$/, '$1')
+  }
+
+  /**
    * Build SQL query from parsed PostgREST query
    */
   async buildQuery(table: string, query: ParsedQuery): Promise<SQLQuery> {
@@ -65,8 +104,7 @@ export class SQLBuilder {
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const qualifiedTable = this.buildQualifiedTableName(decodedTable, query.schema)
-    const quotedTable = this.quoteIdentifier(qualifiedTable)
+    const quotedTable = this.buildQuotedQualifiedTableName(decodedTable, query.schema)
     
     const { sql } = await this.buildSelectQuery(quotedTable, query)
     
@@ -95,9 +133,9 @@ export class SQLBuilder {
     }
 
     try {
-      // Strip quotes from table names for comparison
-      const cleanMainTable = mainTable.replace(/^"(.*)"$/, '$1')
-      const cleanEmbeddedTable = embeddedTable.replace(/^"(.*)"$/, '$1')
+      // Strip quotes and schema qualification from table names for comparison
+      const cleanMainTable = this.extractTableNameFromQualified(mainTable)
+      const cleanEmbeddedTable = this.extractTableNameFromQualified(embeddedTable)
       
       // Query to find foreign key relationship in either direction
       // Use string literals safely escaped
@@ -532,7 +570,7 @@ export class SQLBuilder {
     
     // Add embedded resources as aggregated JSON (after filter separation)
     for (const embedded of query.embedded || []) {
-      const quotedEmbedded = quoteTableName(embedded.table)
+      const quotedEmbedded = this.buildQuotedQualifiedTableName(embedded.table, query.schema)
       
       // Build JSON aggregation for embedded resource
       let jsonSelectClause: string
@@ -569,7 +607,7 @@ export class SQLBuilder {
         selectColumns.push(`NULL AS ${quotedAlias}`)
       } else {
         // No embedded table filters, build normal subquery
-        const subquery = await this.buildEmbeddedSubquery(table, embedded, query.filters)
+        const subquery = await this.buildEmbeddedSubquery(table, embedded, query.filters, query.schema)
         if (subquery) {
           selectColumns.push(`(${subquery}) AS ${quotedAlias}`)
         } else {
@@ -703,20 +741,7 @@ export class SQLBuilder {
     const joins: JoinInfo[] = []
     const selectColumns: string[] = []
     
-    // Helper function to properly quote table names if they contain spaces
-    const quoteTableName = (tableName: string): string => {
-      // If table name is already quoted, return as-is
-      if (tableName.startsWith('"') && tableName.endsWith('"')) {
-        return tableName
-      }
-      // If table name contains spaces or special characters, quote it
-      if (tableName.includes(' ') || /[^a-zA-Z0-9_]/.test(tableName)) {
-        return `"${tableName}"`
-      }
-      return tableName
-    }
-    
-    const quotedMainTable = quoteTableName(table)
+    const quotedMainTable = this.buildQuotedQualifiedTableName(table, query.schema)
     
     // Add main table columns, filtering out embedded table names
     const embeddedTableNames = (query.embedded || []).map(e => e.table)
@@ -777,7 +802,7 @@ export class SQLBuilder {
       if (subquery) {
         // Use the specified alias if provided, otherwise fall back to table name
         const aliasName = embedded.alias || embedded.table
-        const quotedAlias = quoteTableName(aliasName)
+        const quotedAlias = this.buildQuotedQualifiedTableName(aliasName, query.schema)
         selectColumns.push(`(${subquery}) AS ${quotedAlias}`)
       }
     }
@@ -820,7 +845,7 @@ export class SQLBuilder {
   /**
    * Build correlated subquery for embedded resource
    */
-  private async buildEmbeddedSubquery(table: string, embedded: EmbeddedResource, queryFilters?: ParsedFilter[]): Promise<string | null> {
+  private async buildEmbeddedSubquery(table: string, embedded: EmbeddedResource, queryFilters?: ParsedFilter[], schema?: string): Promise<string | null> {
     console.log(`🔍 Building subquery for: ${table} -> ${embedded.table}`)
     
     // Check for embedded table filters from the query that apply to this embedded table
@@ -868,8 +893,8 @@ export class SQLBuilder {
       return tableName
     }
     
-    const quotedEmbeddedTable = quoteTableName(embedded.table)
-    const quotedMainTable = quoteTableName(table)
+    const quotedEmbeddedTable = this.buildQuotedQualifiedTableName(embedded.table, schema)
+    const quotedMainTable = this.buildQuotedQualifiedTableName(table, schema)
     
     // Check if this is a count-only request
     const isCountOnly = embedded.select?.length === 1 && embedded.select[0] === 'count'
@@ -912,7 +937,7 @@ export class SQLBuilder {
         // For count-only requests, return a simple count without json_agg nesting
         subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${whereCondition})))`
       } else {
-        const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
+        const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
         subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
                            THEN COALESCE(json_agg(${selectClause}), '[]'::json) 
                            ELSE NULL 
@@ -963,7 +988,7 @@ export class SQLBuilder {
           // For count-only many-to-one, return 1 if relationship exists and matches filters, 0 otherwise
           subquery = `SELECT json_build_object('count', CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}) THEN 1 ELSE 0 END)`
         } else {
-          const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
+          const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
           
           // For PostgREST compatibility: when filtering on embedded table columns,
           // check if the embedded table row exists with all filters applied
@@ -1020,7 +1045,7 @@ export class SQLBuilder {
         // For count-only requests, return a simple count without json_agg nesting
         subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition})))`
       } else {
-        const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table)
+        const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
         
         // For PostgREST compatibility: when filtering on embedded table columns,
         // return NULL if no rows match the filter, otherwise return the matching rows
@@ -1055,7 +1080,7 @@ export class SQLBuilder {
   /**
    * Build SELECT clause for embedded resource that may contain nested embedded resources
    */
-  private async buildEmbeddedSelectClause(embedded: EmbeddedResource, quotedEmbeddedTable: string, parentTable: string): Promise<string> {
+  private async buildEmbeddedSelectClause(embedded: EmbeddedResource, quotedEmbeddedTable: string, parentTable: string, schema?: string): Promise<string> {
     const columnPairs: string[] = []
     
     // Check if this is a count-only request
@@ -1086,7 +1111,7 @@ export class SQLBuilder {
     // Add nested embedded resources
     if (embedded.embedded && embedded.embedded.length > 0) {
       for (const nestedEmbedded of embedded.embedded) {
-        const nestedSubquery = await this.buildEmbeddedSubquery(embedded.table, nestedEmbedded)
+        const nestedSubquery = await this.buildEmbeddedSubquery(embedded.table, nestedEmbedded, undefined, schema)
         if (nestedSubquery) {
           const aliasName = nestedEmbedded.alias || nestedEmbedded.table
           columnPairs.push(`'${aliasName}', (${nestedSubquery})`)
@@ -1598,8 +1623,7 @@ export class SQLBuilder {
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const qualifiedTable = this.buildQualifiedTableName(decodedTable, schema)
-    const quotedTable = this.quoteIdentifier(qualifiedTable)
+    const quotedTable = this.buildQuotedQualifiedTableName(decodedTable, schema)
 
     const firstRow = data[0]
     const columns = Object.keys(firstRow)
@@ -1631,8 +1655,7 @@ export class SQLBuilder {
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const qualifiedTable = this.buildQualifiedTableName(decodedTable, schema)
-    const quotedTable = this.quoteIdentifier(qualifiedTable)
+    const quotedTable = this.buildQuotedQualifiedTableName(decodedTable, schema)
 
     const firstRow = data[0]
     const columns = Object.keys(firstRow)
@@ -1761,8 +1784,7 @@ export class SQLBuilder {
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const qualifiedTable = this.buildQualifiedTableName(decodedTable, schema)
-    const quotedTable = this.quoteIdentifier(qualifiedTable)
+    const quotedTable = this.buildQuotedQualifiedTableName(decodedTable, schema)
 
     const columns = Object.keys(data)
     const setClause = columns.map(col => {
@@ -1849,8 +1871,7 @@ export class SQLBuilder {
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const qualifiedTable = this.buildQualifiedTableName(decodedTable, schema)
-    const quotedTable = this.quoteIdentifier(qualifiedTable)
+    const quotedTable = this.buildQuotedQualifiedTableName(decodedTable, schema)
 
     const whereClause = this.buildWhereClause(filters)
 
