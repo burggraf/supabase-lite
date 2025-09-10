@@ -202,7 +202,7 @@ export class EnhancedSupabaseAPIBridge {
       // Don't pre-filter based on hardcoded table names
 
       // Build the main query
-      const sqlQuery = await this.sqlBuilder.buildQuery(table, query)
+      const sqlQuery = await this.sqlBuilder.buildQuery(table, query, query.schema)
       logger.debug('Built SELECT SQL', sqlQuery)
 
       // Execute the query with RLS context
@@ -247,7 +247,7 @@ export class EnhancedSupabaseAPIBridge {
     try {
       const data = Array.isArray(body) ? body : [body]
       
-      const sqlQuery = this.sqlBuilder.buildInsertQuery(table, data)
+      const sqlQuery = this.sqlBuilder.buildInsertQuery(table, data, query.schema)
       
       logger.debug('Built INSERT SQL', sqlQuery)
 
@@ -278,7 +278,7 @@ export class EnhancedSupabaseAPIBridge {
     try {
       const data = Array.isArray(body) ? body : [body]
       
-      const sqlQuery = await this.sqlBuilder.buildUpsertQuery(table, data, query.onConflict)
+      const sqlQuery = await this.sqlBuilder.buildUpsertQuery(table, data, query.onConflict, query.schema)
       
       logger.debug('Built UPSERT SQL', sqlQuery)
 
@@ -311,7 +311,7 @@ export class EnhancedSupabaseAPIBridge {
     }
 
     try {
-      const sqlQuery = this.sqlBuilder.buildUpdateQuery(table, body, query.filters)
+      const sqlQuery = this.sqlBuilder.buildUpdateQuery(table, body, query.filters, query.schema)
       logger.debug('Built UPDATE SQL', sqlQuery)
 
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
@@ -349,7 +349,7 @@ export class EnhancedSupabaseAPIBridge {
     }
 
     try {
-      const sqlQuery = this.sqlBuilder.buildDeleteQuery(table, query.filters)
+      const sqlQuery = this.sqlBuilder.buildDeleteQuery(table, query.filters, query.schema)
       logger.debug('Built DELETE SQL', sqlQuery)
 
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)

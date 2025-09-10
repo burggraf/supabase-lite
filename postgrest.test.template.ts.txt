@@ -53,9 +53,10 @@ async function run() {
                 // Direct response object (const response = await ...)
                 ({ data: responseData, error: responseError, count: responseCount, status: responseStatus, statusText: responseStatusText } = response || {});
             } else if (typeof data !== 'undefined' || typeof error !== 'undefined') {
-                // Destructuring pattern (const { data, error } = await ...)
+                // Destructuring pattern (const { data, error, count } = await ...)
                 responseData = data;
                 responseError = error;
+                responseCount = (typeof count !== 'undefined') ? count : undefined;
             }
         } catch (executionError) {
             // Handle JavaScript execution errors (like calling .eq() before .select())

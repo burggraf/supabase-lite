@@ -222,7 +222,7 @@ export class APIRequestOrchestrator {
 
     try {
       const data = Array.isArray(body) ? body : [body]
-      const sqlQuery = this.sqlBuilder.buildInsertQuery(table, data)
+      const sqlQuery = this.sqlBuilder.buildInsertQuery(table, data, query.schema)
       logger.debug('Built INSERT SQL', sqlQuery)
 
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
@@ -242,7 +242,7 @@ export class APIRequestOrchestrator {
     }
 
     try {
-      const sqlQuery = await this.sqlBuilder.buildUpdateQuery(table, body, query.filters)
+      const sqlQuery = await this.sqlBuilder.buildUpdateQuery(table, body, query.filters, query.schema)
       logger.debug('Built UPDATE SQL', sqlQuery)
 
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
@@ -258,7 +258,7 @@ export class APIRequestOrchestrator {
 
   private async handleDelete(table: string, query: ParsedQuery, context: SessionContext): Promise<FormattedResponse> {
     try {
-      const sqlQuery = await this.sqlBuilder.buildDeleteQuery(table, query.filters)
+      const sqlQuery = await this.sqlBuilder.buildDeleteQuery(table, query.filters, query.schema)
       logger.debug('Built DELETE SQL', sqlQuery)
 
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
@@ -278,7 +278,7 @@ export class APIRequestOrchestrator {
 
     try {
       const data = Array.isArray(body) ? body : [body]
-      const sqlQuery = await this.sqlBuilder.buildUpsertQuery(table, data, query.onConflict)
+      const sqlQuery = await this.sqlBuilder.buildUpsertQuery(table, data, query.onConflict, query.schema)
       logger.debug('Built UPSERT SQL', sqlQuery)
 
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)

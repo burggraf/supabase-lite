@@ -41,6 +41,22 @@ export class SQLBuilder {
   }
 
   /**
+   * Build schema-qualified table name if schema is specified
+   */
+  private buildQualifiedTableName(tableName: string, schema?: string): string {
+    if (!schema) {
+      return tableName
+    }
+    
+    // If table name already includes schema (contains a dot), use it as-is
+    if (tableName.includes('.')) {
+      return tableName
+    }
+    
+    return `${schema}.${tableName}`
+  }
+
+  /**
    * Build SQL query from parsed PostgREST query
    */
   async buildQuery(table: string, query: ParsedQuery): Promise<SQLQuery> {
@@ -49,7 +65,8 @@ export class SQLBuilder {
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const quotedTable = this.quoteIdentifier(decodedTable)
+    const qualifiedTable = this.buildQualifiedTableName(decodedTable, query.schema)
+    const quotedTable = this.quoteIdentifier(qualifiedTable)
     
     const { sql } = await this.buildSelectQuery(quotedTable, query)
     
@@ -1575,13 +1592,14 @@ export class SQLBuilder {
   /**
    * Build INSERT query
    */
-  buildInsertQuery(table: string, data: Record<string, any>[]): SQLQuery {
+  buildInsertQuery(table: string, data: Record<string, any>[], schema?: string): SQLQuery {
     this.paramIndex = 1
     this.parameters = []
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const quotedTable = this.quoteIdentifier(decodedTable)
+    const qualifiedTable = this.buildQualifiedTableName(decodedTable, schema)
+    const quotedTable = this.quoteIdentifier(qualifiedTable)
 
     const firstRow = data[0]
     const columns = Object.keys(firstRow)
@@ -1607,13 +1625,14 @@ export class SQLBuilder {
    * Build UPSERT query (INSERT with ON CONFLICT DO UPDATE)
    * Supports custom conflict resolution columns via onConflictColumn parameter
    */
-  async buildUpsertQuery(table: string, data: Record<string, any>[], onConflictColumn?: string): Promise<SQLQuery> {
+  async buildUpsertQuery(table: string, data: Record<string, any>[], onConflictColumn?: string, schema?: string): Promise<SQLQuery> {
     this.paramIndex = 1
     this.parameters = []
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const quotedTable = this.quoteIdentifier(decodedTable)
+    const qualifiedTable = this.buildQualifiedTableName(decodedTable, schema)
+    const quotedTable = this.quoteIdentifier(qualifiedTable)
 
     const firstRow = data[0]
     const columns = Object.keys(firstRow)
@@ -1736,13 +1755,14 @@ export class SQLBuilder {
   /**
    * Build UPDATE query
    */
-  buildUpdateQuery(table: string, data: Record<string, any>, filters: ParsedFilter[]): SQLQuery {
+  buildUpdateQuery(table: string, data: Record<string, any>, filters: ParsedFilter[], schema?: string): SQLQuery {
     this.paramIndex = 1
     this.parameters = []
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const quotedTable = this.quoteIdentifier(decodedTable)
+    const qualifiedTable = this.buildQualifiedTableName(decodedTable, schema)
+    const quotedTable = this.quoteIdentifier(qualifiedTable)
 
     const columns = Object.keys(data)
     const setClause = columns.map(col => {
@@ -1823,13 +1843,14 @@ export class SQLBuilder {
   /**
    * Build DELETE query
    */
-  buildDeleteQuery(table: string, filters: ParsedFilter[]): SQLQuery {
+  buildDeleteQuery(table: string, filters: ParsedFilter[], schema?: string): SQLQuery {
     this.paramIndex = 1
     this.parameters = []
 
     // URL decode and quote the table name for PostgreSQL compatibility
     const decodedTable = decodeURIComponent(table)
-    const quotedTable = this.quoteIdentifier(decodedTable)
+    const qualifiedTable = this.buildQualifiedTableName(decodedTable, schema)
+    const quotedTable = this.quoteIdentifier(qualifiedTable)
 
     const whereClause = this.buildWhereClause(filters)
 

@@ -895,20 +895,33 @@ class PostgRESTTestRunner {
   }
 
   /**
-   * Reset public schema instead of recreating entire project for faster test isolation
+   * Reset public schema and custom schemas for test isolation
    */
   private async resetPublicSchema(): Promise<void> {
-    this.log('debug', 'Resetting public schema for test isolation');
+    this.log('debug', 'Resetting public schema and custom schemas for test isolation');
     
-    // Drop and recreate public schema to clean all data and tables
+    // Drop public schema (this is always safe to recreate)
     await this.executeSingleSQL('DROP SCHEMA IF EXISTS public CASCADE;');
-    await this.executeSingleSQL('CREATE SCHEMA public;');
+    this.log('debug', 'Dropped schema: public');
     
-    // Restore default permissions for public schema
+    // Drop common test schemas that might be created by tests
+    const testSchemas = ['myschema', 'test_schema', 'custom_schema', 'temp_schema'];
+    for (const schemaName of testSchemas) {
+      try {
+        await this.executeSingleSQL(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE;`);
+        this.log('debug', `Dropped test schema: ${schemaName}`);
+      } catch (error) {
+        // Ignore errors for non-existent schemas
+        this.log('debug', `Could not drop schema ${schemaName}: ${error}`);
+      }
+    }
+    
+    // Recreate public schema with proper permissions
+    await this.executeSingleSQL('CREATE SCHEMA public;');
     await this.executeSingleSQL('GRANT ALL ON SCHEMA public TO postgres;');
     await this.executeSingleSQL('GRANT ALL ON SCHEMA public TO public;');
     
-    this.log('debug', 'Public schema reset completed');
+    this.log('debug', 'Schema reset completed');
   }
 
   /**

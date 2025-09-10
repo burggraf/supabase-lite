@@ -43,6 +43,7 @@ export interface ParsedQuery {
   preferResolution?: 'merge-duplicates' | 'ignore-duplicates'
   returnSingle?: boolean  // For .single() method support
   onConflict?: string  // Column(s) to use for ON CONFLICT resolution
+  schema?: string  // Schema name for PostgREST schema switching
 }
 
 export class QueryParser {
@@ -121,6 +122,12 @@ export class QueryParser {
     const accept = headers['accept'] || headers['Accept']
     if (accept && accept.includes('application/vnd.pgrst.object+json')) {
       query.returnSingle = true
+    }
+
+    // Parse Accept-Profile header for schema switching
+    const acceptProfile = headers['accept-profile'] || headers['Accept-Profile']
+    if (acceptProfile) {
+      query.schema = acceptProfile.trim()
     }
 
     return query
