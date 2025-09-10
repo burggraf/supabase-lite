@@ -74,6 +74,31 @@ export class QueryParser {
         }
       }
     }
+    
+    // Parse logical operators (or, and) as special query parameters
+    const orParam = params.get('or')
+    if (orParam) {
+      const orFilter = this.parseOrOperator(orParam)
+      if (orFilter) {
+        query.filters.push(orFilter)
+      }
+    }
+    
+    const andParam = params.get('and')
+    if (andParam) {
+      const andFilter = this.parseAndOperator(andParam)
+      if (andFilter) {
+        query.filters.push(andFilter)
+      }
+    }
+    
+    const notParam = params.get('not')
+    if (notParam) {
+      const notFilter = this.parseNotOperator(notParam)
+      if (notFilter) {
+        query.filters.push(notFilter)
+      }
+    }
 
     // Parse order
     const order = params.get('order')
@@ -684,10 +709,125 @@ export class QueryParser {
   }
 
   /**
-   * Check if parameter is a filter (not select, limit, offset, order)
+   * Parse OR operator: or=id.eq.2,name.eq.Han
+   */
+  private static parseOrOperator(orValue: string): ParsedFilter | null {
+    try {
+      // Remove parentheses if present: "(id.eq.1,name.eq.woodwinds)" -> "id.eq.1,name.eq.woodwinds"
+      let cleanValue = orValue.trim()
+      if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
+        cleanValue = cleanValue.slice(1, -1)
+      }
+      
+      const conditions = cleanValue.split(',')
+      const parsedConditions: ParsedFilter[] = []
+      
+      for (const condition of conditions) {
+        const trimmed = condition.trim()
+        // Parse each condition as column.operator.value
+        const match = trimmed.match(/^([^.]+)\.([^.]+)\.(.+)$/)
+        if (match) {
+          const [, column, operator, value] = match
+          const { parsedValue } = parseOperatorValue(operator, value)
+          parsedConditions.push({
+            column,
+            operator,
+            value: parsedValue
+          })
+        }
+      }
+      
+      if (parsedConditions.length > 0) {
+        return {
+          column: '__logical__',
+          operator: 'or',
+          value: { conditions: parsedConditions }
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing OR operator:', error)
+    }
+    return null
+  }
+  
+  /**
+   * Parse AND operator: and=id.gt.1,name.like.*Alice*
+   */
+  private static parseAndOperator(andValue: string): ParsedFilter | null {
+    try {
+      // Remove parentheses if present: "(id.eq.1,name.eq.woodwinds)" -> "id.eq.1,name.eq.woodwinds"
+      let cleanValue = andValue.trim()
+      if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
+        cleanValue = cleanValue.slice(1, -1)
+      }
+      
+      const conditions = cleanValue.split(',')
+      const parsedConditions: ParsedFilter[] = []
+      
+      for (const condition of conditions) {
+        const trimmed = condition.trim()
+        // Parse each condition as column.operator.value
+        const match = trimmed.match(/^([^.]+)\.([^.]+)\.(.+)$/)
+        if (match) {
+          const [, column, operator, value] = match
+          const { parsedValue } = parseOperatorValue(operator, value)
+          parsedConditions.push({
+            column,
+            operator,
+            value: parsedValue
+          })
+        }
+      }
+      
+      if (parsedConditions.length > 0) {
+        return {
+          column: '__logical__',
+          operator: 'and',
+          value: { conditions: parsedConditions }
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing AND operator:', error)
+    }
+    return null
+  }
+  
+  /**
+   * Parse NOT operator: not=name.eq.null or not=id.gt.5
+   */
+  private static parseNotOperator(notValue: string): ParsedFilter | null {
+    try {
+      // Remove parentheses if present: "(id.eq.1)" -> "id.eq.1"
+      let cleanValue = notValue.trim()
+      if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
+        cleanValue = cleanValue.slice(1, -1)
+      }
+      
+      // Parse single condition as column.operator.value
+      const match = cleanValue.match(/^([^.]+)\.([^.]+)\.(.+)$/)
+      if (match) {
+        const [, column, operator, value] = match
+        const { parsedValue } = parseOperatorValue(operator, value)
+        
+        // Return a single condition with negated flag
+        return {
+          column,
+          operator,
+          value: parsedValue,
+          negated: true
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing NOT operator:', error)
+    }
+    return null
+  }
+
+  /**
+   * Check if parameter is a filter (not select, limit, offset, order, or, and, not)
    */
   private static isFilterParam(key: string): boolean {
-    const reservedParams = ['select', 'limit', 'offset', 'order']
+    const reservedParams = ['select', 'limit', 'offset', 'order', 'or', 'and', 'not']
     return !reservedParams.includes(key)
   }
 }

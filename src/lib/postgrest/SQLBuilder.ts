@@ -1310,8 +1310,15 @@ export class SQLBuilder {
       
       if (Array.isArray(value)) {
         // Convert JavaScript array to PostgreSQL array format
-        // Quote string elements to handle values with special characters
-        const quotedElements = value.map(v => `"${String(v).replace(/"/g, '""')}"`)
+        // PostgreSQL array elements should be properly quoted
+        const quotedElements = value.map(v => {
+          const str = String(v)
+          // For PostgreSQL arrays, we need to escape quotes and use proper quoting
+          if (str.includes('"') || str.includes(',') || str.includes('\\') || str.includes("'")) {
+            return `"${str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+          }
+          return `"${str}"`
+        })
         finalValue = `{${quotedElements.join(',')}}`
       } else if (typeof value === 'string') {
         // Check for PostgreSQL range format first (e.g., [2000-01-01, 2000-01-02))
@@ -1325,7 +1332,13 @@ export class SQLBuilder {
         } else {
           // Convert comma-separated string to PostgreSQL array format
           const elements = value.split(',').map(v => v.trim())
-          const quotedElements = elements.map(v => `"${v.replace(/"/g, '""')}"`)
+          const quotedElements = elements.map(v => {
+            // For PostgreSQL arrays, we need to escape quotes and use proper quoting
+            if (v.includes('"') || v.includes(',') || v.includes('\\') || v.includes("'")) {
+              return `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+            }
+            return `"${v}"`
+          })
           finalValue = `{${quotedElements.join(',')}}`
         }
       } else {
@@ -1347,12 +1360,45 @@ export class SQLBuilder {
    * Build logical condition (and, or, not)
    */
   private buildLogicalCondition(filter: ParsedFilter): string {
-    // This is a simplified implementation
-    // A full implementation would need to parse the logical expression
-    const { expression } = filter.value
+    console.log(`🔍 Building logical condition:`, filter)
     
-    // For now, return a placeholder that indicates this needs more complex parsing
-    return `/* Complex logical operator: ${expression} */`
+    if (filter.operator === 'or' && filter.value.conditions) {
+      // Handle OR conditions: (condition1 OR condition2 OR ...)
+      const conditions = filter.value.conditions
+        .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
+        .filter(Boolean)
+      
+      if (conditions.length > 0) {
+        return `(${conditions.join(' OR ')})`
+      }
+    }
+    
+    if (filter.operator === 'and' && filter.value.conditions) {
+      // Handle AND conditions: (condition1 AND condition2 AND ...)
+      const conditions = filter.value.conditions
+        .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
+        .filter(Boolean)
+      
+      if (conditions.length > 0) {
+        return `(${conditions.join(' AND ')})`
+      }
+    }
+    
+    // Fallback for other logical operators or legacy format
+    const { expression, conditions } = filter.value
+    if (conditions) {
+      // New format with structured conditions
+      const conditionStrings = conditions
+        .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
+        .filter(Boolean)
+      
+      if (conditionStrings.length > 0) {
+        const operator = filter.operator.toUpperCase()
+        return `(${conditionStrings.join(` ${operator} `)})`
+      }
+    }
+    
+    return `/* Unsupported logical operator: ${filter.operator} - ${expression || 'unknown'} */`
   }
 
   /**
