@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 // import { SupabaseAPIBridge } from './supabase-bridge'
 import { EnhancedSupabaseAPIBridge } from './enhanced-bridge'
+import { SimplifiedSupabaseAPIBridge } from './simplified-bridge'
 import { AuthBridge } from '../lib/auth/AuthBridge'
 import { VFSBridge } from '../lib/vfs/VFSBridge'
 import { resolveAndSwitchToProject, normalizeApiPath } from './project-resolver'
@@ -10,10 +11,17 @@ import { DatabaseManager } from '../lib/database/connection'
 import { vfsManager, VFSManager } from '../lib/vfs/VFSManager';
 import { logger } from '../lib/infrastructure/Logger';
 
+// Feature flag to toggle between enhanced and simplified bridges
+const USE_SIMPLIFIED_BRIDGE = true // Set to true to use simplified bridge
+
 // const bridge = new SupabaseAPIBridge()
 const enhancedBridge = new EnhancedSupabaseAPIBridge()
+const simplifiedBridge = new SimplifiedSupabaseAPIBridge()
 const authBridge = AuthBridge.getInstance()
 const vfsBridge = new VFSBridge()
+
+// Choose which bridge to use based on feature flag
+const activeBridge = USE_SIMPLIFIED_BRIDGE ? simplifiedBridge : enhancedBridge
 
 /**
  * Higher-order function that wraps handlers with project resolution
@@ -71,7 +79,7 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
 // Helper functions for common REST operations
 const createRestGetHandler = () => async ({ params, request }: any) => {
   try {
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await activeBridge.handleRestRequest({
       table: params.table as string,
       method: 'GET',
       headers: Object.fromEntries(request.headers.entries()),
@@ -110,7 +118,7 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
 
 const createRestHeadHandler = () => async ({ params, request }: any) => {
   try {
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await activeBridge.handleRestRequest({
       table: params.table as string,
       method: 'HEAD',
       headers: Object.fromEntries(request.headers.entries()),
@@ -143,7 +151,7 @@ const createRestHeadHandler = () => async ({ params, request }: any) => {
 const createRestPostHandler = () => async ({ params, request }: any) => {
   try {
     const body = await request.json()
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await activeBridge.handleRestRequest({
       table: params.table as string,
       method: 'POST',
       body,
@@ -182,7 +190,7 @@ const createRestPostHandler = () => async ({ params, request }: any) => {
 const createRestPatchHandler = () => async ({ params, request }: any) => {
   try {
     const body = await request.json()
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await activeBridge.handleRestRequest({
       table: params.table as string,
       method: 'PATCH',
       body,
@@ -220,7 +228,7 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
 
 const createRestDeleteHandler = () => async ({ params, request }: any) => {
   try {
-    const response = await enhancedBridge.handleRestRequest({
+    const response = await activeBridge.handleRestRequest({
       table: params.table as string,
       method: 'DELETE',
       headers: Object.fromEntries(request.headers.entries()),
@@ -259,7 +267,7 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
 const createRpcHandler = () => async ({ params, request }: any) => {
   try {
     const body = await request.json().catch(() => ({}))
-    const response = await enhancedBridge.handleRpc(
+    const response = await activeBridge.handleRpc(
       params.functionName as string,
       body
     )
