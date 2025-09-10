@@ -10,6 +10,8 @@ import {
   ResponseFormatter,
 } from '../lib/postgrest'
 import type { ParsedQuery, FormattedResponse } from '../lib/postgrest'
+import { RLSFilteringService } from '../lib/api/services/RLSFilteringService'
+import { ErrorMapper } from '../lib/api/utils/ErrorMapper'
 
 interface SupabaseRequest {
   table: string
@@ -22,10 +24,12 @@ interface SupabaseRequest {
 export class EnhancedSupabaseAPIBridge {
   private dbManager: DatabaseManager
   private sqlBuilder: SQLBuilder
+  private rlsFilteringService: RLSFilteringService
 
   constructor() {
     this.dbManager = DatabaseManager.getInstance()
     this.sqlBuilder = new SQLBuilder(this.dbManager)
+    this.rlsFilteringService = new RLSFilteringService()
   }
 
   async ensureInitialized(): Promise<void> {
@@ -64,7 +68,7 @@ export class EnhancedSupabaseAPIBridge {
       const query = QueryParser.parseQuery(request.url, request.headers)
 
       // Apply RLS filtering for user-scoped tables
-      const { query: enhancedQuery, context } = await this.applyRLSFiltering(request.table, query, request.headers)
+      const { query: enhancedQuery, context } = await this.rlsFilteringService.applyRLSFiltering(request.table, query, request.headers)
 
       logger.debug('Parsed query with RLS', { query: enhancedQuery, context: context.role })
 
@@ -90,15 +94,15 @@ export class EnhancedSupabaseAPIBridge {
         case 'DELETE':
           return await this.handleDelete(request.table, enhancedQuery, context)
         default:
-          throw createAPIError(`Unsupported method: ${request.method}`)
+          throw ErrorMapper.createMethodNotAllowedError(`Unsupported method: ${request.method}`)
       }
     } catch (error) {
       console.error(`❌ EnhancedBridge error for ${request.method} ${request.table}:`, error)
-      logError('EnhancedSupabaseAPIBridge request', error as Error, {
+      return ErrorMapper.mapAndLogError(error, {
+        operation: 'EnhancedSupabaseAPIBridge request',
         method: request.method,
         table: request.table,
       })
-      return ResponseFormatter.formatErrorResponse(error)
     }
   }
 
@@ -128,7 +132,7 @@ export class EnhancedSupabaseAPIBridge {
       
       if (url && headers) {
         query = QueryParser.parseQuery(url, headers)
-        const rlsResult = await this.applyRLSFiltering('rpc_function', query, headers)
+        const rlsResult = await this.rlsFilteringService.applyRLSFiltering('rpc_function', query, headers)
         query = rlsResult.query
         context = rlsResult.context
         logger.debug('Parsed RPC query with filters', { query, context: context.role })
@@ -179,117 +183,15 @@ export class EnhancedSupabaseAPIBridge {
 
       return ResponseFormatter.formatRpcResponse(result.rows, functionName, query)
     } catch (error) {
-      logError('RPC call failed', error as Error, { functionName, params })
-      return ResponseFormatter.formatErrorResponse(error)
+      return ErrorMapper.mapAndLogError(error, {
+        operation: 'RPC call failed',
+        functionName,
+        params
+      })
     }
   }
 
 
-  /**
-   * Extract user ID from JWT token
-   */
-  private extractUserIdFromJWT(token: string): string | null {
-    try {
-      // Simple JWT parsing for development (in production, use proper JWT library)
-      const parts = token.split('.')
-      if (parts.length !== 3) return null
-      
-      const payload = JSON.parse(atob(parts[1]))
-      return payload.sub || null
-    } catch (error) {
-      logger.warn('Failed to parse JWT token', { error })
-      return null
-    }
-  }
-
-  /**
-   * Create session context for RLS enforcement based on request headers
-   * Handles both API keys and user JWTs
-   */
-  private async createSessionContext(headers: Record<string, string>): Promise<SessionContext> {
-    const apiKey = headers.apikey || headers['x-api-key'];
-    const authHeader = headers.authorization || headers.Authorization;
-
-    // Extract role from API key
-    let apiKeyRole: 'anon' | 'service_role' = 'anon';
-    if (apiKey) {
-      const extractedRole = apiKeyGenerator.extractRole(apiKey);
-      if (extractedRole) {
-        apiKeyRole = extractedRole;
-      }
-    }
-
-    // If service_role API key, create service context (bypasses RLS)
-    if (apiKeyRole === 'service_role') {
-      return {
-        role: 'service_role',
-        claims: {
-          role: 'service_role',
-          iss: 'supabase-lite'
-        }
-      };
-    }
-
-    // Extract user context from Bearer token if present
-    let userClaims = null;
-    let userId = null;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '');
-      try {
-        // Try to extract user ID from JWT (existing method)
-        userId = this.extractUserIdFromJWT(token);
-        
-        // For now, create basic user claims
-        if (userId) {
-          userClaims = {
-            sub: userId,
-            role: 'authenticated',
-            iss: 'supabase-lite'
-          };
-        }
-      } catch (error) {
-        logger.debug('Failed to parse user JWT', { error });
-      }
-    }
-
-    // Return appropriate context
-    if (userClaims && userId) {
-      // Authenticated user
-      return {
-        role: 'authenticated',
-        userId: userId,
-        claims: userClaims
-      };
-    } else {
-      // Anonymous user (with anon API key)
-      return {
-        role: 'anon',
-        claims: {
-          role: 'anon',
-          iss: 'supabase-lite'
-        }
-      };
-    }
-  }
-
-  /**
-   * Apply RLS by setting session context instead of query filtering
-   * RLS is now enforced at the database level via PostgreSQL policies
-   */
-  private async applyRLSFiltering(table: string, query: ParsedQuery, headers: Record<string, string>): Promise<{ query: ParsedQuery; context: SessionContext }> {
-    // Create session context based on headers
-    const context = await this.createSessionContext(headers);
-    
-    logger.debug('Created session context for RLS', { 
-      table, 
-      role: context.role, 
-      userId: context.userId 
-    });
-
-    // Return query unchanged - RLS enforcement happens at database level
-    return { query, context };
-  }
 
   /**
    * Handle SELECT queries with full PostgREST features
@@ -321,8 +223,11 @@ export class EnhancedSupabaseAPIBridge {
 
       return ResponseFormatter.formatSelectResponse(result.rows, query, totalCount)
     } catch (error) {
-      logError('SELECT query failed', error as Error, { table, query })
-      return ResponseFormatter.formatErrorResponse(error)
+      return ErrorMapper.mapAndLogError(error, {
+        operation: 'SELECT query failed',
+        table,
+        query
+      })
     }
   }
 
@@ -336,7 +241,7 @@ export class EnhancedSupabaseAPIBridge {
     context: SessionContext
   ): Promise<FormattedResponse> {
     if (!body || typeof body !== 'object') {
-      throw new Error('Request body is required for INSERT')
+      throw ErrorMapper.createValidationError('Request body is required for INSERT')
     }
 
     try {
@@ -349,8 +254,11 @@ export class EnhancedSupabaseAPIBridge {
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
       return ResponseFormatter.formatInsertResponse(result.rows, query)
     } catch (error) {
-      logError('INSERT query failed', error as Error, { table, body })
-      return ResponseFormatter.formatErrorResponse(error)
+      return ErrorMapper.mapAndLogError(error, {
+        operation: 'INSERT query failed',
+        table,
+        body
+      })
     }
   }
 
@@ -364,7 +272,7 @@ export class EnhancedSupabaseAPIBridge {
     context: SessionContext
   ): Promise<FormattedResponse> {
     if (!body || typeof body !== 'object') {
-      throw new Error('Request body is required for UPSERT')
+      throw ErrorMapper.createValidationError('Request body is required for UPSERT')
     }
 
     try {
@@ -377,8 +285,11 @@ export class EnhancedSupabaseAPIBridge {
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
       return ResponseFormatter.formatInsertResponse(result.rows, query)
     } catch (error) {
-      logError('UPSERT query failed', error as Error, { table, body })
-      return ResponseFormatter.formatErrorResponse(error)
+      return ErrorMapper.mapAndLogError(error, {
+        operation: 'UPSERT query failed',
+        table,
+        body
+      })
     }
   }
 
@@ -392,11 +303,11 @@ export class EnhancedSupabaseAPIBridge {
     context: SessionContext
   ): Promise<FormattedResponse> {
     if (!body || typeof body !== 'object') {
-      throw new Error('Request body is required for UPDATE')
+      throw ErrorMapper.createValidationError('Request body is required for UPDATE')
     }
 
     if (query.filters.length === 0) {
-      throw new Error('UPDATE requires WHERE conditions')
+      throw ErrorMapper.createValidationError('UPDATE requires WHERE conditions')
     }
 
     try {
@@ -420,8 +331,12 @@ export class EnhancedSupabaseAPIBridge {
       })
       return formattedResponse
     } catch (error) {
-      logError('UPDATE query failed', error as Error, { table, body, filters: query.filters })
-      return ResponseFormatter.formatErrorResponse(error)
+      return ErrorMapper.mapAndLogError(error, {
+        operation: 'UPDATE query failed',
+        table,
+        body,
+        filters: query.filters
+      })
     }
   }
 
@@ -430,7 +345,7 @@ export class EnhancedSupabaseAPIBridge {
    */
   private async handleDelete(table: string, query: ParsedQuery, context: SessionContext): Promise<FormattedResponse> {
     if (query.filters.length === 0) {
-      throw new Error('DELETE requires WHERE conditions')
+      throw ErrorMapper.createValidationError('DELETE requires WHERE conditions')
     }
 
     try {
@@ -440,8 +355,11 @@ export class EnhancedSupabaseAPIBridge {
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
       return ResponseFormatter.formatDeleteResponse(result.rows, query)
     } catch (error) {
-      logError('DELETE query failed', error as Error, { table, filters: query.filters })
-      return ResponseFormatter.formatErrorResponse(error)
+      return ErrorMapper.mapAndLogError(error, {
+        operation: 'DELETE query failed',
+        table,
+        filters: query.filters
+      })
     }
   }
 
@@ -574,7 +492,10 @@ export class EnhancedSupabaseAPIBridge {
       const result = await this.dbManager.query(formattedSql)
       return result
     } catch (error) {
-      logError('SQL execution failed', error as Error, { sql: formattedSql })
+      ErrorMapper.mapAndLogError(error, {
+        operation: 'SQL execution failed',
+        sql: formattedSql
+      })
       throw error
     }
   }
@@ -608,7 +529,11 @@ export class EnhancedSupabaseAPIBridge {
       const result = await this.dbManager.queryWithContext(modifiedSql, context)
       return result
     } catch (error) {
-      logError('SQL execution with context failed', error as Error, { sql: formattedSql, context: context.role })
+      ErrorMapper.mapAndLogError(error, {
+        operation: 'SQL execution with context failed',
+        sql: formattedSql,
+        context: context.role
+      })
       throw error
     }
   }
@@ -661,7 +586,7 @@ export class EnhancedSupabaseAPIBridge {
       case 'refresh':
         return this.handleRefreshToken(body)
       default:
-        throw new Error(`Unsupported auth endpoint: ${endpoint}`)
+        throw ErrorMapper.createNotFoundError(`Unsupported auth endpoint: ${endpoint}`)
     }
   }
 
@@ -675,7 +600,7 @@ export class EnhancedSupabaseAPIBridge {
     )
     
     if (existingUser.rows.length > 0) {
-      throw new Error('User already exists')
+      throw ErrorMapper.createConflictError('User already exists')
     }
     
     // Create user
@@ -719,14 +644,14 @@ export class EnhancedSupabaseAPIBridge {
     )
     
     if (user.rows.length === 0) {
-      throw new Error('Invalid credentials')
+      throw ErrorMapper.createAuthenticationError('Invalid credentials')
     }
     
     const userData = user.rows[0]
     const isValidPassword = await this.verifyPassword(password, userData.encrypted_password)
     
     if (!isValidPassword) {
-      throw new Error('Invalid credentials')
+      throw ErrorMapper.createAuthenticationError('Invalid credentials')
     }
     
     const accessToken = this.generateJWT({ sub: userData.id, email })
@@ -771,7 +696,7 @@ export class EnhancedSupabaseAPIBridge {
     )
     
     if (session.rows.length === 0) {
-      throw new Error('Invalid refresh token')
+      throw ErrorMapper.createAuthenticationError('Invalid refresh token')
     }
     
     const userId = session.rows[0].user_id
