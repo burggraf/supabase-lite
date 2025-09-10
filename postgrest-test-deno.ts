@@ -32,6 +32,7 @@ interface Example {
   results?: TestResults;
   description?: string;
   hideCodeBlock?: boolean;
+  unsupported?: boolean;
 }
 
 interface TestItem {
@@ -58,7 +59,7 @@ class PostgRESTTestRunner {
   private browserTabOpen = false;
   private isRestarting = false;
   private isRetestMode = false;
-  private testStats = { passed: 0, failed: 0, skipped: 0 };
+  private testStats = { passed: 0, failed: 0, skipped: 0, unsupported: 0 };
 
   constructor(isRetestMode = false) {
     this.isRetestMode = isRetestMode;
@@ -789,6 +790,11 @@ class PostgRESTTestRunner {
    * Determine if a test should be skipped based on mode and previous results
    */
   private shouldSkipTest(example: Example): string | null {
+    // Always skip tests marked as unsupported (pglite doesn't support them)
+    if (example.unsupported) {
+      return "unsupported by pglite";
+    }
+
     const results = example.results;
 
     if (!results) {
@@ -1001,7 +1007,7 @@ class PostgRESTTestRunner {
     
     // Initialize test statistics for retest mode
     if (this.isRetestMode) {
-      this.testStats = { passed: 0, failed: 0, skipped: 0 };
+      this.testStats = { passed: 0, failed: 0, skipped: 0, unsupported: 0 };
     }
 
     try {
@@ -1067,9 +1073,13 @@ class PostgRESTTestRunner {
         if (shouldSkip) {
           this.log('info', `Skipping example: ${example.id} (${shouldSkip})`);
           
-          // Track skipped test statistics in retest mode
+          // Track test statistics in retest mode
           if (this.isRetestMode) {
-            this.testStats.skipped++;
+            if (shouldSkip === "unsupported by pglite") {
+              this.testStats.unsupported++;
+            } else {
+              this.testStats.skipped++;
+            }
           }
           
           continue;
@@ -1129,12 +1139,13 @@ class PostgRESTTestRunner {
     // Display test statistics in retest mode (always show, even if there are failures)
     if (this.isRetestMode) {
       const executed = this.testStats.passed + this.testStats.failed;
-      const total = executed + this.testStats.skipped;
+      const total = executed + this.testStats.skipped + this.testStats.unsupported;
       this.log('info', `\n=== RETEST STATISTICS ===`);
       this.log('info', `Total tests: ${total}`);
       this.log('info', `✅ Passed: ${this.testStats.passed}`);
       this.log('info', `❌ Failed: ${this.testStats.failed}`);
       this.log('info', `⏭️  Skipped: ${this.testStats.skipped}`);
+      this.log('info', `🚫 Unsupported: ${this.testStats.unsupported}`);
       this.log('info', `Tests executed: ${executed}`);
       if (executed > 0) {
         this.log('info', `Success rate: ${((this.testStats.passed / executed) * 100).toFixed(1)}%`);
@@ -1163,13 +1174,14 @@ class PostgRESTTestRunner {
       // Still display statistics in retest mode even if there's an error
       if (this.isRetestMode) {
         const executed = this.testStats.passed + this.testStats.failed;
-        const total = executed + this.testStats.skipped;
+        const total = executed + this.testStats.skipped + this.testStats.unsupported;
         if (total > 0) {
           this.log('info', `\n=== RETEST STATISTICS (partial due to error) ===`);
           this.log('info', `Total tests processed: ${total}`);
           this.log('info', `✅ Passed: ${this.testStats.passed}`);
           this.log('info', `❌ Failed: ${this.testStats.failed}`);
           this.log('info', `⏭️  Skipped: ${this.testStats.skipped}`);
+          this.log('info', `🚫 Unsupported: ${this.testStats.unsupported}`);
           this.log('info', `Tests executed: ${executed}`);
           if (executed > 0) {
             this.log('info', `Success rate: ${((this.testStats.passed / executed) * 100).toFixed(1)}%`);

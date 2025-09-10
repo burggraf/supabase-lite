@@ -47,3 +47,4 @@ curl-test-results*
 supabase-client-test-results*
 /prompts
 deno.lock
+tmp-script.ts
