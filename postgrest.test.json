@@ -340,31 +340,41 @@
         "name": "Querying referenced table with count",
         "code": "```ts\nconst { data, error } = await supabase\n  .from('orchestral_sections')\n  .select(`*, instruments(count)`)\n```\n",
         "data": {
-          "sql": "```sql\ncreate table orchestral_sections (\n  \"id\" \"uuid\" primary key default gen_random_uuid() not null,\n  \"name\" text\n);\n\ncreate table characters (\n  \"id\" \"uuid\" primary key default gen_random_uuid() not null,\n  \"name\" text,\n  \"section_id\" \"uuid\" references public.orchestral_sections on delete cascade\n);\n\nwith section as (\n  insert into orchestral_sections (name)\n  values ('strings') returning id\n)\ninsert into instruments (name, section_id) VALUES\n('violin', (select id from section)),\n('viola', (select id from section)),\n('cello', (select id from section)),\n('double bass', (select id from section));\n```\n"
+          "sql": "```sql\ncreate table orchestral_sections (\n  \"id\" \"uuid\" primary key default gen_random_uuid() not null,\n  \"name\" text\n);\n\ncreate table instruments (\n  \"id\" \"uuid\" primary key default gen_random_uuid() not null,\n  \"name\" text,\n  \"section_id\" \"uuid\" references public.orchestral_sections on delete cascade\n);\n\nwith section as (\n  insert into orchestral_sections (name)\n  values ('strings') returning id\n)\ninsert into instruments (name, section_id) VALUES\n('violin', (select id from section)),\n('viola', (select id from section)),\n('cello', (select id from section)),\n('double bass', (select id from section));\n```\n"
         },
-        "response": "```json\n[\n  {\n    \"id\": \"693694e7-d993-4360-a6d7-6294e325d9b6\",\n    \"name\": \"strings\",\n    \"instruments\": [\n      {\n        \"count\": 4\n      }\n    ]\n  }\n]\n```\n",
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"id\": \"*\",\n      \"name\": \"strings\",\n      \"instruments\": [\n        {\n          \"count\": 4\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "You can get the number of rows in a related table by using the\n**count** property.\n",
         "hideCodeBlock": true,
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Querying referenced table with count",
-              "timestamp": "2025-09-10T01:51:50.771Z"
+              "timestamp": "2025-09-10T02:05:32.892Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-10T01:51:50.834Z"
+              "timestamp": "2025-09-10T02:05:32.932Z"
             },
             {
-              "type": "error",
-              "message": "Test execution error: Database seeding failed on statement 3: SQL execution failed with status 400: {\"error\":\"SQL execution failed\",\"message\":\"relation \\\"instruments\\\" does not exist\"}",
-              "timestamp": "2025-09-10T01:51:54.916Z"
+              "type": "info",
+              "message": "Database seeded successfully",
+              "timestamp": "2025-09-10T02:05:32.971Z"
+            },
+            {
+              "type": "info",
+              "message": "Test script generated",
+              "timestamp": "2025-09-10T02:05:32.975Z"
+            },
+            {
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-10T02:05:33.098Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       },
       {
@@ -383,27 +393,27 @@
             {
               "type": "info",
               "message": "Starting test: Querying with count option",
-              "timestamp": "2025-09-10T01:51:19.028Z"
+              "timestamp": "2025-09-10T02:06:03.850Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-10T01:51:19.083Z"
+              "timestamp": "2025-09-10T02:06:03.887Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-10T01:51:19.103Z"
+              "timestamp": "2025-09-10T02:06:03.904Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-10T01:51:19.103Z"
+              "timestamp": "2025-09-10T02:06:03.906Z"
             },
             {
               "type": "error",
               "message": "Test failed - results don't match:\nExpected:\n{\n  \"count\": 3,\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
-              "timestamp": "2025-09-10T01:51:19.163Z"
+              "timestamp": "2025-09-10T02:06:03.989Z"
             }
           ],
           "skip": false

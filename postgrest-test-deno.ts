@@ -813,18 +813,17 @@ class PostgRESTTestRunner {
   }
 
   /**
-   * Compare actual results with expected results
+   * Compare actual results with expected results, supporting wildcards
    */
   private compareResults(actual: any, expected: any): { match: boolean; differences?: string } {
     try {
-      // Deep comparison of objects
-      const actualStr = JSON.stringify(actual, null, 2);
-      const expectedStr = JSON.stringify(expected, null, 2);
-
-      if (actualStr === expectedStr) {
+      // Deep comparison with wildcard support
+      if (this.deepCompareWithWildcards(actual, expected)) {
         return { match: true };
       }
 
+      const actualStr = JSON.stringify(actual, null, 2);
+      const expectedStr = JSON.stringify(expected, null, 2);
       return {
         match: false,
         differences: `Expected:\n${expectedStr}\n\nActual:\n${actualStr}`
@@ -836,6 +835,63 @@ class PostgRESTTestRunner {
         differences: `Comparison failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
+  }
+
+  /**
+   * Deep comparison with wildcard support
+   * Wildcards are represented by "*" strings in expected values
+   */
+  private deepCompareWithWildcards(actual: any, expected: any): boolean {
+    // Handle wildcard case - "*" matches any value
+    if (expected === "*") {
+      return true;
+    }
+
+    // Handle null/undefined cases
+    if (actual === null || actual === undefined || expected === null || expected === undefined) {
+      return actual === expected;
+    }
+
+    // Handle primitive types
+    if (typeof actual !== 'object' || typeof expected !== 'object') {
+      return actual === expected;
+    }
+
+    // Handle arrays
+    if (Array.isArray(actual) && Array.isArray(expected)) {
+      if (actual.length !== expected.length) {
+        return false;
+      }
+      for (let i = 0; i < actual.length; i++) {
+        if (!this.deepCompareWithWildcards(actual[i], expected[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // Handle objects
+    if (Array.isArray(actual) || Array.isArray(expected)) {
+      return false; // One is array, other is not
+    }
+
+    const actualKeys = Object.keys(actual);
+    const expectedKeys = Object.keys(expected);
+
+    if (actualKeys.length !== expectedKeys.length) {
+      return false;
+    }
+
+    for (const key of expectedKeys) {
+      if (!actualKeys.includes(key)) {
+        return false;
+      }
+      if (!this.deepCompareWithWildcards(actual[key], expected[key])) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
