@@ -69,9 +69,9 @@ export class QueryParser {
     // Parse filters and table-prefixed logical operators
     for (const [key, value] of params.entries()) {
       // Check for table-prefixed logical operators (e.g., instruments.or=, table.and=)
-      const tablePrefixMatch = key.match(/^([^.]+)\.(or|and|not)$/)
-      if (tablePrefixMatch) {
-        const [, referencedTable, operator] = tablePrefixMatch
+      const tablePrefixLogicalMatch = key.match(/^([^.]+)\.(or|and|not)$/)
+      if (tablePrefixLogicalMatch) {
+        const [, referencedTable, operator] = tablePrefixLogicalMatch
         let filter: ParsedFilter | null = null
         
         switch (operator) {
@@ -91,7 +91,22 @@ export class QueryParser {
           filter.referencedTable = referencedTable
           query.filters.push(filter)
         }
-      } else if (this.isFilterParam(key)) {
+      }
+      // Check for table-prefixed column filters (e.g., instruments.name=eq.flute)
+      else if (key.includes('.') && !key.match(/\.(or|and|not)$/)) {
+        const dotIndex = key.indexOf('.')
+        const referencedTable = key.substring(0, dotIndex)
+        const column = key.substring(dotIndex + 1)
+        
+        const filter = this.parseFilter(column, value)
+        if (filter) {
+          // Mark this filter as applying to a specific referenced table
+          filter.referencedTable = referencedTable
+          filter.column = column // Use the actual column name without table prefix
+          query.filters.push(filter)
+        }
+      }
+      else if (this.isFilterParam(key)) {
         const filter = this.parseFilter(key, value)
         if (filter) {
           query.filters.push(filter)
