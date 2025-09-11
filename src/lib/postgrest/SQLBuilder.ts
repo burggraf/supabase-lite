@@ -865,6 +865,7 @@ export class SQLBuilder {
       filter.column.startsWith(`${embedded.table}.`) || filter.referencedTable === embedded.table
     )
     console.log(`🔍 Found ${embeddedTableFilters.length} filters for embedded table ${embedded.table}:`, embeddedTableFilters)
+    console.log(`🔍 All query filters:`, queryFilters)
     
     // If there are embedded table filters, we need to return NULL when they don't match
     // to maintain PostgREST compatibility
@@ -1050,7 +1051,7 @@ export class SQLBuilder {
             subquery = `SELECT CASE 
                                 WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${combinedCondition}) 
                                 THEN NULL 
-                                ELSE (SELECT json_build_object(${selectClause.replace('json_build_object(', '').replace(/\)$/, '')}) FROM ${quotedEmbeddedTable} WHERE ${combinedCondition} LIMIT 1)
+                                ELSE (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${combinedCondition} LIMIT 1)
                                 END`
           } else {
             // For LEFT JOIN (default), return array or NULL

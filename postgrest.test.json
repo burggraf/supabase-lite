@@ -19,27 +19,27 @@
             {
               "type": "info",
               "message": "Starting test: Getting your data",
-              "timestamp": "2025-09-11T00:49:21.108Z"
+              "timestamp": "2025-09-11T01:00:40.986Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-11T00:49:21.217Z"
+              "timestamp": "2025-09-11T01:00:41.040Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-11T00:49:21.261Z"
+              "timestamp": "2025-09-11T01:00:41.061Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-11T00:49:21.263Z"
+              "timestamp": "2025-09-11T01:00:41.062Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-11T00:49:21.327Z"
+              "timestamp": "2025-09-11T01:00:41.137Z"
             }
           ],
           "skip": true
@@ -3073,27 +3073,27 @@
             {
               "type": "info",
               "message": "Starting test: On a referenced table",
-              "timestamp": "2025-09-11T00:49:30.762Z"
+              "timestamp": "2025-09-11T01:00:20.001Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-11T00:49:30.815Z"
+              "timestamp": "2025-09-11T01:00:20.068Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-11T00:49:30.848Z"
+              "timestamp": "2025-09-11T01:00:20.105Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-11T00:49:30.849Z"
+              "timestamp": "2025-09-11T01:00:20.106Z"
             },
             {
               "type": "error",
               "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": {\n        \"name\": \"flute\"\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"instruments\": null\n    },\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": null\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
-              "timestamp": "2025-09-11T00:49:30.969Z"
+              "timestamp": "2025-09-11T01:00:20.177Z"
             }
           ],
           "skip": false
