@@ -498,9 +498,13 @@ export class ResponseFormatter {
           if (!embeddedData || (Array.isArray(embeddedData) && embeddedData.length === 0)) {
             // Check if there are filters on this embedded table
             const embeddedTableName = embedded.table.replace(/^"(.*)"$/, '$1')
-            const hasFiltersOnEmbeddedTable = query.filters.some(filter => 
-              filter.column.startsWith(`${embeddedTableName}.`)
-            )
+            const hasFiltersOnEmbeddedTable = query.filters.some(filter => {
+              // Check if this filter targets the embedded table
+              // Filters can target embedded tables in two ways:
+              // 1. filter.referencedTable matches the embedded table name
+              // 2. filter.column starts with the embedded table name (legacy format)
+              return filter.referencedTable === embeddedTableName || filter.column.startsWith(`${embeddedTableName}.`)
+            })
             
             // If there are filters on the embedded table that prevent matches,
             // return null (PostgREST behavior). Otherwise return empty array.
@@ -518,7 +522,7 @@ export class ResponseFormatter {
           // No embedded data found - check if we should return null or empty array
           const embeddedTableName = embedded.table.replace(/^"(.*)"$/, '$1')
           const hasFiltersOnEmbeddedTable = query.filters.some(filter => 
-            filter.column.startsWith(`${embeddedTableName}.`)
+            filter.referencedTable === embeddedTableName || filter.column.startsWith(`${embeddedTableName}.`)
           )
           
           // PostgREST compatibility: null for filtered queries, empty array for normal embedding

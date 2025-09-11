@@ -283,17 +283,22 @@ export class SQLBuilder {
         existingEmbeddedTables.has(table)
       )
       
-      if (hasFiltersOnEmbeddedTables) {
-        console.log(`🔧 Detected filters on embedded tables - using subquery approach to return null for non-matching embedded resources`)
+      // Check if ORDER BY references any table via referencedTable property
+      // This is critical for queries like order=section(name) where section is an alias
+      const hasOrderingRequiringJoins = (query.order || []).some(orderItem => 
+        orderItem.referencedTable !== undefined
+      )
+      
+      if (hasFiltersOnEmbeddedTables || hasOrderingRequiringJoins) {
+        console.log(`🔧 Using JOIN approach for filters or ordering on embedded/referenced tables`)
         
-        // For PostgREST compatibility: when filtering on embedded table fields,
-        // we use subqueries that return null when the embedded filters don't match
-        // This ensures parent rows are returned but embedded resources are null when filters fail
-        return await this.buildSelectWithJoinAggregation(table, query)
+        // For PostgREST compatibility: when filtering OR ordering on embedded/referenced table fields,
+        // we need to use JOINs to ensure proper SQL generation
+        return await this.buildSelectWithJoins(table, query)
       } else {
-        console.log(`🔧 No filters on embedded tables - using correlated subquery approach`)
+        console.log(`🔧 No filters or ordering on embedded tables - using correlated subquery approach`)
         
-        // No filters on embedded tables, use standard subquery approach
+        // No filters or ordering on embedded tables, use standard subquery approach
         return await this.buildSelectWithJoinAggregation(table, query)
       }
     } else {
@@ -428,25 +433,26 @@ export class SQLBuilder {
     // Also check if ordering references embedded tables (including aliases) for backward compatibility
     const hasOrderingOnEmbeddedTables = Array.from(tablesInOrdering).some(referencedTable => {
       // Check if it matches any embedded table name or alias
-      return (query.embedded || []).some(embedded => 
-        embedded.table === referencedTable || embedded.alias === referencedTable
-      )
+      return (query.embedded || []).some(embedded => {
+        return embedded.table === referencedTable || embedded.alias === referencedTable
+      })
     })
     
-    console.log(`🔍 Tables in ordering:`, Array.from(tablesInOrdering))
-    console.log(`🔍 Has ordering on referenced tables:`, hasOrderingOnReferencedTables)
-    console.log(`🔍 Has ordering on embedded tables:`, hasOrderingOnEmbeddedTables)
-    console.log(`🔍 Embedded resources:`, query.embedded?.map(e => ({ table: e.table, alias: e.alias })))
     
-    if (hasFiltersOnEmbeddedTables || hasOrderingOnEmbeddedTables || hasOrderingOnReferencedTables) {
-      console.log(`🔧 Detected filters/ordering on embedded/referenced tables - using JOIN approach`)
-      
+    // Critical fix: If ORDER BY references any table (via referencedTable), use JOIN approach
+    // This ensures that ordering by embedded table columns (e.g., section(name)) always works
+    const hasOrderingRequiringJoins = (query.order || []).some(orderItem => 
+      orderItem.referencedTable !== undefined
+    )
+    
+    // FORCE JOIN approach if there's any ORDER BY with referencedTable
+    const shouldUseJoins = hasFiltersOnEmbeddedTables || hasOrderingOnEmbeddedTables || hasOrderingOnReferencedTables || hasOrderingRequiringJoins
+    
+    if (shouldUseJoins) {
       // For PostgREST compatibility: when filtering or ordering on embedded table fields,
       // we need to JOIN the embedded table and apply the operations in the appropriate clauses
       return await this.buildSelectWithJoins(table, query)
     } else {
-      console.log(`🔧 No filters/ordering on embedded tables - using correlated subquery approach`)
-      
       // No filters or ordering on embedded tables, use standard subquery approach
       return await this.buildSelectWithJoinAggregation(table, query)
     }
@@ -481,9 +487,11 @@ export class SQLBuilder {
     
     // Convert ordering table aliases to actual table names
     const actualOrderingTables = new Set<string>()
+    
     for (const orderingTable of tablesInOrdering) {
       const embedded = query.embedded?.find(e => e.alias === orderingTable || e.table === orderingTable)
       if (embedded) {
+        console.log(`🎯 Resolved ordering table alias: ${orderingTable} -> ${embedded.table}`)
         actualOrderingTables.add(embedded.table)
       } else {
         actualOrderingTables.add(orderingTable)
@@ -492,18 +500,22 @@ export class SQLBuilder {
     
     const allReferencedTables = new Set([...tablesInFilters, ...embeddedTables, ...actualOrderingTables])
     
-    console.log(`🔗 Tables referenced in query: ${Array.from(allReferencedTables).join(', ')}`)
-    
     // Build JOINs for all referenced tables
+    console.log('🔗 All referenced tables to JOIN:', Array.from(allReferencedTables))
+    
     for (const referencedTable of allReferencedTables) {
+      console.log(`🔗 Processing JOIN for table: ${referencedTable}`)
       const quotedRefTable = quoteTableName(referencedTable)
       
       // Discover foreign key relationship
+      console.log(`🔍 Discovering FK relationship: ${table} <-> ${referencedTable}`)
       let fkRelationship = await this.discoverForeignKeyRelationship(table, referencedTable)
       
       // If FK discovery failed, log the failure but don't use hardcoded fallbacks
       if (!fkRelationship) {
         console.log(`❌ FK discovery failed for ${table} <-> ${referencedTable} - no foreign key relationship found in database schema`)
+      } else {
+        console.log(`✅ FK discovery succeeded for ${table} <-> ${referencedTable}:`, fkRelationship)
       }
       
       if (fkRelationship) {
@@ -1844,15 +1856,23 @@ export class SQLBuilder {
    * Resolve referenced table column for ordering (e.g., section(name) -> orchestral_sections.name)
    */
   private async resolveReferencedTableColumn(referencedTable: string, column: string, query?: ParsedQuery, mainTable?: string): Promise<string> {
+    console.log(`🔍 Resolving referenced table column: ${referencedTable}(${column})`)
+    console.log(`🔍 Main table: ${mainTable}`)
+    console.log(`🔍 Query embedded:`, query?.embedded)
+    
     // First, try to find the referenced table in embedded resources
     if (query?.embedded) {
       for (const embedded of query.embedded) {
+        console.log(`🔍 Checking embedded resource:`, embedded)
         // Check if this embedded resource matches the referenced table alias
         if (embedded.alias === referencedTable || embedded.table === referencedTable) {
+          console.log(`✅ Found matching embedded resource! Using table: ${embedded.table}`)
           // Return the qualified column reference
           const quotedTable = this.quoteIdentifier(embedded.table)
           const quotedColumn = this.quoteIdentifier(column)
-          return `${quotedTable}.${quotedColumn}`
+          const result = `${quotedTable}.${quotedColumn}`
+          console.log(`✅ Resolved to: ${result}`)
+          return result
         }
       }
     }
@@ -1860,19 +1880,25 @@ export class SQLBuilder {
     // If not found in embedded resources, try to resolve as a direct table reference
     // This handles cases where ordering is done without explicit embedding
     if (mainTable && this.dbManager && this.dbManager.isConnected()) {
+      console.log(`🔍 Trying direct FK relationship discovery...`)
       const cleanMainTable = this.extractTableNameFromQualified(mainTable)
       const fkRelationship = await this.discoverForeignKeyRelationship(cleanMainTable, referencedTable)
       
       if (fkRelationship) {
+        console.log(`✅ Found FK relationship:`, fkRelationship)
         const quotedTable = this.quoteIdentifier(referencedTable)
         const quotedColumn = this.quoteIdentifier(column)
-        return `${quotedTable}.${quotedColumn}`
+        const result = `${quotedTable}.${quotedColumn}`
+        console.log(`✅ Resolved to: ${result}`)
+        return result
       }
     }
     
     // Fallback: treat as regular column (may cause SQL error, but better than failing silently)
     console.warn(`⚠️ Could not resolve referenced table column: ${referencedTable}(${column})`)
-    return `${referencedTable}.${column}`
+    const fallback = `${referencedTable}.${column}`
+    console.warn(`⚠️ Using fallback: ${fallback}`)
+    return fallback
   }
 
   /**
