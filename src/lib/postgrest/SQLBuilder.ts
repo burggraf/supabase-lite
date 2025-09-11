@@ -861,11 +861,16 @@ export class SQLBuilder {
     console.log(`🔍 Building subquery for: ${table} -> ${embedded.table}`)
     
     // Check for embedded table filters from the query that apply to this embedded table
-    const embeddedTableFilters = (queryFilters || []).filter(filter => 
-      filter.column.startsWith(`${embedded.table}.`) || filter.referencedTable === embedded.table
-    )
-    console.log(`🔍 Found ${embeddedTableFilters.length} filters for embedded table ${embedded.table}:`, embeddedTableFilters)
+    console.log(`🔍 Checking for filters for embedded table: ${embedded.table}`)
     console.log(`🔍 All query filters:`, queryFilters)
+    
+    const embeddedTableFilters = (queryFilters || []).filter(filter => {
+      const startsWithTable = filter.column.startsWith(`${embedded.table}.`)
+      const hasReferencedTable = filter.referencedTable === embedded.table
+      console.log(`🔍 Filter check - column: "${filter.column}", starts with "${embedded.table}.": ${startsWithTable}, referencedTable: "${filter.referencedTable}", matches: ${hasReferencedTable}`)
+      return startsWithTable || hasReferencedTable
+    })
+    console.log(`🔍 Found ${embeddedTableFilters.length} filters for embedded table ${embedded.table}:`, embeddedTableFilters)
     
     // If there are embedded table filters, we need to return NULL when they don't match
     // to maintain PostgREST compatibility
@@ -958,6 +963,72 @@ export class SQLBuilder {
         // One-to-many: embedded table references main table
         // instruments.section_id = orchestral_sections.id
         whereCondition = `${quotedEmbeddedTable}.${fkRelationship.fromColumn} = ${quotedMainTable}.${fkRelationship.toColumn}`
+        
+        // Build additional WHERE conditions for embedded filters
+        let additionalWhere = ''
+        const filtersToUse = embeddedTableFilters.length > 0 ? embeddedTableFilters : (embedded.filters || [])
+        
+        if (filtersToUse.length > 0) {
+          const embeddedFilterConditions = filtersToUse
+            .map(filter => {
+              // Strip table name from filter column since we're already in the embedded table context
+              const columnName = filter.column.includes('.') ? 
+                filter.column.split('.').slice(1).join('.') : filter.column
+              return this.buildFilterConditionLiteral({ ...filter, column: columnName })
+            })
+            .filter(Boolean)
+          
+          if (embeddedFilterConditions.length > 0) {
+            additionalWhere = ` AND ${embeddedFilterConditions.join(' AND ')}`
+          }
+        }
+        
+        whereCondition += additionalWhere
+        console.log(`🔧 One-to-many relationship with embedded filters: ${whereCondition}`)
+        
+        // Continue with one-to-many subquery building
+        if (isCountOnly) {
+          // For count-only requests, return a simple count without json_agg nesting
+          subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${whereCondition})))`
+        } else {
+          const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
+          
+          // For PostgREST compatibility: when filtering on embedded table columns,
+          // return NULL if no rows match the filter, otherwise return the matching rows
+          if (embeddedTableFilters.length > 0) {
+            // Build separate conditions for relationship and embedded filters
+            const relationshipCondition = `${quotedEmbeddedTable}.${fkRelationship.fromColumn} = ${quotedMainTable}.${fkRelationship.toColumn}`
+            const embeddedFiltersCondition = additionalWhere
+            
+            console.log(`🔧 Applying embedded table filter condition: ${embeddedFiltersCondition}`)
+            
+            // For embedded table filters, we need to return NULL if no rows match the filters
+            // This ensures that parent rows without matching embedded rows are excluded in INNER JOIN scenarios
+            if (embedded.fkHint === 'inner') {
+              // For INNER JOIN, return first matching object or NULL
+              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
+                                 THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${whereCondition} LIMIT 1)
+                                 ELSE NULL 
+                                 END`
+            } else {
+              // For LEFT JOIN (default), return array - simplified to match working manual SQL
+              subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+            }
+          } else {
+            // No embedded filters, use standard logic
+            if (embedded.fkHint === 'inner') {
+              // For INNER JOIN without filters, return first matching object or NULL
+              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
+                                 THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${whereCondition} LIMIT 1)
+                                 ELSE NULL 
+                                 END`
+            } else {
+              // For LEFT JOIN (default), return array
+              subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+            }
+          }
+        }
+        
       } else if (fkRelationship.fromTable === table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === embedded.table.replace(/^"(.*)"$/, '$1')) {
         // Many-to-one: main table references embedded table
         // Each row in main table has exactly one corresponding row in embedded table
