@@ -163,6 +163,28 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
       name: error.name
     })
     
+    // Handle AbortError specifically for PostgREST compatibility
+    if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      return HttpResponse.json(
+        { 
+          error: {
+            message: 'FetchError: The user aborted a request.',
+            details: '',
+            hint: '',
+            code: ''
+          }
+        },
+        { 
+          status: 400,
+          statusText: 'Bad Request',
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }
+      )
+    }
+    
     // Check if this is the replace() error we're hunting for
     if (error.message && error.message.includes('replace')) {
       console.error('🔍 Found the replace() error in MSW GET handler:', {
