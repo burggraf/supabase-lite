@@ -76,10 +76,36 @@ function withProjectResolution<T extends Parameters<typeof http.get>[1]>(
   }) as T;
 }
 
+// Request ID generation for tracing
+const generateRequestId = () => `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+// Bridge statistics tracking
+window.bridgeStats = window.bridgeStats || { enhanced: 0, simplified: 0, total: 0 }
+
 // Helper functions for common REST operations
 const createRestGetHandler = () => async ({ params, request }: any) => {
+  const requestId = generateRequestId()
+  const startTime = performance.now()
+  
   try {
-    console.log('🚀 MSW GET Handler started:', { table: params.table, url: request.url })
+    // Bridge selection logging
+    const bridgeType = USE_SIMPLIFIED_BRIDGE ? 'simplified' : 'enhanced'
+    console.log(`🔍 [${requestId}] MSW GET Handler started:`, { 
+      table: params.table, 
+      url: request.url,
+      bridgeType,
+      requestId
+    })
+    
+    // Update bridge statistics
+    window.bridgeStats[bridgeType]++
+    window.bridgeStats.total++
+    
+    console.log(`🌉 [${requestId}] Bridge selected:`, {
+      type: bridgeType,
+      name: activeBridge.constructor.name,
+      stats: window.bridgeStats
+    })
     
     // Check if this is a complex OR query that might cause browser errors
     let processedUrl = request.url
@@ -138,7 +164,7 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
       throw urlError
     }
     
-    console.log('🔧 Calling enhanced bridge...')
+    console.log(`🔧 [${requestId}] Calling ${bridgeType} bridge...`)
     const response = await activeBridge.handleRestRequest({
       table: params.table as string,
       method: 'GET',
@@ -146,21 +172,46 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
       url: urlObject
     })
     
-    console.log('✅ Enhanced bridge completed successfully')
+    const duration = performance.now() - startTime
+    console.log(`✅ [${requestId}] Bridge completed successfully:`, {
+      bridge: bridgeType,
+      duration: `${duration.toFixed(2)}ms`,
+      status: response.status,
+      table: params.table
+    })
+    
+    // Track slow requests
+    if (duration > 100) {
+      console.warn(`🐌 [${requestId}] Slow request detected:`, {
+        duration: `${duration.toFixed(2)}ms`,
+        threshold: '100ms',
+        table: params.table,
+        url: request.url
+      })
+    }
+    
     return HttpResponse.json(response.data, {
       status: response.status,
       headers: {
         ...response.headers,
-        'Access-Control-Allow-Origin': '*'
+        'Access-Control-Allow-Origin': '*',
+        'X-Request-ID': requestId,
+        'X-Bridge-Type': bridgeType,
+        'X-Processing-Time': `${duration.toFixed(2)}ms`
       }
     })
   } catch (error: any) {
-    console.error(`❌ MSW: GET error for ${params.table}:`, {
+    const duration = performance.now() - startTime
+    console.error(`❌ [${requestId}] MSW GET error:`, {
+      requestId,
+      table: params.table,
       error: error.message,
       stack: error.stack,
       url: request.url,
       type: typeof error,
-      name: error.name
+      name: error.name,
+      duration: `${duration.toFixed(2)}ms`,
+      bridge: USE_SIMPLIFIED_BRIDGE ? 'simplified' : 'enhanced'
     })
     
     // Handle AbortError specifically for PostgREST compatibility
@@ -179,7 +230,9 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
           statusText: 'Bad Request',
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
-            'Access-Control-Allow-Origin': '*'
+            'Access-Control-Allow-Origin': '*',
+            'X-Request-ID': requestId,
+            'X-Error-Type': 'AbortError'
           }
         }
       )
@@ -187,7 +240,8 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
     
     // Check if this is the replace() error we're hunting for
     if (error.message && error.message.includes('replace')) {
-      console.error('🔍 Found the replace() error in MSW GET handler:', {
+      console.error(`🔍 [${requestId}] Found the replace() error in MSW GET handler:`, {
+        requestId,
         message: error.message,
         stack: error.stack,
         url: request.url,
@@ -207,7 +261,9 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
         status: 500,
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*'
+          'Access-Control-Allow-Origin': '*',
+          'X-Request-ID': requestId,
+          'X-Error-Type': 'UnexpectedError'
         }
       }
     )
@@ -4798,3 +4854,51 @@ Deno.serve(async (req: Request) => {
     return
   })
 ]
+
+// Debug utilities for MSW API monitoring (as documented in docs/api/debugging/instrumentation.md)
+if (typeof window !== 'undefined') {
+  // Global debugging utilities
+  window.mswDebug = {
+    // Get bridge statistics
+    getBridgeStats: () => window.bridgeStats || { enhanced: 0, simplified: 0, total: 0 },
+    
+    // Force bridge selection for testing
+    forceBridge: (type: 'enhanced' | 'simplified') => {
+      if (type === 'enhanced') {
+        window.forceEnhancedBridge = true
+        window.forceSimplifiedBridge = false
+      } else {
+        window.forceSimplifiedBridge = true
+        window.forceEnhancedBridge = false
+      }
+      console.log(`🌉 Forced bridge selection: ${type}`)
+    },
+    
+    // Enable verbose logging
+    enableVerboseLogging: () => {
+      localStorage.setItem('MSW_DEBUG', 'true')
+      localStorage.setItem('BRIDGE_DEBUG', 'true')
+      console.log('🔧 Verbose logging enabled - reload page to take effect')
+    },
+    
+    // Disable verbose logging
+    disableVerboseLogging: () => {
+      localStorage.removeItem('MSW_DEBUG')
+      localStorage.removeItem('BRIDGE_DEBUG')
+      console.log('🔇 Verbose logging disabled - reload page to take effect')
+    },
+    
+    // Get debugging status
+    status: () => {
+      console.table({
+        'Bridge Type': USE_SIMPLIFIED_BRIDGE ? 'Simplified' : 'Enhanced',
+        'MSW Debug': localStorage.getItem('MSW_DEBUG') === 'true',
+        'Bridge Debug': localStorage.getItem('BRIDGE_DEBUG') === 'true',
+        'Request Stats': window.bridgeStats
+      })
+    }
+  }
+  
+  console.log('🔧 MSW Debug utilities available at window.mswDebug')
+  console.log('📊 Current bridge type:', USE_SIMPLIFIED_BRIDGE ? 'Simplified' : 'Enhanced')
+}
