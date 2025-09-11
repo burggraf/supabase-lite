@@ -220,15 +220,22 @@ export function parseOperatorValue(operator: string, value: string): { op: Opera
 
     case 'in':
       // Parse comma-separated list for IN operator
-      // Handle PostgREST syntax: in.(value1,value2,value3)
+      // Handle PostgREST syntax: in.(value1,value2,value3) and PostgreSQL syntax: in.("value1","value2","value3")
       let cleanValue = value
       if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
         cleanValue = cleanValue.slice(1, -1) // Remove parentheses
       }
       parsedValue = cleanValue.split(',').map(v => {
-        const trimmed = v.trim()
-        // Try to parse as number if possible
-        if (!isNaN(Number(trimmed))) {
+        let trimmed = v.trim()
+        
+        // Remove quotes if present (handle PostgreSQL quoted syntax)
+        if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || 
+            (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+          trimmed = trimmed.slice(1, -1)
+        }
+        
+        // Try to parse as number if possible (but not for empty strings)
+        if (trimmed !== '' && !isNaN(Number(trimmed))) {
           return Number(trimmed)
         }
         return trimmed

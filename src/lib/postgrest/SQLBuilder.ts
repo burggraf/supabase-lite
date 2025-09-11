@@ -461,7 +461,7 @@ export class SQLBuilder {
         // For referenced table filters (without explicit embedding), always use LEFT JOIN
         // This ensures parent rows are returned with referenced table fields set to null
         // when the filter doesn't match (correct PostgREST behavior)
-        const isExplicitInnerJoin = embeddedResource?.alias?.includes('inner')
+        const isExplicitInnerJoin = embeddedResource?.fkHint === 'inner'
         const isFilterOnlyReference = tablesInFilters.has(referencedTable) && !embeddedResource
         
         let joinType: 'LEFT' | 'INNER'
@@ -574,25 +574,13 @@ export class SQLBuilder {
       const aliasName = embedded.alias || embedded.table
       const quotedAlias = quoteTableName(aliasName)
       
-      // For PostgREST compatibility: when filtering on embedded table columns,
-      // return NULL for embedded resources when the filter doesn't match any rows
-      const hasEmbeddedFilters = embeddedTableFilters.some(filter => 
-        filter.column.startsWith(`${embedded.table}.`) || 
-        filter.column.startsWith(`${embedded.alias || embedded.table}.`)
-      )
-      
-      if (hasEmbeddedFilters) {
-        // There are filters on this specific embedded table, so return NULL for this embedded resource
-        selectColumns.push(`NULL AS ${quotedAlias}`)
+      // Always build subquery for embedded resources - filtering is handled within the subquery
+      const subquery = await this.buildEmbeddedSubquery(table, embedded, query.filters, query.schema)
+      if (subquery) {
+        selectColumns.push(`(${subquery}) AS ${quotedAlias}`)
       } else {
-        // No embedded table filters, build normal subquery
-        const subquery = await this.buildEmbeddedSubquery(table, embedded, query.filters, query.schema)
-        if (subquery) {
-          selectColumns.push(`(${subquery}) AS ${quotedAlias}`)
-        } else {
-          // Fallback to NULL if subquery generation fails
-          selectColumns.push(`NULL AS ${quotedAlias}`)
-        }
+        // Fallback to NULL if subquery generation fails
+        selectColumns.push(`NULL AS ${quotedAlias}`)
       }
     }
     console.log(`🔍 Separated filters:`, {
@@ -600,8 +588,33 @@ export class SQLBuilder {
       embeddedTableFilters: embeddedTableFilters.length
     })
     
-    // Only apply main table filters to WHERE clause to maintain PostgREST compatibility
-    const whereClause = this.buildWhereClause(mainTableFilters)
+    // Build WHERE clause - for INNER JOINs with embedded table filters, include them in main query
+    let allMainFilters = [...mainTableFilters]
+    
+    // Add embedded table filters to main query WHERE clause for INNER JOIN behavior
+    for (const embedded of query.embedded || []) {
+      if (embedded.fkHint === 'inner') {
+        // Find filters for this embedded table
+        const embeddedFilters = embeddedTableFilters.filter(filter => 
+          filter.column.startsWith(`${embedded.table}.`) || filter.referencedTable === embedded.table
+        )
+        allMainFilters.push(...embeddedFilters)
+      }
+    }
+    
+    const whereClause = this.buildWhereClause(allMainFilters)
+    
+    // For INNER JOIN embedded resources, add conditions to filter out rows with NULL embedded data
+    let havingClause = ''
+    const innerJoinEmbedded = (query.embedded || []).filter(embedded => embedded.fkHint === 'inner')
+    if (innerJoinEmbedded.length > 0) {
+      const innerJoinConditions = innerJoinEmbedded.map(embedded => {
+        const aliasName = embedded.alias || embedded.table
+        const quotedAlias = quoteTableName(aliasName)
+        return `${quotedAlias} IS NOT NULL`
+      })
+      havingClause = `HAVING ${innerJoinConditions.join(' AND ')}`
+    }
 
     // Build ORDER BY clause
     const orderClause = await this.buildOrderClause(query.order, query, quotedMainTable)
@@ -615,6 +628,7 @@ export class SQLBuilder {
       `SELECT ${selectColumns.join(', ')}`,
       fromClause,
       whereClause,
+      havingClause,
       orderClause,
       limitClause,
       offsetClause
@@ -776,6 +790,9 @@ export class SQLBuilder {
       return !hasAliasedVersion
     })
     
+    // Track which embedded resources are INNER JOINs for HAVING clause
+    const innerJoinEmbedded: string[] = []
+    
     for (const embedded of filteredEmbedded) {
       const subquery = await this.buildEmbeddedSubquery(table, embedded, query.filters)
       if (subquery) {
@@ -783,6 +800,11 @@ export class SQLBuilder {
         const aliasName = embedded.alias || embedded.table
         const quotedAlias = this.buildQuotedQualifiedTableName(aliasName, query.schema)
         selectColumns.push(`(${subquery}) AS ${quotedAlias}`)
+        
+        // Track INNER JOIN embedded resources for HAVING clause
+        if (embedded.fkHint === 'inner') {
+          innerJoinEmbedded.push(quotedAlias)
+        }
       }
     }
     
@@ -794,6 +816,15 @@ export class SQLBuilder {
     const embeddedTables = new Set((query.embedded || []).map(e => e.table))
     const { mainTableFilters } = this.separateMainAndEmbeddedFilters(query, embeddedTables)
     const whereClause = this.buildWhereClause(mainTableFilters)
+
+    // Build HAVING clause for INNER JOIN embedded resources
+    // This filters out parent rows where the embedded subquery returns NULL
+    let havingClause = ''
+    if (innerJoinEmbedded.length > 0) {
+      const havingConditions = innerJoinEmbedded.map(alias => `${alias} IS NOT NULL`)
+      havingClause = `HAVING ${havingConditions.join(' AND ')}`
+      console.log(`🔗 Added HAVING clause for INNER JOIN filtering: ${havingClause}`)
+    }
 
     // Build ORDER BY clause
     const orderClause = await this.buildOrderClause(query.order, query, quotedMainTable)
@@ -807,6 +838,7 @@ export class SQLBuilder {
       `SELECT ${selectColumns.join(', ')}`,
       fromClause,
       whereClause,
+      havingClause,
       orderClause,
       limitClause,
       offsetClause
@@ -814,6 +846,7 @@ export class SQLBuilder {
 
     const finalSQL = parts.join(' ')
     console.log(`🗃️  Final embedded SQL: ${finalSQL}`)
+    console.log(`🗃️  SQL Parameters: ${JSON.stringify(this.parameters)}`)
 
     return {
       sql: finalSQL,
@@ -840,7 +873,9 @@ export class SQLBuilder {
     }
     
     // Discover the foreign key relationship
-    let fkRelationship = await this.discoverForeignKeyRelationship(table, embedded.table, embedded.fkHint)
+    // Don't pass join type hints (like "inner") as constraint names
+    const constraintHint = embedded.fkHint === 'inner' ? undefined : embedded.fkHint
+    let fkRelationship = await this.discoverForeignKeyRelationship(table, embedded.table, constraintHint)
     console.log(`🔗 Foreign key relationship found:`, fkRelationship)
     
     // If FK discovery failed, return null - no hardcoded fallbacks allowed
@@ -895,7 +930,7 @@ export class SQLBuilder {
             // Strip table name from filter column since we're already in the embedded table context
             const columnName = filter.column.includes('.') ? 
               filter.column.split('.').slice(1).join('.') : filter.column
-            return this.buildFilterCondition({ ...filter, column: columnName })
+            return this.buildFilterConditionLiteral({ ...filter, column: columnName })
           })
           .filter(Boolean)
         
@@ -938,7 +973,7 @@ export class SQLBuilder {
               // Strip table name from filter column since we're already in the embedded table context
               const columnName = filter.column.includes('.') ? 
                 filter.column.split('.').slice(1).join('.') : filter.column
-              return this.buildFilterCondition({ ...filter, column: columnName })
+              return this.buildFilterConditionLiteral({ ...filter, column: columnName })
             })
             .filter(Boolean)
           
@@ -961,26 +996,8 @@ export class SQLBuilder {
         } else {
           const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
           
-          // For PostgREST compatibility: when filtering on embedded table columns,
-          // check if the embedded table row exists with all filters applied
-          if (embeddedTableFilters.length > 0) {
-            // Build a condition that checks if there's a matching embedded row with both
-            // the relationship condition AND the embedded filter conditions
-            const relationshipCondition = whereCondition
-            const embeddedFiltersCondition = additionalWhere
-            const combinedCondition = `${relationshipCondition}${embeddedFiltersCondition}`
-            
-            // Return the embedded data only if it matches the filter, otherwise return NULL
-            subquery = `SELECT CASE 
-                                WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${combinedCondition}) 
-                                THEN ${selectClause} 
-                                ELSE NULL 
-                                END 
-                         FROM ${quotedEmbeddedTable} WHERE ${relationshipCondition} LIMIT 1`
-          } else {
-            // No embedded filters, return data normally
-            subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1`
-          }
+          // Simplified approach: always use the basic subquery pattern
+          subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1`
         }
         return subquery
       } else {
@@ -1001,7 +1018,7 @@ export class SQLBuilder {
             // Strip table name from filter column since we're already in the embedded table context
             const columnName = filter.column.includes('.') ? 
               filter.column.split('.').slice(1).join('.') : filter.column
-            return this.buildFilterCondition({ ...filter, column: columnName })
+            return this.buildFilterConditionLiteral({ ...filter, column: columnName })
           })
           .filter(Boolean)
         
@@ -1026,25 +1043,42 @@ export class SQLBuilder {
           const embeddedFiltersCondition = additionalWhere
           const combinedCondition = `${relationshipCondition}${embeddedFiltersCondition}`
           
-          // PostgREST behavior: return NULL when filtering embedded resources and no rows match
-          // Check if there are any matching rows first, then either return null or the aggregated results
-          subquery = `SELECT CASE 
-                              WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${combinedCondition}) 
-                              THEN NULL 
-                              ELSE (SELECT json_agg(${selectClause}) FROM ${quotedEmbeddedTable} WHERE ${combinedCondition})
-                              END`
+          // For INNER JOIN (!inner), return a single object instead of array, and ensure main query filtering
+          if (embedded.fkHint === 'inner') {
+            // For INNER JOIN, return a single object (not array) or NULL if no match
+            // The NULL result will be caught by the HAVING clause to filter out the parent row
+            subquery = `SELECT CASE 
+                                WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${combinedCondition}) 
+                                THEN NULL 
+                                ELSE (SELECT json_build_object(${selectClause.replace('json_build_object(', '').replace(/\)$/, '')}) FROM ${quotedEmbeddedTable} WHERE ${combinedCondition} LIMIT 1)
+                                END`
+          } else {
+            // For LEFT JOIN (default), return array or NULL
+            subquery = `SELECT CASE 
+                                WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${combinedCondition}) 
+                                THEN NULL 
+                                ELSE (SELECT json_agg(${selectClause}) FROM ${quotedEmbeddedTable} WHERE ${combinedCondition})
+                                END`
+          }
         } else {
           // No embedded filters, use original logic
-          subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}) 
-                             THEN COALESCE(json_agg(${selectClause}), '[]'::json) 
-                             ELSE NULL 
-                             END 
-                      FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}`
+          if (embedded.fkHint === 'inner') {
+            // For INNER JOIN without filters, return first matching object or NULL
+            // The NULL will trigger the HAVING clause to filter out parent rows without matches
+            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}) 
+                               THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1)
+                               ELSE NULL 
+                               END`
+          } else {
+            // For LEFT JOIN (default), return array - simplified to match working manual SQL
+            subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}`
+          }
         }
       }
     }
     
     console.log(`🗃️  Generated embedded subquery for ${table} -> ${embedded.table}: ${subquery}`)
+    console.log(`🔧 FK Relationship:`, fkRelationship)
     return subquery
   }
 
@@ -1218,6 +1252,43 @@ export class SQLBuilder {
   }
 
   /**
+   * Build single filter condition using literal values (for embedded subqueries)
+   */
+  private buildFilterConditionLiteral(filter: ParsedFilter): string {
+    console.log(`🔍 Building literal filter condition for:`, { column: filter.column, operator: filter.operator, value: filter.value, negated: filter.negated })
+    
+    if (filter.column === '__logical__') {
+      // Handle logical operators - TODO: implement if needed for embedded queries
+      return `/* Unsupported logical operator in embedded query: ${filter.operator} */`
+    }
+
+    const operator = POSTGREST_OPERATORS[filter.operator]
+    if (!operator) {
+      console.error('🚨 Unknown operator:', filter.operator, 'Available operators:', Object.keys(POSTGREST_OPERATORS))
+      throw new Error(`Unknown operator: ${filter.operator}`)
+    }
+
+    if (!operator.sqlTemplate) {
+      console.error('🚨 Operator has no sqlTemplate:', filter.operator, operator)
+      throw new Error(`Operator ${filter.operator} has no sqlTemplate`)
+    }
+
+    let columnExpression = filter.column
+    let condition = operator.sqlTemplate.replace('{column}', columnExpression)
+
+    // Handle different value types using literal values instead of parameters
+    if (operator.requiresValue) {
+      condition = this.replaceValuePlaceholderLiteral(condition, filter.value, filter.operator)
+    }
+
+    if (filter.negated) {
+      condition = `NOT (${condition})`
+    }
+
+    return condition
+  }
+
+  /**
    * Build single filter condition
    */
   private buildFilterCondition(filter: ParsedFilter): string {
@@ -1281,6 +1352,43 @@ export class SQLBuilder {
     }
 
     return condition
+  }
+
+  /**
+   * Replace value placeholder with literal values (for embedded subqueries)
+   */
+  private replaceValuePlaceholderLiteral(condition: string, value: any, operator: string): string {
+    if (!condition) {
+      throw new Error(`replaceValuePlaceholderLiteral called with undefined condition for operator: ${operator}`)
+    }
+    
+    // Format value as literal SQL
+    let literalValue: string
+    
+    if (value === null || value === undefined) {
+      literalValue = 'NULL'
+    } else if (typeof value === 'boolean') {
+      literalValue = value ? 'TRUE' : 'FALSE'
+    } else if (typeof value === 'number') {
+      literalValue = String(value)
+    } else if (typeof value === 'string') {
+      literalValue = `'${value.replace(/'/g, "''")}'`
+    } else if (Array.isArray(value)) {
+      const formattedItems = value.map(item => {
+        if (typeof item === 'string') {
+          return `'${item.replace(/'/g, "''")}'`
+        } else if (typeof item === 'number') {
+          return String(item)
+        } else {
+          return `'${String(item).replace(/'/g, "''")}'`
+        }
+      })
+      literalValue = `(${formattedItems.join(', ')})`
+    } else {
+      literalValue = `'${String(value).replace(/'/g, "''")}'`
+    }
+    
+    return condition.replace('{value}', literalValue)
   }
 
   /**
