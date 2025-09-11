@@ -459,8 +459,8 @@ export class ResponseFormatter {
 
       // Process each embedded resource
       for (const embedded of query.embedded || []) {
-        // Determine the final field name - use alias if provided, otherwise table name
-        const fieldName = embedded.alias || embedded.table.replace(/^"(.*)"$/, '$1')
+        // Determine the final field name - PostgREST uses table name, not alias
+        const fieldName = embedded.table.replace(/^"(.*)"$/, '$1')
         
         // Handle both quoted and unquoted table names as keys in the SQL result
         let embeddedData = null
@@ -494,10 +494,25 @@ export class ResponseFormatter {
             }
           }
           
+          // Apply table-qualified limits for embedded resources
+          const embeddedTableName = embedded.table.replace(/^"(.*)"$/, '$1')
+          if (query.embeddedLimits && Array.isArray(embeddedData)) {
+            const limitConfig = query.embeddedLimits.get(embeddedTableName)
+            if (limitConfig) {
+              const { limit, offset = 0 } = limitConfig
+              console.log(`🔧 Applying table-qualified limit to ${embeddedTableName}: limit=${limit}, offset=${offset}`)
+              
+              if (limit !== undefined) {
+                embeddedData = embeddedData.slice(offset, offset + limit)
+              } else if (offset > 0) {
+                embeddedData = embeddedData.slice(offset)
+              }
+            }
+          }
+          
           // PostgREST compatibility: Handle empty results based on query context
           if (!embeddedData || (Array.isArray(embeddedData) && embeddedData.length === 0)) {
-            // Check if there are filters on this embedded table
-            const embeddedTableName = embedded.table.replace(/^"(.*)"$/, '$1')
+            // Check if there are filters on this embedded table (embeddedTableName already defined above)
             const hasFiltersOnEmbeddedTable = query.filters.some(filter => {
               // Check if this filter targets the embedded table
               // Filters can target embedded tables in two ways:

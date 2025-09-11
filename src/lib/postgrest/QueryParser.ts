@@ -40,6 +40,7 @@ export interface ParsedQuery {
   limit?: number
   offset?: number
   embedded?: EmbeddedResource[]
+  embeddedLimits?: Map<string, { limit?: number; offset?: number }>  // Table-qualified limits for embedded resources
   count?: 'exact' | 'planned' | 'estimated'
   preferReturn?: 'representation' | 'minimal' | 'headers-only'
   preferResolution?: 'merge-duplicates' | 'ignore-duplicates'
@@ -93,8 +94,32 @@ export class QueryParser {
           query.filters.push(filter)
         }
       }
+      // Check for table-prefixed limit/offset parameters (e.g., instruments.limit=1, instruments.offset=5)
+      else if (key.match(/^([^.]+)\.(limit|offset)$/)) {
+        const [, referencedTable, paramType] = key.match(/^([^.]+)\.(limit|offset)$/)!
+        console.log(`🔧 Found table-prefixed ${paramType} parameter: ${key}=${value} for table ${referencedTable}`)
+        
+        // Store table-qualified limit/offset parameters for embedded resource processing
+        if (!query.embeddedLimits) {
+          query.embeddedLimits = new Map()
+        }
+        
+        const parsedValue = parseInt(value, 10)
+        if (isNaN(parsedValue) || parsedValue < 0) {
+          throw new Error(`Invalid ${paramType} parameter: "${value}". Must be a non-negative integer.`)
+        }
+        
+        // Get or create the limit config for this table
+        let limitConfig = query.embeddedLimits.get(referencedTable) || { limit: undefined, offset: undefined }
+        if (paramType === 'limit') {
+          limitConfig.limit = parsedValue
+        } else if (paramType === 'offset') {
+          limitConfig.offset = parsedValue
+        }
+        query.embeddedLimits.set(referencedTable, limitConfig)
+      }
       // Check for table-prefixed column filters (e.g., instruments.name=eq.flute)
-      else if (key.includes('.') && !key.match(/\.(or|and|not)$/)) {
+      else if (key.includes('.') && !key.match(/\.(or|and|not|limit|offset)$/)) {
         const dotIndex = key.indexOf('.')
         const referencedTable = key.substring(0, dotIndex)
         const column = key.substring(dotIndex + 1)
@@ -230,22 +255,21 @@ export class QueryParser {
           if (trimmed.includes(':') && !trimmed.includes('(')) {
             columns.push(trimmed.split(':')[0].trim())
           } else {
-            columns.push(trimmed)
+            // Check if this is an embedded resource (contains ! or parentheses)
+            // Embedded resources should not be added to main columns
+            if (!trimmed.includes('!') && !trimmed.includes('(')) {
+              columns.push(trimmed)
+            }
           }
         }
         currentColumn = ''
       } else if (char === '(') {
         if (depth === 0) {
-          // This is an embedded resource
-          const resourceName = currentColumn.trim()
-          if (resourceName && !resourceName.includes('*')) {
-            // Handle aliases and foreign key hints for embedded resources
-            let cleanResourceName = resourceName
-            if (resourceName.includes(':')) {
-              cleanResourceName = resourceName.split(':')[0].trim()
-            }
-            columns.push(cleanResourceName)
-          }
+          // This is an embedded resource - do NOT add to main columns
+          // Embedded resources are handled separately by parseEmbedded
+          // Adding them to columns causes "column does not exist" errors
+          // Clear currentColumn to prevent embedded resource table names from being added
+          currentColumn = ''
         }
         depth++
         if (depth === 1) {
@@ -271,20 +295,28 @@ export class QueryParser {
       if (trimmed.includes(':') && !trimmed.includes('(')) {
         columns.push(trimmed.split(':')[0].trim())
       } else {
-        columns.push(trimmed)
+        // Check if this is an embedded resource (contains ! or parentheses)
+        // Embedded resources should not be added to main columns
+        if (!trimmed.includes('!') && !trimmed.includes('(')) {
+          columns.push(trimmed)
+        }
       }
     }
 
-    return columns.filter(Boolean)
+    const result = columns.filter(Boolean)
+    console.log('🔍 DEBUG QueryParser - parseSelect result:', result)
+    return result
   }
 
   /**
    * Parse select parameter with alias support
    */
   private static parseSelectWithAliases(select: string): { columns: string[], aliases: Record<string, string>, embedded: EmbeddedResource[] } {
+    console.log('🔍 parseSelectWithAliases called with:', select)
     const columns: string[] = []
     const aliases: Record<string, string> = {}
     const embedded = this.parseEmbedded(select)
+    console.log('🔍 parseEmbedded result:', embedded)
     
     // Simple case: just column names
     if (!select.includes('(')) {
@@ -376,12 +408,18 @@ export class QueryParser {
           columns.push(trimmed)
           aliases[trimmed] = jsonPathInfo.alias
         } else {
-          columns.push(trimmed)
+          // Check if this is an embedded resource (contains ! or parentheses)
+          // Embedded resources should not be added to main columns
+          if (!trimmed.includes('!') && !trimmed.includes('(')) {
+            columns.push(trimmed)
+          }
         }
       }
     }
 
-    return { columns: columns.filter(Boolean), aliases, embedded }
+    const result = { columns: columns.filter(Boolean), aliases, embedded }
+    console.log('🔍 DEBUG QueryParser - parseSelectWithAliases result:', result)
+    return result
   }
 
   /**
