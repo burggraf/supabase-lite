@@ -17,6 +17,7 @@ export interface ParsedOrder {
   column: string
   ascending: boolean
   nullsFirst?: boolean
+  referencedTable?: string  // For ordering by referenced table columns (e.g., section(name))
 }
 
 export interface EmbeddedResource {
@@ -143,6 +144,7 @@ export class QueryParser {
     const order = params.get('order')
     if (order) {
       query.order = this.parseOrder(order)
+      console.log('🎯 Parsed order:', JSON.stringify(query.order, null, 2))
     }
 
     // Parse on_conflict parameter for upserts
@@ -732,7 +734,30 @@ export class QueryParser {
     return order.split(',').map(item => {
       const trimmed = item.trim()
       
-      // Handle nullsfirst/nullslast
+      // First check for referenced table syntax with direction: section(name).asc
+      const referencedWithDirectionMatch = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\(([a-zA-Z_][a-zA-Z0-9_]*)\)\.(asc|desc)(?:\.(nullsfirst|nullslast))?$/i)
+      if (referencedWithDirectionMatch) {
+        const [, referencedTable, column, direction, nullsOrder] = referencedWithDirectionMatch
+        return {
+          column,
+          ascending: direction.toLowerCase() === 'asc',
+          referencedTable,
+          nullsFirst: nullsOrder ? nullsOrder.toLowerCase() === 'nullsfirst' : undefined
+        }
+      }
+      
+      // Check for referenced table syntax without explicit direction: section(name)
+      const referencedMatch = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\(([a-zA-Z_][a-zA-Z0-9_]*)\)$/i)
+      if (referencedMatch) {
+        const [, referencedTable, column] = referencedMatch
+        return {
+          column,
+          ascending: true, // default to ascending
+          referencedTable
+        }
+      }
+      
+      // Handle nullsfirst/nullslast for regular columns
       const nullsMatch = trimmed.match(/^(.+?)\.(asc|desc)\.(nullsfirst|nullslast)$/i)
       if (nullsMatch) {
         return {
@@ -742,7 +767,7 @@ export class QueryParser {
         }
       }
 
-      // Handle asc/desc
+      // Handle asc/desc for regular columns
       const dirMatch = trimmed.match(/^(.+?)\.(asc|desc)$/i)
       if (dirMatch) {
         return {
@@ -751,13 +776,14 @@ export class QueryParser {
         }
       }
 
-      // Default to ascending
+      // Default to ascending for regular columns
       return {
         column: trimmed,
         ascending: true
       }
     })
   }
+
 
   /**
    * Parse Prefer header

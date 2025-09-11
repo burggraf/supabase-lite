@@ -379,6 +379,28 @@ export class SQLBuilder {
   }
 
   /**
+   * Extract table names from ordering requirements
+   */
+  private getOrderingTableNames(query: ParsedQuery): Set<string> {
+    const tableNames = new Set<string>()
+    
+    console.log('🎯 Checking order for referenced tables:', query.order)
+    
+    if (query.order) {
+      query.order.forEach(orderItem => {
+        console.log('🎯 Order item:', orderItem)
+        if (orderItem.referencedTable) {
+          console.log('🎯 Adding referenced table to ordering:', orderItem.referencedTable)
+          tableNames.add(orderItem.referencedTable)
+        }
+      })
+    }
+    
+    console.log('🎯 Final ordering table names:', Array.from(tableNames))
+    return tableNames
+  }
+
+  /**
    * Build SELECT query with implicit embedding for referenced table filters
    * This method handles cases like .eq('orchestral_sections.name', 'percussion')
    * where the referenced table is filtered but not explicitly embedded
@@ -398,17 +420,34 @@ export class SQLBuilder {
       existingEmbeddedTables.has(table)
     )
     
-    if (hasFiltersOnEmbeddedTables) {
-      console.log(`🔧 Detected filters on embedded tables - using JOIN approach for proper filtering`)
+    // Check if ordering references any tables (not just embedded ones)
+    // In PostgREST, ordering by referenced table columns (e.g., section(name)) requires JOINs
+    const tablesInOrdering = this.getOrderingTableNames(query)
+    const hasOrderingOnReferencedTables = tablesInOrdering.size > 0
+    
+    // Also check if ordering references embedded tables (including aliases) for backward compatibility
+    const hasOrderingOnEmbeddedTables = Array.from(tablesInOrdering).some(referencedTable => {
+      // Check if it matches any embedded table name or alias
+      return (query.embedded || []).some(embedded => 
+        embedded.table === referencedTable || embedded.alias === referencedTable
+      )
+    })
+    
+    console.log(`🔍 Tables in ordering:`, Array.from(tablesInOrdering))
+    console.log(`🔍 Has ordering on referenced tables:`, hasOrderingOnReferencedTables)
+    console.log(`🔍 Has ordering on embedded tables:`, hasOrderingOnEmbeddedTables)
+    console.log(`🔍 Embedded resources:`, query.embedded?.map(e => ({ table: e.table, alias: e.alias })))
+    
+    if (hasFiltersOnEmbeddedTables || hasOrderingOnEmbeddedTables || hasOrderingOnReferencedTables) {
+      console.log(`🔧 Detected filters/ordering on embedded/referenced tables - using JOIN approach`)
       
-      // For PostgREST compatibility: when filtering on embedded table fields,
-      // we need to JOIN the embedded table and apply the filter in the WHERE clause
-      // This ensures only parent rows matching the embedded filter are returned
+      // For PostgREST compatibility: when filtering or ordering on embedded table fields,
+      // we need to JOIN the embedded table and apply the operations in the appropriate clauses
       return await this.buildSelectWithJoins(table, query)
     } else {
-      console.log(`🔧 No filters on embedded tables - using correlated subquery approach`)
+      console.log(`🔧 No filters/ordering on embedded tables - using correlated subquery approach`)
       
-      // No filters on embedded tables, use standard subquery approach
+      // No filters or ordering on embedded tables, use standard subquery approach
       return await this.buildSelectWithJoinAggregation(table, query)
     }
   }
@@ -435,10 +474,23 @@ export class SQLBuilder {
     
     const quotedMainTable = quoteTableName(table)
     
-    // Get all tables that need to be joined (from embedded resources and filters)
+    // Get all tables that need to be joined (from embedded resources, filters, and ordering)
     const tablesInFilters = this.getFilteredTableNames(query)
+    const tablesInOrdering = this.getOrderingTableNames(query)
     const embeddedTables = new Set(query.embedded?.map(e => e.table) || [])
-    const allReferencedTables = new Set([...tablesInFilters, ...embeddedTables])
+    
+    // Convert ordering table aliases to actual table names
+    const actualOrderingTables = new Set<string>()
+    for (const orderingTable of tablesInOrdering) {
+      const embedded = query.embedded?.find(e => e.alias === orderingTable || e.table === orderingTable)
+      if (embedded) {
+        actualOrderingTables.add(embedded.table)
+      } else {
+        actualOrderingTables.add(orderingTable)
+      }
+    }
+    
+    const allReferencedTables = new Set([...tablesInFilters, ...embeddedTables, ...actualOrderingTables])
     
     console.log(`🔗 Tables referenced in query: ${Array.from(allReferencedTables).join(', ')}`)
     
@@ -1011,8 +1063,13 @@ export class SQLBuilder {
                                  ELSE NULL 
                                  END`
             } else {
-              // For LEFT JOIN (default), return array - simplified to match working manual SQL
-              subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+              // For LEFT JOIN (default) with embedded table filters, return NULL if no rows match the filter
+              // This ensures PostgREST compatibility: filters on embedded tables return null when they don't match
+              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
+                                 THEN COALESCE(json_agg(${selectClause}), '[]'::json) 
+                                 ELSE NULL 
+                                 END 
+                          FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
             }
           } else {
             // No embedded filters, use standard logic
@@ -1068,8 +1125,17 @@ export class SQLBuilder {
         } else {
           const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
           
-          // Simplified approach: always use the basic subquery pattern
-          subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1`
+          // For many-to-one with embedded table filters, return NULL if no rows match the filter
+          if (embeddedTableFilters.length > 0) {
+            // Return NULL when embedded table filters don't match any rows
+            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}) 
+                               THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1)
+                               ELSE NULL 
+                               END`
+          } else {
+            // No embedded filters, use standard logic
+            subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1`
+          }
         }
         return subquery
       } else {
@@ -1751,17 +1817,62 @@ export class SQLBuilder {
       return ''
     }
 
-    const orderItems = order.map(item => {
-      let orderItem = `${item.column} ${item.ascending ? 'ASC' : 'DESC'}`
+    const orderItems = await Promise.all(order.map(async item => {
+      let columnRef: string
+      
+      if (item.referencedTable) {
+        // Handle referenced table columns (e.g., section(name) -> orchestral_sections.name)
+        columnRef = await this.resolveReferencedTableColumn(item.referencedTable, item.column, query, table)
+      } else {
+        // Regular column reference
+        columnRef = item.column
+      }
+      
+      let orderItem = `${columnRef} ${item.ascending ? 'ASC' : 'DESC'}`
       
       if (item.nullsFirst !== undefined) {
         orderItem += ` NULLS ${item.nullsFirst ? 'FIRST' : 'LAST'}`
       }
       
       return orderItem
-    })
+    }))
 
     return `ORDER BY ${orderItems.join(', ')}`
+  }
+
+  /**
+   * Resolve referenced table column for ordering (e.g., section(name) -> orchestral_sections.name)
+   */
+  private async resolveReferencedTableColumn(referencedTable: string, column: string, query?: ParsedQuery, mainTable?: string): Promise<string> {
+    // First, try to find the referenced table in embedded resources
+    if (query?.embedded) {
+      for (const embedded of query.embedded) {
+        // Check if this embedded resource matches the referenced table alias
+        if (embedded.alias === referencedTable || embedded.table === referencedTable) {
+          // Return the qualified column reference
+          const quotedTable = this.quoteIdentifier(embedded.table)
+          const quotedColumn = this.quoteIdentifier(column)
+          return `${quotedTable}.${quotedColumn}`
+        }
+      }
+    }
+    
+    // If not found in embedded resources, try to resolve as a direct table reference
+    // This handles cases where ordering is done without explicit embedding
+    if (mainTable && this.dbManager && this.dbManager.isConnected()) {
+      const cleanMainTable = this.extractTableNameFromQualified(mainTable)
+      const fkRelationship = await this.discoverForeignKeyRelationship(cleanMainTable, referencedTable)
+      
+      if (fkRelationship) {
+        const quotedTable = this.quoteIdentifier(referencedTable)
+        const quotedColumn = this.quoteIdentifier(column)
+        return `${quotedTable}.${quotedColumn}`
+      }
+    }
+    
+    // Fallback: treat as regular column (may cause SQL error, but better than failing silently)
+    console.warn(`⚠️ Could not resolve referenced table column: ${referencedTable}(${column})`)
+    return `${referencedTable}.${column}`
   }
 
   /**
