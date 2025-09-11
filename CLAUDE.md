@@ -12,6 +12,52 @@ NEVER create files unless they're absolutely necessary for achieving your goal.
 ALWAYS prefer editing an existing file to creating a new one.
 NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
 
+## 📚 MSW API Documentation
+
+**CRITICAL: When working with the MSW API system, ALWAYS refer to the comprehensive documentation located at `/docs/api/`**
+
+### Quick Navigation
+- **[API Overview](./docs/api/README.md)** - Start here for system understanding and navigation
+- **[Request Flow Diagrams](./docs/api/architecture/request-flow.md)** - Visual debugging guides for tracing API calls
+- **[Bridge Comparison](./docs/api/architecture/bridge-comparison.md)** - Enhanced vs Simplified bridge capabilities
+- **[Tracing Guide](./docs/api/debugging/tracing-guide.md)** - Step-by-step API call debugging
+- **[Common Issues](./docs/api/debugging/common-issues.md)** - Known problems and exact solutions
+- **[Handlers Reference](./docs/api/reference/handlers.md)** - Complete API endpoint documentation
+
+### When to Use API Documentation
+
+**🔍 DEBUGGING API ISSUES:**
+1. **Always start** with `/docs/api/debugging/tracing-guide.md` for systematic debugging
+2. **Check** `/docs/api/debugging/common-issues.md` for known issues and solutions
+3. **Use** request flow diagrams to understand execution paths
+4. **Reference** `/docs/api/debugging/instrumentation.md` for debugging tools
+
+**🏗️ MODIFYING OR EXTENDING APIs:**
+1. **Review** `/docs/api/architecture/overview.md` for system design patterns
+2. **Check** `/docs/api/architecture/bridge-comparison.md` to understand bridge capabilities
+3. **Reference** `/docs/api/reference/bridges.md` for bridge API specifications
+4. **Follow** `/docs/api/reference/project-resolution.md` for multi-tenant patterns
+
+**🛠️ WORKING WITH HANDLERS:**
+1. **Use** `/docs/api/reference/handlers.md` for complete endpoint documentation
+2. **Understand** request/response formats and error handling patterns
+3. **Follow** existing handler patterns for consistency
+
+### Available Debug Tools
+```javascript
+// In browser console (available after instrumentation)
+window.mswDebug.status()              // Show system status and bridge type
+window.mswDebug.getBridgeStats()      // View bridge usage statistics  
+window.mswDebug.forceBridge('enhanced') // Switch bridge for testing
+window.mswDebug.enableVerboseLogging() // Enable detailed API logging
+```
+
+### Key Files for API Work
+- **`src/mocks/handlers.ts`** - Main MSW handlers (with debugging instrumentation)
+- **`src/mocks/enhanced-bridge.ts`** - Full PostgREST compatibility bridge
+- **`src/mocks/simplified-bridge.ts`** - Performance-optimized bridge
+- **`src/mocks/project-resolver.ts`** - Multi-tenant project resolution
+
 ## Development Commands
 
 - `npm run dev` - Start development server (Vite on port 5173)
