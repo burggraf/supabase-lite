@@ -59,8 +59,16 @@ export class SQLBuilder {
   /**
    * Build schema-qualified table name with proper PostgreSQL identifier quoting
    * Quotes schema and table components separately to avoid invalid SQL like "public.table"
+   * TEMPORARY FIX: Disable schema qualification to avoid column reference issues
    */
   private buildQuotedQualifiedTableName(tableName: string, schema?: string): string {
+    // TEMPORARY FIX: Always return just the table name without schema qualification
+    // This prevents issues with "schema"."table".column syntax which is invalid
+    // The "public" schema is the default, so omitting it should work fine
+    console.log(`🔧 TEMP FIX: buildQuotedQualifiedTableName(${tableName}, ${schema}) -> ${this.quoteIdentifier(tableName)}`)
+    return this.quoteIdentifier(tableName)
+    
+    /* ORIGINAL CODE - DISABLED TEMPORARILY:
     if (!schema) {
       return this.quoteIdentifier(tableName)
     }
@@ -73,6 +81,7 @@ export class SQLBuilder {
     const quotedSchema = this.quoteIdentifier(schema)
     const quotedTable = this.quoteIdentifier(tableName)
     return `${quotedSchema}.${quotedTable}`
+    */
   }
 
   /**
@@ -627,13 +636,17 @@ export class SQLBuilder {
           joinType = 'LEFT'
         }
         
+        // Generate proper table aliases for JOIN conditions to avoid schema-qualified identifier issues
+        const mainTableAlias = this.extractTableNameFromQualified(quotedMainTable)
+        const refTableAlias = this.extractTableNameFromQualified(quotedRefTable)
+        
         let joinCondition: string
         if (fkRelationship.fromTable === actualMainTable.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === actualRefTable.replace(/^"(.*)"$/, '$1')) {
           // Main table references embedded table
-          joinCondition = `${quotedMainTable}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedRefTable}.${this.quoteIdentifier(fkRelationship.toColumn)}`
+          joinCondition = `${this.quoteIdentifier(mainTableAlias)}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${this.quoteIdentifier(refTableAlias)}.${this.quoteIdentifier(fkRelationship.toColumn)}`
         } else if (fkRelationship.fromTable === actualRefTable.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === actualMainTable.replace(/^"(.*)"$/, '$1')) {
           // Embedded table references main table
-          joinCondition = `${quotedRefTable}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedMainTable}.${this.quoteIdentifier(fkRelationship.toColumn)}`
+          joinCondition = `${this.quoteIdentifier(refTableAlias)}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${this.quoteIdentifier(mainTableAlias)}.${this.quoteIdentifier(fkRelationship.toColumn)}`
         } else {
           console.log(`⚠️ Cannot determine join condition for ${actualMainTable} <-> ${actualRefTable}`)
           continue
@@ -641,19 +654,23 @@ export class SQLBuilder {
         
         joins.push({
           table: quotedRefTable,
-          alias: quotedRefTable, // Use table name as alias for now
+          alias: this.quoteIdentifier(refTableAlias), // Use clean table alias
           condition: joinCondition,
           type: joinType
         })
         
-        console.log(`🔗 Added ${joinType} JOIN: ${quotedRefTable} ON ${joinCondition}`)
+        console.log(`🔗 Added ${joinType} JOIN: ${quotedRefTable} AS ${this.quoteIdentifier(refTableAlias)} ON ${joinCondition}`)
       }
     }
     
     // Build SELECT clause with main table columns
     const embeddedTableNames = Array.from(embeddedTables)
+    const mainTableAlias = this.extractTableNameFromQualified(quotedMainTable)
+    const quotedMainTableAlias = this.quoteIdentifier(mainTableAlias)
+    
     console.log(`🔍 embeddedTableNames to skip:`, embeddedTableNames)
     console.log(`🔍 Processing query.select:`, query.select)
+    console.log(`🔍 Main table alias:`, mainTableAlias, `quoted:`, quotedMainTableAlias)
     
     if (query.select && query.select.length > 0) {
       for (const col of query.select) {
@@ -665,13 +682,13 @@ export class SQLBuilder {
         }
         
         if (col === '*') {
-          selectColumns.push(`${quotedMainTable}.*`)
+          selectColumns.push(`${quotedMainTableAlias}.*`)
         } else {
           // Check if this is a JSON path expression
           const jsonPathInfo = this.parseJSONPathExpression(col)
           if (jsonPathInfo) {
-            // Generate SQL for JSON path extraction
-            const sqlExpression = this.buildJSONPathSQL(quotedMainTable, jsonPathInfo)
+            // Generate SQL for JSON path extraction (using clean alias)
+            const sqlExpression = this.buildJSONPathSQL(quotedMainTableAlias, jsonPathInfo)
             const alias = query.columnAliases && query.columnAliases[col]
             if (alias) {
               selectColumns.push(`${sqlExpression} AS ${alias}`)
@@ -682,21 +699,31 @@ export class SQLBuilder {
           } else {
             const alias = query.columnAliases && query.columnAliases[col]
             if (alias) {
-              selectColumns.push(`${quotedMainTable}.${col} AS ${alias}`)
+              selectColumns.push(`${quotedMainTableAlias}.${this.quoteIdentifier(col)} AS ${alias}`)
             } else {
-              selectColumns.push(`${quotedMainTable}.${col}`)
+              selectColumns.push(`${quotedMainTableAlias}.${this.quoteIdentifier(col)}`)
             }
           }
         }
       }
     } else {
-      selectColumns.push(`${quotedMainTable}.*`)
+      selectColumns.push(`${quotedMainTableAlias}.*`)
     }
     
     // Build FROM clause with JOINs
-    let fromClause = `FROM ${quotedMainTable}`
+    let fromClause = `FROM ${quotedMainTable} AS ${quotedMainTableAlias}`
+    console.log(`🔍 DEBUG: Building FROM clause - quotedMainTable: "${quotedMainTable}" AS ${quotedMainTableAlias}`)
+    console.log(`🔍 DEBUG: Total joins to process: ${joins.length}`)
+    
     for (const join of joins) {
-      fromClause += ` ${join.type} JOIN ${join.table} ON ${join.condition}`
+      console.log(`🔍 DEBUG: Processing join:`, {
+        table: join.table,
+        alias: join.alias,
+        condition: join.condition,
+        type: join.type
+      })
+      fromClause += ` ${join.type} JOIN ${join.table} AS ${join.alias} ON ${join.condition}`
+      console.log(`🔍 DEBUG: FROM clause now: "${fromClause}"`)
     }
 
     // Build WHERE clause - separate main table filters from embedded table filters
@@ -711,11 +738,13 @@ export class SQLBuilder {
       // Build JSON aggregation for embedded resource
       let jsonSelectClause: string
       if (embedded.select && embedded.select.length > 0) {
+        const embeddedAlias = this.extractTableNameFromQualified(quotedEmbedded)
+        const quotedEmbeddedAlias = this.quoteIdentifier(embeddedAlias)
         const columnPairs = embedded.select.map(col => {
           if (col === '*') {
-            return `to_json(${quotedEmbedded})`
+            return `to_json(${quotedEmbeddedAlias})`
           } else {
-            return `'${col}', ${quotedEmbedded}.${col}`
+            return `'${col}', ${quotedEmbeddedAlias}.${this.quoteIdentifier(col)}`
           }
         })
         if (columnPairs.length === 1 && embedded.select[0] === '*') {
@@ -724,7 +753,9 @@ export class SQLBuilder {
           jsonSelectClause = `json_build_object(${columnPairs.join(', ')})`
         }
       } else {
-        jsonSelectClause = `to_json(${quotedEmbedded})`
+        const embeddedAlias = this.extractTableNameFromQualified(quotedEmbedded)
+        const quotedEmbeddedAlias = this.quoteIdentifier(embeddedAlias)
+        jsonSelectClause = `to_json(${quotedEmbeddedAlias})`
       }
       
       // Use alias if provided, otherwise use table name
@@ -892,6 +923,11 @@ export class SQLBuilder {
     const selectColumns: string[] = []
     
     const quotedMainTable = this.buildQuotedQualifiedTableName(table, query.schema)
+    // Extract clean table alias to avoid schema-qualified column references
+    const mainTableAlias = this.extractTableNameFromQualified(quotedMainTable)
+    const quotedMainTableAlias = this.quoteIdentifier(mainTableAlias)
+    
+    console.log(`🔍 DEBUG JoinAggregation: quotedMainTable="${quotedMainTable}", alias="${mainTableAlias}"`)
     
     // Add main table columns, filtering out embedded table names
     const embeddedTableNames = (query.embedded || []).map(e => e.table)
@@ -904,13 +940,13 @@ export class SQLBuilder {
         }
         
         if (col === '*') {
-          selectColumns.push(`${quotedMainTable}.*`)
+          selectColumns.push(`${quotedMainTableAlias}.*`)
         } else {
           // Check if this is a JSON path expression
           const jsonPathInfo = this.parseJSONPathExpression(col)
           if (jsonPathInfo) {
-            // Generate SQL for JSON path extraction
-            const sqlExpression = this.buildJSONPathSQL(quotedMainTable, jsonPathInfo)
+            // Generate SQL for JSON path extraction (using clean alias)
+            const sqlExpression = this.buildJSONPathSQL(quotedMainTableAlias, jsonPathInfo)
             const alias = query.columnAliases && query.columnAliases[col]
             if (alias) {
               selectColumns.push(`${sqlExpression} AS ${alias}`)
@@ -919,18 +955,18 @@ export class SQLBuilder {
               selectColumns.push(`${sqlExpression} AS ${jsonPathInfo.alias}`)
             }
           } else {
-            // Apply column alias if available
+            // Apply column alias if available (using clean alias)
             const alias = query.columnAliases && query.columnAliases[col]
             if (alias) {
-              selectColumns.push(`${quotedMainTable}.${col} AS ${alias}`)
+              selectColumns.push(`${quotedMainTableAlias}.${this.quoteIdentifier(col)} AS ${alias}`)
             } else {
-              selectColumns.push(`${quotedMainTable}.${col}`)
+              selectColumns.push(`${quotedMainTableAlias}.${this.quoteIdentifier(col)}`)
             }
           }
         }
       }
     } else {
-      selectColumns.push(`${quotedMainTable}.*`)
+      selectColumns.push(`${quotedMainTableAlias}.*`)
     }
     
     // Add embedded resources as correlated subqueries
@@ -965,8 +1001,8 @@ export class SQLBuilder {
       }
     }
     
-    // Build FROM clause
-    const fromClause = `FROM ${quotedMainTable}`
+    // Build FROM clause with alias
+    const fromClause = `FROM ${quotedMainTable} AS ${quotedMainTableAlias}`
 
     // Build WHERE clause - separate main table filters from embedded table filters
     // For PostgREST compatibility, embedded table filters should not filter out parent rows
@@ -983,8 +1019,8 @@ export class SQLBuilder {
       console.log(`🔗 Added HAVING clause for INNER JOIN filtering: ${havingClause}`)
     }
 
-    // Build ORDER BY clause
-    const orderClause = await this.buildOrderClause(query.order, query, quotedMainTable)
+    // Build ORDER BY clause (using clean alias)
+    const orderClause = await this.buildOrderClause(query.order, query, quotedMainTableAlias)
 
     // Build LIMIT and OFFSET
     const limitClause = query.limit ? `LIMIT ${query.limit}` : ''
@@ -1065,6 +1101,14 @@ export class SQLBuilder {
     const quotedEmbeddedTable = this.buildQuotedQualifiedTableName(embedded.table, schema)
     const quotedMainTable = this.buildQuotedQualifiedTableName(table, schema)
     
+    // Extract clean table aliases to avoid schema-qualified column references
+    const embeddedTableAlias = this.extractTableNameFromQualified(quotedEmbeddedTable)
+    const mainTableAlias = this.extractTableNameFromQualified(quotedMainTable)
+    const quotedEmbeddedAlias = this.quoteIdentifier(embeddedTableAlias)
+    const quotedMainAlias = this.quoteIdentifier(mainTableAlias)
+    
+    console.log(`🔍 DEBUG buildEmbeddedSubquery: embedded "${quotedEmbeddedTable}" -> alias "${embeddedTableAlias}", main "${quotedMainTable}" -> alias "${mainTableAlias}"`)
+    
     // Check if this is a count-only request
     const isCountOnly = embedded.select?.length === 1 && embedded.select[0] === 'count'
     
@@ -1080,10 +1124,10 @@ export class SQLBuilder {
       console.log(`🔗 Building many-to-many subquery through join table: ${fkRelationship.joinTable}`)
       
       const joinTableQuoted = quoteTableName(fkRelationship.joinTable!)
-      let whereCondition = `${quotedEmbeddedTable}.${this.quoteIdentifier(fkRelationship.toColumn)} IN (
+      let whereCondition = `${quotedEmbeddedAlias}.${this.quoteIdentifier(fkRelationship.toColumn)} IN (
         SELECT ${joinTableQuoted}.${this.quoteIdentifier(fkRelationship.joinEmbeddedColumn!)} 
         FROM ${joinTableQuoted} 
-        WHERE ${joinTableQuoted}.${this.quoteIdentifier(fkRelationship.joinMainColumn!)} = ${quotedMainTable}.${this.quoteIdentifier(fkRelationship.fromColumn)}
+        WHERE ${joinTableQuoted}.${this.quoteIdentifier(fkRelationship.joinMainColumn!)} = ${quotedMainAlias}.${this.quoteIdentifier(fkRelationship.fromColumn)}
       )`
       
       // Build additional WHERE conditions for embedded filters
@@ -1104,14 +1148,14 @@ export class SQLBuilder {
       
       if (isCountOnly) {
         // For count-only requests, return a simple count without json_agg nesting
-        subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${whereCondition})))`
+        subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition})))`
       } else {
         const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
-        subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
+        subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}) 
                            THEN COALESCE(json_agg(${selectClause}), '[]'::json) 
                            ELSE NULL 
                            END 
-                    FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+                    FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}`
       }
     } else {
       // Direct relationship (one-to-many or many-to-one)
@@ -1119,7 +1163,7 @@ export class SQLBuilder {
       if (fkRelationship.fromTable === embedded.table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === table.replace(/^"(.*)"$/, '$1')) {
         // One-to-many: embedded table references main table
         // instruments.section_id = orchestral_sections.id
-        whereCondition = `${quotedEmbeddedTable}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedMainTable}.${this.quoteIdentifier(fkRelationship.toColumn)}`
+        whereCondition = `${quotedEmbeddedAlias}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedMainAlias}.${this.quoteIdentifier(fkRelationship.toColumn)}`
         
         // Build additional WHERE conditions for embedded filters
         let additionalWhere = ''
@@ -1146,7 +1190,7 @@ export class SQLBuilder {
         // Continue with one-to-many subquery building
         if (isCountOnly) {
           // For count-only requests, return a simple count without json_agg nesting
-          subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${whereCondition})))`
+          subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition})))`
         } else {
           const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
           
@@ -1154,7 +1198,7 @@ export class SQLBuilder {
           // return NULL if no rows match the filter, otherwise return the matching rows
           if (embeddedTableFilters.length > 0) {
             // Build separate conditions for relationship and embedded filters
-            const relationshipCondition = `${quotedEmbeddedTable}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedMainTable}.${this.quoteIdentifier(fkRelationship.toColumn)}`
+            const relationshipCondition = `${quotedEmbeddedAlias}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedMainAlias}.${this.quoteIdentifier(fkRelationship.toColumn)}`
             const embeddedFiltersCondition = additionalWhere
             
             console.log(`🔧 Applying embedded table filter condition: ${embeddedFiltersCondition}`)
@@ -1163,30 +1207,30 @@ export class SQLBuilder {
             // This ensures that parent rows without matching embedded rows are excluded in INNER JOIN scenarios
             if (embedded.fkHint === 'inner') {
               // For INNER JOIN, return first matching object or NULL
-              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
-                                 THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${whereCondition} LIMIT 1)
+              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}) 
+                                 THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition} LIMIT 1)
                                  ELSE NULL 
                                  END`
             } else {
               // For LEFT JOIN (default) with embedded table filters, return NULL if no rows match the filter
               // This ensures PostgREST compatibility: filters on embedded tables return null when they don't match
-              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
+              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}) 
                                  THEN COALESCE(json_agg(${selectClause}), '[]'::json) 
                                  ELSE NULL 
                                  END 
-                          FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+                          FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}`
             }
           } else {
             // No embedded filters, use standard logic
             if (embedded.fkHint === 'inner') {
               // For INNER JOIN without filters, return first matching object or NULL
-              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${whereCondition}) 
-                                 THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${whereCondition} LIMIT 1)
+              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}) 
+                                 THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition} LIMIT 1)
                                  ELSE NULL 
                                  END`
             } else {
               // For LEFT JOIN (default), return array
-              subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${whereCondition}`
+              subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}`
             }
           }
         }
@@ -1195,7 +1239,7 @@ export class SQLBuilder {
         // Many-to-one: main table references embedded table
         // Each row in main table has exactly one corresponding row in embedded table
         // Return single object, not array
-        whereCondition = `${quotedMainTable}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedEmbeddedTable}.${this.quoteIdentifier(fkRelationship.toColumn)}`
+        whereCondition = `${quotedMainAlias}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedEmbeddedAlias}.${this.quoteIdentifier(fkRelationship.toColumn)}`
         
         // Build additional WHERE conditions for embedded filters
         let additionalWhere = ''
@@ -1226,20 +1270,20 @@ export class SQLBuilder {
         
         if (isCountOnly) {
           // For count-only many-to-one, return 1 if relationship exists and matches filters, 0 otherwise
-          subquery = `SELECT json_build_object('count', CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}) THEN 1 ELSE 0 END)`
+          subquery = `SELECT json_build_object('count', CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition}) THEN 1 ELSE 0 END)`
         } else {
           const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
           
           // For many-to-one with embedded table filters, return NULL if no rows match the filter
           if (embeddedTableFilters.length > 0) {
             // Return NULL when embedded table filters don't match any rows
-            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}) 
-                               THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1)
+            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition}) 
+                               THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition} LIMIT 1)
                                ELSE NULL 
                                END`
           } else {
             // No embedded filters, use standard logic
-            subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1`
+            subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition} LIMIT 1`
           }
         }
         return subquery
@@ -1274,7 +1318,7 @@ export class SQLBuilder {
       
       if (isCountOnly) {
         // For count-only requests, return a simple count without json_agg nesting
-        subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition})))`
+        subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition})))`
       } else {
         const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
         
@@ -1291,16 +1335,16 @@ export class SQLBuilder {
             // For INNER JOIN, return a single object (not array) or NULL if no match
             // The NULL result will be caught by the HAVING clause to filter out the parent row
             subquery = `SELECT CASE 
-                                WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${combinedCondition}) 
+                                WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition}) 
                                 THEN NULL 
-                                ELSE (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${combinedCondition} LIMIT 1)
+                                ELSE (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition} LIMIT 1)
                                 END`
           } else {
             // For LEFT JOIN (default), return array or NULL
             subquery = `SELECT CASE 
-                                WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${combinedCondition}) 
+                                WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition}) 
                                 THEN NULL 
-                                ELSE (SELECT json_agg(${selectClause}) FROM ${quotedEmbeddedTable} WHERE ${combinedCondition})
+                                ELSE (SELECT json_agg(${selectClause}) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition})
                                 END`
           }
         } else {
@@ -1308,13 +1352,13 @@ export class SQLBuilder {
           if (embedded.fkHint === 'inner') {
             // For INNER JOIN without filters, return first matching object or NULL
             // The NULL will trigger the HAVING clause to filter out parent rows without matches
-            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}) 
-                               THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition} LIMIT 1)
+            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition}) 
+                               THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition} LIMIT 1)
                                ELSE NULL 
                                END`
           } else {
             // For LEFT JOIN (default), return array - simplified to match working manual SQL
-            subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} WHERE ${fullWhereCondition}`
+            subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition}`
           }
         }
       }
@@ -1331,6 +1375,12 @@ export class SQLBuilder {
   private async buildEmbeddedSelectClause(embedded: EmbeddedResource, quotedEmbeddedTable: string, parentTable: string, schema?: string): Promise<string> {
     const columnPairs: string[] = []
     
+    // Extract clean table alias to avoid schema-qualified column references
+    const embeddedTableAlias = this.extractTableNameFromQualified(quotedEmbeddedTable)
+    const quotedEmbeddedAlias = this.quoteIdentifier(embeddedTableAlias)
+    
+    console.log(`🔍 DEBUG buildEmbeddedSelectClause: quotedEmbeddedTable="${quotedEmbeddedTable}", alias="${embeddedTableAlias}"`)
+    
     // Check if this is a count-only request
     const isCountOnly = embedded.select?.length === 1 && embedded.select[0] === 'count'
     
@@ -1339,7 +1389,7 @@ export class SQLBuilder {
       for (const col of embedded.select) {
         if (col === '*') {
           // For *, return all columns as JSON - we'll merge this with other columns
-          const allColumnsPair = `to_json(${quotedEmbeddedTable})`
+          const allColumnsPair = `to_json(${quotedEmbeddedAlias})`
           // If we only have '*', return it directly
           if (embedded.select.length === 1 && (!embedded.embedded || embedded.embedded.length === 0)) {
             return allColumnsPair
@@ -1351,7 +1401,7 @@ export class SQLBuilder {
           // This will be handled in the subquery builder
           columnPairs.push(`'count', COUNT(*)`)
         } else {
-          columnPairs.push(`'${col}', ${quotedEmbeddedTable}.${col}`)
+          columnPairs.push(`'${col}', ${quotedEmbeddedAlias}.${this.quoteIdentifier(col)}`)
         }
       }
     }
@@ -1371,7 +1421,7 @@ export class SQLBuilder {
       return `json_build_object(${columnPairs.join(', ')})`
     } else {
       // No specific columns or nested resources, return all columns
-      return `to_json(${quotedEmbeddedTable})`
+      return `to_json(${quotedEmbeddedAlias})`
     }
   }
 

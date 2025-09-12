@@ -74,6 +74,8 @@ export class EnhancedSupabaseAPIBridge {
       try {
         // Parse the request into structured query
         console.log('📝 About to parse query...')
+        console.log('📝 Request URL:', request.url.toString())
+        console.log('📝 Request headers:', request.headers)
         const query = QueryParser.parseQuery(request.url, request.headers)
         console.log('📝 Query parsed successfully:', JSON.stringify(query, null, 2))
 
@@ -240,11 +242,18 @@ export class EnhancedSupabaseAPIBridge {
       // Don't pre-filter based on hardcoded table names
 
       // Build the main query
+      console.log('🔍 DEBUG: About to build SQL query for table:', table)
       const sqlQuery = await this.sqlBuilder.buildQuery(table, query, query.schema)
+      console.log('🔍 DEBUG: Built SQL query:', {
+        sql: sqlQuery.sql,
+        parameters: sqlQuery.parameters
+      })
       logger.debug('Built SELECT SQL', sqlQuery)
 
       // Execute the query with RLS context
+      console.log('🔍 DEBUG: About to execute SQL:', sqlQuery.sql)
       const result = await this.executeQueryWithContext(sqlQuery.sql, sqlQuery.parameters, context)
+      console.log('🔍 DEBUG: SQL execution successful')
 
       // Calculate count if requested
       let totalCount
