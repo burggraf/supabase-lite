@@ -565,6 +565,40 @@ export class ResponseFormatter {
               console.log(`🔧 Applying table-qualified limit to ${embeddedTableName}: limit=${limit}, offset=${offset}`)
               
               if (limit !== undefined) {
+                // Check if embedded table has explicit ordering in the query
+                const hasExplicitOrder = query.order && query.order.some(orderItem => 
+                  orderItem.referencedTable === embeddedTableName || 
+                  orderItem.column.startsWith(`${embeddedTableName}.`)
+                )
+                
+                // Apply default ordering if no explicit order exists
+                // PostgREST behavior: order by 'id' column descending as default for deterministic limiting
+                if (!hasExplicitOrder && embeddedData.length > 0) {
+                  embeddedData = embeddedData.sort((a, b) => {
+                    // Try to find an 'id' column first (most common primary key)
+                    if (a.id !== undefined && b.id !== undefined) {
+                      return b.id - a.id // Descending order by ID
+                    }
+                    // Fallback to first available numeric column
+                    const numericKeys = Object.keys(a).filter(key => typeof a[key] === 'number')
+                    if (numericKeys.length > 0) {
+                      const key = numericKeys[0]
+                      return (b[key] || 0) - (a[key] || 0) // Descending order
+                    }
+                    // Fallback to name field if available (descending alphabetical)
+                    if (a.name !== undefined && b.name !== undefined) {
+                      return b.name.localeCompare(a.name) // Descending alphabetical
+                    }
+                    // Final fallback: first text column descending
+                    const textKeys = Object.keys(a).filter(key => typeof a[key] === 'string')
+                    if (textKeys.length > 0) {
+                      const key = textKeys[0]
+                      return (b[key] || '').localeCompare(a[key] || '') // Descending order
+                    }
+                    return 0
+                  })
+                }
+                
                 embeddedData = embeddedData.slice(offset, offset + limit)
               } else if (offset > 0) {
                 embeddedData = embeddedData.slice(offset)
