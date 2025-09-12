@@ -310,6 +310,7 @@ export class SQLBuilder {
   private async buildSelectQuery(table: string, query: ParsedQuery): Promise<{ sql: string, joins: JoinInfo[] }> {
     console.log(`🔍 Building SELECT query for table: ${table}`)
     console.log(`🔍 Query object:`, JSON.stringify(query, null, 2))
+    console.log(`🚀 INNER JOIN FIX DEBUG: Code is loaded and running!`)
     
     // Removed temporary workaround - now using proper JOIN-based filtering
     
@@ -492,8 +493,24 @@ export class SQLBuilder {
       orderItem.referencedTable !== undefined
     )
     
-    // FORCE JOIN approach if there's any ORDER BY with referencedTable
-    const shouldUseJoins = hasFiltersOnEmbeddedTables || hasOrderingOnEmbeddedTables || hasOrderingOnReferencedTables || hasOrderingRequiringJoins
+    // Check if any embedded resources use !inner hint - these MUST use JOIN approach for proper filtering
+    const hasInnerJoinEmbedded = (query.embedded || []).some(embedded => embedded.fkHint === 'inner')
+    
+    // FORCE JOIN approach if there's any ORDER BY with referencedTable or !inner embedded resources
+    const shouldUseJoins = hasFiltersOnEmbeddedTables || hasOrderingOnEmbeddedTables || hasOrderingOnReferencedTables || hasOrderingRequiringJoins || hasInnerJoinEmbedded
+    
+    console.log('🐛 SQLBuilder Join Decision:', {
+      table,
+      hasFiltersOnEmbeddedTables,
+      hasOrderingOnEmbeddedTables, 
+      hasOrderingOnReferencedTables,
+      hasOrderingRequiringJoins,
+      hasInnerJoinEmbedded,
+      shouldUseJoins,
+      queryFilters: query.filters,
+      queryOrder: query.order,
+      queryEmbedded: query.embedded
+    })
     
     if (shouldUseJoins) {
       // For PostgREST compatibility: when filtering or ordering on embedded table fields,

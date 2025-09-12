@@ -23,6 +23,8 @@ const vfsBridge = new VFSBridge()
 // Choose which bridge to use based on feature flag
 const activeBridge = USE_SIMPLIFIED_BRIDGE ? simplifiedBridge : enhancedBridge
 
+console.log('🔧 MSW Handler Setup - Using bridge:', USE_SIMPLIFIED_BRIDGE ? 'SimplifiedSupabaseAPIBridge' : 'EnhancedSupabaseAPIBridge')
+
 /**
  * Higher-order function that wraps handlers with project resolution
  * Extracts project ID from URL and switches to the correct database before handling the request
