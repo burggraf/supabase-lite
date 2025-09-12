@@ -82,6 +82,41 @@ const generateRequestId = () => `req_${Date.now()}_${Math.random().toString(36).
 // Bridge statistics tracking
 window.bridgeStats = window.bridgeStats || { enhanced: 0, simplified: 0, total: 0 }
 
+// Helper function to create appropriate HttpResponse based on content type
+const createHttpResponse = (response: any, requestId: string, bridgeType: string, duration: number) => {
+  const isCSV = response.headers && response.headers['Content-Type'] && response.headers['Content-Type'].includes('text/csv')
+  
+  console.log(`🔍 [${requestId}] Response type detection:`, {
+    isCSV,
+    contentType: response.headers?.['Content-Type'],
+    dataType: typeof response.data,
+    dataPreview: typeof response.data === 'string' ? response.data.substring(0, 50) + '...' : 'not-string'
+  })
+  
+  const responseHeaders = {
+    ...response.headers,
+    'Access-Control-Allow-Origin': '*',
+    'X-Request-ID': requestId,
+    'X-Bridge-Type': bridgeType,
+    'X-Processing-Time': `${duration.toFixed(2)}ms`
+  }
+  
+  if (isCSV) {
+    // For CSV responses, return as plain text using HttpResponse constructor
+    console.log(`📄 [${requestId}] Returning CSV response as text`)
+    return new HttpResponse(response.data, {
+      status: response.status,
+      headers: responseHeaders
+    })
+  } else {
+    // For JSON responses, return as JSON
+    return HttpResponse.json(response.data, {
+      status: response.status,
+      headers: responseHeaders
+    })
+  }
+}
+
 // Helper functions for common REST operations
 const createRestGetHandler = () => async ({ params, request }: any) => {
   const requestId = generateRequestId()
@@ -190,16 +225,7 @@ const createRestGetHandler = () => async ({ params, request }: any) => {
       })
     }
     
-    return HttpResponse.json(response.data, {
-      status: response.status,
-      headers: {
-        ...response.headers,
-        'Access-Control-Allow-Origin': '*',
-        'X-Request-ID': requestId,
-        'X-Bridge-Type': bridgeType,
-        'X-Processing-Time': `${duration.toFixed(2)}ms`
-      }
-    })
+    return createHttpResponse(response, requestId, bridgeType, duration)
   } catch (error: any) {
     const duration = performance.now() - startTime
     console.error(`❌ [${requestId}] MSW GET error:`, {
@@ -303,6 +329,9 @@ const createRestHeadHandler = () => async ({ params, request }: any) => {
 };
 
 const createRestPostHandler = () => async ({ params, request }: any) => {
+  const requestId = generateRequestId()
+  const startTime = performance.now()
+  
   try {
     const body = await request.json()
     const response = await activeBridge.handleRestRequest({
@@ -313,15 +342,14 @@ const createRestPostHandler = () => async ({ params, request }: any) => {
       url: new URL(request.url)
     })
     
-    return HttpResponse.json(response.data, {
-      status: response.status,
-      headers: {
-        ...response.headers,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
-      }
-    })
+    const duration = performance.now() - startTime
+    const baseResponse = createHttpResponse(response, requestId, USE_SIMPLIFIED_BRIDGE ? 'simplified' : 'enhanced', duration)
+    
+    // Add POST-specific headers
+    baseResponse.headers['Access-Control-Allow-Headers'] = 'apikey, authorization, content-type, prefer, range'
+    baseResponse.headers['Access-Control-Allow-Methods'] = 'GET, HEAD, POST, PATCH, DELETE'
+    
+    return baseResponse
   } catch (error: any) {
     return HttpResponse.json(
       { 
@@ -342,6 +370,9 @@ const createRestPostHandler = () => async ({ params, request }: any) => {
 };
 
 const createRestPatchHandler = () => async ({ params, request }: any) => {
+  const requestId = generateRequestId()
+  const startTime = performance.now()
+  
   try {
     const body = await request.json()
     const response = await activeBridge.handleRestRequest({
@@ -352,15 +383,14 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
       url: new URL(request.url)
     })
     
-    return HttpResponse.json(response.data, {
-      status: response.status,
-      headers: {
-        ...response.headers,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
-      }
-    })
+    const duration = performance.now() - startTime
+    const baseResponse = createHttpResponse(response, requestId, USE_SIMPLIFIED_BRIDGE ? 'simplified' : 'enhanced', duration)
+    
+    // Add PATCH-specific headers
+    baseResponse.headers['Access-Control-Allow-Headers'] = 'apikey, authorization, content-type, prefer, range'
+    baseResponse.headers['Access-Control-Allow-Methods'] = 'GET, HEAD, POST, PATCH, DELETE'
+    
+    return baseResponse
   } catch (error: any) {
     return HttpResponse.json(
       { 
@@ -381,6 +411,9 @@ const createRestPatchHandler = () => async ({ params, request }: any) => {
 };
 
 const createRestDeleteHandler = () => async ({ params, request }: any) => {
+  const requestId = generateRequestId()
+  const startTime = performance.now()
+  
   try {
     const response = await activeBridge.handleRestRequest({
       table: params.table as string,
@@ -389,15 +422,14 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
       url: new URL(request.url)
     })
     
-    return HttpResponse.json(response.data, {
-      status: response.status,
-      headers: {
-        ...response.headers,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer, range',
-        'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, DELETE'
-      }
-    })
+    const duration = performance.now() - startTime
+    const baseResponse = createHttpResponse(response, requestId, USE_SIMPLIFIED_BRIDGE ? 'simplified' : 'enhanced', duration)
+    
+    // Add DELETE-specific headers
+    baseResponse.headers['Access-Control-Allow-Headers'] = 'apikey, authorization, content-type, prefer, range'
+    baseResponse.headers['Access-Control-Allow-Methods'] = 'GET, HEAD, POST, PATCH, DELETE'
+    
+    return baseResponse
   } catch (error: any) {
     return HttpResponse.json(
       { 

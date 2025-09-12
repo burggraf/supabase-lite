@@ -456,6 +456,18 @@ function websocketBridge(): Plugin {
               ...response.headers
             }
             
+            // DEBUG: Log response structure for RPC debugging
+            if (req.url && req.url.includes('/rpc/')) {
+              console.log('🐛 RPC Response Debug:', {
+                url: req.url,
+                status: response.status,
+                bodyType: typeof response.body,
+                bodyValue: response.body,
+                bodyLength: typeof response.body === 'string' ? response.body.length : 'N/A',
+                contentType: responseHeaders['Content-Type']
+              })
+            }
+            
             // Check if this is a CSV response by Content-Type
             const isCSV = responseHeaders['Content-Type']?.includes('text/csv')
             
@@ -468,10 +480,27 @@ function websocketBridge(): Plugin {
               responseHeaders['Content-Type'] = responseHeaders['Content-Type'] || 'application/json'
               res.writeHead(response.status || 200, responseHeaders)
               
-              // Check if response.body is already a JSON string (from HttpResponse.json)
-              // If so, use it directly. Otherwise, stringify it.
-              const bodyContent = typeof response.body === 'string' ? response.body : JSON.stringify(response.body)
-              res.end(bodyContent)
+              // Special handling for RPC responses - ensure they are JSON-encoded
+              if (req.url && req.url.includes('/rpc/')) {
+                // RPC responses should always be JSON-encoded, even scalar values
+                const jsonBodyContent = JSON.stringify(response.body)
+                
+                // DEBUG: Log final body content for RPC debugging
+                console.log('🐛 RPC Final Body (JSON-encoded):', {
+                  originalBodyType: typeof response.body,
+                  originalBodyValue: response.body,
+                  jsonBodyType: typeof jsonBodyContent,
+                  jsonBodyValue: jsonBodyContent,
+                  jsonBodyLength: jsonBodyContent.length
+                })
+                
+                res.end(jsonBodyContent)
+              } else {
+                // Check if response.body is already a JSON string (from HttpResponse.json)
+                // If so, use it directly. Otherwise, stringify it.
+                const bodyContent = typeof response.body === 'string' ? response.body : JSON.stringify(response.body)
+                res.end(bodyContent)
+              }
             }
             
           } catch (error: unknown) {

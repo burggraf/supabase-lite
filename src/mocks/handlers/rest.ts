@@ -204,42 +204,42 @@ const createRpcHandler = () => {
       console.log('🔍 RPC Handler - Parsed Body:', body)
       
       const response = await apiOrchestrator.handleRpc(
-      params.functionName as string,
-      body,
-      extractHeaders(request),
-      new URL(request.url)
-    )
-    
-    console.log('🔍 RPC Handler - Response:', response)
-    console.log('🔍 RPC Handler - Response data:', response.data)
-    console.log('🔍 RPC Handler - Response status:', response.status)
-    
-    // For RPC responses, ensure proper JSON formatting
-    // PostgREST returns all RPC results as JSON, including scalar values
-    console.log('🔍 RPC Handler - About to return response data:', response.data)
-    console.log('🔍 RPC Handler - Response data type:', typeof response.data)
-    
-    // Return RPC response using HttpResponse.json() - let MSW handle JSON encoding properly
-    return HttpResponse.json(response.data, {
-      status: response.status,
-      headers: {
-        ...response.headers,
-        'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
-        'Access-Control-Allow-Methods': 'POST'
-      }
-    })
-  } catch (error: any) {
-    console.error('❌ RPC Handler Error:', error)
-    console.error('❌ RPC Handler Error Stack:', error.stack)
-    console.error('❌ RPC Handler Error Details:', {
-      functionName: params.functionName,
-      error: error.message,
-      type: typeof error,
-      name: error.name
-    })
-    return createPostgreSQLErrorResponse(error)
+        params.functionName as string,
+        body,
+        extractHeaders(request),
+        new URL(request.url)
+      )
+      
+      console.log('🔍 RPC Handler - Response:', response)
+      console.log('🔍 RPC Handler - Response data:', response.data)
+      console.log('🔍 RPC Handler - Response status:', response.status)
+      
+      // For RPC responses, ensure proper JSON formatting
+      // PostgREST returns all RPC results as JSON, including scalar values
+      console.log('🔍 RPC Handler - About to return response data:', response.data)
+      console.log('🔍 RPC Handler - Response data type:', typeof response.data)
+      
+      // Return RPC response using HttpResponse.json() - let MSW handle JSON encoding properly
+      return HttpResponse.json(response.data, {
+        status: response.status,
+        headers: {
+          ...response.headers,
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer',
+          'Access-Control-Allow-Methods': 'POST'
+        }
+      })
+    } catch (error: any) {
+      console.error('❌ RPC Handler Error:', error)
+      console.error('❌ RPC Handler Error Stack:', error.stack)
+      console.error('❌ RPC Handler Error Details:', {
+        functionName: params.functionName,
+        error: error.message,
+        type: typeof error,
+        name: error.name
+      })
+      return createPostgreSQLErrorResponse(error)
     }
   }
 }

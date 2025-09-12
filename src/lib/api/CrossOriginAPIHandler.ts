@@ -179,6 +179,17 @@ export class CrossOriginAPIHandler {
         request.headers || {}
       );
       
+      // DEBUG: Log MSW response details for RPC debugging
+      if (request.path.includes('/rpc/')) {
+        console.log('🐛 CrossOrigin RPC Response:', {
+          path: request.path,
+          resultType: typeof result.body,
+          resultValue: result.body,
+          resultHeaders: result.headers,
+          isArrayBuffer: result.body instanceof ArrayBuffer
+        })
+      }
+      
       // Convert ArrayBuffer to base64 string for JSON serialization
       let responseData;
       if (result.body instanceof ArrayBuffer) {
@@ -190,6 +201,14 @@ export class CrossOriginAPIHandler {
         result.headers['X-Content-Encoding'] = 'base64';
       } else {
         responseData = result.body;
+      }
+      
+      // DEBUG: Log final response data for RPC debugging
+      if (request.path.includes('/rpc/')) {
+        console.log('🐛 CrossOrigin Final Response Data:', {
+          responseDataType: typeof responseData,
+          responseDataValue: responseData
+        })
       }
       
       return {
