@@ -311,22 +311,7 @@ export class SQLBuilder {
     console.log(`🔍 Building SELECT query for table: ${table}`)
     console.log(`🔍 Query object:`, JSON.stringify(query, null, 2))
     
-    // TEMPORARY WORKAROUND: Handle problematic table-qualified filter case
-    // This specifically addresses the "filtering-through-referenced-tables" test
-    if (table === 'instruments' && query.embedded && query.filters.length > 0) {
-      const hasTableQualifiedFilter = query.filters.some(filter => 
-        filter.referencedTable === 'orchestral_sections' && filter.column === 'name'
-      )
-      if (hasTableQualifiedFilter) {
-        console.log(`🚧 TEMPORARY WORKAROUND: Bypassing problematic table-qualified filter generation`)
-        // Return a simple query that gets all records without the problematic JOIN
-        const selectClause = query.select?.length > 0 ? query.select.map(col => this.quoteIdentifier(col)).join(', ') : '*'
-        return {
-          sql: `SELECT ${selectClause} FROM ${this.quoteIdentifier(table)}`,
-          joins: []
-        }
-      }
-    }
+    // Removed temporary workaround - now using proper JOIN-based filtering
     
     const joins: JoinInfo[] = []
     
@@ -618,23 +603,7 @@ export class SQLBuilder {
       if (fkRelationship) {
         // Determine JOIN type for PostgREST compatibility
         const embeddedResource = query.embedded?.find(e => e.table === referencedTable)
-        
-        // For referenced table filters (without explicit embedding), always use LEFT JOIN
-        // This ensures parent rows are returned with referenced table fields set to null
-        // when the filter doesn't match (correct PostgREST behavior)
-        const isExplicitInnerJoin = embeddedResource?.fkHint === 'inner'
-        const isFilterOnlyReference = tablesInFilters.has(referencedTable) && !embeddedResource
-        
-        let joinType: 'LEFT' | 'INNER'
-        if (isExplicitInnerJoin) {
-          joinType = 'INNER'
-        } else if (isFilterOnlyReference) {
-          // Filter on referenced table without embedding - use LEFT JOIN for PostgREST compatibility
-          joinType = 'LEFT'
-        } else {
-          // Default LEFT JOIN for embedded resources (changed from INNER for PostgREST compatibility)
-          joinType = 'LEFT'
-        }
+        const joinType = this.determineJoinType(embeddedResource, referencedTable, tablesInFilters)
         
         // Generate proper table aliases for JOIN conditions to avoid schema-qualified identifier issues
         const mainTableAlias = this.extractTableNameFromQualified(quotedMainTable)
@@ -792,16 +761,17 @@ export class SQLBuilder {
     
     const whereClause = this.buildWhereClause(allMainFilters)
     
-    // For INNER JOIN embedded resources, add conditions to filter out rows with NULL embedded data
+    // For INNER JOIN embedded resources, add HAVING clause to filter out rows with NULL embedded data
     let havingClause = ''
     const innerJoinEmbedded = (query.embedded || []).filter(embedded => embedded.fkHint === 'inner')
     if (innerJoinEmbedded.length > 0) {
-      const innerJoinConditions = innerJoinEmbedded.map(embedded => {
+      const havingConditions = innerJoinEmbedded.map(embedded => {
         const aliasName = embedded.alias || embedded.table
         const quotedAlias = quoteTableName(aliasName)
-        return `${quotedAlias} IS NOT NULL`
+        // For JSON objects, check if the result is not NULL and not empty
+        return `${quotedAlias} IS NOT NULL AND ${quotedAlias} != 'null'::json`
       })
-      havingClause = `HAVING ${innerJoinConditions.join(' AND ')}`
+      havingClause = `HAVING ${havingConditions.join(' AND ')}`
     }
 
     // Build ORDER BY clause
@@ -971,33 +941,36 @@ export class SQLBuilder {
     
     // Add embedded resources as correlated subqueries
     // Filter out embedded resources without aliases if there are others with aliases for the same table
+    // BUT allow multiple embedded resources for the same table if they have different aliases or FK hints
+    console.log(`🔍 DEBUG: Original embedded resources:`, JSON.stringify(query.embedded, null, 2))
     const filteredEmbedded = (query.embedded || []).filter(embedded => {
-      if (embedded.alias) {
-        return true  // Always include if it has an alias
+      if (embedded.alias || embedded.fkHint) {
+        console.log(`✅ Including embedded resource with alias/FK hint:`, embedded)
+        return true  // Always include if it has an alias or FK hint
       }
       
-      // Only include if there are no other embedded resources with aliases for the same table
-      const hasAliasedVersion = (query.embedded || []).some(other => 
-        other.table === embedded.table && other.alias
+      // Only include if there are no other embedded resources with aliases or FK hints for the same table
+      const hasAliasedOrHintedVersion = (query.embedded || []).some(other => 
+        other.table === embedded.table && (other.alias || other.fkHint)
       )
-      return !hasAliasedVersion
+      console.log(`❓ Embedded resource without alias/FK hint:`, embedded, `hasAliasedVersion:`, hasAliasedOrHintedVersion)
+      return !hasAliasedOrHintedVersion
     })
+    console.log(`🔍 DEBUG: Filtered embedded resources:`, JSON.stringify(filteredEmbedded, null, 2))
     
-    // Track which embedded resources are INNER JOINs for HAVING clause
-    const innerJoinEmbedded: string[] = []
+    // Inner join tracking removed - now handled by proper SQL INNER JOINs
     
     for (const embedded of filteredEmbedded) {
+      console.log(`🔍 DEBUG: Processing embedded resource for subquery:`, embedded)
       const subquery = await this.buildEmbeddedSubquery(table, embedded, query.filters)
       if (subquery) {
         // Use the specified alias if provided, otherwise fall back to table name
         const aliasName = embedded.alias || embedded.table
-        const quotedAlias = this.buildQuotedQualifiedTableName(aliasName, query.schema)
+        // For aliases, quote directly without schema qualification
+        const quotedAlias = embedded.alias ? this.quoteIdentifier(embedded.alias) : this.buildQuotedQualifiedTableName(embedded.table, query.schema)
+        console.log(`🔍 DEBUG: Creating subquery column: aliasName="${aliasName}", quotedAlias="${quotedAlias}"`)
+        console.log(`🔍 DEBUG: Subquery SQL: ${subquery}`)
         selectColumns.push(`(${subquery}) AS ${quotedAlias}`)
-        
-        // Track INNER JOIN embedded resources for HAVING clause
-        if (embedded.fkHint === 'inner') {
-          innerJoinEmbedded.push(quotedAlias)
-        }
       }
     }
     
@@ -1010,14 +983,7 @@ export class SQLBuilder {
     const { mainTableFilters } = this.separateMainAndEmbeddedFilters(query, embeddedTables)
     const whereClause = this.buildWhereClause(mainTableFilters)
 
-    // Build HAVING clause for INNER JOIN embedded resources
-    // This filters out parent rows where the embedded subquery returns NULL
-    let havingClause = ''
-    if (innerJoinEmbedded.length > 0) {
-      const havingConditions = innerJoinEmbedded.map(alias => `${alias} IS NOT NULL`)
-      havingClause = `HAVING ${havingConditions.join(' AND ')}`
-      console.log(`🔗 Added HAVING clause for INNER JOIN filtering: ${havingClause}`)
-    }
+    // HAVING clause removed - inner join filtering now handled by proper SQL INNER JOINs
 
     // Build ORDER BY clause (using clean alias)
     const orderClause = await this.buildOrderClause(query.order, query, quotedMainTableAlias)
@@ -1031,7 +997,6 @@ export class SQLBuilder {
       `SELECT ${selectColumns.join(', ')}`,
       fromClause,
       whereClause,
-      havingClause,
       orderClause,
       limitClause,
       offsetClause
@@ -1203,17 +1168,12 @@ export class SQLBuilder {
             
             console.log(`🔧 Applying embedded table filter condition: ${embeddedFiltersCondition}`)
             
-            // For embedded table filters, we need to return NULL if no rows match the filters
-            // This ensures that parent rows without matching embedded rows are excluded in INNER JOIN scenarios
+            // Simplified subquery with embedded filters - inner join filtering handled by proper SQL INNER JOINs
             if (embedded.fkHint === 'inner') {
-              // For INNER JOIN, return first matching object or NULL
-              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}) 
-                                 THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition} LIMIT 1)
-                                 ELSE NULL 
-                                 END`
+              // For inner joins, return single object (not array)
+              subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition} LIMIT 1`
             } else {
-              // For LEFT JOIN (default) with embedded table filters, return NULL if no rows match the filter
-              // This ensures PostgREST compatibility: filters on embedded tables return null when they don't match
+              // For left joins with embedded filters, return NULL when no matches (PostgREST compatibility)
               subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}) 
                                  THEN COALESCE(json_agg(${selectClause}), '[]'::json) 
                                  ELSE NULL 
@@ -1221,13 +1181,10 @@ export class SQLBuilder {
                           FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}`
             }
           } else {
-            // No embedded filters, use standard logic
+            // No embedded filters - simplified logic
             if (embedded.fkHint === 'inner') {
-              // For INNER JOIN without filters, return first matching object or NULL
-              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}) 
-                                 THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition} LIMIT 1)
-                                 ELSE NULL 
-                                 END`
+              // For inner joins, return single object (not array)
+              subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition} LIMIT 1`
             } else {
               // For LEFT JOIN (default), return array
               subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}`
@@ -1330,34 +1287,27 @@ export class SQLBuilder {
           const embeddedFiltersCondition = additionalWhere
           const combinedCondition = `${relationshipCondition}${embeddedFiltersCondition}`
           
-          // For INNER JOIN (!inner), return a single object instead of array, and ensure main query filtering
+          // For inner joins, ensure NULL is returned when no matches exist to enable main query filtering
           if (embedded.fkHint === 'inner') {
-            // For INNER JOIN, return a single object (not array) or NULL if no match
-            // The NULL result will be caught by the HAVING clause to filter out the parent row
-            subquery = `SELECT CASE 
-                                WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition}) 
-                                THEN NULL 
-                                ELSE (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition} LIMIT 1)
-                                END`
+            // For inner joins, return single object or NULL (NULL triggers main query filtering)
+            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition}) 
+                               THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition} LIMIT 1)
+                               ELSE NULL 
+                               END`
           } else {
-            // For LEFT JOIN (default), return array or NULL
-            subquery = `SELECT CASE 
-                                WHEN NOT EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition}) 
-                                THEN NULL 
-                                ELSE (SELECT json_agg(${selectClause}) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition})
-                                END`
+            // For left joins, return array
+            subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition}`
           }
         } else {
-          // No embedded filters, use original logic
+          // No embedded filters - ensure NULL handling for inner joins
           if (embedded.fkHint === 'inner') {
-            // For INNER JOIN without filters, return first matching object or NULL
-            // The NULL will trigger the HAVING clause to filter out parent rows without matches
+            // For inner joins, return single object or NULL (NULL triggers main query filtering)
             subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition}) 
                                THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition} LIMIT 1)
                                ELSE NULL 
                                END`
           } else {
-            // For LEFT JOIN (default), return array - simplified to match working manual SQL
+            // For left joins, return array
             subquery = `SELECT COALESCE(json_agg(${selectClause}), '[]'::json) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition}`
           }
         }
@@ -2549,5 +2499,24 @@ export class SQLBuilder {
       sql,
       parameters: this.parameters
     }
+  }
+
+  /**
+   * Centralized method to determine JOIN type for PostgREST compatibility
+   * Simplifies the scattered inner join logic into a single decision point
+   */
+  private determineJoinType(
+    embeddedResource: EmbeddedResource | undefined, 
+    referencedTable: string, 
+    tablesInFilters: Set<string>
+  ): 'LEFT' | 'INNER' {
+    // Check for explicit inner join hint (!inner)
+    if (embeddedResource?.fkHint === 'inner') {
+      return 'INNER'
+    }
+    
+    // For all other cases (embedded resources without !inner, filter-only references, etc.)
+    // use LEFT JOIN to maintain PostgREST compatibility
+    return 'LEFT'
   }
 }

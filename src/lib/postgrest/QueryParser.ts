@@ -434,6 +434,7 @@ export class QueryParser {
    * Parse embedded resources from select parameter
    */
   private static parseEmbedded(select: string): EmbeddedResource[] {
+    console.log('🔍 parseEmbedded called with:', select)
     if (!select.includes('(')) {
       return []
     }
@@ -513,6 +514,7 @@ export class QueryParser {
             }
           }
 
+          console.log('✅ Adding embedded resource:', resource)
           embedded.push(resource)
           currentTable = ''
           embeddedContent = ''
@@ -526,6 +528,7 @@ export class QueryParser {
       }
     }
 
+    console.log('🔍 parseEmbedded returning:', embedded)
     return embedded
   }
 

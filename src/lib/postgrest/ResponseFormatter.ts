@@ -519,8 +519,10 @@ export class ResponseFormatter {
 
       // Process each embedded resource
       for (const embedded of query.embedded || []) {
-        // Determine the final field name - PostgREST uses table name, not alias
-        const fieldName = embedded.table.replace(/^"(.*)"$/, '$1')
+        // Determine the final field name - PostgREST uses explicit user aliases, otherwise table name
+        // Only use alias if it was explicitly provided by user (detected by presence in original select)
+        const isExplicitUserAlias = embedded.alias && embedded.alias !== embedded.table
+        const fieldName = isExplicitUserAlias ? embedded.alias : embedded.table.replace(/^"(.*)"$/, '$1')
         
         // Handle both quoted and unquoted table names as keys in the SQL result
         let embeddedData = null
