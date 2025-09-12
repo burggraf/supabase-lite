@@ -622,4 +622,52 @@ window.enableVerboseLogging = () => {
 }
 ```
 
+## 🎯 Recent Improvements
+
+### Inner Join Logic Simplification (2025-09-12)
+
+**Previous Issues:**
+- Inner join logic was scattered across 9 different locations in SQLBuilder
+- Complex conditional checks for `fkHint === 'inner'` throughout the codebase
+- Difficult to debug and maintain inner join behavior
+- Inconsistent application of inner join semantics
+
+**Improvements Made:**
+```javascript
+// Centralized inner join detection
+const hasInnerJoinEmbedded = (query.embedded || []).some(embedded => embedded.fkHint === 'inner')
+const shouldUseJoins = hasFiltersOnEmbeddedTables || hasOrderingOnEmbeddedTables || hasOrderingOnReferencedTables || hasOrderingRequiringJoins || hasInnerJoinEmbedded
+
+// Simplified inner join determination
+private determineJoinType(
+  embeddedResource: EmbeddedResource | undefined, 
+  referencedTable: string, 
+  tablesInFilters: Set<string>
+): 'LEFT' | 'INNER' {
+  // Check for explicit inner join hint (!inner)
+  if (embeddedResource?.fkHint === 'inner') {
+    return 'INNER'
+  }
+  
+  // For all other cases use LEFT JOIN to maintain PostgREST compatibility
+  return 'LEFT'
+}
+```
+
+**Benefits:**
+- **Maintainability**: Reduced from 9 scattered checks to 1 centralized method
+- **Consistency**: All inner join logic now flows through the same decision point
+- **Debugging**: Easier to trace inner join behavior and troubleshoot issues
+- **Performance**: Cleaner execution paths with less redundant checking
+
+**PostgREST Compatibility:**
+- `!inner` syntax now correctly forces JOIN approach instead of subquery approach
+- Maintains PostgREST behavior where `!inner` excludes parent rows without matching child rows
+- Proper handling of filters on embedded tables with inner joins
+
+**Test Improvements:**
+- Fixed non-deterministic test behavior by adding `ORDER BY` clauses
+- Updated test expectations to match correct alphabetical ordering
+- Eliminated flaky test results from `LIMIT` without `ORDER BY`
+
 This comprehensive guide should help identify and resolve the most common issues in the MSW API system, significantly reducing debugging time and improving system reliability.

@@ -29,6 +29,7 @@ const activeBridge = USE_SIMPLIFIED_BRIDGE ? simplifiedBridge : enhancedBridge
 | **Ordering** | ✅ Multi-column | ✅ Single column | ✅ Basic | `order=col.asc,col2.desc` |
 | **Pagination** | ✅ Range headers | ✅ Limit/offset | ✅ Basic | `Range: 0-9` vs `limit=10&offset=0` |
 | **Embedding** | ✅ Multi-level | ✅ Single level | ❌ None | `select=*,orders(*)` |
+| **Inner Joins** | ✅ Centralized logic | ✅ Centralized logic | ❌ None | `select=*,orders!inner(*)` |
 | **Table-qualified filters** | ✅ | ❌ | ❌ | `orders.status=eq.pending` |
 | **OR/AND operators** | ✅ | ❌ | ❌ | `or=(status.eq.active,status.eq.pending)` |
 | **JSON operations** | ✅ | ✅ Limited | ❌ | `data->field`, `data->>field` |
