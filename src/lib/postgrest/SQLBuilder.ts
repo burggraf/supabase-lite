@@ -223,6 +223,13 @@ export class SQLBuilder {
           toColumn: row.referenced_column
         }
         console.log(`✅ Found FK relationship:`, fkInfo)
+        console.log(`🔍 For buildEmbeddedSubquery path selection:`)
+        console.log(`🔍 - mainTable: "${mainTable}", embeddedTable: "${embeddedTable}"`)
+        console.log(`🔍 - fkInfo.fromTable: "${fkInfo.fromTable}", fkInfo.toTable: "${fkInfo.toTable}"`)
+        console.log(`🔍 - One-to-many condition: fkInfo.fromTable === embeddedTable && fkInfo.toTable === mainTable`)
+        console.log(`🔍 - Result: "${fkInfo.fromTable}" === "${embeddedTable}" && "${fkInfo.toTable}" === "${mainTable}" = ${fkInfo.fromTable === embeddedTable && fkInfo.toTable === mainTable}`)
+        console.log(`🔍 - Many-to-one condition: fkInfo.fromTable === mainTable && fkInfo.toTable === embeddedTable`)
+        console.log(`🔍 - Result: "${fkInfo.fromTable}" === "${mainTable}" && "${fkInfo.toTable}" === "${embeddedTable}" = ${fkInfo.fromTable === mainTable && fkInfo.toTable === embeddedTable}`)
         return fkInfo
       }
       
@@ -337,7 +344,13 @@ export class SQLBuilder {
         orderItem.referencedTable !== undefined
       )
       
-      if (hasFiltersOnEmbeddedTables || hasOrderingRequiringJoins) {
+      // Check if any embedded resources use !inner hint - these MUST use JOIN approach for proper filtering
+      const hasInnerJoinEmbedded = (query.embedded || []).some(embedded => embedded.fkHint === 'inner')
+      
+      if (hasInnerJoinEmbedded) {
+        console.log(`🔧 Using specialized INNER JOIN approach for !inner embedded resources`)
+        return await this.buildSelectWithInnerJoins(table, query)
+      } else if (hasFiltersOnEmbeddedTables || hasOrderingRequiringJoins) {
         console.log(`🔧 Using JOIN approach for filters or ordering on embedded/referenced tables`)
         
         // For PostgREST compatibility: when filtering OR ordering on embedded/referenced table fields,
@@ -520,6 +533,143 @@ export class SQLBuilder {
       // No filters or ordering on embedded tables, use standard subquery approach
       return await this.buildSelectWithJoinAggregation(table, query)
     }
+  }
+
+  /**
+   * Specialized method for INNER JOIN embedded resources (!inner hint)
+   * Uses subqueries with EXISTS conditions to ensure only parent rows with matching children are returned
+   */
+  private async buildSelectWithInnerJoins(table: string, query: ParsedQuery): Promise<{ sql: string, joins: JoinInfo[] }> {
+    console.log(`🔍 Building SELECT with INNER JOIN approach for: ${table}`)
+    
+    const joins: JoinInfo[] = []
+    const selectColumns: string[] = []
+    
+    // Build main table columns
+    const quotedMainTable = this.quoteIdentifier(table)
+    const mainTableAlias = table
+    
+    if (query.select && query.select.length > 0) {
+      const embeddedTableNames = (query.embedded || []).map(e => e.table)
+      
+      for (const col of query.select) {
+        // Skip embedded table names - they'll be handled separately
+        if (embeddedTableNames.includes(col)) {
+          continue
+        }
+        
+        if (col === '*') {
+          selectColumns.push(`${quotedMainTable}.*`)
+        } else {
+          selectColumns.push(`${quotedMainTable}.${this.quoteIdentifier(col)}`)
+        }
+      }
+    } else {
+      selectColumns.push(`${quotedMainTable}.*`)
+    }
+    
+    // Add embedded resources using subqueries with EXISTS filters for INNER JOIN behavior
+    for (const embedded of query.embedded || []) {
+      if (embedded.fkHint === 'inner') {
+        const subquery = await this.buildEmbeddedSubquery(table, embedded, query.filters, query.schema)
+        if (subquery) {
+          const aliasName = embedded.alias || embedded.table
+          selectColumns.push(`(${subquery}) AS ${this.quoteIdentifier(aliasName)}`)
+        }
+      }
+    }
+    
+    // Build WHERE clause with EXISTS conditions for INNER JOIN behavior
+    const whereConditions: string[] = []
+    
+    // Add regular filters
+    const mainTableFilters = query.filters.filter(filter => !filter.referencedTable || filter.referencedTable === table)
+    for (const filter of mainTableFilters) {
+      const condition = this.buildFilterCondition(filter, quotedMainTable)
+      if (condition) {
+        whereConditions.push(condition)
+      }
+    }
+    
+    // Add EXISTS conditions for INNER JOIN embedded resources
+    for (const embedded of query.embedded || []) {
+      if (embedded.fkHint === 'inner') {
+        // Find filters for this embedded table
+        const embeddedFilters = query.filters.filter(filter => 
+          filter.referencedTable === embedded.table || 
+          filter.column.startsWith(`${embedded.table}.`)
+        )
+        
+        if (embeddedFilters.length > 0) {
+          // Discover FK relationship
+          const fkRelationship = await this.discoverForeignKeyRelationship(table, embedded.table)
+          if (fkRelationship) {
+            // Build EXISTS condition
+            const embeddedFilterConditions = embeddedFilters.map(filter => {
+              const cleanColumn = filter.column.replace(`${embedded.table}.`, '')
+              return this.buildFilterCondition({
+                ...filter,
+                column: cleanColumn
+              }, this.quoteIdentifier(embedded.table))
+            }).filter(Boolean)
+            
+            if (embeddedFilterConditions.length > 0) {
+              let joinCondition: string
+              if (fkRelationship.fromTable === table && fkRelationship.toTable === embedded.table) {
+                joinCondition = `${quotedMainTable}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${this.quoteIdentifier(embedded.table)}.${this.quoteIdentifier(fkRelationship.toColumn)}`
+              } else {
+                joinCondition = `${this.quoteIdentifier(embedded.table)}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedMainTable}.${this.quoteIdentifier(fkRelationship.toColumn)}`
+              }
+              
+              const existsCondition = `EXISTS (SELECT 1 FROM ${this.quoteIdentifier(embedded.table)} WHERE ${joinCondition} AND ${embeddedFilterConditions.join(' AND ')})`
+              whereConditions.push(existsCondition)
+            }
+          }
+        } else {
+          // No filters, but still need to ensure the relationship exists for INNER JOIN behavior
+          const fkRelationship = await this.discoverForeignKeyRelationship(table, embedded.table)
+          if (fkRelationship) {
+            let joinCondition: string
+            if (fkRelationship.fromTable === table && fkRelationship.toTable === embedded.table) {
+              joinCondition = `${quotedMainTable}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${this.quoteIdentifier(embedded.table)}.${this.quoteIdentifier(fkRelationship.toColumn)}`
+            } else {
+              joinCondition = `${this.quoteIdentifier(embedded.table)}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedMainTable}.${this.quoteIdentifier(fkRelationship.toColumn)}`
+            }
+            
+            const existsCondition = `EXISTS (SELECT 1 FROM ${this.quoteIdentifier(embedded.table)} WHERE ${joinCondition})`
+            whereConditions.push(existsCondition)
+          }
+        }
+      }
+    }
+    
+    // Build final SQL
+    let sql = `SELECT ${selectColumns.join(', ')} FROM ${quotedMainTable}`
+    
+    if (whereConditions.length > 0) {
+      sql += ` WHERE ${whereConditions.join(' AND ')}`
+    }
+    
+    // Add ORDER BY if specified
+    if (query.order && query.order.length > 0) {
+      const orderClause = await this.buildOrderClause(query.order, query, quotedMainTable)
+      if (orderClause) {
+        sql += ` ${orderClause}`
+      }
+    }
+    
+    // Add LIMIT and OFFSET
+    if (query.limit) {
+      sql += ` LIMIT ${query.limit}`
+    }
+    if (query.offset) {
+      sql += ` OFFSET ${query.offset}`
+    }
+    
+    console.log(`🗃️  Final INNER JOIN SQL: ${sql}`)
+    console.log(`🗃️  Select columns used:`, selectColumns)
+    
+    return { sql, joins }
   }
 
   /**
@@ -721,16 +871,18 @@ export class SQLBuilder {
     for (const embedded of query.embedded || []) {
       const quotedEmbedded = this.buildQuotedQualifiedTableName(embedded.table, query.schema)
       
-      // Build JSON aggregation for embedded resource
+      // Build JSON aggregation for embedded resource using aggregate functions for GROUP BY compatibility
       let jsonSelectClause: string
       if (embedded.select && embedded.select.length > 0) {
         const embeddedAlias = this.extractTableNameFromQualified(quotedEmbedded)
         const quotedEmbeddedAlias = this.quoteIdentifier(embeddedAlias)
         const columnPairs = embedded.select.map(col => {
           if (col === '*') {
-            return `to_json(${quotedEmbeddedAlias})`
+            // Use array_agg and take first element for single-row results
+            return `(array_agg(to_json(${quotedEmbeddedAlias})))[1]`
           } else {
-            return `'${col}', ${quotedEmbeddedAlias}.${this.quoteIdentifier(col)}`
+            // Use array_agg for individual columns and take first element
+            return `'${col}', (array_agg(${quotedEmbeddedAlias}.${this.quoteIdentifier(col)}))[1]`
           }
         })
         if (columnPairs.length === 1 && embedded.select[0] === '*') {
@@ -741,21 +893,15 @@ export class SQLBuilder {
       } else {
         const embeddedAlias = this.extractTableNameFromQualified(quotedEmbedded)
         const quotedEmbeddedAlias = this.quoteIdentifier(embeddedAlias)
-        jsonSelectClause = `to_json(${quotedEmbeddedAlias})`
+        jsonSelectClause = `(array_agg(to_json(${quotedEmbeddedAlias})))[1]`
       }
       
       // Use alias if provided, otherwise use table name
       const aliasName = embedded.alias || embedded.table
       const quotedAlias = quoteTableName(aliasName)
       
-      // Always build subquery for embedded resources - filtering is handled within the subquery
-      const subquery = await this.buildEmbeddedSubquery(table, embedded, query.filters, query.schema)
-      if (subquery) {
-        selectColumns.push(`(${subquery}) AS ${quotedAlias}`)
-      } else {
-        // Fallback to NULL if subquery generation fails
-        selectColumns.push(`NULL AS ${quotedAlias}`)
-      }
+      // In JOIN approach, use JSON aggregation from joined table instead of subqueries
+      selectColumns.push(`${jsonSelectClause} AS ${quotedAlias}`)
     }
     console.log(`🔍 Separated filters:`, {
       mainTableFilters: mainTableFilters.length,
@@ -786,10 +932,14 @@ export class SQLBuilder {
         const aliasName = embedded.alias || embedded.table
         const quotedAlias = quoteTableName(aliasName)
         // For JSON objects, check if the result is not NULL and not empty
-        return `${quotedAlias} IS NOT NULL AND ${quotedAlias} != 'null'::json`
+        return `${quotedAlias} IS NOT NULL AND ${quotedAlias}::text != 'null'`
       })
       havingClause = `HAVING ${havingConditions.join(' AND ')}`
     }
+
+    // Build GROUP BY clause (required when using JSON aggregation)
+    const groupByColumns = this.buildGroupByColumns(quotedMainTableAlias, query)
+    const groupByClause = groupByColumns ? `GROUP BY ${groupByColumns}` : ''
 
     // Build ORDER BY clause
     const orderClause = await this.buildOrderClause(query.order, query, quotedMainTable)
@@ -803,6 +953,7 @@ export class SQLBuilder {
       `SELECT ${selectColumns.join(', ')}`,
       fromClause,
       whereClause,
+      groupByClause,
       havingClause,
       orderClause,
       limitClause,
@@ -1145,6 +1296,8 @@ export class SQLBuilder {
       if (fkRelationship.fromTable === embedded.table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === table.replace(/^"(.*)"$/, '$1')) {
         // One-to-many: embedded table references main table
         // instruments.section_id = orchestral_sections.id
+        console.log(`🎯 TAKING ONE-TO-MANY PATH for ${table} -> ${embedded.table}`)
+        console.log(`🎯 fkHint: ${embedded.fkHint}, should use json_agg for arrays`)
         whereCondition = `${quotedEmbeddedAlias}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedMainAlias}.${this.quoteIdentifier(fkRelationship.toColumn)}`
         
         // Build additional WHERE conditions for embedded filters
@@ -1210,6 +1363,8 @@ export class SQLBuilder {
         }
         
       } else if (fkRelationship.fromTable === table.replace(/^"(.*)"$/, '$1') && fkRelationship.toTable === embedded.table.replace(/^"(.*)"$/, '$1')) {
+        console.log(`🚨 TAKING MANY-TO-ONE PATH for ${table} -> ${embedded.table} (THIS SHOULD NOT HAPPEN!)`)
+        console.log(`🚨 This uses LIMIT 1 and returns single objects instead of arrays`);
         // Many-to-one: main table references embedded table
         // Each row in main table has exactly one corresponding row in embedded table
         // Return single object, not array
@@ -1298,7 +1453,9 @@ export class SQLBuilder {
         
         // For PostgREST compatibility: when filtering on embedded table columns,
         // return NULL if no rows match the filter, otherwise return the matching rows
+        console.log(`🎯 embeddedTableFilters.length = ${embeddedTableFilters.length}`)
         if (embeddedTableFilters.length > 0) {
+          console.log(`🎯 TAKING EMBEDDED FILTERS PATH (should still use json_agg)`)
           // Build separate conditions for relationship and embedded filters
           const relationshipCondition = whereCondition
           const embeddedFiltersCondition = additionalWhere
@@ -1466,6 +1623,9 @@ export class SQLBuilder {
   private buildGroupByColumns(table: string, query: ParsedQuery): string {
     const columns: string[] = []
     
+    // Always include the primary key when using embedded resources (needed for JSON aggregation subqueries)
+    columns.push(`${table}.id`)
+    
     // Add all main table columns that are selected
     if (query.select && query.select.length > 0) {
       const embeddedTableNames = (query.embedded || []).map(e => e.table)
@@ -1477,16 +1637,12 @@ export class SQLBuilder {
         }
         
         if (col === '*') {
-          // For *, we need to discover actual column names
-          // For now, group by primary key - this might need refinement
-          columns.push(`${table}.id`)
-        } else {
+          // For *, the id is already included above
+          continue
+        } else if (col !== 'id') { // Don't duplicate id
           columns.push(`${table}.${col}`)
         }
       }
-    } else {
-      // Default case: group by primary key
-      columns.push(`${table}.id`)
     }
 
     return columns.join(', ')
@@ -1496,19 +1652,40 @@ export class SQLBuilder {
    * Build WHERE clause from filters
    */
   private buildWhereClause(filters: ParsedFilter[]): string {
+    console.log(`🔍 DEBUG buildWhereClause called with ${filters.length} filters:`, filters.map(f => ({
+      column: f.column, 
+      operator: f.operator, 
+      referencedTable: f.referencedTable,
+      hasValue: !!f.value
+    })))
+    
     if (filters.length === 0) {
       return ''
     }
 
     const conditions = filters
-      .map(filter => this.buildFilterCondition(filter))
+      .map((filter, index) => {
+        console.log(`🔍 DEBUG Processing filter ${index}:`, { 
+          column: filter.column, 
+          operator: filter.operator, 
+          referencedTable: filter.referencedTable 
+        })
+        const condition = this.buildFilterCondition(filter)
+        console.log(`🔍 DEBUG Generated condition ${index}:`, condition)
+        return condition
+      })
       .filter(Boolean)
+
+    console.log(`🔍 DEBUG Final conditions array:`, conditions)
 
     if (conditions.length === 0) {
       return ''
     }
 
-    return `WHERE ${conditions.join(' AND ')}`
+    const whereClause = `WHERE ${conditions.join(' AND ')}`
+    console.log(`🔍 DEBUG Final WHERE clause:`, whereClause)
+
+    return whereClause
   }
 
   /**
@@ -1518,8 +1695,8 @@ export class SQLBuilder {
     console.log(`🔍 Building literal filter condition for:`, { column: filter.column, operator: filter.operator, value: filter.value, negated: filter.negated })
     
     if (filter.column === '__logical__') {
-      // Handle logical operators - TODO: implement if needed for embedded queries
-      return `/* Unsupported logical operator in embedded query: ${filter.operator} */`
+      // Handle logical operators for embedded queries with literal values
+      return this.buildLogicalConditionLiteral(filter)
     }
 
     const operator = POSTGREST_OPERATORS[filter.operator]
@@ -1534,6 +1711,13 @@ export class SQLBuilder {
     }
 
     let columnExpression = filter.column
+    
+    // If this filter targets a referenced table, use table-qualified column syntax
+    if (filter.referencedTable) {
+      columnExpression = `${this.quoteIdentifier(filter.referencedTable)}.${this.quoteIdentifier(filter.column)}`
+      console.log(`🔧 Using referenced table column (literal): ${filter.referencedTable}.${filter.column} -> ${columnExpression}`)
+    }
+    
     let condition = operator.sqlTemplate.replace('{column}', columnExpression)
 
     // Handle different value types using literal values instead of parameters
@@ -1761,6 +1945,56 @@ export class SQLBuilder {
   }
 
   /**
+   * Build logical condition for embedded queries using literal values
+   */
+  private buildLogicalConditionLiteral(filter: ParsedFilter): string {
+    console.log(`🔍 Building literal logical condition:`, filter)
+    
+    try {
+      if (filter.operator === 'or' && filter.value && filter.value.conditions) {
+        // Handle OR conditions with literal values: (condition1 OR condition2 OR ...)
+        const conditions = filter.value.conditions
+          .map((condition: ParsedFilter) => {
+            // If the parent logical filter has a referencedTable, inherit it
+            if (filter.referencedTable && !condition.referencedTable) {
+              condition = { ...condition, referencedTable: filter.referencedTable }
+            }
+            return this.buildFilterConditionLiteral(condition)
+          })
+          .filter(Boolean)
+        
+        if (conditions.length > 0) {
+          return `(${conditions.join(' OR ')})`
+        } else {
+          return '(false)'
+        }
+      }
+      
+      if (filter.operator === 'and' && filter.value && filter.value.conditions) {
+        // Handle AND conditions with literal values: (condition1 AND condition2 AND ...)
+        const conditions = filter.value.conditions
+          .map((condition: ParsedFilter) => {
+            // If the parent logical filter has a referencedTable, inherit it
+            if (filter.referencedTable && !condition.referencedTable) {
+              condition = { ...condition, referencedTable: filter.referencedTable }
+            }
+            return this.buildFilterConditionLiteral(condition)
+          })
+          .filter(Boolean)
+        
+        if (conditions.length > 0) {
+          return `(${conditions.join(' AND ')})`
+        }
+      }
+      
+      return `/* Unsupported logical operator in embedded query: ${filter.operator} */`
+    } catch (error) {
+      console.error('Error building literal logical condition:', error)
+      return `/* Error in literal logical condition: ${error.message} */`
+    }
+  }
+
+  /**
    * Build logical condition (and, or, not)
    */
   private buildLogicalCondition(filter: ParsedFilter): string {
@@ -1770,8 +2004,15 @@ export class SQLBuilder {
     try {
       if (filter.operator === 'or' && filter.value && filter.value.conditions) {
         // Handle OR conditions: (condition1 OR condition2 OR ...)
+        // CRITICAL FIX: Propagate referencedTable property from parent to child conditions
         const conditions = filter.value.conditions
-          .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
+          .map((condition: ParsedFilter) => {
+            // If the parent logical filter has a referencedTable, inherit it
+            if (filter.referencedTable && !condition.referencedTable) {
+              condition = { ...condition, referencedTable: filter.referencedTable }
+            }
+            return this.buildFilterCondition(condition)
+          })
           .filter(Boolean)
         
         if (conditions.length > 0) {
@@ -1784,8 +2025,15 @@ export class SQLBuilder {
       
       if (filter.operator === 'and' && filter.value && filter.value.conditions) {
         // Handle AND conditions: (condition1 AND condition2 AND ...)
+        // CRITICAL FIX: Propagate referencedTable property from parent to child conditions
         const conditions = filter.value.conditions
-          .map((condition: ParsedFilter) => this.buildFilterCondition(condition))
+          .map((condition: ParsedFilter) => {
+            // If the parent logical filter has a referencedTable, inherit it
+            if (filter.referencedTable && !condition.referencedTable) {
+              condition = { ...condition, referencedTable: filter.referencedTable }
+            }
+            return this.buildFilterCondition(condition)
+          })
           .filter(Boolean)
         
         if (conditions.length > 0) {
