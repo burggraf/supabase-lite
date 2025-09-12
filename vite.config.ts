@@ -450,14 +450,29 @@ function websocketBridge(): Plugin {
               }
             }
             
-            // Send response back to client (normal JSON)
-            res.writeHead(response.status || 200, {
-              'Content-Type': 'application/json',
+            // Send response back to client, respecting content type
+            const responseHeaders: Record<string, string> = {
               'Access-Control-Allow-Origin': '*',
               ...response.headers
-            })
-            // Always JSON.stringify for application/json content type to maintain correct Content-Length
-            res.end(JSON.stringify(response.body))
+            }
+            
+            // Check if this is a CSV response by Content-Type
+            const isCSV = responseHeaders['Content-Type']?.includes('text/csv')
+            
+            if (isCSV) {
+              // For CSV responses, send raw CSV data as plain text
+              res.writeHead(response.status || 200, responseHeaders)
+              res.end(response.body)
+            } else {
+              // For JSON responses, ensure Content-Type is set
+              responseHeaders['Content-Type'] = responseHeaders['Content-Type'] || 'application/json'
+              res.writeHead(response.status || 200, responseHeaders)
+              
+              // Check if response.body is already a JSON string (from HttpResponse.json)
+              // If so, use it directly. Otherwise, stringify it.
+              const bodyContent = typeof response.body === 'string' ? response.body : JSON.stringify(response.body)
+              res.end(bodyContent)
+            }
             
           } catch (error: unknown) {
             console.error(`❌ Error processing request ${req.method} ${req.url}:`, error)

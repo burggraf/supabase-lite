@@ -16,16 +16,64 @@ export class ResponseFormatter {
   /**
    * Get standard CORS headers for all responses
    */
-  private static getCorsHeaders(includeContentType: boolean = true): Record<string, string> {
+  private static getCorsHeaders(includeContentType: boolean = true, contentType: string = 'application/json'): Record<string, string> {
     const headers: Record<string, string> = {
       'Access-Control-Expose-Headers': 'Content-Range'
     }
     
     if (includeContentType) {
-      headers['Content-Type'] = 'application/json'
+      headers['Content-Type'] = contentType
     }
     
     return headers
+  }
+
+  /**
+   * Convert array of objects to CSV format
+   */
+  private static formatAsCSV(data: any[]): string {
+    if (!data || data.length === 0) {
+      return ''
+    }
+
+    // Get all unique columns from the data
+    const columns = new Set<string>()
+    for (const row of data) {
+      if (row && typeof row === 'object') {
+        Object.keys(row).forEach(key => columns.add(key))
+      }
+    }
+
+    const columnArray = Array.from(columns).sort()
+
+    // Create header row
+    const csvLines = [columnArray.join(',')]
+
+    // Create data rows
+    for (const row of data) {
+      const values = columnArray.map(col => {
+        let value = row?.[col]
+        
+        // Handle null/undefined values
+        if (value == null) {
+          return ''
+        }
+        
+        // Convert to string and escape if needed
+        value = String(value)
+        
+        // Escape values that contain commas, quotes, or newlines
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          value = `"${value.replace(/"/g, '""')}"`
+        }
+        
+        return value
+      })
+      
+      csvLines.push(values.join(','))
+    }
+
+    return csvLines.join('\n')
   }
 
   /**
@@ -67,6 +115,18 @@ export class ResponseFormatter {
 
     // Format embedded resources
     const formattedResults = this.formatEmbeddedResources(results, query)
+
+    // Handle CSV format request
+    if (query.csvFormat) {
+      const csvData = this.formatAsCSV(formattedResults)
+      return {
+        data: csvData,
+        status,
+        headers: {
+          ...this.getCorsHeaders(true, 'text/csv; charset=utf-8')
+        }
+      }
+    }
 
     // Handle single object response (.single() method)
     if (query.returnSingle) {

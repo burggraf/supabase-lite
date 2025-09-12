@@ -47,6 +47,7 @@ export interface ParsedQuery {
   returnSingle?: boolean  // For .single() method support
   onConflict?: string  // Column(s) to use for ON CONFLICT resolution
   schema?: string  // Schema name for PostgREST schema switching
+  csvFormat?: boolean  // For .csv() method support - returns data as CSV string
 }
 
 export class QueryParser {
@@ -57,6 +58,13 @@ export class QueryParser {
     const params = new URLSearchParams(url.search)
     const query: ParsedQuery = {
       filters: []
+    }
+
+    // Check for CSV format request via Accept header
+    // Supabase.js .csv() method sets Accept: text/csv header
+    const acceptHeader = headers.accept || headers.Accept || ''
+    if (acceptHeader === 'text/csv') {
+      query.csvFormat = true
     }
 
     // Parse select parameter

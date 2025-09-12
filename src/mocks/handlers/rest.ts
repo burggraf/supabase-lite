@@ -14,20 +14,37 @@ const apiOrchestrator = new APIRequestOrchestrator()
 // Helper functions for common REST operations
 const createRestGetHandler = () => async ({ params, request }: any) => {
   try {
+    const headers = extractHeaders(request)
     const response = await apiOrchestrator.handleRestRequest({
       table: params.table as string,
       method: 'GET',
-      headers: extractHeaders(request),
+      headers,
       url: new URL(request.url)
     })
     
-    return HttpResponse.json(response.data, {
-      status: response.status,
-      headers: {
-        ...response.headers,
-        'Access-Control-Allow-Origin': '*'
-      }
-    })
+    // Check if CSV format was requested via Accept header
+    const isCSVRequest = headers.accept === 'text/csv' || headers.Accept === 'text/csv'
+    
+    if (isCSVRequest) {
+      // For CSV requests, return raw CSV content with text/csv content-type
+      // This matches PostgREST behavior where the entire response body is CSV
+      return new HttpResponse(response.data, {
+        status: response.status,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    } else {
+      // For JSON requests, return normal Supabase response structure  
+      return HttpResponse.json(response.data, {
+        status: response.status,
+        headers: {
+          ...response.headers,
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
   } catch (error: any) {
     console.error(`❌ MSW: GET error for ${params.table}:`, error)
     return createPostgreSQLErrorResponse(error)
@@ -174,11 +191,19 @@ const createRestDeleteHandler = () => async ({ params, request }: any) => {
 }
 
 // Helper functions for RPC operations
-const createRpcHandler = () => async ({ params, request }: any) => {
-  try {
-    const body = await safeJsonParse(request)
+const createRpcHandler = () => {
+  console.log('🚀 RPC Handler Created - This should appear during MSW setup')
+  return async ({ params, request }: any) => {
+    console.log('🔍 RPC Handler CALLED - Function Name:', params.functionName)
+    console.log('🔍 RPC Handler - Request URL:', request.url)
+    console.log('🔍 RPC Handler - Request Method:', request.method)
+    console.log('🔍 RPC Handler - Request Headers:', Object.fromEntries(request.headers.entries()))
     
-    const response = await apiOrchestrator.handleRpc(
+    try {
+      const body = await safeJsonParse(request)
+      console.log('🔍 RPC Handler - Parsed Body:', body)
+      
+      const response = await apiOrchestrator.handleRpc(
       params.functionName as string,
       body,
       extractHeaders(request),
@@ -189,7 +214,12 @@ const createRpcHandler = () => async ({ params, request }: any) => {
     console.log('🔍 RPC Handler - Response data:', response.data)
     console.log('🔍 RPC Handler - Response status:', response.status)
     
-    // For scalar RPC responses, return the value directly as JSON
+    // For RPC responses, ensure proper JSON formatting
+    // PostgREST returns all RPC results as JSON, including scalar values
+    console.log('🔍 RPC Handler - About to return response data:', response.data)
+    console.log('🔍 RPC Handler - Response data type:', typeof response.data)
+    
+    // Return RPC response using HttpResponse.json() - let MSW handle JSON encoding properly
     return HttpResponse.json(response.data, {
       status: response.status,
       headers: {
@@ -202,7 +232,15 @@ const createRpcHandler = () => async ({ params, request }: any) => {
     })
   } catch (error: any) {
     console.error('❌ RPC Handler Error:', error)
+    console.error('❌ RPC Handler Error Stack:', error.stack)
+    console.error('❌ RPC Handler Error Details:', {
+      functionName: params.functionName,
+      error: error.message,
+      type: typeof error,
+      name: error.name
+    })
     return createPostgreSQLErrorResponse(error)
+    }
   }
 }
 
