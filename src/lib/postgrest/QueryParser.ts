@@ -102,6 +102,28 @@ export class QueryParser {
           query.filters.push(filter)
         }
       }
+      // Check for table-prefixed order parameters (e.g., instruments.order=name.desc)
+      else if (key.match(/^([^.]+)\.order$/)) {
+        const [, referencedTable] = key.match(/^([^.]+)\.order$/)!
+        console.log(`🔧 Found table-prefixed order parameter: ${key}=${value} for table ${referencedTable}`)
+        
+        // Parse the order value and convert it to referenced table format
+        const orderItems = this.parseOrder(value)
+        
+        // Add referencedTable to each order item
+        for (const orderItem of orderItems) {
+          orderItem.referencedTable = referencedTable
+        }
+        
+        // Initialize order array if needed
+        if (!query.order) {
+          query.order = []
+        }
+        
+        // Add the parsed order items to the query
+        query.order.push(...orderItems)
+        console.log(`🎯 Added table-prefixed order for ${referencedTable}:`, JSON.stringify(orderItems, null, 2))
+      }
       // Check for table-prefixed limit/offset parameters (e.g., instruments.limit=1, instruments.offset=5)
       else if (key.match(/^([^.]+)\.(limit|offset)$/)) {
         const [, referencedTable, paramType] = key.match(/^([^.]+)\.(limit|offset)$/)!
@@ -127,7 +149,7 @@ export class QueryParser {
         query.embeddedLimits.set(referencedTable, limitConfig)
       }
       // Check for table-prefixed column filters (e.g., instruments.name=eq.flute)
-      else if (key.includes('.') && !key.match(/\.(or|and|not|limit|offset)$/)) {
+      else if (key.includes('.') && !key.match(/\.(or|and|not|limit|offset|order)$/)) {
         const dotIndex = key.indexOf('.')
         const referencedTable = key.substring(0, dotIndex)
         const column = key.substring(dotIndex + 1)
@@ -227,6 +249,45 @@ export class QueryParser {
     const acceptProfile = headers['accept-profile'] || headers['Accept-Profile']
     if (acceptProfile) {
       query.schema = acceptProfile.trim()
+    }
+
+    // Transfer order items with referencedTable to their corresponding embedded resources
+    if (query.order && query.embedded) {
+      const mainOrderItems: ParsedOrder[] = []
+      
+      for (const orderItem of query.order) {
+        if (orderItem.referencedTable) {
+          // Find the embedded resource that matches this referencedTable
+          const embeddedResource = this.findEmbeddedResource(query.embedded, orderItem.referencedTable)
+          
+          if (embeddedResource) {
+            // Initialize order array for embedded resource if needed
+            if (!embeddedResource.order) {
+              embeddedResource.order = []
+            }
+            
+            // Create a copy without referencedTable for the embedded resource
+            const embeddedOrderItem: ParsedOrder = {
+              column: orderItem.column,
+              ascending: orderItem.ascending,
+              nullsFirst: orderItem.nullsFirst
+            }
+            
+            embeddedResource.order.push(embeddedOrderItem)
+            console.log(`🔄 Transferred order for ${orderItem.referencedTable}.${orderItem.column} to embedded resource`)
+          } else {
+            console.warn(`⚠️  No embedded resource found for referencedTable: ${orderItem.referencedTable}`)
+            // Keep it in main order as fallback (this shouldn't happen in normal cases)
+            mainOrderItems.push(orderItem)
+          }
+        } else {
+          // Keep main table order items
+          mainOrderItems.push(orderItem)
+        }
+      }
+      
+      // Update the main query's order to only include items without referencedTable
+      query.order = mainOrderItems.length > 0 ? mainOrderItems : undefined
     }
 
     return query
@@ -774,6 +835,28 @@ export class QueryParser {
       operator,
       value: { expression: key, params: value }
     }
+  }
+
+  /**
+   * Find an embedded resource by table name or alias (recursive search)
+   */
+  private static findEmbeddedResource(embedded: EmbeddedResource[], tableName: string): EmbeddedResource | null {
+    for (const resource of embedded) {
+      // Check if this resource matches by table name or alias
+      if (resource.table === tableName || resource.alias === tableName) {
+        return resource
+      }
+      
+      // Search recursively in nested embedded resources
+      if (resource.embedded) {
+        const found = this.findEmbeddedResource(resource.embedded, tableName)
+        if (found) {
+          return found
+        }
+      }
+    }
+    
+    return null
   }
 
   /**
