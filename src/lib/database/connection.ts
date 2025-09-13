@@ -573,6 +573,12 @@ export class DatabaseManager {
       throw createDatabaseError('Database not initialized. Call initialize() first.');
     }
 
+    console.log('🔧 DatabaseManager.setSessionContext called with:', {
+      role: context.role,
+      userId: context.userId || 'NONE',
+      hasClaims: !!context.claims
+    })
+
     this.currentSessionContext = context;
 
     try {
@@ -594,25 +600,47 @@ export class DatabaseManager {
       // Set JWT claims as session variables for RLS policies to access
       if (context.claims) {
         const claimsJson = JSON.stringify(context.claims);
+        const setClaimsQuery = `SET LOCAL request.jwt.claims = '${claimsJson.replace(/'/g, "''")}';`;
+        console.log('🔧 DatabaseManager: Setting JWT claims:', setClaimsQuery);
         try {
-          await this.db.query(`SET LOCAL request.jwt.claims = '${claimsJson.replace(/'/g, "''")}';`);
+          await this.db.query(setClaimsQuery);
+          console.log('✅ DatabaseManager: JWT claims set successfully');
         } catch (claimError) {
+          console.error('❌ DatabaseManager: Failed to set JWT claims:', claimError);
           logger.warn('Could not set JWT claims variable', { error: claimError });
         }
+      } else {
+        console.log('🔧 DatabaseManager: No claims to set - context has no claims');
       }
 
       // Set specific claim variables for convenience
       if (context.userId) {
+        const setSubQuery = `SET LOCAL "request.jwt.claim.sub" = '${context.userId}';`;
+        console.log('🔧 DatabaseManager: Setting user sub:', setSubQuery);
         try {
-          await this.db.query(`SET LOCAL request.jwt.claim.sub = '${context.userId}';`);
+          await this.db.query(setSubQuery);
+          console.log('✅ DatabaseManager: User sub set successfully');
         } catch (subError) {
+          console.error('❌ DatabaseManager: Failed to set user sub:', subError);
           logger.warn('Could not set sub claim variable', { error: subError });
+        }
+      } else {
+        console.log('🔧 DatabaseManager: No userId - setting sub to empty string for anonymous user');
+        try {
+          await this.db.query(`SET LOCAL "request.jwt.claim.sub" = '';`);
+          console.log('✅ DatabaseManager: Set sub to empty string for anonymous user');
+        } catch (nullSubError) {
+          console.error('❌ DatabaseManager: Failed to set sub to empty string:', nullSubError);
         }
       }
 
+      const setRoleQuery = `SET LOCAL "request.jwt.claim.role" = '${context.role}';`;
+      console.log('🔧 DatabaseManager: Setting role claim:', setRoleQuery);
       try {
-        await this.db.query(`SET LOCAL request.jwt.claim.role = '${context.role}';`);
+        await this.db.query(setRoleQuery);
+        console.log('✅ DatabaseManager: Role claim set successfully');
       } catch (roleClaimError) {
+        console.error('❌ DatabaseManager: Failed to set role claim:', roleClaimError);
         logger.warn('Could not set role claim variable', { error: roleClaimError });
       }
 
