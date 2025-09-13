@@ -120,7 +120,7 @@ export class AuthBridge {
           return await this.handleSignIn(body as SignInRequest)
           
         case 'POST token':
-          return await this.handleTokenRefresh(body)
+          return await this.handleTokenRefresh(body, request)
           
         case 'POST logout':
           return await this.handleSignOut(body, headers)
@@ -245,27 +245,38 @@ export class AuthBridge {
     }
   }
 
-  private async handleTokenRefresh(request: any): Promise<AuthAPIResponse> {
+  private async handleTokenRefresh(requestBody: any, fullRequest?: any): Promise<AuthAPIResponse> {
+    // Extract grant_type from body or URL query parameters
+    let grantType = requestBody.grant_type
+
+    // If grant_type is not in body, check URL query parameters (Supabase client format)
+    if (!grantType && fullRequest?.url) {
+      const urlParams = new URL(fullRequest.url).searchParams
+      grantType = urlParams.get('grant_type')
+    }
+
     // Debug logging
-    console.log('AuthBridge handleTokenRefresh received:', request)
-    console.log('Grant type from body:', request.grant_type)
-    console.log('Request keys:', Object.keys(request))
-    console.log('Request grant_type type:', typeof request.grant_type)
-    console.log('Request grant_type value comparison:', request.grant_type === 'password')
-    
+    console.log('AuthBridge handleTokenRefresh received:', requestBody)
+    console.log('Grant type from body:', requestBody.grant_type)
+    console.log('Grant type from URL:', fullRequest?.url ? new URL(fullRequest.url).searchParams.get('grant_type') : 'none')
+    console.log('Final grant_type:', grantType)
+    console.log('Request keys:', Object.keys(requestBody))
+    console.log('Grant_type type:', typeof grantType)
+    console.log('Grant_type value comparison:', grantType === 'password')
+
     // Handle both password authentication and token refresh
-    if (request.grant_type === 'password') {
+    if (grantType === 'password') {
       // This is a sign-in request using password
       console.log('AuthBridge calling authManager.signIn with:', {
-        email: request.username || request.email,
-        password: request.password ? '[REDACTED]' : undefined
+        email: requestBody.username || requestBody.email,
+        password: requestBody.password ? '[REDACTED]' : undefined
       })
-      
+
       let result
       try {
         result = await this.authManager.signIn({
-          email: request.username || request.email,
-          password: request.password
+          email: requestBody.username || requestBody.email,
+          password: requestBody.password
         })
         
         console.log('AuthBridge signIn success with real database authentication')
@@ -282,10 +293,10 @@ export class AuthBridge {
         refresh_token: result.session.refresh_token,
         user: this.serializeUser(result.user)
       }, 200)
-    } else if (request.grant_type === 'refresh_token') {
+    } else if (grantType === 'refresh_token') {
       // This is a token refresh request
       try {
-        const session = await this.authManager.refreshSession(request.refresh_token)
+        const session = await this.authManager.refreshSession(requestBody.refresh_token)
         
         // Get the current user from the session manager
         const currentUser = this.sessionManager.getUser()
