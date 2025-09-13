@@ -1,0 +1,617 @@
+[
+  {
+    "id": "basic-user-isolation",
+    "title": "Basic User Data Isolation",
+    "description": "Two users create tables, enable RLS, insert data - each only sees own data",
+    "examples": [
+      {
+        "id": "user-isolation-workflow",
+        "name": "Complete User Isolation Workflow",
+        "description": "Full end-to-end test of user signup, table creation, RLS setup, and data isolation",
+        "workflow": [
+          {
+            "step": "cleanup",
+            "name": "Clean up any existing test data",
+            "operation": "cleanup"
+          },
+          {
+            "step": "create_user_alice",
+            "name": "Create User Alice",
+            "operation": "auth_signup",
+            "params": {
+              "email": "alice@rlstest.com",
+              "password": "AlicePassword123!",
+              "data": { "full_name": "Alice Smith" }
+            }
+          },
+          {
+            "step": "create_user_bob",
+            "name": "Create User Bob",
+            "operation": "auth_signup",
+            "params": {
+              "email": "bob@rlstest.com",
+              "password": "BobPassword123!",
+              "data": { "full_name": "Bob Jones" }
+            }
+          },
+          {
+            "step": "signin_alice",
+            "name": "Sign in as Alice",
+            "operation": "auth_signin",
+            "params": {
+              "email": "alice@rlstest.com",
+              "password": "AlicePassword123!"
+            }
+          },
+          {
+            "step": "create_posts_table",
+            "name": "Alice creates posts table",
+            "operation": "raw_sql",
+            "sql": "CREATE TABLE test_posts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), title TEXT NOT NULL, content TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
+          },
+          {
+            "step": "enable_rls",
+            "name": "Alice enables RLS on posts table",
+            "operation": "raw_sql",
+            "sql": "ALTER TABLE test_posts ENABLE ROW LEVEL SECURITY;"
+          },
+          {
+            "step": "create_select_policy",
+            "name": "Alice creates SELECT policy",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users can view own posts\" ON test_posts FOR SELECT USING (auth.uid() = user_id);"
+          },
+          {
+            "step": "create_insert_policy",
+            "name": "Alice creates INSERT policy",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users can create own posts\" ON test_posts FOR INSERT WITH CHECK (auth.uid() = user_id);"
+          },
+          {
+            "step": "alice_insert_post",
+            "name": "Alice inserts her own post",
+            "operation": "table_insert",
+            "table": "test_posts",
+            "data": {
+              "title": "Alice's First Post",
+              "content": "This is Alice's content"
+            }
+          },
+          {
+            "step": "signin_bob",
+            "name": "Sign in as Bob",
+            "operation": "auth_signin",
+            "params": {
+              "email": "bob@rlstest.com",
+              "password": "BobPassword123!"
+            }
+          },
+          {
+            "step": "bob_insert_post",
+            "name": "Bob inserts his own post",
+            "operation": "table_insert",
+            "table": "test_posts",
+            "data": {
+              "title": "Bob's First Post",
+              "content": "This is Bob's content"
+            }
+          },
+          {
+            "step": "bob_query_posts",
+            "name": "Bob queries posts (should only see his own)",
+            "operation": "table_select",
+            "table": "test_posts",
+            "select": "*",
+            "expected_result": {
+              "row_count": 1,
+              "contains": {
+                "title": "Bob's First Post"
+              },
+              "not_contains": {
+                "title": "Alice's First Post"
+              }
+            }
+          },
+          {
+            "step": "signin_alice_again",
+            "name": "Sign in as Alice again",
+            "operation": "auth_signin",
+            "params": {
+              "email": "alice@rlstest.com",
+              "password": "AlicePassword123!"
+            }
+          },
+          {
+            "step": "alice_query_posts",
+            "name": "Alice queries posts (should only see her own)",
+            "operation": "table_select",
+            "table": "test_posts",
+            "select": "*",
+            "expected_result": {
+              "row_count": 1,
+              "contains": {
+                "title": "Alice's First Post"
+              },
+              "not_contains": {
+                "title": "Bob's First Post"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "service-role-bypass",
+    "title": "Service Role RLS Bypass",
+    "description": "Service role can see all data regardless of RLS policies",
+    "examples": [
+      {
+        "id": "service-role-sees-all",
+        "name": "Service Role Sees All Data",
+        "description": "Service role bypasses RLS and sees all user data",
+        "workflow": [
+          {
+            "step": "setup_service_role",
+            "name": "Switch to service role",
+            "operation": "set_service_role"
+          },
+          {
+            "step": "service_query_all",
+            "name": "Service role queries all posts",
+            "operation": "table_select",
+            "table": "test_posts",
+            "select": "*",
+            "expected_result": {
+              "row_count": 2,
+              "contains": [
+                { "title": "Alice's First Post" },
+                { "title": "Bob's First Post" }
+              ]
+            }
+          },
+          {
+            "step": "service_insert_for_alice",
+            "name": "Service role inserts post for Alice",
+            "operation": "raw_sql",
+            "sql": "INSERT INTO test_posts (user_id, title, content) VALUES ((SELECT id FROM auth.users WHERE email = 'alice@rlstest.com'), 'Admin Post for Alice', 'Created by service role');"
+          },
+          {
+            "step": "service_verify_insert",
+            "name": "Service role verifies insert worked",
+            "operation": "table_select",
+            "table": "test_posts",
+            "select": "*",
+            "expected_result": {
+              "row_count": 3
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "anonymous-restrictions",
+    "title": "Anonymous User Restrictions",
+    "description": "Anonymous users respect RLS policies and cannot access protected data",
+    "examples": [
+      {
+        "id": "anon-blocked-access",
+        "name": "Anonymous User Blocked Access",
+        "description": "Anonymous users cannot see RLS-protected data",
+        "workflow": [
+          {
+            "step": "sign_out",
+            "name": "Sign out to become anonymous",
+            "operation": "auth_signout"
+          },
+          {
+            "step": "anon_query_posts",
+            "name": "Anonymous user queries posts",
+            "operation": "table_select",
+            "table": "test_posts",
+            "select": "*",
+            "expected_result": {
+              "row_count": 0
+            }
+          },
+          {
+            "step": "anon_insert_attempt",
+            "name": "Anonymous user attempts insert (should fail)",
+            "operation": "table_insert",
+            "table": "test_posts",
+            "data": {
+              "title": "Anonymous Post",
+              "content": "This should fail"
+            },
+            "expected_error": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "complex-policies",
+    "title": "Complex RLS Policies",
+    "description": "Test complex RLS policies with multiple conditions",
+    "examples": [
+      {
+        "id": "multi-condition-policy",
+        "name": "Multi-Condition Policy Test",
+        "description": "Test policies with multiple conditions and different operations",
+        "workflow": [
+          {
+            "step": "signin_alice",
+            "name": "Sign in as Alice",
+            "operation": "auth_signin",
+            "params": {
+              "email": "alice@rlstest.com",
+              "password": "AlicePassword123!"
+            }
+          },
+          {
+            "step": "create_projects_table",
+            "name": "Create projects table with complex RLS",
+            "operation": "raw_sql",
+            "sql": "CREATE TABLE test_projects (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), owner_id UUID REFERENCES auth.users(id), name TEXT NOT NULL, is_public BOOLEAN DEFAULT false, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
+          },
+          {
+            "step": "enable_projects_rls",
+            "name": "Enable RLS on projects",
+            "operation": "raw_sql",
+            "sql": "ALTER TABLE test_projects ENABLE ROW LEVEL SECURITY;"
+          },
+          {
+            "step": "create_complex_select_policy",
+            "name": "Create policy: users see own projects OR public projects",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users see own or public projects\" ON test_projects FOR SELECT USING (auth.uid() = owner_id OR is_public = true);"
+          },
+          {
+            "step": "create_complex_insert_policy",
+            "name": "Create INSERT policy for projects",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users create own projects\" ON test_projects FOR INSERT WITH CHECK (auth.uid() = owner_id);"
+          },
+          {
+            "step": "alice_create_private_project",
+            "name": "Alice creates private project",
+            "operation": "table_insert",
+            "table": "test_projects",
+            "data": {
+              "name": "Alice's Private Project",
+              "is_public": false
+            }
+          },
+          {
+            "step": "alice_create_public_project",
+            "name": "Alice creates public project",
+            "operation": "table_insert",
+            "table": "test_projects",
+            "data": {
+              "name": "Alice's Public Project",
+              "is_public": true
+            }
+          },
+          {
+            "step": "signin_bob",
+            "name": "Sign in as Bob",
+            "operation": "auth_signin",
+            "params": {
+              "email": "bob@rlstest.com",
+              "password": "BobPassword123!"
+            }
+          },
+          {
+            "step": "bob_create_project",
+            "name": "Bob creates his own project",
+            "operation": "table_insert",
+            "table": "test_projects",
+            "data": {
+              "name": "Bob's Private Project",
+              "is_public": false
+            }
+          },
+          {
+            "step": "bob_query_projects",
+            "name": "Bob queries projects (should see his own + Alice's public)",
+            "operation": "table_select",
+            "table": "test_projects",
+            "select": "*",
+            "expected_result": {
+              "row_count": 2,
+              "contains": [
+                { "name": "Bob's Private Project" },
+                { "name": "Alice's Public Project" }
+              ],
+              "not_contains": {
+                "name": "Alice's Private Project"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "update-delete-policies",
+    "title": "UPDATE and DELETE Policy Testing",
+    "description": "Test RLS policies for UPDATE and DELETE operations",
+    "examples": [
+      {
+        "id": "update-delete-own-data",
+        "name": "Users Can Only Update/Delete Own Data",
+        "description": "Test that users can only modify their own records",
+        "workflow": [
+          {
+            "step": "signin_alice",
+            "name": "Sign in as Alice",
+            "operation": "auth_signin",
+            "params": {
+              "email": "alice@rlstest.com",
+              "password": "AlicePassword123!"
+            }
+          },
+          {
+            "step": "create_update_policy",
+            "name": "Create UPDATE policy for posts",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users update own posts\" ON test_posts FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);"
+          },
+          {
+            "step": "create_delete_policy",
+            "name": "Create DELETE policy for posts",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users delete own posts\" ON test_posts FOR DELETE USING (auth.uid() = user_id);"
+          },
+          {
+            "step": "alice_update_own_post",
+            "name": "Alice updates her own post",
+            "operation": "table_update",
+            "table": "test_posts",
+            "data": {
+              "content": "Updated content by Alice"
+            },
+            "filter": {
+              "title": { "eq": "Alice's First Post" }
+            },
+            "expected_result": {
+              "row_count": 1
+            }
+          },
+          {
+            "step": "alice_attempt_update_bob_post",
+            "name": "Alice attempts to update Bob's post (should fail)",
+            "operation": "table_update",
+            "table": "test_posts",
+            "data": {
+              "content": "Alice trying to modify Bob's post"
+            },
+            "filter": {
+              "title": { "eq": "Bob's First Post" }
+            },
+            "expected_result": {
+              "row_count": 0
+            }
+          },
+          {
+            "step": "signin_bob",
+            "name": "Sign in as Bob",
+            "operation": "auth_signin",
+            "params": {
+              "email": "bob@rlstest.com",
+              "password": "BobPassword123!"
+            }
+          },
+          {
+            "step": "bob_delete_own_post",
+            "name": "Bob deletes his own post",
+            "operation": "table_delete",
+            "table": "test_posts",
+            "filter": {
+              "title": { "eq": "Bob's First Post" }
+            },
+            "expected_result": {
+              "row_count": 1
+            }
+          },
+          {
+            "step": "bob_attempt_delete_alice_post",
+            "name": "Bob attempts to delete Alice's post (should fail)",
+            "operation": "table_delete",
+            "table": "test_posts",
+            "filter": {
+              "title": { "eq": "Alice's First Post" }
+            },
+            "expected_result": {
+              "row_count": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "rls-with-relations",
+    "title": "RLS with Table Relations",
+    "description": "Test RLS behavior with foreign key relationships and joins",
+    "examples": [
+      {
+        "id": "related-table-rls",
+        "name": "RLS with Related Tables",
+        "description": "Test RLS policies work correctly with table relationships",
+        "workflow": [
+          {
+            "step": "signin_alice",
+            "name": "Sign in as Alice",
+            "operation": "auth_signin",
+            "params": {
+              "email": "alice@rlstest.com",
+              "password": "AlicePassword123!"
+            }
+          },
+          {
+            "step": "create_comments_table",
+            "name": "Create comments table",
+            "operation": "raw_sql",
+            "sql": "CREATE TABLE test_comments (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), post_id UUID REFERENCES test_posts(id), author_id UUID REFERENCES auth.users(id), content TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
+          },
+          {
+            "step": "enable_comments_rls",
+            "name": "Enable RLS on comments",
+            "operation": "raw_sql",
+            "sql": "ALTER TABLE test_comments ENABLE ROW LEVEL SECURITY;"
+          },
+          {
+            "step": "create_comments_policy",
+            "name": "Create comment visibility policy",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users see comments on visible posts\" ON test_comments FOR SELECT USING (EXISTS (SELECT 1 FROM test_posts WHERE test_posts.id = post_id AND (test_posts.user_id = auth.uid() OR auth.uid() = author_id)));"
+          },
+          {
+            "step": "alice_add_comment_to_own_post",
+            "name": "Alice comments on her own post",
+            "operation": "raw_sql",
+            "sql": "INSERT INTO test_comments (post_id, content) VALUES ((SELECT id FROM test_posts WHERE title = 'Alice\\'s First Post'), 'Alice commenting on her own post');"
+          },
+          {
+            "step": "signin_bob",
+            "name": "Sign in as Bob",
+            "operation": "auth_signin",
+            "params": {
+              "email": "bob@rlstest.com",
+              "password": "BobPassword123!"
+            }
+          },
+          {
+            "step": "bob_query_comments",
+            "name": "Bob queries comments (should not see Alice's post comments)",
+            "operation": "table_select",
+            "table": "test_comments",
+            "select": "*",
+            "expected_result": {
+              "row_count": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "policy-conflict-resolution",
+    "title": "Policy Conflict Resolution",
+    "description": "Test how multiple policies interact and resolve conflicts",
+    "examples": [
+      {
+        "id": "multiple-policies-same-table",
+        "name": "Multiple Policies Same Operation",
+        "description": "Test behavior when multiple policies apply to same operation",
+        "workflow": [
+          {
+            "step": "signin_alice",
+            "name": "Sign in as Alice",
+            "operation": "auth_signin",
+            "params": {
+              "email": "alice@rlstest.com",
+              "password": "AlicePassword123!"
+            }
+          },
+          {
+            "step": "create_documents_table",
+            "name": "Create documents table",
+            "operation": "raw_sql",
+            "sql": "CREATE TABLE test_documents (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), owner_id UUID REFERENCES auth.users(id), department TEXT, is_confidential BOOLEAN DEFAULT false, title TEXT NOT NULL);"
+          },
+          {
+            "step": "enable_docs_rls",
+            "name": "Enable RLS on documents",
+            "operation": "raw_sql",
+            "sql": "ALTER TABLE test_documents ENABLE ROW LEVEL SECURITY;"
+          },
+          {
+            "step": "create_owner_policy",
+            "name": "Policy 1: Owners can see their docs",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"owners_see_docs\" ON test_documents FOR SELECT USING (auth.uid() = owner_id);"
+          },
+          {
+            "step": "create_department_policy",
+            "name": "Policy 2: Users can see non-confidential docs in same department",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"department_see_non_confidential\" ON test_documents FOR SELECT USING (is_confidential = false AND department = (SELECT raw_user_meta_data->>'department' FROM auth.users WHERE id = auth.uid()));"
+          },
+          {
+            "step": "update_alice_department",
+            "name": "Set Alice's department",
+            "operation": "auth_update_user",
+            "params": {
+              "data": {
+                "department": "engineering"
+              }
+            }
+          },
+          {
+            "step": "alice_create_confidential_doc",
+            "name": "Alice creates confidential doc",
+            "operation": "table_insert",
+            "table": "test_documents",
+            "data": {
+              "title": "Alice Confidential Doc",
+              "department": "engineering",
+              "is_confidential": true
+            }
+          },
+          {
+            "step": "alice_create_public_doc",
+            "name": "Alice creates public doc",
+            "operation": "table_insert",
+            "table": "test_documents",
+            "data": {
+              "title": "Alice Public Doc",
+              "department": "engineering",
+              "is_confidential": false
+            }
+          },
+          {
+            "step": "create_user_charlie",
+            "name": "Create User Charlie (same department)",
+            "operation": "auth_signup",
+            "params": {
+              "email": "charlie@rlstest.com",
+              "password": "CharliePassword123!",
+              "data": {
+                "full_name": "Charlie Brown",
+                "department": "engineering"
+              }
+            }
+          },
+          {
+            "step": "signin_charlie",
+            "name": "Sign in as Charlie",
+            "operation": "auth_signin",
+            "params": {
+              "email": "charlie@rlstest.com",
+              "password": "CharliePassword123!"
+            }
+          },
+          {
+            "step": "charlie_query_docs",
+            "name": "Charlie queries docs (should see Alice's public doc via department policy)",
+            "operation": "table_select",
+            "table": "test_documents",
+            "select": "*",
+            "expected_result": {
+              "row_count": 1,
+              "contains": {
+                "title": "Alice Public Doc"
+              },
+              "not_contains": {
+                "title": "Alice Confidential Doc"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

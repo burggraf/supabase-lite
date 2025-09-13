@@ -1,0 +1,15 @@
+{
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "rls-test": "deno run --allow-all rls-test-deno.ts",
+    "postgrest-test": "deno run --allow-all postgrest-test-deno.ts"
+  },
+  "fmt": {
+    "include": ["*.ts", "*.js", "*.json"],
+    "exclude": ["node_modules/", "dist/"]
+  },
+  "lint": {
+    "include": ["*.ts", "*.js"],
+    "exclude": ["node_modules/", "dist/"]
+  }
+}
