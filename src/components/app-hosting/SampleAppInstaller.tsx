@@ -295,6 +295,17 @@ export function SampleAppInstaller({ onAppInstalled }: SampleAppInstallerProps) 
 						continue
 					}
 
+					// Handle paths that already contain the deployed app path (e.g., /app/northwind-app/assets/...)
+					if (assetPath.startsWith(`/app/`)) {
+						// Extract just the relative part after the app name
+						const appPathRegex = /^\/app\/[^\/]+\/(.*)$/
+						const match = assetPath.match(appPathRegex)
+						if (match) {
+							assetPath = '/' + match[1] // Convert to /assets/... format
+							console.log(`🔄 Extracted relative path from deployed path: ${assetPath}`)
+						}
+					}
+
 					// Convert relative paths to absolute from the app root
 					if (assetPath.startsWith('./')) {
 						assetPath = assetPath.substring(2) // Remove './'
