@@ -192,7 +192,7 @@ async function createTestUsers() {
 
 async function authenticateUser(email: string, password: string) {
   // Use manual auth request to avoid Supabase client issues
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

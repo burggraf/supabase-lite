@@ -249,6 +249,9 @@ export class AuthBridge {
     // Debug logging
     console.log('AuthBridge handleTokenRefresh received:', request)
     console.log('Grant type from body:', request.grant_type)
+    console.log('Request keys:', Object.keys(request))
+    console.log('Request grant_type type:', typeof request.grant_type)
+    console.log('Request grant_type value comparison:', request.grant_type === 'password')
     
     // Handle both password authentication and token refresh
     if (request.grant_type === 'password') {
