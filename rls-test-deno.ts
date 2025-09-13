@@ -223,62 +223,111 @@ async function executeOperation(step: WorkflowStep, logs: TestLog[]): Promise<an
 }
 
 async function executeCleanup(logs: TestLog[]): Promise<any> {
-  logs.push(logInfo('Starting cleanup of test data'));
+  logs.push(logInfo('Starting database cleanup for test isolation'));
 
   try {
     // Use service role for cleanup
     const wasServiceRole = testContext.serviceRole;
     testContext.serviceRole = true;
 
-    // Drop test tables (ignore errors)
-    const tablesToDrop = ['test_comments', 'test_documents', 'test_projects', 'test_posts'];
+    // Clean auth tables first (users and related data)
+    const authCleanupCommands = [
+      'DELETE FROM auth.audit_log_entries',
+      'DELETE FROM auth.identities',
+      'DELETE FROM auth.instances',
+      'DELETE FROM auth.mfa_amr_claims',
+      'DELETE FROM auth.mfa_challenges',
+      'DELETE FROM auth.mfa_factors',
+      'DELETE FROM auth.refresh_tokens',
+      'DELETE FROM auth.sessions',
+      'DELETE FROM auth.users'
+    ];
 
-    for (const table of tablesToDrop) {
+    for (const sql of authCleanupCommands) {
       try {
-        const { error } = await testContext.serviceClient
-          .from('information_schema.tables')
-          .select('table_name')
-          .eq('table_name', table)
-          .single();
-
-        if (!error) {
-          await testContext.serviceClient.rpc('exec_sql', {
-            sql: `DROP TABLE IF EXISTS ${table} CASCADE;`
-          });
-          logs.push(logDebug(`Dropped table: ${table}`));
-        }
-      } catch (e) {
-        // Ignore cleanup errors
-        logs.push(logDebug(`Cleanup warning for ${table}: ${e.message}`));
+        await testContext.serviceClient.rpc('exec_sql', { sql });
+        logs.push(logDebug(`Executed auth cleanup: ${sql}`));
+      } catch (error) {
+        // Ignore errors for non-existent tables
+        logs.push(logDebug(`Auth cleanup warning: ${sql} (${error.message})`));
       }
     }
 
-    // Clean up test users (ignore errors)
-    const testEmails = ['alice@rlstest.com', 'bob@rlstest.com', 'charlie@rlstest.com'];
+    // Drop and recreate public schema (like PostgREST tests)
+    const schemaCommands = [
+      'DROP SCHEMA IF EXISTS public CASCADE',
+      'CREATE SCHEMA public',
+      'GRANT ALL ON SCHEMA public TO postgres',
+      'GRANT ALL ON SCHEMA public TO public'
+    ];
 
-    for (const email of testEmails) {
+    for (const sql of schemaCommands) {
       try {
-        const { data: user } = await testContext.serviceClient.auth.admin.listUsers();
-        const testUser = user?.users?.find((u: any) => u.email === email);
+        // Use debug SQL endpoint instead of exec_sql RPC since the function gets deleted with CASCADE
+        const response = await fetch(`${config.supabaseLiteUrl}/debug/sql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': config.serviceRoleKey,
+            'Authorization': `Bearer ${config.serviceRoleKey}`
+          },
+          body: JSON.stringify({ sql })
+        });
 
-        if (testUser) {
-          await testContext.serviceClient.auth.admin.deleteUser(testUser.id);
-          logs.push(logDebug(`Cleaned up user: ${email}`));
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
         }
-      } catch (e) {
-        logs.push(logDebug(`Cleanup warning for user ${email}: ${e.message}`));
+
+        logs.push(logDebug(`Schema cleanup: ${sql}`));
+      } catch (error) {
+        logs.push(logError(`Schema cleanup failed: ${sql} - ${error.message}`));
+        throw error;
       }
+    }
+
+    // Recreate the exec_sql function after schema recreation
+    const createExecSqlFunction = `
+      CREATE OR REPLACE FUNCTION exec_sql(sql text) RETURNS json AS $$
+      DECLARE
+        result json;
+      BEGIN
+        EXECUTE sql;
+        GET DIAGNOSTICS result = ROW_COUNT;
+        RETURN json_build_object('success', true, 'row_count', result);
+      END;
+      $$ LANGUAGE plpgsql SECURITY DEFINER;
+    `;
+
+    try {
+      const response = await fetch(`${config.supabaseLiteUrl}/debug/sql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': config.serviceRoleKey,
+          'Authorization': `Bearer ${config.serviceRoleKey}`
+        },
+        body: JSON.stringify({ sql: createExecSqlFunction })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      logs.push(logDebug('Recreated exec_sql function after schema cleanup'));
+    } catch (error) {
+      logs.push(logError(`Failed to recreate exec_sql function: ${error.message}`));
+      throw error;
     }
 
     // Reset context
     testContext.serviceRole = wasServiceRole;
     testContext.currentUser = null;
 
-    logs.push(logInfo('Cleanup completed'));
+    logs.push(logInfo('Database cleanup completed successfully'));
     return { success: true };
 
   } catch (error) {
-    logs.push(logError(`Cleanup failed: ${error.message}`));
+    logs.push(logError(`Database cleanup failed: ${error.message}`));
     return { success: false, error: error.message };
   }
 }
@@ -408,10 +457,19 @@ async function executeRawSQL(step: WorkflowStep, logs: TestLog[]): Promise<any> 
   logs.push(logInfo(`Executing SQL: ${step.sql?.substring(0, 100)}...`));
 
   try {
-    const client = testContext.serviceRole ? testContext.serviceClient : testContext.supabaseClient;
+    let sql = step.sql || '';
+
+    // Check if this SQL needs service role permissions (DDL operations)
+    const needsServiceRole = sql.match(/^(CREATE|ALTER|DROP|GRANT|REVOKE)\s+/i);
+    const useServiceRole = testContext.serviceRole || needsServiceRole;
+
+    if (needsServiceRole && !testContext.serviceRole) {
+      logs.push(logInfo(`Switching to service role for DDL operation`));
+    }
+
+    const client = useServiceRole ? testContext.serviceClient : testContext.supabaseClient;
 
     // For authenticated users, need to inject user_id in INSERT statements
-    let sql = step.sql || '';
 
     if (!testContext.serviceRole && testContext.currentUser && sql.includes('INSERT INTO')) {
       // Replace user_id placeholders with actual user ID
@@ -442,8 +500,8 @@ async function executeRawSQL(step: WorkflowStep, logs: TestLog[]): Promise<any> 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': testContext.serviceRole ? config.serviceRoleKey : config.anonKey,
-        'Authorization': `Bearer ${testContext.serviceRole ? config.serviceRoleKey : config.anonKey}`
+        'apikey': useServiceRole ? config.serviceRoleKey : config.anonKey,
+        'Authorization': `Bearer ${useServiceRole ? config.serviceRoleKey : config.anonKey}`
       },
       body: JSON.stringify({ sql })
     });

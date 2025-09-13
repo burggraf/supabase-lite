@@ -25,12 +25,32 @@ const AUTH_HEADERS = {
 const createAuthHandler = (endpoint: string) => async ({ request, params }: any) => {
   try {
     console.log(`🔐 MSW: Handling ${endpoint} request`)
-    
-    const body = await safeJsonParse(request)
+    console.log(`🔍 Request details:`, {
+      method: request.method,
+      url: request.url,
+      headers: Object.fromEntries(request.headers.entries()),
+      contentType: request.headers.get('content-type')
+    })
+
+    let body = await safeJsonParse(request)
+    const url = new URL(request.url)
+
+    console.log(`🔍 Request body:`, body)
+    console.log(`🔍 URL query params:`, Object.fromEntries(url.searchParams))
+
+    // Support grant_type as query parameter - merge into body if not already present
+    if (endpoint === 'token') {
+      const queryGrantType = url.searchParams.get('grant_type')
+      if (queryGrantType && !body.grant_type) {
+        body = { ...body, grant_type: queryGrantType }
+        console.log('🔐 MSW: Added grant_type from query params:', queryGrantType)
+      }
+    }
+
     const response = await authBridge.handleAuthRequest({
       endpoint,
       method: request.method,
-      url: new URL(request.url),
+      url: url,
       headers: extractHeaders(request),
       body
     })
@@ -84,8 +104,8 @@ export const authHandlers = [
   http.get('/auth/v1/user', withProjectResolution(createAuthHandler('user'))),
   http.get('/:projectId/auth/v1/user', withProjectResolution(createAuthHandler('user'))),
   
-  http.put('/auth/v1/user', withProjectResolution(createAuthHandler('user_update'))),
-  http.put('/:projectId/auth/v1/user', withProjectResolution(createAuthHandler('user_update'))),
+  http.put('/auth/v1/user', withProjectResolution(createAuthHandler('user'))),
+  http.put('/:projectId/auth/v1/user', withProjectResolution(createAuthHandler('user'))),
   
   // OTP endpoints
   http.post('/auth/v1/otp', createAuthHandler('otp')),

@@ -71,6 +71,58 @@ async function makeAPIRequest(path: string, options: {
   };
 }
 
+async function cleanDatabase() {
+  console.log('🧹 Cleaning database for test isolation...');
+
+  // Clean auth tables first (users and related data)
+  const authCleanupCommands = [
+    'DELETE FROM auth.audit_log_entries',
+    'DELETE FROM auth.identities',
+    'DELETE FROM auth.instances',
+    'DELETE FROM auth.mfa_amr_claims',
+    'DELETE FROM auth.mfa_challenges',
+    'DELETE FROM auth.mfa_factors',
+    'DELETE FROM auth.refresh_tokens',
+    'DELETE FROM auth.sessions',
+    'DELETE FROM auth.users'
+  ];
+
+  for (const sql of authCleanupCommands) {
+    try {
+      await makeAPIRequest('/debug/sql', {
+        method: 'POST',
+        body: { sql },
+        apiKey: SERVICE_KEY
+      });
+    } catch (error) {
+      // Ignore errors for non-existent tables
+      console.log(`⚠️  Could not execute: ${sql} (${error})`);
+    }
+  }
+
+  // Drop and recreate public schema (like PostgREST tests)
+  const schemaCommands = [
+    'DROP SCHEMA IF EXISTS public CASCADE',
+    'CREATE SCHEMA public',
+    'GRANT ALL ON SCHEMA public TO postgres',
+    'GRANT ALL ON SCHEMA public TO public'
+  ];
+
+  for (const sql of schemaCommands) {
+    const response = await makeAPIRequest('/debug/sql', {
+      method: 'POST',
+      body: { sql },
+      apiKey: SERVICE_KEY
+    });
+
+    if (!response.ok) {
+      throw new Error(`Schema cleanup failed: ${JSON.stringify(response.data)}`);
+    }
+  }
+
+  console.log('✅ Database cleaned successfully');
+}
+
 async function setupTestData() {
   console.log('📋 Setting up test data...');
 
@@ -218,6 +270,9 @@ async function runRLSTests(): Promise<TestResult[]> {
   const results: TestResult[] = [];
 
   try {
+    // Clean database for test isolation
+    await cleanDatabase();
+
     // Setup
     await setupTestData();
 

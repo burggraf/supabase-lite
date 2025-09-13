@@ -20,7 +20,7 @@
             "operation": "auth_signup",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!",
+              "password": "Password123!",
               "data": { "full_name": "Alice Smith" }
             }
           },
@@ -30,7 +30,7 @@
             "operation": "auth_signup",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!",
+              "password": "Password123!",
               "data": { "full_name": "Bob Jones" }
             }
           },
@@ -40,7 +40,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -83,7 +83,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -118,7 +118,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -246,7 +246,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -299,7 +299,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -349,7 +349,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -400,7 +400,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -447,7 +447,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -480,7 +480,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -513,7 +513,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
