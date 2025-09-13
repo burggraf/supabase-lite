@@ -48,3 +48,4 @@ supabase-client-test-results*
 /prompts
 deno.lock
 tmp-script.ts
+rls-test-results-*.json
