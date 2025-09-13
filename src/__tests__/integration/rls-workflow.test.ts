@@ -1,8 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { AuthBridge } from '../../lib/auth/AuthBridge';
 import { DatabaseManager } from '../../lib/database/connection';
-// import { RLSEnforcer } from '../../lib/auth/rls-enforcer';
+// RLSEnforcer no longer used - testing database-level RLS instead
 
+/**
+ * Row Level Security (RLS) Integration Tests
+ *
+ * These tests verify that Supabase Lite's RLS implementation matches online Supabase behavior:
+ * - Uses database-level PostgreSQL RLS (not application-level filtering)
+ * - Respects user-created policies on user-created tables
+ * - Service role bypasses all RLS policies
+ * - Anonymous and authenticated roles respect policies
+ * - Context switching works correctly
+ */
 describe('Row Level Security (RLS) Workflow Integration', () => {
   let authBridge: AuthBridge;
   let dbManager: DatabaseManager;

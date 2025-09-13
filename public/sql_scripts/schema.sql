@@ -24,7 +24,7 @@ SET xmloption = content;
 
 SET client_min_messages = warning;
 
-SET row_security = OFF;
+SET row_security = ON;
 
 --
 -- Name: auth; Type: SCHEMA; Schema: -; Owner: supabase_admin

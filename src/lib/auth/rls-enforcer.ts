@@ -2,8 +2,26 @@ import { logger } from '@/lib/infrastructure';
 import type { SessionContext } from '../database/connection';
 
 /**
- * Application-level RLS enforcement for PGlite compatibility
- * Since PGlite doesn't properly support role switching, we implement RLS at the application layer
+ * @deprecated This class is deprecated in favor of database-level RLS policies.
+ *
+ * BACKGROUND:
+ * This class was originally created to work around limitations in PGlite role switching.
+ * However, PGlite does support PostgreSQL RLS when row_security = ON, making this
+ * application-level filtering unnecessary and potentially incompatible with Supabase.
+ *
+ * NEW APPROACH:
+ * - Database-level RLS is now enabled (SET row_security = ON)
+ * - PostgreSQL handles RLS enforcement using policies created by users
+ * - Session context (roles, JWT claims) is properly set for database policies to access
+ * - This provides 100% Supabase compatibility since it uses the same PostgreSQL RLS
+ *
+ * MIGRATION:
+ * Instead of using this class, ensure:
+ * 1. Tables have RLS enabled when users want it: ALTER TABLE foo ENABLE ROW LEVEL SECURITY
+ * 2. Users create policies for their tables: CREATE POLICY name ON table FOR operation TO role USING (condition)
+ * 3. Session context is set properly (already handled by DatabaseManager.setSessionContext)
+ *
+ * This approach lets users control RLS exactly like online Supabase.
  */
 export class RLSEnforcer {
   private static readonly tablesWithRLS = ['peeps']; // Add other tables that need RLS here

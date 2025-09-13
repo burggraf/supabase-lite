@@ -2,7 +2,7 @@ import { DatabaseManager, type SessionContext } from '../lib/database/connection
 import { logger, logError } from '../lib/infrastructure/Logger'
 import { createAPIError } from '../lib/infrastructure/ErrorHandler'
 import { apiKeyGenerator } from '../lib/auth/api-keys'
-import { RLSEnforcer } from '../lib/auth/rls-enforcer'
+// RLSEnforcer no longer needed - using database-level RLS instead
 import bcrypt from 'bcryptjs'
 import {
   QueryParser,
@@ -559,18 +559,11 @@ export class EnhancedSupabaseAPIBridge {
       formattedSql = formattedSql.replace(placeholder, formattedValue)
     })
 
-    // Apply application-level RLS enforcement for PGlite compatibility
-    const { modifiedSql, shouldEnforceRLS } = RLSEnforcer.applyApplicationRLS(formattedSql, context)
+    // Use database-level RLS instead of application-level filtering
+    // PostgreSQL will handle RLS enforcement when row_security = ON
+    const modifiedSql = formattedSql
     
-    if (shouldEnforceRLS) {
-      logger.debug('Applied application-level RLS enforcement', { 
-        originalSql: formattedSql.substring(0, 100), 
-        modifiedSql: modifiedSql.substring(0, 100),
-        role: context.role 
-      });
-    }
-    
-    logger.debug('Executing SQL with context', { sql: modifiedSql.substring(0, 100), role: context.role })
+    logger.debug('Executing SQL with database-level RLS', { sql: modifiedSql.substring(0, 100), role: context.role })
     
     try {
       const result = await this.dbManager.queryWithContext(modifiedSql, context)
