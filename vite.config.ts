@@ -312,13 +312,26 @@ function websocketBridge(): Plugin {
                     }
                   }
                   
-                  console.log('❌ Asset file not found, continuing to WebSocket forwarding')
+                  console.log('❌ Asset file not found, returning 404')
+                  res.writeHead(404, {
+                    'Content-Type': 'text/plain',
+                    'Access-Control-Allow-Origin': '*'
+                  })
+                  res.end('Asset not found')
+                  return
                 } else {
                   console.log('🌐 HTML request, delegating to MSW/VFS for processing:', { filePath })
+                  // Continue to WebSocket forwarding for HTML files
                 }
               }
             } catch (error) {
               console.error('❌ Direct serving error:', error)
+              res.writeHead(500, {
+                'Content-Type': 'text/plain',
+                'Access-Control-Allow-Origin': '*'
+              })
+              res.end('Server error')
+              return
             }
           }
           
@@ -476,8 +489,16 @@ function websocketBridge(): Plugin {
               res.writeHead(response.status || 200, responseHeaders)
               res.end(response.body)
             } else {
-              // For JSON responses, ensure Content-Type is set
-              responseHeaders['Content-Type'] = responseHeaders['Content-Type'] || 'application/json'
+              // For non-CSV responses, preserve existing Content-Type or default to JSON only for API responses
+              if (!responseHeaders['Content-Type']) {
+                // Only default to JSON for API endpoints, not for app hosting
+                if (req.url && (req.url.startsWith('/rest/') || req.url.startsWith('/auth/') || req.url.startsWith('/functions/') || req.url.includes('/rpc/'))) {
+                  responseHeaders['Content-Type'] = 'application/json'
+                } else {
+                  // For app hosting and other non-API responses, don't override Content-Type
+                  responseHeaders['Content-Type'] = 'text/html'
+                }
+              }
               res.writeHead(response.status || 200, responseHeaders)
               
               // Special handling for RPC responses - ensure they are JSON-encoded
