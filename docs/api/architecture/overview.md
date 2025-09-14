@@ -1,11 +1,12 @@
-# MSW API Architecture Overview
+# Unified Kernel Architecture Overview
 
-## System Design Philosophy
+## Introduction
 
-The MSW API system provides a complete Supabase-compatible API layer that runs entirely in the browser using Mock Service Worker (MSW). The design prioritizes **browser-only operation**, **PostgREST compatibility**, and **multi-project support** while maintaining performance and maintainability.
+The Supabase Lite API system is built on a **Unified Kernel Architecture** that provides comprehensive PostgREST compatibility through a composable middleware pipeline. This system completely replaced the previous dual-bridge architecture with a cleaner, more maintainable design that achieves **97.6% PostgREST compatibility**.
 
 ## High-Level Architecture
 
+### System Flow
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Browser Environment                      │
@@ -14,9 +15,16 @@ The MSW API system provides a complete Supabase-compatible API layer that runs e
 ├─────────────────────────────────────────────────────────────┤
 │                    MSW HTTP Layer                           │
 ├─────────────────────────────────────────────────────────────┤
-│  Project Resolution  │  CORS Handling  │  Request Routing   │
+│                   Unified Kernel                           │
 ├─────────────────────────────────────────────────────────────┤
-│  Enhanced Bridge  │  Simplified Bridge  │  Auth Bridge      │
+│              7-Stage Middleware Pipeline                    │
+│  Error → Instrumentation → CORS → Project → Auth →         │
+│           Request Parsing → Response Formatting            │
+├─────────────────────────────────────────────────────────────┤
+│      REST Executor  │  HEAD Executor  │  RPC Executor      │
+├─────────────────────────────────────────────────────────────┤
+│                   Query Engine                              │
+│            (Unified PostgREST Processing)                   │
 ├─────────────────────────────────────────────────────────────┤
 │       Database Manager  │  Auth System  │  Storage VFS      │
 ├─────────────────────────────────────────────────────────────┤
@@ -25,230 +33,408 @@ The MSW API system provides a complete Supabase-compatible API layer that runs e
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Core Components
+### Core Components
 
-### 1. MSW Request Handling Layer
+1. **MSW Handlers** - Route matching and request capture
+2. **Unified Kernel** - Central request processing engine
+3. **Middleware Pipeline** - Composable 7-stage processing chain
+4. **Executors** - Operation-specific request handlers
+5. **Query Engine** - PostgREST-compatible SQL generation
+6. **Database Layer** - PGlite with multi-tenant support
 
-#### **Handler Organization** (`src/mocks/handlers/`)
-- **Modular structure**: Separate handlers for REST, Auth, Storage, Functions, App Hosting
-- **Handler priority**: Specific routes processed before general catch-all patterns
-- **CORS integration**: Universal CORS headers on all responses
+## Unified Kernel (`src/api/kernel.ts`)
 
-#### **Request Routing Patterns**
+The kernel is the heart of the system, providing:
+
+### Request Processing Architecture
 ```typescript
-// Base route patterns
-/rest/v1/:table                    // Direct REST API
-/auth/v1/signup                    // Authentication endpoints
-/storage/v1/object/:bucket/*       // Storage operations
+export function createApiHandler(executor: ExecutorFunction) {
+  return async (info: any) => {
+    // Convert MSW Request → ApiRequest
+    const apiRequest: ApiRequest = {
+      url: new URL(request.url),
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries()),
+      body: await getRequestBody(request),
+      params: params || {}
+    }
 
-// Project-scoped patterns
-/:projectId/rest/v1/:table         // Multi-tenant REST API
-/:projectId/auth/v1/signup         // Project-specific auth
-/:projectId/storage/v1/object/:bucket/*  // Project storage
-```
+    // Execute middleware pipeline
+    const response = await executeMiddlewarePipeline(
+      apiRequest,
+      context,
+      executor
+    )
 
-### 2. Project Resolution System
-
-#### **Project Switching Architecture** (`src/mocks/project-resolver.ts`)
-- **URL-based resolution**: Extract project ID from request path
-- **Database connection switching**: Automatic PGlite database changes
-- **Caching layer**: 5-second TTL for project resolution results
-- **Performance tracking**: Cache hit rates and resolution times
-
-#### **Higher-Order Function Pattern**
-```typescript
-export const withProjectResolution = <T extends Record<string, any>>(
-  handler: (req: RestRequest, info: T & { db: PGlite }) => Promise<HttpResponse>
-) => async (req: RestRequest, info: T): Promise<HttpResponse> => {
-  // Project extraction and database switching logic
-  const { projectId, normalizedUrl } = await resolveProject(req.url)
-  const db = await DatabaseManager.switchToProject(projectId)
-  return handler({ ...req, url: normalizedUrl }, { ...info, db })
+    // Handle response formatting (JSON/CSV/text)
+    return formatResponse(response)
+  }
 }
 ```
 
-### 3. Bridge Architecture
+### Key Responsibilities
+- **Request Normalization**: Convert MSW requests to internal format
+- **Pipeline Orchestration**: Execute middleware in strict order
+- **Response Formatting**: Handle JSON, CSV, and text responses properly
+- **Error Handling**: Provide comprehensive error recovery
+- **Type Safety**: Ensure type-safe request/response handling
 
-#### **Three-Tier Bridge System**
-
-##### **Enhanced Bridge** (`enhanced-bridge.ts`)
-- **Full PostgREST compatibility**: Complete query syntax support
-- **Advanced features**: OR/AND operators, table-prefixed filters, multi-level embedding
-- **Complex parsing**: Sophisticated URL parameter processing
-- **Performance optimization**: Query plan caching and SQL generation optimization
-
-##### **Simplified Bridge** (`simplified-bridge.ts`)
-- **Optimized subset**: Focused on 80% use cases for better performance
-- **Reduced complexity**: Limited operators and single-level embedding
-- **Faster processing**: Streamlined query parsing and execution
-- **Debug logging**: Extensive debugging for overlaps operator issues
-
-##### **Legacy Bridge** (`supabase-bridge.ts`)
-- **Basic compatibility**: Simple CRUD operations
-- **Deprecated**: Maintained for backwards compatibility only
-
-#### **Bridge Selection Strategy**
+### Response Format Handling
+The kernel intelligently handles different response formats:
 ```typescript
-const activeBridge = USE_SIMPLIFIED_BRIDGE ? simplifiedBridge : enhancedBridge
+// CSV response handling
+if (contentType.startsWith('text/csv')) {
+  return new HttpResponse(response.data, {
+    status: response.status,
+    headers: response.headers
+  })
+} else {
+  // JSON response handling
+  return HttpResponse.json(response.data, {
+    status: response.status,
+    headers: response.headers
+  })
+}
 ```
 
-### 4. Database Integration Layer
+## Middleware Pipeline Architecture
 
-#### **DatabaseManager Singleton** (`src/lib/database/connection.ts`)
-- **PGlite integration**: WebAssembly PostgreSQL with IndexedDB persistence
-- **Connection pooling**: Multiple project databases with efficient switching
-- **Schema management**: Auto-initialization of Supabase schemas
-- **Query caching**: Built-in cache with TTL and LRU eviction
-- **Performance metrics**: Query execution tracking and analytics
+The 7-stage middleware pipeline processes every request in strict order. Each middleware can:
+- **Pre-process** the request before calling `next()`
+- **Post-process** the response after `next()` returns
+- **Short-circuit** the pipeline by returning early
+- **Add context** information for downstream middleware
 
-#### **Schema Management**
+### Pipeline Execution Pattern
 ```typescript
-// Auto-initialized schemas
-auth.*          // Authentication tables (users, sessions, etc.)
-storage.*       // Storage buckets and objects  
-public.*        // User-defined tables
-realtime.*      // Subscription management
+const middlewareStack: MiddlewareFunction[] = [
+  errorHandlingMiddleware,        // Stage 1: Error handling wrapper
+  instrumentationMiddleware,      // Stage 2: Request tracking
+  corsMiddleware,                // Stage 3: CORS headers
+  projectResolutionMiddleware,    // Stage 4: Multi-tenant switching
+  authenticationMiddleware,       // Stage 5: JWT and RLS setup
+  requestParsingMiddleware,       // Stage 6: PostgREST parsing
+  responseFormattingMiddleware    // Stage 7: Response formatting
+]
 ```
 
-### 5. Authentication System
+### Stage 1: Error Handling Middleware
+- **File**: `src/api/middleware/error-handling.ts`
+- **Purpose**: Comprehensive error handling wrapper
+- **Functionality**:
+  - Catch all errors from downstream middleware/executors
+  - Map PostgreSQL errors to HTTP status codes
+  - Format errors using standardized `ApiError` system
+  - Log errors with request context and performance data
+  - Ensure consistent error response format
 
-#### **Multi-Component Auth Architecture**
-- **AuthBridge**: Main authentication service coordination
-- **AuthManager**: User management and database operations
-- **JWTService**: Token generation and validation with HS256
-- **SessionManager**: Session lifecycle and token refresh
-- **MFAService**: Multi-factor authentication support
-- **RLSEnforcer**: Row Level Security implementation
+### Stage 2: Instrumentation Middleware
+- **File**: `src/api/middleware/instrumentation.ts`
+- **Purpose**: Request tracking and performance monitoring
+- **Functionality**:
+  - Generate unique request IDs for tracing
+  - Track request lifecycle timing and performance metrics
+  - Collect execution traces for each pipeline stage
+  - Enable browser debugging tools (`window.mswDebug`)
+  - Store request traces for debugging and analysis
 
-#### **RLS Implementation Strategy**
+### Stage 3: CORS Middleware
+- **File**: `src/api/middleware/cors.ts`
+- **Purpose**: Cross-origin request header management
+- **Functionality**:
+  - Set appropriate CORS headers for all responses
+  - Handle preflight OPTIONS requests automatically
+  - Manage allowed origins, methods, and headers
+  - Support credential-enabled cross-origin requests
+
+### Stage 4: Project Resolution Middleware
+- **File**: `src/api/middleware/project-resolution.ts`
+- **Purpose**: Multi-tenant database context switching
+- **Functionality**:
+  - Extract project ID from URL paths or headers
+  - Switch database context for multi-tenancy support
+  - Cache project information for performance optimization
+  - Handle both project-scoped and global API requests
+
+### Stage 5: Authentication Middleware
+- **File**: `src/api/middleware/authentication.ts`
+- **Purpose**: JWT decoding and Row Level Security setup
+- **Functionality**:
+  - Decode and validate JWT tokens from Authorization headers
+  - Extract user ID, role, and custom claims
+  - Set up Row Level Security (RLS) context for database queries
+  - Handle both anonymous and authenticated request contexts
+
+### Stage 6: Request Parsing Middleware
+- **File**: `src/api/middleware/request-parsing.ts`
+- **Purpose**: PostgREST query syntax processing
+- **Functionality**:
+  - Parse query parameters (select, filters, order, limit, offset)
+  - Handle embedded resource queries with table relationships
+  - Process PostgREST-specific headers (Prefer, Range, Accept)
+  - Validate query syntax and parameter formats
+  - Build internal `ParsedQuery` representation
+
+### Stage 7: Response Formatting Middleware
+- **File**: `src/api/middleware/response-formatting.ts`
+- **Purpose**: Standardized PostgREST-compatible response formatting
+- **Functionality**:
+  - Format responses according to PostgREST conventions
+  - Handle Content-Range headers for pagination
+  - Process CSV format requests with proper content-type
+  - Apply response transformations and data selection
+  - Ensure consistent response structure across all operations
+
+## Executor Pattern Architecture
+
+Executors provide clean separation of concerns for different operation types:
+
+### REST Executor (`restExecutor`)
+- **File**: `src/api/db/executor.ts`
+- **Operations**: GET, POST, PATCH, DELETE
+- **Functionality**:
+  - Table-based CRUD operations with full PostgREST compatibility
+  - Bulk insert/update/delete operations
+  - Response data selection with `.select()` parameters
+  - UPSERT operations with conflict resolution strategies
+  - Integration with unified Query Engine for SQL generation
+
+### HEAD Executor (`headExecutor`)
+- **File**: `src/api/db/executor.ts`
+- **Operations**: HEAD requests
+- **Functionality**:
+  - Metadata requests that return headers without response body
+  - Same processing as GET requests but with empty data
+  - Count operations for Content-Range header calculation
+  - Performance optimization by skipping data serialization
+
+### RPC Executor (`rpcExecutor`)
+- **File**: `src/api/db/executor.ts`
+- **Operations**: POST/GET to `/rpc/:functionName`
+- **Functionality**:
+  - Stored procedure calls with parameter binding
+  - Support for both GET (query params) and POST (body params)
+  - Return value processing for both scalar and table functions
+  - Integration with existing APIRequestOrchestrator for function execution
+
+## Query Engine Architecture (`src/api/db/QueryEngine.ts`)
+
+The unified query engine replaces the previous dual-bridge system with a single, optimized processing engine:
+
+### Core Architecture
 ```typescript
-// User context injection
-const userContext = {
-  userId: jwt.sub,
-  role: jwt.role,
-  claims: jwt.app_metadata
+export class QueryEngine {
+  private dbManager: DatabaseManager
+  private sqlBuilder: SQLBuilder
+  private rlsFilteringService: RLSFilteringService
+
+  async processRequest(request: ApiRequest, context: ApiContext): Promise<FormattedResponse>
+  private canUseFastPath(request: ApiRequest): boolean
+  private parseFastPath(request: ApiRequest): ParsedQuery
+}
+```
+
+### Key Capabilities
+- **PostgREST Syntax Parsing**: Complete filter, order, select, embed parsing
+- **SQL Generation**: Type-safe parameterized query building with SQLBuilder
+- **RLS Integration**: Automatic row-level security filter application
+- **Performance Optimization**: Fast path detection for simple queries
+- **Count Queries**: Separate count execution for Content-Range headers
+- **UPSERT Support**: Conflict resolution with `merge-duplicates` preference
+
+### Query Processing Flow
+1. **Request Analysis**: Determine if fast path or full parsing needed
+2. **Query Parsing**: Convert PostgREST syntax to internal `ParsedQuery` format
+3. **RLS Application**: Apply user context filters if authentication present
+4. **SQL Generation**: Build parameterized SQL with proper escaping
+5. **Execution**: Run query against PGlite with session context
+6. **Count Handling**: Execute separate count query if requested
+7. **Response Formatting**: Use ResponseFormatter for PostgREST-compatible output
+
+## Type System Architecture (`src/api/types.ts`)
+
+Comprehensive TypeScript interfaces ensure type safety throughout the system:
+
+### Core Request/Response Types
+```typescript
+export interface ApiRequest {
+  url: URL
+  method: string
+  headers: Record<string, string>
+  body?: any
+  params?: Record<string, string>
 }
 
-// Automatic RLS application
-const rls = new RLSFilteringService(userContext)
-const filteredResults = await rls.applyFilters(queryResults, table)
+export interface ApiResponse {
+  data: any
+  status: number
+  headers: Record<string, string>
+}
+
+export interface ApiContext {
+  requestId: string
+  projectId?: string
+  projectName?: string
+  sessionContext?: SessionContext
+  startTime: number
+  reportStage?: (stage: string, data?: any) => void
+}
 ```
 
-### 6. Storage and VFS System
+### Middleware and Executor Types
+```typescript
+export type MiddlewareFunction = (
+  request: ApiRequest,
+  context: ApiContext,
+  next: () => Promise<ApiResponse>
+) => Promise<ApiResponse>
 
-#### **Virtual File System** (`src/lib/vfs/`)
-- **VFSManager**: File storage and management with IndexedDB
-- **SignedUrlManager**: Secure file access with time-limited URLs
-- **SyncManager**: Local folder synchronization via File System Access API
-- **FolderUploadService**: Static app deployment and hosting
+export type ExecutorFunction = (
+  request: ApiRequest,
+  context: ApiContext
+) => Promise<ApiResponse>
+```
 
-## Design Patterns
+### PostgREST Query Types
+```typescript
+export interface ParsedQuery {
+  table?: string
+  select?: string[]
+  filters?: QueryFilter[]
+  order?: QueryOrder[]
+  limit?: number
+  offset?: number
+  count?: boolean
+  preferReturn?: 'representation' | 'minimal'
+  preferResolution?: 'merge-duplicates' | 'ignore-duplicates'
+  returnSingle?: boolean
+  csvFormat?: boolean
+  schema?: string
+}
+```
 
-### 1. **Singleton Pattern**
-Used for stateful managers that need global coordination:
-- `DatabaseManager`: Single PGlite instance with connection pooling
-- `ProjectManager`: Multi-project state management
-- `AuthBridge`: Authentication service coordination
+## Error Handling Architecture (`src/api/errors.ts`)
 
-### 2. **Bridge Pattern**
-Abstracts different API implementation strategies:
-- Allows switching between Enhanced/Simplified bridges
-- Enables future bridge implementations without client changes
-- Provides consistent interface despite different internal logic
+Standardized error system with comprehensive error categorization:
 
-### 3. **Higher-Order Function (HOF) Pattern**
-Used for cross-cutting concerns:
-- `withProjectResolution()`: Adds project switching to any handler
-- Composition-based approach for adding authentication, CORS, logging
-- Functional programming patterns for request middleware
+### ApiError Class Architecture
+```typescript
+export class ApiError extends Error {
+  constructor(
+    public code: ApiErrorCode,
+    message: string,
+    public details?: any,
+    public hint?: string,
+    public requestId?: string
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
 
-### 4. **Factory Pattern**
-Consistent handler creation across domains:
-- Each handler module exports factory functions
-- Standardized error handling and response formatting
-- Enables testing with mock dependencies
+  static fromError(
+    error: unknown,
+    fallbackCode: ApiErrorCode = ApiErrorCode.UNKNOWN,
+    requestId?: string
+  ): ApiError
+}
+```
 
-## Performance Considerations
+### Error Code Categories
+- **Generic**: UNKNOWN, BAD_REQUEST, NOT_FOUND, CONFLICT, etc.
+- **Authentication**: INVALID_TOKEN, TOKEN_EXPIRED, MFA_REQUIRED, etc.
+- **Database**: CONNECTION_ERROR, QUERY_ERROR, TRANSACTION_ERROR, etc.
+- **PostgREST**: INVALID_RANGE, INVALID_FILTER, MISSING_TABLE, etc.
+- **API**: MISSING_REQUIRED_PARAMETER, INVALID_REQUEST_FORMAT, etc.
 
-### 1. **Query Optimization**
-- **SQL query caching**: Avoid re-parsing identical queries
-- **Connection pooling**: Reuse database connections across requests
-- **Lazy loading**: Only load bridge implementations when needed
+### PostgreSQL Error Mapping
+The system automatically maps PostgreSQL error codes to appropriate HTTP status codes and ApiError instances, providing consistent error responses across all operations.
 
-### 2. **Memory Management**
-- **LRU caching**: Automatic eviction of old cache entries
-- **Debounced operations**: Batch similar operations to reduce overhead
-- **Garbage collection**: Proper cleanup of database connections and caches
+## Performance Characteristics
 
-### 3. **Network Optimization**
-- **CORS preflight caching**: 24-hour cache for OPTIONS requests
-- **Response compression**: Gzip compression for large JSON responses
-- **Chunked responses**: Streaming for large dataset queries
+### Benchmarks and Metrics
+- **97.6% PostgREST Compatibility**: 80 out of 82 tests passing
+- **Single Execution Path**: Eliminates bridge selection overhead
+- **Request Tracing**: Enables precise performance bottleneck identification
+- **Fast Path Optimization**: Optimized processing for simple queries
+- **Connection Pooling**: Efficient database connection reuse
 
-## Scalability Patterns
+### Monitoring and Instrumentation
+- **Request Timing**: End-to-end request performance tracking
+- **Pipeline Stage Tracking**: Per-middleware execution timing
+- **Database Query Analysis**: SQL execution performance monitoring
+- **Memory Usage Tracking**: Garbage collection and memory optimization
+- **Browser Debug Tools**: `window.mswDebug` for runtime inspection
 
-### 1. **Multi-Tenant Architecture**
-- **Project isolation**: Separate databases per project
-- **Resource sharing**: Shared MSW handlers and bridge logic
-- **Horizontal scaling**: Add new projects without affecting existing ones
+## Configuration Management (`src/api/config.ts`)
 
-### 2. **Modular Handler Design**
-- **Domain separation**: REST, Auth, Storage, Functions in separate modules
-- **Independent deployment**: Handlers can be updated independently
-- **Feature flags**: Enable/disable functionality without code changes
+Centralized configuration system for runtime behavior control:
 
-### 3. **Caching Strategy**
-- **Multi-level caching**: Project resolution, query results, schema information
-- **Cache invalidation**: TTL-based and manual invalidation strategies
-- **Cache warming**: Preload frequently accessed data
+### Configuration Features
+- **Environment-based Settings**: Different configs for development/production
+- **Type-safe Access**: Comprehensive TypeScript interfaces for all config
+- **Runtime Validation**: Ensure configuration consistency at startup
+- **Performance Tuning**: Adjustable parameters for optimization
 
-## Technology Stack
+## Extension and Customization
 
-### Core Technologies
-- **MSW (Mock Service Worker)**: HTTP request interception and mocking
-- **PGlite**: WebAssembly PostgreSQL for browser-based database
-- **TypeScript**: Type-safe development and API contracts
-- **IndexedDB**: Persistent storage for database files and caches
+### Adding Custom Middleware
+```typescript
+import type { MiddlewareFunction } from '../types'
 
-### Integration Libraries
-- **bcrypt**: Password hashing for authentication
-- **jsonwebtoken**: JWT token generation and validation
-- **zod**: Runtime type validation for API requests
-- **date-fns**: Date manipulation for session management
+export const customMiddleware: MiddlewareFunction = async (request, context, next) => {
+  // Pre-processing logic
+  const startTime = performance.now()
 
-## Security Architecture
+  // Call next middleware in pipeline
+  const response = await next()
 
-### 1. **Browser Security Model**
-- **Same-origin policy**: MSW operates within browser security constraints
-- **No server-side secrets**: All authentication uses client-side JWT validation
-- **CORS protection**: Proper CORS headers for cross-origin requests
+  // Post-processing logic
+  const duration = performance.now() - startTime
+  response.headers['X-Processing-Time'] = duration.toString()
 
-### 2. **Authentication Security**
-- **JWT-based authentication**: Stateless token validation
-- **Password hashing**: bcrypt with configurable salt rounds
-- **Session management**: Secure token refresh and expiration handling
-- **MFA support**: TOTP-based multi-factor authentication
+  return response
+}
+```
 
-### 3. **Database Security**
-- **RLS enforcement**: Row Level Security applied at application level
-- **SQL injection protection**: Parameterized queries and input validation
-- **Access control**: User context propagation through all database operations
+### Creating Custom Executors
+```typescript
+import type { ExecutorFunction } from '../types'
 
-## Future Architecture Considerations
+export const customExecutor: ExecutorFunction = async (request, context) => {
+  // Custom processing logic
+  const result = await processCustomOperation(request, context)
 
-### 1. **Realtime Subscriptions**
-- **BroadcastChannel API**: Cross-tab communication for real-time updates
-- **WebSocket simulation**: MSW-based WebSocket mocking for subscriptions
-- **Event sourcing**: Change log tracking for subscription notifications
+  return {
+    data: result,
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  }
+}
+```
 
-### 2. **Performance Optimization**
-- **Worker thread migration**: Move database operations to Web Workers
-- **WASM optimization**: Custom PGlite builds for specific use cases
-- **CDN integration**: Asset serving optimization for static apps
+## Migration from Bridge System
 
-### 3. **Developer Experience**
-- **Hot reload**: Real-time code updates without losing database state
-- **Debug tooling**: Enhanced tracing and performance monitoring
-- **Testing utilities**: Better integration testing and mock data management
+### Architectural Changes
+- **Removed**: Dual bridge architecture (`enhanced-bridge.ts`, `simplified-bridge.ts`)
+- **Replaced**: Single unified kernel with composable middleware pipeline
+- **Added**: Comprehensive error handling with standardized `ApiError` system
+- **Enhanced**: Request tracing and debugging capabilities
+- **Improved**: Type safety with comprehensive TypeScript interfaces
 
-This architecture provides a solid foundation for Supabase-compatible API operations while maintaining the flexibility needed for future enhancements and optimizations.
+### Benefits of New Architecture
+- **Simplified Debugging**: Single execution path vs multiple bridge selection logic
+- **Better Performance**: Reduced overhead and optimized request processing
+- **Enhanced Maintainability**: Composable middleware vs monolithic handler functions
+- **Superior Type Safety**: Comprehensive interfaces for all API operations
+- **Better Error Handling**: Standardized error codes and PostgreSQL error mapping
+- **Advanced Instrumentation**: Built-in performance monitoring and debugging tools
+
+### Compatibility Improvements
+The unified kernel architecture achieved **97.6% PostgREST compatibility** compared to the previous bridge system, with improvements in:
+- CSV response format handling
+- Count operations with Content-Range headers
+- UPSERT operations with conflict resolution
+- Complex query parsing and SQL generation
+- Error handling and response formatting
+
+This unified kernel architecture provides a robust, maintainable, and extensible foundation for Supabase-compatible API operations with superior debugging, monitoring, and development experience capabilities.

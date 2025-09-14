@@ -1,379 +1,592 @@
-# API Call Tracing Guide
+# Unified Kernel Request Tracing Guide
 
 ## Overview
 
-This guide provides step-by-step instructions for tracing API calls through the MSW system to identify exactly which code path handles a request and where issues might occur.
+This guide provides step-by-step instructions for tracing API requests through the **Unified Kernel Architecture**. The new system provides a much cleaner, single-path execution flow compared to the previous dual-bridge system, making debugging significantly more straightforward.
 
 ## Quick Tracing Checklist
 
 1. **🔍 Identify the request** - URL pattern and HTTP method
 2. **📍 Find the MSW handler** - Which handler matches the request
-3. **🗃️ Trace project resolution** - How project ID is extracted and database switched
-4. **🌉 Determine bridge selection** - Enhanced vs Simplified vs Auth vs Storage
-5. **📝 Follow query parsing** - How URL parameters become database queries
-6. **💾 Trace database execution** - SQL generation and execution
-7. **📤 Validate response formatting** - How results are formatted for the client
+3. **🎯 Follow kernel execution** - Trace through the 7-stage middleware pipeline
+4. **⚙️ Examine executor processing** - REST/HEAD/RPC operation handling
+5. **🗄️ Trace database operations** - QueryEngine and SQL execution
+6. **📤 Validate response formatting** - Final response structure and headers
 
-## Step-by-Step Tracing
+## Step-by-Step Tracing Process
 
 ### Step 1: Identify the Request
 
-**What to check:**
-- Request URL and HTTP method
-- Request headers (Authorization, Content-Type, Prefer)
-- Request body (for POST/PATCH requests)
-
-**Browser DevTools:**
+**Browser DevTools Network Tab:**
 ```javascript
-// Open Network tab, find the request, check:
-// - General: Request URL, Method, Status Code  
-// - Request Headers: Authorization, apikey, Prefer
-// - Response Headers: Content-Range, Content-Type
+// Check request details in Network tab
+// - General: Request URL, Method, Status Code
+// - Request Headers: Authorization, Content-Type, Prefer, Range
+// - Response Headers: Content-Range, Content-Type, X-Request-ID
 ```
 
-**Console debugging:**
+**Console Request Monitoring:**
 ```javascript
-// Add this to any handler to see all requests
-console.log('MSW Request:', {
-  method: req.method,
-  url: req.url,
-  headers: Object.fromEntries(req.headers.entries()),
-  body: await req.text()
-})
+// Enable MSW debugging to see all intercepted requests
+localStorage.setItem('MSW_DEBUG', 'true')
+// Reload page to see MSW request interception logs
+
+// Or monitor with custom logging
+const originalFetch = window.fetch
+window.fetch = function(...args) {
+  console.log('🚀 Outgoing request:', args[0])
+  return originalFetch.apply(this, args)
+}
 ```
 
 ### Step 2: Find the MSW Handler
 
-**Handler matching order** (from `src/mocks/handlers/index.ts`):
-1. Auth handlers (`/auth/v1/*`)
-2. REST handlers (`/rest/v1/*`) 
-3. Project handlers (`/:projectId/*`)
-4. Debug handlers (`/debug/*`)
-5. Health handlers (`/health`)
-6. Storage handlers (`/storage/v1/*`)
-7. VFS direct handlers (`/vfs/*`)
-8. App hosting handlers (`/app/*`)
-9. Functions handlers (`/functions/v1/*`)
-10. CORS catch-all (last)
-
-**Debugging handler selection:**
+**Handler matching priority** (from `src/mocks/handlers/index.ts`):
 ```javascript
-// Add to start of each handler in handlers/
-export const restHandlers = [
-  http.get('/rest/v1/:table', async ({ request, params }) => {
-    console.log('✅ REST handler matched:', request.url)
-    // ... rest of handler
-  })
+export const handlers = [
+  // Direct API routes
+  ...restHandlers,           // /rest/v1/:table
+  ...rpcHandlers,            // /rpc/v1/:functionName
+
+  // Authentication
+  ...authHandlers,           // /auth/v1/*
+
+  // Project-scoped routes
+  ...projectHandlers,        // /:projectId/* (catches all project routes)
+
+  // System routes
+  ...debugHandlers,          // /debug/*
+  healthHandler,             // /health
+
+  // Storage and functions
+  ...storageHandlers,        // /storage/v1/*
+  ...functionsHandlers,      // /functions/v1/*
+
+  // Catch-all
+  corsHandler                // OPTIONS and unmatched requests
 ]
 ```
 
-**Common handler patterns:**
+**Handler Debugging:**
 ```javascript
-// Direct routes (no project)
-'/rest/v1/:table'
-'/auth/v1/signup'
-'/storage/v1/object/:bucket/*'
+// Add to any handler to verify it's being called
+rest.get('/rest/v1/:table', createApiHandler(restExecutor))
+// The createApiHandler wrapper includes automatic logging
 
-// Project-scoped routes  
-'/:projectId/rest/v1/:table'
-'/:projectId/auth/v1/signup'
-'/:projectId/storage/v1/object/:bucket/*'
+// Check which handler matched
+const traces = window.mswDebug.getRecentTraces()
+const latestTrace = traces[0]
+console.log('Handler matched:', latestTrace.url)
 ```
 
-### Step 3: Trace Project Resolution
+### Step 3: Follow Kernel Execution
 
-**Project resolution flow:**
-```mermaid
-flowchart LR
-A[Request URL] --> B[Extract Project ID]
-B --> C{Cache Hit?}
-C -->|Yes| D[Return Cached Result]
-C -->|No| E[Validate Project]
-E --> F[Switch Database]
-F --> G[Normalize URL]
-G --> H[Cache Result]
+**Unified Kernel Flow:**
+```
+MSW Handler → createApiHandler() → executeMiddlewarePipeline() → Executor → Response
 ```
 
-**Debug project resolution:**
+#### Trace Kernel Entry Point
 ```javascript
-// Add to withProjectResolution in project-resolver.ts
-console.log('🗃️ Project Resolution:', {
-  originalUrl: req.url,
-  projectId: extractedProjectId,
-  cacheHit: cacheResult ? 'HIT' : 'MISS', 
-  normalizedUrl: normalizedUrl,
-  dbSwitched: dbSwitchResult
+// In src/api/kernel.ts - createApiHandler()
+console.log('🎯 Kernel entry:', {
+  method: apiRequest.method,
+  url: apiRequest.url.pathname,
+  requestId: context.requestId
 })
 ```
 
-**Check project cache:**
+#### Monitor Middleware Pipeline Execution
 ```javascript
-// In browser console
-window.projectCache = {
-  hits: 0,
-  misses: 0,
-  entries: new Map()
-}
-// Monitor cache performance
-```
+// The pipeline executes exactly 7 stages in order:
+const middlewareStack = [
+  'errorHandlingMiddleware',        // Stage 1: Error wrapper
+  'instrumentationMiddleware',      // Stage 2: Request tracking
+  'corsMiddleware',                 // Stage 3: CORS headers
+  'projectResolutionMiddleware',    // Stage 4: Multi-tenant switching
+  'authenticationMiddleware',       // Stage 5: JWT and RLS
+  'requestParsingMiddleware',       // Stage 6: PostgREST parsing
+  'responseFormattingMiddleware'    // Stage 7: Response formatting
+]
 
-### Step 4: Determine Bridge Selection
-
-**Bridge selection logic:**
-```javascript
-// Current bridge selection (in handlers/rest.ts)
-const USE_SIMPLIFIED_BRIDGE = false
-const activeBridge = USE_SIMPLIFIED_BRIDGE ? simplifiedBridge : enhancedBridge
-
-// Debug bridge selection
-console.log('🌉 Bridge Selection:', {
-  useSimplified: USE_SIMPLIFIED_BRIDGE,
-  selectedBridge: activeBridge.constructor.name,
-  requestType: determineRequestType(req)
+// View pipeline execution in browser console
+window.mswDebug.getRecentTraces()[0].stages.forEach(stage => {
+  console.log(`${stage.stage}: ${stage.duration?.toFixed(2)}ms`)
 })
 ```
 
-**Bridge routing by request type:**
-- **REST API** → Enhanced/Simplified Bridge
-- **Auth endpoints** → Auth Bridge  
-- **Storage operations** → VFS Bridge
-- **Functions** → Inline handlers
-- **Debug SQL** → Direct database access
+### Step 4: Middleware Stage Tracing
 
-### Step 5: Follow Query Parsing
-
-#### Enhanced Bridge Query Parsing
+#### Stage 1: Error Handling Middleware
+**Purpose**: Wraps entire pipeline in error handling
+**Debugging**:
 ```javascript
-// Add to enhanced-bridge.ts handleRestRequest()
-console.log('📝 Enhanced Bridge Parsing:', {
-  originalQuery: urlParams.toString(),
-  parsedFilters: extractedFilters,
-  embeddedResources: embeddedStructure,
-  orderBy: orderingClause,
-  pagination: paginationInfo
-})
-```
-
-#### Simplified Bridge Query Parsing
-```javascript
-// Add to simplified-bridge.ts handleRestRequest()
-console.log('📝 Simplified Bridge Parsing:', {
-  basicFilters: simpleFilters,
-  orderBy: simpleOrder,
-  limit: limitValue,
-  offset: offsetValue
-})
-```
-
-**Query parsing checkpoints:**
-1. **URL parameter extraction** - `new URLSearchParams()`
-2. **Filter parsing** - `column=operator.value`
-3. **Embedding detection** - `select=*,relation(*)`
-4. **Ordering parsing** - `order=column.direction`
-5. **Pagination parsing** - `Range` header or `limit`/`offset`
-
-### Step 6: Trace Database Execution
-
-**SQL generation debugging:**
-```javascript
-// Add before database execution
-console.log('💾 Database Execution:', {
-  generatedSQL: finalSQL,
-  parameters: queryParameters,
-  userContext: currentUserContext,
-  rlsFilters: appliedRLSFilters
-})
-```
-
-**Database execution flow:**
-```javascript
-// Monitor database calls
-const originalQuery = DatabaseManager.query
-DatabaseManager.query = function(sql, params) {
-  console.log('🗄️ DB Query:', { sql, params })
-  const start = performance.now()
-  const result = originalQuery.call(this, sql, params)
-  console.log('🗄️ DB Result:', { 
-    duration: performance.now() - start,
-    rowCount: result.rows?.length 
-  })
-  return result
+// Check if errors are being caught properly
+const trace = window.mswDebug.getRecentTraces()[0]
+if (trace.error) {
+  console.log('❌ Error caught by middleware:', trace.error)
 }
 ```
 
-**Common database issues:**
-- **SQL syntax errors** - Check generated SQL validity
-- **RLS filter problems** - Verify user context injection
-- **Performance issues** - Monitor query execution time
-- **Connection issues** - Verify project database switching
-
-### Step 7: Validate Response Formatting
-
-**Response formatting debugging:**
+#### Stage 2: Instrumentation Middleware
+**Purpose**: Request ID generation and performance tracking
+**Debugging**:
 ```javascript
-// Add before returning response
-console.log('📤 Response Formatting:', {
-  rawResults: databaseResults,
-  formattedResponse: finalResponse,
-  statusCode: responseStatus,
-  headers: responseHeaders
+// Verify request ID assignment
+const context = trace.stages.find(s => s.stage === 'instrumentation')
+console.log('🔍 Request ID:', context.data.requestId)
+console.log('📊 Tracing enabled:', context.data.tracingEnabled)
+```
+
+#### Stage 3: CORS Middleware
+**Purpose**: Cross-origin header management
+**Debugging**:
+```javascript
+// Check CORS headers are being added
+const corsStage = trace.stages.find(s => s.stage === 'cors')
+console.log('🌐 CORS applied:', corsStage.data)
+
+// Verify in response headers
+const response = await fetch('/rest/v1/users')
+console.log('CORS headers:', {
+  origin: response.headers.get('Access-Control-Allow-Origin'),
+  methods: response.headers.get('Access-Control-Allow-Methods')
 })
 ```
 
-**PostgREST response format requirements:**
+#### Stage 4: Project Resolution Middleware
+**Purpose**: Multi-tenant database switching
+**Debugging**:
 ```javascript
-// Expected response structure
-{
-  // Success responses
-  data: [...],                    // Array of results
-  count: number,                  // Total count (if requested)
-  
-  // Headers
-  'Content-Range': '0-9/100',     // Pagination info
-  'Content-Type': 'application/json'
+// Monitor project resolution
+const projectStage = trace.stages.find(s => s.stage === 'project-resolution')
+console.log('🗃️ Project resolution:', {
+  projectId: projectStage.data.projectId,
+  dbSwitched: projectStage.data.dbSwitched,
+  cacheHit: projectStage.data.cacheHit
+})
+
+// Check project cache performance
+console.log('Cache stats:', window.mswDebug.getProjectCacheStats())
+```
+
+#### Stage 5: Authentication Middleware
+**Purpose**: JWT verification and RLS context
+**Debugging**:
+```javascript
+// Check authentication processing
+const authStage = trace.stages.find(s => s.stage === 'authentication')
+console.log('🔐 Authentication:', {
+  userId: authStage.data.userId,
+  role: authStage.data.role,
+  tokenValid: authStage.data.tokenValid
+})
+
+// Verify JWT token processing
+if (authStage.data.tokenValid) {
+  console.log('✅ JWT valid, user authenticated')
+} else {
+  console.log('❌ JWT invalid or missing, proceeding as anonymous')
 }
 ```
 
-## Browser DevTools Debugging
-
-### Network Tab Analysis
-1. **Request details** - URL, method, headers, body
-2. **Response details** - Status, headers, body
-3. **Timing** - DNS, connect, send, wait, receive
-4. **Security** - CORS, certificates, mixed content
-
-### Console Debugging Strategies
-
-#### Enable MSW debugging:
+#### Stage 6: Request Parsing Middleware
+**Purpose**: PostgREST query syntax parsing
+**Debugging**:
 ```javascript
-// In browser console
-localStorage.setItem('MSW_DEBUG', 'true')
-// Reload page to see MSW request interception logs
+// Monitor query parsing
+const parsingStage = trace.stages.find(s => s.stage === 'request-parsing')
+console.log('📝 Request parsing:', {
+  table: parsingStage.data.table,
+  hasFilters: parsingStage.data.hasFilters,
+  hasEmbeds: parsingStage.data.hasEmbeds,
+  complexity: parsingStage.data.queryComplexity
+})
+
+// Check parsed query structure
+console.log('Parsed query:', request.parsedQuery)
 ```
 
-#### Custom request tracing:
+#### Stage 7: Response Formatting Middleware
+**Purpose**: Standardize response structure
+**Debugging**:
 ```javascript
-// Add request ID for tracing
-const requestId = Math.random().toString(36).substr(2, 9)
-console.log(`🔍 [${requestId}] Request start:`, req.url)
-
-// Trace through each step
-console.log(`🗃️ [${requestId}] Project resolution:`, projectResult)
-console.log(`🌉 [${requestId}] Bridge selection:`, bridgeType)
-console.log(`📝 [${requestId}] Query parsing:`, parsedQuery)
-console.log(`💾 [${requestId}] Database execution:`, dbResult)
-console.log(`📤 [${requestId}] Response formatting:`, response)
+// Check response formatting
+const formattingStage = trace.stages.find(s => s.stage === 'response-formatting')
+console.log('📤 Response formatting:', {
+  contentType: formattingStage.data.contentType,
+  responseSize: formattingStage.data.responseSize,
+  formatted: formattingStage.data.formatted
+})
 ```
 
-#### Monitor bridge selection:
+### Step 5: Executor Processing
+
+**Executor Selection Logic:**
 ```javascript
-// Track which bridge handles requests
-window.bridgeStats = { enhanced: 0, simplified: 0, auth: 0, storage: 0 }
-
-// Increment in each bridge
-window.bridgeStats.enhanced++
-console.log('Bridge stats:', window.bridgeStats)
-```
-
-### Performance Tracing
-
-#### Measure request processing time:
-```javascript
-// Add to handler start
-const start = performance.now()
-
-// Add to handler end  
-const duration = performance.now() - start
-console.log(`⏱️ Request processing time: ${duration.toFixed(2)}ms`)
-```
-
-#### Monitor memory usage:
-```javascript
-// Check memory periodically
-setInterval(() => {
-  if (performance.memory) {
-    console.log('Memory usage:', {
-      used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) + 'MB',
-      total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024) + 'MB'
-    })
+// Based on request pattern and method
+const executorMapping = {
+  '/rest/v1/:table': {
+    'GET': 'restExecutor',
+    'POST': 'restExecutor',
+    'PATCH': 'restExecutor',
+    'DELETE': 'restExecutor',
+    'HEAD': 'headExecutor'
+  },
+  '/rpc/v1/:functionName': {
+    'POST': 'rpcExecutor',
+    'GET': 'rpcExecutor'
   }
-}, 5000)
+}
+
+// Check which executor was used
+console.log('⚙️ Executor used:', trace.executor)
+```
+
+#### REST Executor Tracing
+```javascript
+// For database CRUD operations
+const restTrace = trace.stages.find(s => s.stage === 'rest-executor')
+console.log('🗄️ REST operation:', {
+  table: restTrace.data.table,
+  method: restTrace.data.method,
+  queryEngineUsed: true
+})
+```
+
+#### RPC Executor Tracing
+```javascript
+// For stored procedure calls
+const rpcTrace = trace.stages.find(s => s.stage === 'rpc-executor')
+console.log('🔧 RPC operation:', {
+  functionName: rpcTrace.data.functionName,
+  parameters: rpcTrace.data.parameters
+})
+```
+
+#### HEAD Executor Tracing
+```javascript
+// For metadata-only requests
+const headTrace = trace.stages.find(s => s.stage === 'head-executor')
+console.log('📋 HEAD operation:', {
+  table: headTrace.data.table,
+  metadataOnly: true,
+  sameAsGet: headTrace.data.processedAsGet
+})
+```
+
+### Step 6: QueryEngine and Database Operations
+
+**QueryEngine Processing Flow:**
+```
+REST Executor → QueryEngine → SQL Builder → Database → Response Formatter
+```
+
+#### Query Engine Tracing
+```javascript
+// Monitor QueryEngine operations
+console.log('💾 QueryEngine processing:', {
+  table: parsedQuery.table,
+  method: parsedQuery.method,
+  fastPathUsed: queryEngine.canUseFastPath(request),
+  rlsApplied: context.sessionContext?.userId ? true : false
+})
+```
+
+#### SQL Generation Monitoring
+```javascript
+// Enable SQL logging in development
+localStorage.setItem('DB_DEBUG', 'true')
+
+// Check generated SQL
+console.log('📝 Generated SQL:', {
+  sql: generatedSQL,
+  parameters: sqlParameters,
+  executionTime: `${executionTime.toFixed(2)}ms`
+})
+```
+
+#### Database Query Execution
+```javascript
+// Monitor database operations
+const dbTrace = trace.stages.find(s => s.stage === 'database-execution')
+console.log('🗄️ Database query:', {
+  sql: dbTrace.data.sql,
+  parameters: dbTrace.data.parameters,
+  rowCount: dbTrace.data.rowCount,
+  duration: `${dbTrace.duration}ms`
+})
+```
+
+### Step 7: Response Formatting and Return
+
+#### Response Structure Validation
+```javascript
+// Check final response structure
+console.log('📤 Final response:', {
+  status: response.status,
+  contentType: response.headers['Content-Type'],
+  hasContentRange: !!response.headers['Content-Range'],
+  dataType: Array.isArray(response.data) ? 'array' : typeof response.data,
+  dataSize: JSON.stringify(response.data).length
+})
+```
+
+#### PostgREST Compatibility Check
+```javascript
+// Verify PostgREST-compatible response
+const isPostgRESTCompatible = {
+  hasCorrectContentType: response.headers['Content-Type'] === 'application/json',
+  hasContentRange: !!response.headers['Content-Range'],
+  hasRequestId: !!response.headers['X-Request-ID'],
+  correctDataStructure: Array.isArray(response.data) || typeof response.data === 'object'
+}
+
+console.log('✅ PostgREST compatibility:', isPostgRESTCompatible)
+```
+
+## Browser Debug Console Commands
+
+### Real-Time Request Monitoring
+
+```javascript
+// Get live system status
+window.mswDebug.status()
+
+// Monitor recent requests
+window.mswDebug.getRecentTraces().slice(0, 5).forEach(trace => {
+  console.log(`${trace.requestId}: ${trace.method} ${trace.url} (${trace.stages.length} stages)`)
+})
+
+// Enable detailed logging
+window.mswDebug.enableVerboseLogging()
+
+// Watch specific request pattern
+window.mswDebug.getRequestsByUrl('/rest/v1/users').forEach(trace => {
+  console.log('User API call:', trace)
+})
+```
+
+### Performance Analysis
+
+```javascript
+// Analyze request performance
+const traces = window.mswDebug.getRecentTraces()
+const performanceStats = {
+  averageRequestTime: traces.reduce((sum, t) => sum + t.totalDuration, 0) / traces.length,
+  slowestRequest: traces.reduce((slow, t) => t.totalDuration > slow.totalDuration ? t : slow),
+  fastestRequest: traces.reduce((fast, t) => t.totalDuration < fast.totalDuration ? t : fast)
+}
+
+console.table(performanceStats)
+```
+
+### Error Analysis
+
+```javascript
+// Find failed requests
+const failedRequests = window.mswDebug.getRecentTraces().filter(t => t.error)
+console.log('Failed requests:', failedRequests)
+
+// Analyze error patterns
+const errorPatterns = failedRequests.reduce((patterns, trace) => {
+  const errorType = trace.error.code || trace.error.name
+  patterns[errorType] = (patterns[errorType] || 0) + 1
+  return patterns
+}, {})
+
+console.table(errorPatterns)
 ```
 
 ## Common Debugging Scenarios
 
-### Scenario 1: Request Not Being Intercepted
-**Symptoms:** Request goes to actual network instead of MSW
-**Debug steps:**
-1. Check MSW is enabled: `localStorage.getItem('MSW_DEBUG')`
-2. Verify handler patterns match request URL
-3. Check handler order in `handlers/index.ts`
-4. Ensure CORS preflight is handled
+### Scenario 1: Request Not Being Processed
 
-### Scenario 2: Wrong Bridge Handling Request
-**Symptoms:** Unexpected query parsing or missing features
-**Debug steps:**
-1. Check `USE_SIMPLIFIED_BRIDGE` flag
-2. Verify request type detection logic
-3. Confirm handler routing to correct bridge
-4. Check bridge capability matrix
+**Symptoms**: Request appears to be ignored or gets no response
+**Debug Steps**:
+1. Check if MSW is intercepting: `localStorage.getItem('MSW_DEBUG')`
+2. Verify handler pattern matches: Look at URL pattern in handlers
+3. Check handler order: Ensure specific handlers come before generic ones
+4. Verify CORS: Check for OPTIONS preflight handling
 
-### Scenario 3: Database Query Failures
-**Symptoms:** SQL errors or unexpected results
-**Debug steps:**
-1. Log generated SQL and parameters
-2. Test SQL directly with debug endpoint
-3. Check RLS filter application
-4. Verify project database switching
+```javascript
+// Debug handler matching
+console.log('Request URL:', request.url)
+console.log('Handler patterns:', handlers.map(h => h.info.path))
+```
 
-### Scenario 4: Response Format Issues
-**Symptoms:** Client can't parse response
-**Debug steps:**
-1. Compare response to PostgREST format
-2. Check Content-Type headers
-3. Verify CORS headers present
-4. Validate JSON structure
+### Scenario 2: Authentication Issues
+
+**Symptoms**: User appears not authenticated or gets wrong permissions
+**Debug Steps**:
+1. Check JWT token in request headers
+2. Verify token decoding in authentication middleware
+3. Check RLS context setup
+4. Verify user permissions and session context
+
+```javascript
+// Debug authentication flow
+const authStage = trace.stages.find(s => s.stage === 'authentication')
+console.log('Auth debug:', {
+  headerPresent: !!request.headers.authorization,
+  tokenDecoded: authStage.data.tokenValid,
+  userContext: authStage.data.userId,
+  role: authStage.data.role
+})
+```
+
+### Scenario 3: Query Processing Errors
+
+**Symptoms**: PostgREST queries fail or return unexpected results
+**Debug Steps**:
+1. Check query parsing in request parsing middleware
+2. Verify SQL generation by QueryEngine
+3. Test generated SQL directly with debug endpoint
+4. Check RLS filter application
+
+```javascript
+// Debug query processing
+const parsingStage = trace.stages.find(s => s.stage === 'request-parsing')
+console.log('Query processing debug:', {
+  originalUrl: request.url.toString(),
+  parsedQuery: request.parsedQuery,
+  parsingSuccess: !parsingStage.error
+})
+```
+
+### Scenario 4: Performance Issues
+
+**Symptoms**: Requests are slow or timing out
+**Debug Steps**:
+1. Check per-stage timing in request trace
+2. Identify bottleneck middleware stages
+3. Monitor database query execution time
+4. Check memory usage and garbage collection
+
+```javascript
+// Analyze performance bottlenecks
+const trace = window.mswDebug.getRecentTraces()[0]
+const stageTimings = trace.stages.map(stage => ({
+  stage: stage.stage,
+  duration: stage.duration
+})).sort((a, b) => b.duration - a.duration)
+
+console.table(stageTimings)
+```
 
 ## Advanced Tracing Techniques
 
-### Request Flow Visualization
+### Custom Request Tracking
+
 ```javascript
-// Create visual trace of request flow
-const trace = []
-trace.push(`Handler: ${handlerName}`)
-trace.push(`Project: ${projectId}`) 
-trace.push(`Bridge: ${bridgeName}`)
-trace.push(`Query: ${parsedQuery}`)
-trace.push(`Result: ${resultSummary}`)
-console.table(trace)
+// Create custom request tracker
+class RequestTracker {
+  constructor() {
+    this.requests = new Map()
+  }
+
+  trackRequest(requestId) {
+    this.requests.set(requestId, {
+      startTime: Date.now(),
+      stages: []
+    })
+  }
+
+  addStage(requestId, stageName, data) {
+    const request = this.requests.get(requestId)
+    if (request) {
+      request.stages.push({
+        stage: stageName,
+        timestamp: Date.now(),
+        data
+      })
+    }
+  }
+
+  getRequestFlow(requestId) {
+    return this.requests.get(requestId)
+  }
+}
+
+window.customTracker = new RequestTracker()
 ```
 
 ### Conditional Debugging
+
 ```javascript
-// Only debug specific patterns
-const shouldDebug = req.url.includes('/users') || req.method === 'POST'
-if (shouldDebug) {
-  console.group('🔍 Debugging request:', req.url)
-  // ... detailed logging
+// Only trace specific conditions
+const shouldTrace = (request) => {
+  return request.url.pathname.includes('/users') ||
+         request.method === 'POST' ||
+         request.headers['authorization']
+}
+
+// Apply conditional tracing
+if (shouldTrace(request)) {
+  console.group(`🔍 Tracing request: ${request.url}`)
+  // ... detailed tracing
   console.groupEnd()
 }
 ```
 
-### Error Context Tracking
+### Performance Regression Detection
+
 ```javascript
-// Attach context to errors
-try {
-  // ... operation
-} catch (error) {
-  console.error('❌ Error with context:', {
-    error: error.message,
-    request: req.url,
-    bridge: bridgeName,
-    query: parsedQuery,
-    userContext: userInfo
-  })
-  throw error
+// Detect performance regressions
+class PerformanceMonitor {
+  constructor() {
+    this.baselines = new Map()
+  }
+
+  recordBaseline(operation, duration) {
+    this.baselines.set(operation, duration)
+  }
+
+  checkRegression(operation, currentDuration) {
+    const baseline = this.baselines.get(operation)
+    if (baseline && currentDuration > baseline * 1.5) {
+      console.warn(`⚠️ Performance regression detected in ${operation}:`, {
+        baseline: `${baseline.toFixed(2)}ms`,
+        current: `${currentDuration.toFixed(2)}ms`,
+        regression: `${((currentDuration / baseline - 1) * 100).toFixed(1)}%`
+      })
+    }
+  }
+}
+
+window.perfMonitor = new PerformanceMonitor()
+```
+
+## Troubleshooting Quick Reference
+
+### Request Tracing Not Working
+```javascript
+// Check if tracing is enabled
+console.log('Tracing enabled:', window.mswDebug.getConfig().debugging.enableRequestTracing)
+
+// Enable tracing if disabled
+window.mswDebug.getConfig().debugging.enableRequestTracing = true
+```
+
+### Missing Request Stages
+```javascript
+// Verify middleware pipeline is complete
+const trace = window.mswDebug.getRecentTraces()[0]
+const expectedStages = ['error-handling', 'instrumentation', 'cors', 'project-resolution', 'authentication', 'request-parsing', 'response-formatting']
+const missingStages = expectedStages.filter(stage => !trace.stages.find(s => s.stage === stage))
+if (missingStages.length > 0) {
+  console.warn('Missing middleware stages:', missingStages)
 }
 ```
 
-This tracing guide provides the tools and techniques needed to efficiently debug any API request through the MSW system, significantly reducing the time needed to identify and fix issues.
+### Memory Leaks in Tracing
+```javascript
+// Check trace history size
+const traces = window.mswDebug.getRecentTraces()
+if (traces.length > 100) {
+  console.warn('Trace history too large, consider clearing:', traces.length)
+  window.mswDebug.clearHistory()
+}
+```
+
+The unified kernel architecture provides a much cleaner and more predictable request tracing experience compared to the previous bridge system, making debugging significantly faster and more effective.

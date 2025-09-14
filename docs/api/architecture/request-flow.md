@@ -1,369 +1,430 @@
-# MSW API Request Flow Diagrams
+# Unified Kernel Request Flow Diagrams
 
-This document provides visual flow diagrams for understanding how requests are processed through the MSW API system. These diagrams are essential for debugging and understanding the complex execution paths.
+This document provides visual flow diagrams for understanding how requests are processed through the **Unified Kernel Architecture**. The new system provides a much cleaner, single-path execution flow compared to the previous dual-bridge system.
 
-## 1. Overall Request Flow
+## 1. Overall Unified Kernel Request Flow
 
 ```mermaid
 flowchart TD
     A[HTTP Request] --> B{MSW Handler Match?}
     B -->|No| C[Pass Through to Network]
-    B -->|Yes| D[Extract Handler Type]
-    
-    D --> E{Request Type}
-    E -->|REST API| F[REST Handler]
-    E -->|Auth| G[Auth Handler]
-    E -->|Storage| H[Storage Handler]
-    E -->|Functions| I[Functions Handler]
-    E -->|Debug| J[Debug Handler]
-    E -->|Health| K[Health Handler]
-    
-    F --> L[Project Resolution]
-    G --> L
-    H --> L
-    I --> L
-    J --> L
-    K --> M[Direct Response]
-    
-    L --> N{Project ID Found?}
-    N -->|No| O[Use Default Project]
-    N -->|Yes| P[Switch Database Context]
-    
-    O --> Q[Bridge Selection]
-    P --> Q
-    
-    Q --> R{Bridge Type}
-    R -->|Enhanced| S[Enhanced Bridge Processing]
-    R -->|Simplified| T[Simplified Bridge Processing]
-    R -->|Auth| U[Auth Bridge Processing]
-    R -->|Storage| V[VFS Bridge Processing]
-    
-    S --> W[Database Query]
-    T --> W
-    U --> X[Auth Database Query]
-    V --> Y[VFS Operation]
-    
-    W --> Z[Format Response]
+    B -->|Yes| D[createApiHandler]
+
+    D --> E[Convert MSW Request → ApiRequest]
+    E --> F[Initialize ApiContext]
+    F --> G[Execute Middleware Pipeline]
+
+    G --> H[Stage 1: Error Handling Middleware]
+    H --> I[Stage 2: Instrumentation Middleware]
+    I --> J[Stage 3: CORS Middleware]
+    J --> K[Stage 4: Project Resolution Middleware]
+    K --> L[Stage 5: Authentication Middleware]
+    L --> M[Stage 6: Request Parsing Middleware]
+    M --> N[Stage 7: Response Formatting Middleware]
+
+    N --> O[Execute Executor]
+    O --> P{Executor Type}
+    P -->|REST| Q[REST Executor]
+    P -->|HEAD| R[HEAD Executor]
+    P -->|RPC| S[RPC Executor]
+
+    Q --> T[Query Engine Processing]
+    R --> T
+    S --> U[APIRequestOrchestrator]
+
+    T --> V[Database Execution]
+    U --> V
+    V --> W[Format Response]
+
+    W --> X{Response Type}
+    X -->|JSON| Y[HttpResponse.json]
+    X -->|CSV| Z[HttpResponse (raw)]
+    X -->|Text| AA[HttpResponse (raw)]
+
+    Y --> BB[Return HTTP Response]
+    Z --> BB
+    AA --> BB
+```
+
+## 2. Middleware Pipeline Detailed Flow
+
+```mermaid
+flowchart TD
+    A[ApiRequest + ApiContext] --> B[Middleware Pipeline Entry]
+
+    B --> C[Stage 1: Error Handling]
+    C --> D{Try Block Wrapper}
+    D -->|Success| E[Stage 2: Instrumentation]
+    D -->|Error| F[Catch All Errors]
+
+    F --> G[Map Error to ApiError]
+    G --> H[Format Error Response]
+    H --> I[Return Error Response]
+
+    E --> J[Generate Request ID]
+    J --> K[Start Performance Tracking]
+    K --> L[Stage 3: CORS]
+
+    L --> M[Set CORS Headers]
+    M --> N[Handle OPTIONS Preflight]
+    N --> O[Stage 4: Project Resolution]
+
+    O --> P{Project ID in URL?}
+    P -->|No| Q[Use Default Project]
+    P -->|Yes| R[Extract Project ID]
+    R --> S[Switch Database Context]
+
+    Q --> T[Stage 5: Authentication]
+    S --> T
+
+    T --> U{Authorization Header?}
+    U -->|No| V[Anonymous Context]
+    U -->|Yes| W[Decode JWT Token]
+    W --> X[Set User Context]
+    W --> Y[Setup RLS Context]
+
+    V --> Z[Stage 6: Request Parsing]
     X --> Z
     Y --> Z
-    
-    Z --> AA[Add CORS Headers]
-    AA --> BB[Return HTTP Response]
+
+    Z --> AA[Parse URL Parameters]
+    AA --> BB[Parse PostgREST Syntax]
+    BB --> CC[Validate Query Format]
+    CC --> DD[Build ParsedQuery]
+    DD --> EE[Stage 7: Response Formatting]
+
+    EE --> FF[Call Next (Executor)]
+    FF --> GG[Format Response Data]
+    GG --> HH[Set Content-Type Headers]
+    HH --> II[Apply PostgREST Conventions]
+    II --> JJ[Return Formatted Response]
 ```
 
-## 2. Project Resolution Flow
+## 3. Query Engine Processing Flow
 
 ```mermaid
 flowchart TD
-    A[Request URL] --> B[Extract Project ID Pattern]
-    B --> C{Project ID in URL?}
-    
-    C -->|No| D[Use Default Project]
-    C -->|Yes| E[Parse Project ID]
-    
-    E --> F{Cache Hit?}
-    F -->|Yes| G[Return Cached Resolution]
-    F -->|No| H[Validate Project ID]
-    
-    H --> I{Project Exists?}
-    I -->|No| J[Return 404 Error]
-    I -->|Yes| K[Switch Database Connection]
-    
-    K --> L[Normalize URL Path]
-    L --> M[Cache Resolution Result]
-    M --> N[Update Cache Metrics]
-    N --> O[Return Project Context]
-    
-    D --> P[Default Database Connection]
-    P --> Q[Return Default Context]
-    
-    G --> R[Update Cache Hit Counter]
-    R --> O
-```
+    A[Query Engine.processRequest] --> B[Ensure DB Initialized]
+    B --> C{Can Use Fast Path?}
 
-## 3. Bridge Selection Decision Tree
+    C -->|Yes| D[Fast Path Parsing]
+    C -->|No| E[Full PostgREST Parsing]
 
-```mermaid
-flowchart TD
-    A[Request Routed to Bridge] --> B{Request Type}
-    
-    B -->|REST API| C{USE_SIMPLIFIED_BRIDGE?}
-    C -->|true| D[Simplified Bridge]
-    C -->|false| E[Enhanced Bridge]
-    
-    B -->|Auth| F[Auth Bridge]
-    B -->|Storage| G[VFS Bridge]
-    B -->|Functions| H[Functions Handler]
-    B -->|Debug| I[Direct DB Access]
-    
-    D --> J[Limited PostgREST Syntax]
-    E --> K[Full PostgREST Compatibility]
-    F --> L[JWT + User Management]
-    G --> M[File System Operations]
-    H --> N[Function Execution Simulation]
-    I --> O[Raw SQL Execution]
-    
-    J --> P[Query Parsing]
-    K --> P
-    L --> Q[Auth Processing]
-    M --> R[VFS Processing]
-    N --> S[Function Response]
-    I --> T[SQL Response]
-    
-    P --> U[Database Execution]
-    Q --> V[Auth Database]
-    R --> W[IndexedDB Operations]
-    
-    U --> X[Format PostgREST Response]
-    V --> Y[Format Auth Response]
-    W --> Z[Format Storage Response]
-    S --> AA[Format Function Response]
-    T --> BB[Format Debug Response]
-```
+    D --> F[Simple Query Processing]
+    E --> G[Complex Query Processing]
 
-## 4. Enhanced Bridge Query Processing
+    F --> H[Apply RLS Filters]
+    G --> H
 
-```mermaid
-flowchart TD
-    A[Enhanced Bridge Request] --> B[Parse URL Parameters]
-    B --> C[Extract Query Components]
-    
-    C --> D{Has Embedded Resources?}
-    D -->|Yes| E[Parse Embedding Syntax]
-    D -->|No| F[Parse Simple Query]
-    
-    E --> G[Handle Multi-level Embedding]
-    G --> H[Process Table-qualified Limits]
-    H --> I[Handle Relationship Joins]
-    
-    F --> J[Parse Filters]
-    J --> K[Parse Ordering]
-    K --> L[Parse Pagination]
-    
-    I --> M[Generate Complex SQL]
-    L --> N[Generate Simple SQL]
-    
-    M --> O{RLS Enabled?}
-    N --> O
-    
-    O -->|Yes| P[Apply User Context Filters]
-    O -->|No| Q[Execute Query Directly]
-    
-    P --> R[Inject RLS WHERE Clauses]
-    R --> S[Execute Filtered Query]
-    
-    Q --> T[Execute Query]
+    H --> I{Method Type}
+    I -->|POST| J[Build Insert Query]
+    I -->|PATCH| K[Build Update Query]
+    I -->|DELETE| L[Build Delete Query]
+    I -->|GET/HEAD| M[Build Select Query]
+
+    J --> N{UPSERT Operation?}
+    N -->|Yes| O[Build Upsert Query]
+    N -->|No| P[Execute Insert Query]
+    O --> P
+
+    K --> Q[Execute Update Query]
+    L --> R[Execute Delete Query]
+    M --> S[Execute Select Query]
+
+    P --> T[Execute Query with Context]
+    Q --> T
+    R --> T
     S --> T
-    
-    T --> U{Query Successful?}
-    U -->|No| V[Map Database Error]
-    U -->|Yes| W[Format Results]
-    
-    V --> X[Return Error Response]
-    W --> Y[Apply PostgREST Formatting]
-    Y --> Z[Return Success Response]
+
+    T --> U{Count Requested?}
+    U -->|Yes| V[Execute Count Query]
+    U -->|No| W[Format Response]
+
+    V --> X[Calculate Total Count]
+    X --> Y[Add Content-Range Header]
+    Y --> W
+
+    W --> Z{Response Method}
+    Z -->|GET/HEAD| AA[Format Select Response]
+    Z -->|POST| BB[Format Insert Response]
+    Z -->|PATCH| CC[Format Update Response]
+    Z -->|DELETE| DD[Format Delete Response]
+
+    AA --> EE[Return Formatted Response]
+    BB --> EE
+    CC --> EE
+    DD --> EE
 ```
 
-## 5. Authentication Flow
+## 4. Executor Pattern Flow
 
 ```mermaid
 flowchart TD
-    A[Auth Request] --> B{Auth Endpoint}
-    
-    B -->|/signup| C[User Registration]
-    B -->|/signin| D[User Authentication]
-    B -->|/signout| E[Session Termination]
-    B -->|/refresh| F[Token Refresh]
-    B -->|/user| G[User Info Retrieval]
-    
-    C --> H[Validate Registration Data]
-    H --> I[Hash Password]
-    I --> J[Create User Record]
-    J --> K[Generate JWT Token]
-    K --> L[Create Session]
-    
-    D --> M[Validate Credentials]
-    M --> N{Credentials Valid?}
-    N -->|No| O[Return 401 Error]
-    N -->|Yes| P[Generate JWT Token]
-    P --> Q[Create/Update Session]
-    
-    E --> R[Invalidate Session]
-    R --> S[Clear JWT Token]
-    
-    F --> T[Validate Refresh Token]
-    T --> U{Token Valid?}
-    U -->|No| V[Return 401 Error]
-    U -->|Yes| W[Generate New JWT]
-    W --> X[Update Session]
-    
-    G --> Y[Extract User from JWT]
-    Y --> Z[Return User Data]
-    
-    L --> AA[Return Auth Response]
-    Q --> AA
-    S --> BB[Return Success Response]
-    X --> AA
-    Z --> AA
+    A[Middleware Pipeline] --> B{Request Method}
+
+    B -->|GET| C[REST Executor]
+    B -->|POST to /rest/v1/table| D[REST Executor]
+    B -->|POST to /rpc/function| E[RPC Executor]
+    B -->|PATCH| F[REST Executor]
+    B -->|DELETE| G[REST Executor]
+    B -->|HEAD| H[HEAD Executor]
+
+    C --> I[Extract Table Parameter]
+    D --> I
+    F --> I
+    G --> I
+
+    I --> J{Table Parameter Valid?}
+    J -->|No| K[Throw ApiError: Missing Table]
+    J -->|Yes| L[Call Query Engine]
+
+    E --> M[Extract Function Name]
+    M --> N{Function Name Valid?}
+    N -->|No| O[Throw ApiError: Missing Function]
+    N -->|Yes| P[Call APIRequestOrchestrator]
+
+    H --> Q[Process as GET Request]
+    Q --> R[Return Headers Only]
+
+    L --> S[Query Engine Processing]
+    P --> T[Function Execution]
+
+    S --> U[Return Database Response]
+    T --> V[Return Function Response]
+    R --> W[Return HEAD Response]
+
+    U --> X[Format Final Response]
+    V --> X
+    W --> X
+
+    X --> Y[Return to Kernel]
 ```
 
-## 6. Error Handling Flow
+## 5. Error Handling Flow
 
 ```mermaid
 flowchart TD
-    A[Operation Error] --> B{Error Type}
-    
-    B -->|Database Error| C[PostgreSQL Error]
-    B -->|Validation Error| D[Request Validation Error]
-    B -->|Auth Error| E[Authentication Error]
-    B -->|Network Error| F[Network/Timeout Error]
-    B -->|Bridge Error| G[Bridge Processing Error]
-    
-    C --> H[Map PG Error Code]
-    H --> I{Known PG Error?}
-    I -->|Yes| J[Map to HTTP Status]
-    I -->|No| K[Generic 500 Error]
-    
-    D --> L[Extract Validation Details]
-    L --> M[Return 400 Bad Request]
-    
-    E --> N{Auth Error Type}
-    N -->|Invalid Token| O[Return 401 Unauthorized]
-    N -->|Insufficient Permissions| P[Return 403 Forbidden]
-    N -->|Token Expired| Q[Return 401 with Refresh Hint]
-    
-    F --> R[Return 503 Service Unavailable]
-    
-    G --> S[Log Bridge Error]
-    S --> T[Return 500 Internal Error]
-    
-    J --> U[Format Error Response]
-    K --> U
-    M --> U
-    O --> U
-    P --> U
-    Q --> U
-    R --> U
-    T --> U
-    
-    U --> V[Add CORS Headers]
-    V --> W[Add Error Context]
-    W --> X[Return Error Response]
+    A[Error Occurs in Pipeline] --> B[Error Handling Middleware]
+    B --> C{Error Type}
+
+    C -->|ApiError| D[Use Existing ApiError]
+    C -->|PostgreSQL Error| E[Map PG Error Code]
+    C -->|Unknown Error| F[Create Generic ApiError]
+
+    E --> G{Known PG Error?}
+    G -->|Yes| H[Map to HTTP Status + ApiError]
+    G -->|No| I[Create QUERY_ERROR ApiError]
+
+    D --> J[Extract Error Details]
+    H --> J
+    I --> J
+    F --> J
+
+    J --> K[Log Error with Context]
+    K --> L[Format Error Response]
+    L --> M{Request ID Available?}
+    M -->|Yes| N[Add Request ID to Response]
+    M -->|No| O[Add Error Response]
+
+    N --> P[Add Error Headers]
+    O --> P
+    P --> Q[Add CORS Headers]
+    Q --> R[Return Error Response]
 ```
 
-## 7. Storage/VFS Operation Flow
+## 6. Authentication and RLS Flow
 
 ```mermaid
 flowchart TD
-    A[Storage Request] --> B{Storage Operation}
-    
-    B -->|Upload| C[File Upload]
-    B -->|Download| D[File Download]
-    B -->|Delete| E[File Delete]
-    B -->|List| F[List Objects]
-    B -->|Create Bucket| G[Bucket Creation]
-    
-    C --> H[Validate File Data]
-    H --> I[Check Bucket Permissions]
-    I --> J[Store in VFS]
-    J --> K[Update File Metadata]
-    
-    D --> L[Resolve File Path]
-    L --> M{File Exists?}
-    M -->|No| N[Return 404 Error]
-    M -->|Yes| O[Check Access Permissions]
-    O --> P[Generate Signed URL]
-    P --> Q[Return File URL]
-    
-    E --> R[Validate Delete Permissions]
-    R --> S[Remove from VFS]
-    S --> T[Update Bucket Metadata]
-    
-    F --> U[Query VFS Index]
-    U --> V[Apply Filters]
-    V --> W[Format Object List]
-    
-    G --> X[Validate Bucket Name]
-    X --> Y[Check Bucket Limits]
-    Y --> Z[Create Bucket Record]
-    Z --> AA[Initialize Bucket Policies]
-    
-    K --> BB[Return Upload Response]
-    Q --> BB
-    T --> BB
-    W --> BB
-    AA --> BB
-    
-    BB --> CC[Add Storage Headers]
-    CC --> DD[Return Response]
+    A[Authentication Middleware] --> B{Authorization Header?}
+
+    B -->|No| C[Set Anonymous Context]
+    B -->|Yes| D[Extract JWT Token]
+
+    D --> E[Validate JWT Format]
+    E --> F{JWT Valid?}
+    F -->|No| G[Set Anonymous Context]
+    F -->|Yes| H[Decode JWT Claims]
+
+    H --> I[Extract User ID]
+    I --> J[Extract Role]
+    J --> K[Extract Custom Claims]
+    K --> L[Set Session Context]
+
+    C --> M[Continue Pipeline]
+    G --> M
+    L --> N[Apply RLS Context]
+
+    N --> O[RLS Filtering Service]
+    O --> P[Inject User Filters]
+    P --> Q[Modify Query Filters]
+    Q --> M
+
+    M --> R[Request Parsing Middleware]
 ```
 
-## 8. Debugging Decision Tree
+## 7. Performance Monitoring Flow
 
-When debugging API requests, follow this decision tree:
+```mermaid
+flowchart TD
+    A[Instrumentation Middleware] --> B[Generate Request ID]
+    B --> C[Record Start Time]
+    C --> D[Create Request Trace]
+
+    D --> E[Store in Active Traces Map]
+    E --> F[Setup Stage Reporting]
+    F --> G[Continue Pipeline]
+
+    G --> H[Each Middleware Stage]
+    H --> I[Report Stage Entry]
+    I --> J[Execute Stage Logic]
+    J --> K[Report Stage Exit]
+    K --> L[Record Stage Timing]
+
+    L --> M{More Stages?}
+    M -->|Yes| H
+    M -->|No| N[Complete Request Trace]
+
+    N --> O[Calculate Total Duration]
+    O --> P[Update Performance Metrics]
+    P --> Q[Move to Completed Traces]
+    Q --> R[Enable Debug Tools Access]
+
+    R --> S[window.mswDebug.getRecentTraces()]
+    S --> T[Browser Debug Console]
+```
+
+## 8. Response Format Handling Flow
+
+```mermaid
+flowchart TD
+    A[Response Formatting Middleware] --> B[Execute Next (Executor)]
+    B --> C[Receive Executor Response]
+
+    C --> D{CSV Format Requested?}
+    D -->|Yes| E[Format as CSV]
+    D -->|No| F[Format as JSON]
+
+    E --> G[Convert Data to CSV String]
+    G --> H[Set Content-Type: text/csv]
+    H --> I[Return Raw Response]
+
+    F --> J[Apply PostgREST Conventions]
+    J --> K[Add Content-Range Headers]
+    K --> L[Handle Single Object Response]
+    L --> M[Set Content-Type: application/json]
+
+    I --> N[Return to Kernel]
+    M --> N
+
+    N --> O[Kernel Response Handling]
+    O --> P{Content Type}
+    P -->|text/csv| Q[HttpResponse(data, options)]
+    P -->|application/json| R[HttpResponse.json(data, options)]
+
+    Q --> S[Return HTTP Response]
+    R --> S
+```
+
+## 9. Debugging Decision Tree
+
+When debugging issues with the unified kernel system:
 
 ```mermaid
 flowchart TD
     A[API Request Issue] --> B{Response Received?}
-    
+
     B -->|No| C[Check MSW Handler Match]
-    C --> D{Handler Found?}
-    D -->|No| E[Add Missing Handler]
-    D -->|Yes| F[Check Project Resolution]
-    
+    C --> D{Handler Pattern Correct?}
+    D -->|No| E[Fix MSW Handler Pattern]
+    D -->|Yes| F[Check Kernel Execution]
+
     B -->|Yes| G{Status Code?}
     G -->|2xx| H[Check Response Format]
     G -->|4xx| I[Check Request Validation]
-    G -->|5xx| J[Check Server Errors]
-    
-    F --> K{Project ID Extracted?}
-    K -->|No| L[Fix URL Pattern]
-    K -->|Yes| M[Check Database Switch]
-    
-    I --> N{Auth Required?}
-    N -->|Yes| O[Check JWT Token]
-    N -->|No| P[Check Request Parameters]
-    
-    J --> Q{Database Error?}
-    Q -->|Yes| R[Check SQL Generation]
-    Q -->|No| S[Check Bridge Logic]
-    
-    H --> T{PostgREST Compatible?}
-    T -->|No| U[Check Bridge Implementation]
-    T -->|Yes| V[Issue Resolved]
-    
-    O --> W{Token Valid?}
-    W -->|No| X[Fix Authentication]
-    W -->|Yes| Y[Check RLS Filters]
-    
-    R --> Z[Debug Query Parsing]
-    S --> AA[Debug Bridge Selection]
-    
-    Z --> BB[Fix SQL Generation]
-    AA --> CC[Fix Bridge Logic]
+    G -->|5xx| J[Check Internal Errors]
+
+    F --> K[Enable Verbose Logging]
+    K --> L[window.mswDebug.enableVerboseLogging()]
+
+    I --> M[Check Middleware Pipeline]
+    M --> N{Which Stage Failed?}
+    N -->|Auth| O[Check JWT Token]
+    N -->|Parsing| P[Check PostgREST Syntax]
+    N -->|Project| Q[Check Project ID Extraction]
+
+    J --> R[Check Error Logs]
+    R --> S{ApiError Type?}
+    S -->|QUERY_ERROR| T[Check SQL Generation]
+    S -->|AUTH_ERROR| U[Check Authentication]
+    S -->|VALIDATION_ERROR| V[Check Request Format]
+
+    H --> W{PostgREST Compatible?}
+    W -->|No| X[Check Response Formatting]
+    W -->|Yes| Y[Issue Resolved]
+
+    O --> Z[Validate JWT in Auth Middleware]
+    P --> AA[Validate Query Parsing Logic]
+    Q --> BB[Validate Project Resolution]
+    T --> CC[Check Query Engine Logic]
+    U --> DD[Check Authentication Middleware]
+    V --> EE[Check Request Parsing Middleware]
 ```
 
-## Key Insights from Flow Analysis
+## Key Improvements Over Bridge System
 
-### 1. **Critical Decision Points**
-- **Project Resolution**: Determines database context for entire request
-- **Bridge Selection**: Affects query parsing and SQL generation capabilities
-- **RLS Application**: Can filter results unexpectedly if user context is wrong
+### 1. **Simplified Execution Path**
+- **Previous**: Multiple bridge selection logic with complex decision trees
+- **Current**: Single middleware pipeline with predictable execution order
 
-### 2. **Common Failure Points**
-- **URL Pattern Matching**: Incorrect handler selection leads to wrong processing
-- **Project Database Switching**: Stale connections cause data inconsistencies
-- **Query Parsing**: Complex PostgREST syntax can fail silently
+### 2. **Better Error Handling**
+- **Previous**: Scattered error handling across different bridges
+- **Current**: Centralized error handling middleware with standardized `ApiError`
 
-### 3. **Performance Bottlenecks**
-- **Project Resolution Cache**: Cache misses cause database switching overhead
-- **Complex Query Parsing**: Enhanced bridge parsing for embedded resources
-- **RLS Filter Application**: User context extraction and filter injection
+### 3. **Enhanced Debugging**
+- **Previous**: Difficult to trace which bridge handled a request
+- **Current**: Complete request tracing with `window.mswDebug` tools
 
-### 4. **Debugging Strategies**
-- **Trace Request ID**: Follow single request through all flow stages
-- **Log Bridge Selection**: Verify correct bridge handles request
-- **Monitor Cache Performance**: Check project resolution cache hit rates
-- **Validate SQL Generation**: Ensure PostgREST syntax converts correctly
+### 4. **Performance Monitoring**
+- **Previous**: Limited visibility into request processing time
+- **Current**: Per-stage timing and comprehensive performance metrics
 
-These diagrams provide the visual foundation for understanding the MSW API system's complexity and serve as debugging guides for identifying where issues occur in the request processing pipeline.
+### 5. **Type Safety**
+- **Previous**: Inconsistent typing across different bridges
+- **Current**: Comprehensive TypeScript interfaces throughout pipeline
+
+## Debugging Tools Usage
+
+### Browser Console Commands
+```javascript
+// View system status
+window.mswDebug.status()
+
+// Get recent request traces
+window.mswDebug.getRecentTraces()
+
+// Enable detailed logging
+window.mswDebug.enableVerboseLogging()
+
+// View performance stats
+window.mswDebug.getBridgeStats()
+
+// Get kernel information
+window.mswDebug.kernelInfo()
+```
+
+### Request Tracing Example
+```javascript
+// After making a request, view the trace
+const traces = window.mswDebug.getRecentTraces()
+const lastTrace = traces[0]
+
+console.log('Request ID:', lastTrace.requestId)
+console.log('Total Duration:', lastTrace.duration, 'ms')
+console.log('Stages:')
+lastTrace.stages.forEach(stage => {
+  console.log(`  ${stage.stage}: ${stage.duration}ms`)
+})
+```
+
+The unified kernel architecture provides a much cleaner, more debuggable request flow that eliminates the complexity of the previous bridge system while maintaining superior PostgREST compatibility.
