@@ -19,27 +19,27 @@
             {
               "type": "info",
               "message": "Starting test: Getting your data",
-              "timestamp": "2025-09-14T03:23:44.040Z"
+              "timestamp": "2025-09-14T13:15:19.822Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:44.121Z"
+              "timestamp": "2025-09-14T13:15:19.889Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:44.140Z"
+              "timestamp": "2025-09-14T13:15:19.909Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:44.141Z"
+              "timestamp": "2025-09-14T13:15:19.910Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:44.266Z"
+              "timestamp": "2025-09-14T13:15:20.058Z"
             }
           ],
           "skip": true
@@ -59,27 +59,27 @@
             {
               "type": "info",
               "message": "Starting test: Selecting specific columns",
-              "timestamp": "2025-09-14T03:23:44.267Z"
+              "timestamp": "2025-09-14T13:15:20.062Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:44.404Z"
+              "timestamp": "2025-09-14T13:15:20.270Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:44.431Z"
+              "timestamp": "2025-09-14T13:15:20.299Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:44.432Z"
+              "timestamp": "2025-09-14T13:15:20.302Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:44.600Z"
+              "timestamp": "2025-09-14T13:15:20.496Z"
             }
           ],
           "skip": true
@@ -100,27 +100,27 @@
             {
               "type": "info",
               "message": "Starting test: Query referenced tables",
-              "timestamp": "2025-09-14T03:23:44.602Z"
+              "timestamp": "2025-09-14T13:15:20.498Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:44.663Z"
+              "timestamp": "2025-09-14T13:15:20.734Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:44.694Z"
+              "timestamp": "2025-09-14T13:15:20.786Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:44.695Z"
+              "timestamp": "2025-09-14T13:15:20.793Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:44.834Z"
+              "timestamp": "2025-09-14T13:15:20.923Z"
             }
           ],
           "skip": true
@@ -141,27 +141,27 @@
             {
               "type": "info",
               "message": "Starting test: Query referenced tables with spaces in their names",
-              "timestamp": "2025-09-14T03:23:44.835Z"
+              "timestamp": "2025-09-14T13:15:20.925Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:44.918Z"
+              "timestamp": "2025-09-14T13:15:20.992Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:44.951Z"
+              "timestamp": "2025-09-14T13:15:21.049Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:44.951Z"
+              "timestamp": "2025-09-14T13:15:21.055Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:45.054Z"
+              "timestamp": "2025-09-14T13:15:21.194Z"
             }
           ],
           "skip": true
@@ -183,27 +183,27 @@
             {
               "type": "info",
               "message": "Starting test: Query referenced tables through a join table",
-              "timestamp": "2025-09-14T03:23:45.055Z"
+              "timestamp": "2025-09-14T13:15:21.196Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:45.103Z"
+              "timestamp": "2025-09-14T13:15:21.260Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:45.140Z"
+              "timestamp": "2025-09-14T13:15:21.358Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:45.141Z"
+              "timestamp": "2025-09-14T13:15:21.359Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:45.387Z"
+              "timestamp": "2025-09-14T13:15:21.586Z"
             }
           ],
           "skip": true
@@ -225,27 +225,27 @@
             {
               "type": "info",
               "message": "Starting test: Query the same referenced table multiple times",
-              "timestamp": "2025-09-14T03:23:45.388Z"
+              "timestamp": "2025-09-14T13:15:21.588Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:45.444Z"
+              "timestamp": "2025-09-14T13:15:21.666Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:45.469Z"
+              "timestamp": "2025-09-14T13:15:21.708Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:45.470Z"
+              "timestamp": "2025-09-14T13:15:21.709Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:45.575Z"
+              "timestamp": "2025-09-14T13:15:21.846Z"
             }
           ],
           "skip": true
@@ -267,27 +267,27 @@
             {
               "type": "info",
               "message": "Starting test: Query nested foreign tables through a join table",
-              "timestamp": "2025-09-14T03:23:45.576Z"
+              "timestamp": "2025-09-14T13:15:21.848Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:45.624Z"
+              "timestamp": "2025-09-14T13:15:21.923Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:45.700Z"
+              "timestamp": "2025-09-14T13:15:22.021Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:45.701Z"
+              "timestamp": "2025-09-14T13:15:22.022Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:45.878Z"
+              "timestamp": "2025-09-14T13:15:22.235Z"
             }
           ],
           "skip": true
@@ -309,27 +309,27 @@
             {
               "type": "info",
               "message": "Starting test: Filtering through referenced tables",
-              "timestamp": "2025-09-14T03:23:45.879Z"
+              "timestamp": "2025-09-14T13:15:22.236Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:45.952Z"
+              "timestamp": "2025-09-14T13:15:22.352Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:45.978Z"
+              "timestamp": "2025-09-14T13:15:22.405Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:45.979Z"
+              "timestamp": "2025-09-14T13:15:22.407Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:46.079Z"
+              "timestamp": "2025-09-14T13:15:22.548Z"
             }
           ],
           "skip": true
@@ -351,27 +351,27 @@
             {
               "type": "info",
               "message": "Starting test: Querying referenced table with count",
-              "timestamp": "2025-09-14T03:23:46.080Z"
+              "timestamp": "2025-09-14T13:15:22.549Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:46.125Z"
+              "timestamp": "2025-09-14T13:15:22.601Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:46.223Z"
+              "timestamp": "2025-09-14T13:15:22.635Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:46.224Z"
+              "timestamp": "2025-09-14T13:15:22.636Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:46.356Z"
+              "timestamp": "2025-09-14T13:15:22.765Z"
             }
           ],
           "skip": true
@@ -393,27 +393,27 @@
             {
               "type": "info",
               "message": "Starting test: Querying with count option",
-              "timestamp": "2025-09-14T03:23:46.357Z"
+              "timestamp": "2025-09-14T13:15:22.766Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:46.405Z"
+              "timestamp": "2025-09-14T13:15:22.832Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:46.421Z"
+              "timestamp": "2025-09-14T13:15:22.861Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:46.422Z"
+              "timestamp": "2025-09-14T13:15:22.862Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:46.510Z"
+              "timestamp": "2025-09-14T13:15:23.084Z"
             }
           ],
           "skip": true
@@ -435,27 +435,27 @@
             {
               "type": "info",
               "message": "Starting test: Querying JSON data",
-              "timestamp": "2025-09-14T03:23:46.511Z"
+              "timestamp": "2025-09-14T13:15:23.085Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:46.548Z"
+              "timestamp": "2025-09-14T13:15:23.134Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:46.562Z"
+              "timestamp": "2025-09-14T13:15:23.274Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:46.563Z"
+              "timestamp": "2025-09-14T13:15:23.275Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:46.644Z"
+              "timestamp": "2025-09-14T13:15:23.459Z"
             }
           ],
           "skip": true
@@ -477,27 +477,27 @@
             {
               "type": "info",
               "message": "Starting test: Querying referenced table with inner join",
-              "timestamp": "2025-09-14T03:23:46.644Z"
+              "timestamp": "2025-09-14T13:15:23.462Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:46.729Z"
+              "timestamp": "2025-09-14T13:15:23.652Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:46.752Z"
+              "timestamp": "2025-09-14T13:15:23.698Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:46.753Z"
+              "timestamp": "2025-09-14T13:15:23.699Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:46.858Z"
+              "timestamp": "2025-09-14T13:15:23.829Z"
             }
           ],
           "skip": true
@@ -568,27 +568,27 @@
             {
               "type": "info",
               "message": "Starting test: Create a record",
-              "timestamp": "2025-09-14T03:23:46.859Z"
+              "timestamp": "2025-09-14T13:15:23.830Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:46.911Z"
+              "timestamp": "2025-09-14T13:15:23.876Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:46.919Z"
+              "timestamp": "2025-09-14T13:15:23.888Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:46.920Z"
+              "timestamp": "2025-09-14T13:15:23.889Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:47.023Z"
+              "timestamp": "2025-09-14T13:15:24.036Z"
             }
           ],
           "skip": true
@@ -609,27 +609,27 @@
             {
               "type": "info",
               "message": "Starting test: Create a record and return it",
-              "timestamp": "2025-09-14T03:23:47.024Z"
+              "timestamp": "2025-09-14T13:15:24.038Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:47.063Z"
+              "timestamp": "2025-09-14T13:15:24.111Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:47.072Z"
+              "timestamp": "2025-09-14T13:15:24.137Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:47.072Z"
+              "timestamp": "2025-09-14T13:15:24.141Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:47.222Z"
+              "timestamp": "2025-09-14T13:15:24.350Z"
             }
           ],
           "skip": true
@@ -646,35 +646,35 @@
         "description": "A bulk create operation is handled in a single transaction.\nIf any of the inserts fail, none of the rows are inserted.\n",
         "hideCodeBlock": true,
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Bulk create",
-              "timestamp": "2025-09-14T03:23:47.223Z"
+              "timestamp": "2025-09-14T13:15:24.351Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:47.315Z"
+              "timestamp": "2025-09-14T13:15:24.547Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:47.337Z"
+              "timestamp": "2025-09-14T13:15:24.576Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:47.338Z"
+              "timestamp": "2025-09-14T13:15:24.576Z"
             },
             {
-              "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"error\": {\n    \"code\": \"23505\",\n    \"details\": \"Key (id)=(1) already exists.\",\n    \"hint\": null,\n    \"message\": \"duplicate key value violates unique constraint \\\"countries_pkey\\\"\"\n  },\n  \"status\": 409,\n  \"statusText\": \"Conflict\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"QUERY_ERROR\",\n    \"details\": {\n      \"statusCode\": 409,\n      \"errorCode\": \"QUERY_ERROR\",\n      \"message\": \"Query processing failed\",\n      \"details\": {\n        \"length\": 192,\n        \"name\": \"error\",\n        \"severity\": \"ERROR\",\n        \"code\": \"23505\",\n        \"detail\": \"Key (id)=(1) already exists.\",\n        \"schema\": \"public\",\n        \"table\": \"countries\",\n        \"constraint\": \"countries_pkey\",\n        \"file\": \"nbtinsert.c\",\n        \"line\": \"673\",\n        \"routine\": \"_bt_check_unique\",\n        \"query\": \"INSERT INTO countries (id, name) VALUES ($1, $2), ($3, $4) RETURNING *\",\n        \"params\": [\n          1,\n          \"Mordor\",\n          1,\n          \"The Shire\"\n        ]\n      }\n    },\n    \"hint\": null,\n    \"message\": \"Query processing failed\"\n  },\n  \"status\": 400,\n  \"statusText\": \"Bad Request\"\n}",
-              "timestamp": "2025-09-14T03:23:47.423Z"
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-14T13:15:24.709Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       }
     ]
@@ -701,27 +701,27 @@
             {
               "type": "info",
               "message": "Starting test: Updating your data",
-              "timestamp": "2025-09-14T03:23:47.424Z"
+              "timestamp": "2025-09-14T13:15:24.710Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:47.468Z"
+              "timestamp": "2025-09-14T13:15:24.761Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:47.483Z"
+              "timestamp": "2025-09-14T13:15:24.780Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:47.483Z"
+              "timestamp": "2025-09-14T13:15:24.780Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:47.564Z"
+              "timestamp": "2025-09-14T13:15:24.880Z"
             }
           ],
           "skip": true
@@ -742,27 +742,27 @@
             {
               "type": "info",
               "message": "Starting test: Update a record and return it",
-              "timestamp": "2025-09-14T03:23:47.566Z"
+              "timestamp": "2025-09-14T13:15:24.881Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:47.610Z"
+              "timestamp": "2025-09-14T13:15:24.939Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:47.624Z"
+              "timestamp": "2025-09-14T13:15:24.956Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:47.624Z"
+              "timestamp": "2025-09-14T13:15:24.957Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:47.705Z"
+              "timestamp": "2025-09-14T13:15:25.068Z"
             }
           ],
           "skip": true
@@ -784,27 +784,27 @@
             {
               "type": "info",
               "message": "Starting test: Updating JSON data",
-              "timestamp": "2025-09-14T03:23:47.706Z"
+              "timestamp": "2025-09-14T13:15:25.069Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:47.761Z"
+              "timestamp": "2025-09-14T13:15:25.127Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:47.775Z"
+              "timestamp": "2025-09-14T13:15:25.155Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:47.776Z"
+              "timestamp": "2025-09-14T13:15:25.156Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:47.870Z"
+              "timestamp": "2025-09-14T13:15:25.391Z"
             }
           ],
           "skip": true
@@ -834,27 +834,27 @@
             {
               "type": "info",
               "message": "Starting test: Upsert your data",
-              "timestamp": "2025-09-14T03:23:47.871Z"
+              "timestamp": "2025-09-14T13:15:25.393Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:47.922Z"
+              "timestamp": "2025-09-14T13:15:25.465Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:47.935Z"
+              "timestamp": "2025-09-14T13:15:25.489Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:47.936Z"
+              "timestamp": "2025-09-14T13:15:25.490Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:48.029Z"
+              "timestamp": "2025-09-14T13:15:25.597Z"
             }
           ],
           "skip": true
@@ -875,27 +875,27 @@
             {
               "type": "info",
               "message": "Starting test: Bulk Upsert your data",
-              "timestamp": "2025-09-14T03:23:48.030Z"
+              "timestamp": "2025-09-14T13:15:25.598Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:48.073Z"
+              "timestamp": "2025-09-14T13:15:25.697Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:48.088Z"
+              "timestamp": "2025-09-14T13:15:25.715Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:48.089Z"
+              "timestamp": "2025-09-14T13:15:25.715Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:48.180Z"
+              "timestamp": "2025-09-14T13:15:25.815Z"
             }
           ],
           "skip": true
@@ -912,35 +912,35 @@
         "description": "In the following query, `upsert()` implicitly uses the `id`\n(primary key) column to determine conflicts. If there is no existing\nrow with the same `id`, `upsert()` inserts a new row, which\nwill fail in this case as there is already a row with `handle` `\"saoirse\"`.\nUsing the `onConflict` option, you can instruct `upsert()` to use\nanother column with a unique constraint to determine conflicts.\n",
         "hideCodeBlock": true,
         "results": {
-          "passed": false,
+          "passed": true,
           "log": [
             {
               "type": "info",
               "message": "Starting test: Upserting into tables with constraints",
-              "timestamp": "2025-09-14T03:23:48.181Z"
+              "timestamp": "2025-09-14T13:15:25.816Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:48.391Z"
+              "timestamp": "2025-09-14T13:15:25.867Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:48.419Z"
+              "timestamp": "2025-09-14T13:15:25.882Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:48.420Z"
+              "timestamp": "2025-09-14T13:15:25.883Z"
             },
             {
-              "type": "error",
-              "message": "Test failed - results don't match:\nExpected:\n{\n  \"error\": {\n    \"code\": \"23505\",\n    \"details\": \"Key (handle)=(saoirse) already exists.\",\n    \"hint\": null,\n    \"message\": \"duplicate key value violates unique constraint \\\"users_handle_key\\\"\"\n  },\n  \"status\": 409,\n  \"statusText\": \"Conflict\"\n}\n\nActual:\n{\n  \"error\": {\n    \"code\": \"QUERY_ERROR\",\n    \"details\": {\n      \"statusCode\": 409,\n      \"errorCode\": \"QUERY_ERROR\",\n      \"message\": \"Query processing failed\",\n      \"details\": {\n        \"code\": \"23505\",\n        \"detail\": \"Key (handle)=(saoirse) already exists.\",\n        \"hint\": null,\n        \"constraint\": \"users_handle_key\",\n        \"severity\": \"ERROR\"\n      }\n    },\n    \"hint\": null,\n    \"message\": \"Query processing failed\"\n  },\n  \"status\": 400,\n  \"statusText\": \"Bad Request\"\n}",
-              "timestamp": "2025-09-14T03:23:48.506Z"
+              "type": "info",
+              "message": "Test passed - results match expected output",
+              "timestamp": "2025-09-14T13:15:25.984Z"
             }
           ],
-          "skip": false
+          "skip": true
         }
       }
     ]
@@ -967,27 +967,27 @@
             {
               "type": "info",
               "message": "Starting test: Delete a single record",
-              "timestamp": "2025-09-14T03:23:48.507Z"
+              "timestamp": "2025-09-14T13:15:25.985Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:48.565Z"
+              "timestamp": "2025-09-14T13:15:26.140Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:48.578Z"
+              "timestamp": "2025-09-14T13:15:26.199Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:48.578Z"
+              "timestamp": "2025-09-14T13:15:26.200Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:48.664Z"
+              "timestamp": "2025-09-14T13:15:26.319Z"
             }
           ],
           "skip": true
@@ -1008,27 +1008,27 @@
             {
               "type": "info",
               "message": "Starting test: Delete a record and return it",
-              "timestamp": "2025-09-14T03:23:48.665Z"
+              "timestamp": "2025-09-14T13:15:26.320Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:48.714Z"
+              "timestamp": "2025-09-14T13:15:26.379Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:48.727Z"
+              "timestamp": "2025-09-14T13:15:26.394Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:48.728Z"
+              "timestamp": "2025-09-14T13:15:26.395Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:48.818Z"
+              "timestamp": "2025-09-14T13:15:26.521Z"
             }
           ],
           "skip": true
@@ -1049,27 +1049,27 @@
             {
               "type": "info",
               "message": "Starting test: Delete multiple records",
-              "timestamp": "2025-09-14T03:23:48.820Z"
+              "timestamp": "2025-09-14T13:15:26.522Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:48.876Z"
+              "timestamp": "2025-09-14T13:15:26.568Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:48.891Z"
+              "timestamp": "2025-09-14T13:15:26.592Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:48.892Z"
+              "timestamp": "2025-09-14T13:15:26.592Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:48.993Z"
+              "timestamp": "2025-09-14T13:15:26.724Z"
             }
           ],
           "skip": true
@@ -1099,27 +1099,27 @@
             {
               "type": "info",
               "message": "Starting test: Call a Postgres function without arguments",
-              "timestamp": "2025-09-14T03:23:48.994Z"
+              "timestamp": "2025-09-14T13:15:26.733Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:49.042Z"
+              "timestamp": "2025-09-14T13:15:26.799Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:49.050Z"
+              "timestamp": "2025-09-14T13:15:26.824Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:49.051Z"
+              "timestamp": "2025-09-14T13:15:26.825Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:49.141Z"
+              "timestamp": "2025-09-14T13:15:26.936Z"
             }
           ],
           "skip": true
@@ -1140,27 +1140,27 @@
             {
               "type": "info",
               "message": "Starting test: Call a Postgres function with arguments",
-              "timestamp": "2025-09-14T03:23:49.143Z"
+              "timestamp": "2025-09-14T13:15:26.939Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:49.195Z"
+              "timestamp": "2025-09-14T13:15:26.992Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:49.203Z"
+              "timestamp": "2025-09-14T13:15:27.011Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:49.204Z"
+              "timestamp": "2025-09-14T13:15:27.012Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:49.292Z"
+              "timestamp": "2025-09-14T13:15:27.136Z"
             }
           ],
           "skip": true
@@ -1182,27 +1182,27 @@
             {
               "type": "info",
               "message": "Starting test: Bulk processing",
-              "timestamp": "2025-09-14T03:23:49.293Z"
+              "timestamp": "2025-09-14T13:15:27.137Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:49.337Z"
+              "timestamp": "2025-09-14T13:15:27.205Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:49.345Z"
+              "timestamp": "2025-09-14T13:15:27.216Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:49.346Z"
+              "timestamp": "2025-09-14T13:15:27.218Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:49.450Z"
+              "timestamp": "2025-09-14T13:15:27.341Z"
             }
           ],
           "skip": true
@@ -1224,27 +1224,27 @@
             {
               "type": "info",
               "message": "Starting test: Call a Postgres function with filters",
-              "timestamp": "2025-09-14T03:23:49.451Z"
+              "timestamp": "2025-09-14T13:15:27.342Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:49.498Z"
+              "timestamp": "2025-09-14T13:15:27.402Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:49.524Z"
+              "timestamp": "2025-09-14T13:15:27.424Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:49.525Z"
+              "timestamp": "2025-09-14T13:15:27.425Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:49.621Z"
+              "timestamp": "2025-09-14T13:15:27.525Z"
             }
           ],
           "skip": true
@@ -1265,27 +1265,27 @@
             {
               "type": "info",
               "message": "Starting test: Call a read-only Postgres function",
-              "timestamp": "2025-09-14T03:23:49.622Z"
+              "timestamp": "2025-09-14T13:15:27.526Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:49.890Z"
+              "timestamp": "2025-09-14T13:15:27.578Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:49.902Z"
+              "timestamp": "2025-09-14T13:15:27.594Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:49.902Z"
+              "timestamp": "2025-09-14T13:15:27.595Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:49.991Z"
+              "timestamp": "2025-09-14T13:15:27.712Z"
             }
           ],
           "skip": true
@@ -1313,27 +1313,27 @@
             {
               "type": "info",
               "message": "Starting test: Applying Filters",
-              "timestamp": "2025-09-14T03:23:49.992Z"
+              "timestamp": "2025-09-14T13:15:27.714Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:50.033Z"
+              "timestamp": "2025-09-14T13:15:27.767Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:50.060Z"
+              "timestamp": "2025-09-14T13:15:27.804Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:50.061Z"
+              "timestamp": "2025-09-14T13:15:27.805Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:50.149Z"
+              "timestamp": "2025-09-14T13:15:27.893Z"
             }
           ],
           "skip": true
@@ -1354,27 +1354,27 @@
             {
               "type": "info",
               "message": "Starting test: Chaining",
-              "timestamp": "2025-09-14T03:23:50.150Z"
+              "timestamp": "2025-09-14T13:15:27.894Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:50.204Z"
+              "timestamp": "2025-09-14T13:15:27.940Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:50.218Z"
+              "timestamp": "2025-09-14T13:15:27.976Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:50.219Z"
+              "timestamp": "2025-09-14T13:15:27.977Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:50.310Z"
+              "timestamp": "2025-09-14T13:15:28.075Z"
             }
           ],
           "skip": true
@@ -1395,27 +1395,27 @@
             {
               "type": "info",
               "message": "Starting test: Conditional Chaining",
-              "timestamp": "2025-09-14T03:23:50.311Z"
+              "timestamp": "2025-09-14T13:15:28.076Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:50.355Z"
+              "timestamp": "2025-09-14T13:15:28.131Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:50.369Z"
+              "timestamp": "2025-09-14T13:15:28.154Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:50.370Z"
+              "timestamp": "2025-09-14T13:15:28.156Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:50.461Z"
+              "timestamp": "2025-09-14T13:15:28.393Z"
             }
           ],
           "skip": true
@@ -1435,27 +1435,27 @@
             {
               "type": "info",
               "message": "Starting test: Filter by values within a JSON column",
-              "timestamp": "2025-09-14T03:23:50.462Z"
+              "timestamp": "2025-09-14T13:15:28.394Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:50.509Z"
+              "timestamp": "2025-09-14T13:15:28.459Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:50.523Z"
+              "timestamp": "2025-09-14T13:15:28.485Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:50.524Z"
+              "timestamp": "2025-09-14T13:15:28.485Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:50.626Z"
+              "timestamp": "2025-09-14T13:15:28.584Z"
             }
           ],
           "skip": true
@@ -1476,27 +1476,27 @@
             {
               "type": "info",
               "message": "Starting test: Filter referenced tables",
-              "timestamp": "2025-09-14T03:23:50.627Z"
+              "timestamp": "2025-09-14T13:15:28.585Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:50.671Z"
+              "timestamp": "2025-09-14T13:15:28.637Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:50.731Z"
+              "timestamp": "2025-09-14T13:15:28.669Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:50.732Z"
+              "timestamp": "2025-09-14T13:15:28.670Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:50.837Z"
+              "timestamp": "2025-09-14T13:15:28.799Z"
             }
           ],
           "skip": true
@@ -1525,27 +1525,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:50.838Z"
+              "timestamp": "2025-09-14T13:15:28.801Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:50.888Z"
+              "timestamp": "2025-09-14T13:15:28.857Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:50.905Z"
+              "timestamp": "2025-09-14T13:15:28.883Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:50.906Z"
+              "timestamp": "2025-09-14T13:15:28.884Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:51.001Z"
+              "timestamp": "2025-09-14T13:15:29.018Z"
             }
           ],
           "skip": true
@@ -1574,27 +1574,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:51.003Z"
+              "timestamp": "2025-09-14T13:15:29.020Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:51.043Z"
+              "timestamp": "2025-09-14T13:15:29.089Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:51.059Z"
+              "timestamp": "2025-09-14T13:15:29.108Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:51.059Z"
+              "timestamp": "2025-09-14T13:15:29.108Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:51.154Z"
+              "timestamp": "2025-09-14T13:15:29.219Z"
             }
           ],
           "skip": true
@@ -1624,27 +1624,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:51.155Z"
+              "timestamp": "2025-09-14T13:15:29.220Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:51.199Z"
+              "timestamp": "2025-09-14T13:15:29.267Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:51.212Z"
+              "timestamp": "2025-09-14T13:15:29.285Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:51.212Z"
+              "timestamp": "2025-09-14T13:15:29.286Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:51.391Z"
+              "timestamp": "2025-09-14T13:15:29.485Z"
             }
           ],
           "skip": true
@@ -1673,27 +1673,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:51.488Z"
+              "timestamp": "2025-09-14T13:15:29.488Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:51.660Z"
+              "timestamp": "2025-09-14T13:15:29.611Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:51.677Z"
+              "timestamp": "2025-09-14T13:15:29.636Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:51.677Z"
+              "timestamp": "2025-09-14T13:15:29.637Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:51.768Z"
+              "timestamp": "2025-09-14T13:15:29.871Z"
             }
           ],
           "skip": true
@@ -1722,27 +1722,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:51.769Z"
+              "timestamp": "2025-09-14T13:15:29.872Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:51.816Z"
+              "timestamp": "2025-09-14T13:15:29.923Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:51.835Z"
+              "timestamp": "2025-09-14T13:15:29.940Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:51.836Z"
+              "timestamp": "2025-09-14T13:15:29.941Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:51.939Z"
+              "timestamp": "2025-09-14T13:15:30.057Z"
             }
           ],
           "skip": true
@@ -1771,27 +1771,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:51.939Z"
+              "timestamp": "2025-09-14T13:15:30.059Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:51.984Z"
+              "timestamp": "2025-09-14T13:15:30.126Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:52.045Z"
+              "timestamp": "2025-09-14T13:15:30.154Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:52.046Z"
+              "timestamp": "2025-09-14T13:15:30.155Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:52.145Z"
+              "timestamp": "2025-09-14T13:15:30.275Z"
             }
           ],
           "skip": true
@@ -1820,27 +1820,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:52.146Z"
+              "timestamp": "2025-09-14T13:15:30.276Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:52.186Z"
+              "timestamp": "2025-09-14T13:15:30.326Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:52.211Z"
+              "timestamp": "2025-09-14T13:15:30.342Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:52.211Z"
+              "timestamp": "2025-09-14T13:15:30.343Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:52.304Z"
+              "timestamp": "2025-09-14T13:15:30.452Z"
             }
           ],
           "skip": true
@@ -1869,27 +1869,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:52.305Z"
+              "timestamp": "2025-09-14T13:15:30.453Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:52.351Z"
+              "timestamp": "2025-09-14T13:15:30.496Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:52.364Z"
+              "timestamp": "2025-09-14T13:15:30.510Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:52.364Z"
+              "timestamp": "2025-09-14T13:15:30.511Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:52.446Z"
+              "timestamp": "2025-09-14T13:15:30.614Z"
             }
           ],
           "skip": true
@@ -1919,27 +1919,27 @@
             {
               "type": "info",
               "message": "Starting test: Checking for nullness, true or false",
-              "timestamp": "2025-09-14T03:23:52.447Z"
+              "timestamp": "2025-09-14T13:15:30.615Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:52.492Z"
+              "timestamp": "2025-09-14T13:15:30.682Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:52.505Z"
+              "timestamp": "2025-09-14T13:15:30.739Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:52.505Z"
+              "timestamp": "2025-09-14T13:15:30.740Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:52.591Z"
+              "timestamp": "2025-09-14T13:15:30.967Z"
             }
           ],
           "skip": true
@@ -1968,27 +1968,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:52.592Z"
+              "timestamp": "2025-09-14T13:15:30.969Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:52.666Z"
+              "timestamp": "2025-09-14T13:15:31.057Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:52.679Z"
+              "timestamp": "2025-09-14T13:15:31.076Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:52.680Z"
+              "timestamp": "2025-09-14T13:15:31.076Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:52.770Z"
+              "timestamp": "2025-09-14T13:15:31.181Z"
             }
           ],
           "skip": true
@@ -2017,27 +2017,27 @@
             {
               "type": "info",
               "message": "Starting test: On array columns",
-              "timestamp": "2025-09-14T03:23:52.771Z"
+              "timestamp": "2025-09-14T13:15:31.182Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:52.808Z"
+              "timestamp": "2025-09-14T13:15:31.224Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:52.821Z"
+              "timestamp": "2025-09-14T13:15:31.248Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:52.822Z"
+              "timestamp": "2025-09-14T13:15:31.248Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:52.905Z"
+              "timestamp": "2025-09-14T13:15:31.385Z"
             }
           ],
           "skip": true
@@ -2059,27 +2059,27 @@
             {
               "type": "info",
               "message": "Starting test: On range columns",
-              "timestamp": "2025-09-14T03:23:52.906Z"
+              "timestamp": "2025-09-14T13:15:31.386Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:52.944Z"
+              "timestamp": "2025-09-14T13:15:31.445Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:52.986Z"
+              "timestamp": "2025-09-14T13:15:31.466Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:52.987Z"
+              "timestamp": "2025-09-14T13:15:31.467Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:53.079Z"
+              "timestamp": "2025-09-14T13:15:31.606Z"
             }
           ],
           "skip": true
@@ -2100,27 +2100,27 @@
             {
               "type": "info",
               "message": "Starting test: On `jsonb` columns",
-              "timestamp": "2025-09-14T03:23:53.080Z"
+              "timestamp": "2025-09-14T13:15:31.607Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:53.117Z"
+              "timestamp": "2025-09-14T13:15:31.660Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:53.130Z"
+              "timestamp": "2025-09-14T13:15:31.680Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:53.131Z"
+              "timestamp": "2025-09-14T13:15:31.681Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:53.226Z"
+              "timestamp": "2025-09-14T13:15:31.781Z"
             }
           ],
           "skip": true
@@ -2149,27 +2149,27 @@
             {
               "type": "info",
               "message": "Starting test: On array columns",
-              "timestamp": "2025-09-14T03:23:53.227Z"
+              "timestamp": "2025-09-14T13:15:31.783Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:53.265Z"
+              "timestamp": "2025-09-14T13:15:31.828Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:53.277Z"
+              "timestamp": "2025-09-14T13:15:31.854Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:53.277Z"
+              "timestamp": "2025-09-14T13:15:31.854Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:53.376Z"
+              "timestamp": "2025-09-14T13:15:31.957Z"
             }
           ],
           "skip": true
@@ -2191,27 +2191,27 @@
             {
               "type": "info",
               "message": "Starting test: On range columns",
-              "timestamp": "2025-09-14T03:23:53.377Z"
+              "timestamp": "2025-09-14T13:15:31.958Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:53.430Z"
+              "timestamp": "2025-09-14T13:15:31.999Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:53.711Z"
+              "timestamp": "2025-09-14T13:15:32.014Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:53.730Z"
+              "timestamp": "2025-09-14T13:15:32.015Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:54.017Z"
+              "timestamp": "2025-09-14T13:15:32.140Z"
             }
           ],
           "skip": true
@@ -2232,27 +2232,27 @@
             {
               "type": "info",
               "message": "Starting test: On `jsonb` columns",
-              "timestamp": "2025-09-14T03:23:54.018Z"
+              "timestamp": "2025-09-14T13:15:32.141Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:54.054Z"
+              "timestamp": "2025-09-14T13:15:32.254Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:54.070Z"
+              "timestamp": "2025-09-14T13:15:32.276Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:54.071Z"
+              "timestamp": "2025-09-14T13:15:32.277Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:54.163Z"
+              "timestamp": "2025-09-14T13:15:32.387Z"
             }
           ],
           "skip": true
@@ -2282,27 +2282,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:54.164Z"
+              "timestamp": "2025-09-14T13:15:32.389Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:54.211Z"
+              "timestamp": "2025-09-14T13:15:32.445Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:54.231Z"
+              "timestamp": "2025-09-14T13:15:32.460Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:54.231Z"
+              "timestamp": "2025-09-14T13:15:32.461Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:54.328Z"
+              "timestamp": "2025-09-14T13:15:32.562Z"
             }
           ],
           "skip": true
@@ -2332,27 +2332,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:54.329Z"
+              "timestamp": "2025-09-14T13:15:32.563Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:54.368Z"
+              "timestamp": "2025-09-14T13:15:32.607Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:54.382Z"
+              "timestamp": "2025-09-14T13:15:32.622Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:54.382Z"
+              "timestamp": "2025-09-14T13:15:32.622Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:54.480Z"
+              "timestamp": "2025-09-14T13:15:32.736Z"
             }
           ],
           "skip": true
@@ -2382,27 +2382,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:54.480Z"
+              "timestamp": "2025-09-14T13:15:32.737Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:54.530Z"
+              "timestamp": "2025-09-14T13:15:32.800Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:54.545Z"
+              "timestamp": "2025-09-14T13:15:32.816Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:54.545Z"
+              "timestamp": "2025-09-14T13:15:32.817Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:54.642Z"
+              "timestamp": "2025-09-14T13:15:32.942Z"
             }
           ],
           "skip": true
@@ -2432,27 +2432,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:54.643Z"
+              "timestamp": "2025-09-14T13:15:32.945Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:54.680Z"
+              "timestamp": "2025-09-14T13:15:32.994Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:54.694Z"
+              "timestamp": "2025-09-14T13:15:33.018Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:54.695Z"
+              "timestamp": "2025-09-14T13:15:33.019Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:54.783Z"
+              "timestamp": "2025-09-14T13:15:33.132Z"
             }
           ],
           "skip": true
@@ -2482,27 +2482,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:54.784Z"
+              "timestamp": "2025-09-14T13:15:33.133Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:54.855Z"
+              "timestamp": "2025-09-14T13:15:33.176Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:54.871Z"
+              "timestamp": "2025-09-14T13:15:33.189Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:54.871Z"
+              "timestamp": "2025-09-14T13:15:33.190Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:54.967Z"
+              "timestamp": "2025-09-14T13:15:33.283Z"
             }
           ],
           "skip": true
@@ -2531,27 +2531,27 @@
             {
               "type": "info",
               "message": "Starting test: On array columns",
-              "timestamp": "2025-09-14T03:23:54.968Z"
+              "timestamp": "2025-09-14T13:15:33.285Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:55.006Z"
+              "timestamp": "2025-09-14T13:15:33.336Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:55.021Z"
+              "timestamp": "2025-09-14T13:15:33.368Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:55.022Z"
+              "timestamp": "2025-09-14T13:15:33.370Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:55.121Z"
+              "timestamp": "2025-09-14T13:15:33.528Z"
             }
           ],
           "skip": true
@@ -2573,27 +2573,27 @@
             {
               "type": "info",
               "message": "Starting test: On range columns",
-              "timestamp": "2025-09-14T03:23:55.122Z"
+              "timestamp": "2025-09-14T13:15:33.529Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:55.157Z"
+              "timestamp": "2025-09-14T13:15:33.724Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:55.181Z"
+              "timestamp": "2025-09-14T13:15:33.750Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:55.182Z"
+              "timestamp": "2025-09-14T13:15:33.761Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:55.265Z"
+              "timestamp": "2025-09-14T13:15:33.889Z"
             }
           ],
           "skip": true
@@ -2797,27 +2797,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:55.267Z"
+              "timestamp": "2025-09-14T13:15:33.891Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:55.308Z"
+              "timestamp": "2025-09-14T13:15:33.945Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:55.333Z"
+              "timestamp": "2025-09-14T13:15:33.960Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:55.333Z"
+              "timestamp": "2025-09-14T13:15:33.960Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:55.421Z"
+              "timestamp": "2025-09-14T13:15:34.058Z"
             }
           ],
           "skip": true
@@ -2847,27 +2847,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:55.422Z"
+              "timestamp": "2025-09-14T13:15:34.059Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:55.465Z"
+              "timestamp": "2025-09-14T13:15:34.098Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:55.478Z"
+              "timestamp": "2025-09-14T13:15:34.123Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:55.478Z"
+              "timestamp": "2025-09-14T13:15:34.124Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:55.591Z"
+              "timestamp": "2025-09-14T13:15:34.232Z"
             }
           ],
           "skip": true
@@ -2897,27 +2897,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:55.594Z"
+              "timestamp": "2025-09-14T13:15:34.233Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:55.676Z"
+              "timestamp": "2025-09-14T13:15:34.293Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:55.707Z"
+              "timestamp": "2025-09-14T13:15:34.312Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:55.708Z"
+              "timestamp": "2025-09-14T13:15:34.313Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:55.857Z"
+              "timestamp": "2025-09-14T13:15:34.452Z"
             }
           ],
           "skip": true
@@ -2941,27 +2941,27 @@
             {
               "type": "info",
               "message": "Starting test: Use `or` with `and`",
-              "timestamp": "2025-09-14T03:23:55.859Z"
+              "timestamp": "2025-09-14T13:15:34.453Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:55.932Z"
+              "timestamp": "2025-09-14T13:15:34.505Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:55.964Z"
+              "timestamp": "2025-09-14T13:15:34.520Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:55.964Z"
+              "timestamp": "2025-09-14T13:15:34.521Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:56.063Z"
+              "timestamp": "2025-09-14T13:15:34.630Z"
             }
           ],
           "skip": true
@@ -3032,27 +3032,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:56.064Z"
+              "timestamp": "2025-09-14T13:15:34.630Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:56.105Z"
+              "timestamp": "2025-09-14T13:15:34.683Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:56.119Z"
+              "timestamp": "2025-09-14T13:15:34.707Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:56.120Z"
+              "timestamp": "2025-09-14T13:15:34.708Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:56.212Z"
+              "timestamp": "2025-09-14T13:15:34.820Z"
             }
           ],
           "skip": true
@@ -3073,27 +3073,27 @@
             {
               "type": "info",
               "message": "Starting test: On a referenced table",
-              "timestamp": "2025-09-14T03:23:56.213Z"
+              "timestamp": "2025-09-14T13:15:34.822Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:56.255Z"
+              "timestamp": "2025-09-14T13:15:34.897Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:56.293Z"
+              "timestamp": "2025-09-14T13:15:34.975Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:56.293Z"
+              "timestamp": "2025-09-14T13:15:34.975Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:56.405Z"
+              "timestamp": "2025-09-14T13:15:35.170Z"
             }
           ],
           "skip": true
@@ -3127,27 +3127,27 @@
             {
               "type": "info",
               "message": "Starting test: With `upsert()`",
-              "timestamp": "2025-09-14T03:23:56.406Z"
+              "timestamp": "2025-09-14T13:15:35.172Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:56.455Z"
+              "timestamp": "2025-09-14T13:15:35.230Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:56.467Z"
+              "timestamp": "2025-09-14T13:15:35.245Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:56.468Z"
+              "timestamp": "2025-09-14T13:15:35.246Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:56.706Z"
+              "timestamp": "2025-09-14T13:15:35.349Z"
             }
           ],
           "skip": true
@@ -3176,27 +3176,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:56.727Z"
+              "timestamp": "2025-09-14T13:15:35.350Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:57.077Z"
+              "timestamp": "2025-09-14T13:15:35.393Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:57.121Z"
+              "timestamp": "2025-09-14T13:15:35.408Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:57.123Z"
+              "timestamp": "2025-09-14T13:15:35.409Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:57.380Z"
+              "timestamp": "2025-09-14T13:15:35.516Z"
             }
           ],
           "skip": true
@@ -3218,27 +3218,27 @@
             {
               "type": "info",
               "message": "Starting test: On a referenced table",
-              "timestamp": "2025-09-14T03:23:57.382Z"
+              "timestamp": "2025-09-14T13:15:35.517Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:57.500Z"
+              "timestamp": "2025-09-14T13:15:35.568Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:57.554Z"
+              "timestamp": "2025-09-14T13:15:35.600Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:57.555Z"
+              "timestamp": "2025-09-14T13:15:35.600Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:57.652Z"
+              "timestamp": "2025-09-14T13:15:35.751Z"
             }
           ],
           "skip": true
@@ -3309,27 +3309,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:57.653Z"
+              "timestamp": "2025-09-14T13:15:35.752Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:57.705Z"
+              "timestamp": "2025-09-14T13:15:35.822Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:57.719Z"
+              "timestamp": "2025-09-14T13:15:35.852Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:57.719Z"
+              "timestamp": "2025-09-14T13:15:35.852Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:57.832Z"
+              "timestamp": "2025-09-14T13:15:35.963Z"
             }
           ],
           "skip": true
@@ -3350,27 +3350,27 @@
             {
               "type": "info",
               "message": "Starting test: On a referenced table",
-              "timestamp": "2025-09-14T03:23:57.833Z"
+              "timestamp": "2025-09-14T13:15:35.964Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:57.871Z"
+              "timestamp": "2025-09-14T13:15:36.005Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:57.896Z"
+              "timestamp": "2025-09-14T13:15:36.033Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:57.896Z"
+              "timestamp": "2025-09-14T13:15:36.034Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:58.027Z"
+              "timestamp": "2025-09-14T13:15:36.164Z"
             }
           ],
           "skip": true
@@ -3399,27 +3399,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:58.028Z"
+              "timestamp": "2025-09-14T13:15:36.165Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:58.086Z"
+              "timestamp": "2025-09-14T13:15:36.231Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:58.128Z"
+              "timestamp": "2025-09-14T13:15:36.246Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:58.129Z"
+              "timestamp": "2025-09-14T13:15:36.246Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:58.238Z"
+              "timestamp": "2025-09-14T13:15:36.396Z"
             }
           ],
           "skip": true
@@ -3450,27 +3450,27 @@
             {
               "type": "info",
               "message": "Starting test: Aborting requests in-flight",
-              "timestamp": "2025-09-14T03:23:58.239Z"
+              "timestamp": "2025-09-14T13:15:36.397Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:58.294Z"
+              "timestamp": "2025-09-14T13:15:36.456Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:58.311Z"
+              "timestamp": "2025-09-14T13:15:36.488Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:58.312Z"
+              "timestamp": "2025-09-14T13:15:36.489Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:58.395Z"
+              "timestamp": "2025-09-14T13:15:36.593Z"
             }
           ],
           "skip": true
@@ -3491,27 +3491,27 @@
             {
               "type": "info",
               "message": "Starting test: Set a timeout",
-              "timestamp": "2025-09-14T03:23:58.395Z"
+              "timestamp": "2025-09-14T13:15:36.594Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:58.435Z"
+              "timestamp": "2025-09-14T13:15:36.643Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:58.448Z"
+              "timestamp": "2025-09-14T13:15:36.659Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:58.449Z"
+              "timestamp": "2025-09-14T13:15:36.659Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:58.547Z"
+              "timestamp": "2025-09-14T13:15:36.776Z"
             }
           ],
           "skip": true
@@ -3540,27 +3540,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:58.549Z"
+              "timestamp": "2025-09-14T13:15:36.777Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:58.599Z"
+              "timestamp": "2025-09-14T13:15:36.841Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:58.615Z"
+              "timestamp": "2025-09-14T13:15:36.860Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:58.615Z"
+              "timestamp": "2025-09-14T13:15:36.861Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:58.710Z"
+              "timestamp": "2025-09-14T13:15:36.968Z"
             }
           ],
           "skip": true
@@ -3589,27 +3589,27 @@
             {
               "type": "info",
               "message": "Starting test: With `select()`",
-              "timestamp": "2025-09-14T03:23:58.711Z"
+              "timestamp": "2025-09-14T13:15:36.969Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:58.747Z"
+              "timestamp": "2025-09-14T13:15:37.013Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:58.760Z"
+              "timestamp": "2025-09-14T13:15:37.031Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:58.760Z"
+              "timestamp": "2025-09-14T13:15:37.032Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:58.863Z"
+              "timestamp": "2025-09-14T13:15:37.192Z"
             }
           ],
           "skip": true
@@ -3639,27 +3639,27 @@
             {
               "type": "info",
               "message": "Starting test: Return data as CSV",
-              "timestamp": "2025-09-14T03:23:58.864Z"
+              "timestamp": "2025-09-14T13:15:37.193Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:58.900Z"
+              "timestamp": "2025-09-14T13:15:37.385Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:23:58.913Z"
+              "timestamp": "2025-09-14T13:15:37.421Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:58.913Z"
+              "timestamp": "2025-09-14T13:15:37.422Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T03:23:59.008Z"
+              "timestamp": "2025-09-14T13:15:37.561Z"
             }
           ],
           "skip": true
@@ -3686,27 +3686,27 @@
             {
               "type": "info",
               "message": "Starting test: Override type of successful response",
-              "timestamp": "2025-09-14T03:23:59.009Z"
+              "timestamp": "2025-09-14T13:15:37.562Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:59.060Z"
+              "timestamp": "2025-09-14T13:15:37.608Z"
             },
             {
               "type": "info",
               "message": "No SQL data to seed - skipping database seeding",
-              "timestamp": "2025-09-14T03:23:59.060Z"
+              "timestamp": "2025-09-14T13:15:37.608Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:59.061Z"
+              "timestamp": "2025-09-14T13:15:37.609Z"
             },
             {
               "type": "info",
               "message": "TypeScript type checking test - automatically passing",
-              "timestamp": "2025-09-14T03:23:59.164Z"
+              "timestamp": "2025-09-14T13:15:37.708Z"
             }
           ],
           "skip": true
@@ -3725,27 +3725,27 @@
             {
               "type": "info",
               "message": "Starting test: Override type of object response",
-              "timestamp": "2025-09-14T03:23:59.165Z"
+              "timestamp": "2025-09-14T13:15:37.709Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:59.207Z"
+              "timestamp": "2025-09-14T13:15:37.765Z"
             },
             {
               "type": "info",
               "message": "No SQL data to seed - skipping database seeding",
-              "timestamp": "2025-09-14T03:23:59.207Z"
+              "timestamp": "2025-09-14T13:15:37.765Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:59.208Z"
+              "timestamp": "2025-09-14T13:15:37.766Z"
             },
             {
               "type": "info",
               "message": "TypeScript type checking test - automatically passing",
-              "timestamp": "2025-09-14T03:23:59.295Z"
+              "timestamp": "2025-09-14T13:15:37.872Z"
             }
           ],
           "skip": true
@@ -3771,27 +3771,27 @@
             {
               "type": "info",
               "message": "Starting test: Complete Override type of successful response",
-              "timestamp": "2025-09-14T03:23:59.296Z"
+              "timestamp": "2025-09-14T13:15:37.873Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:59.343Z"
+              "timestamp": "2025-09-14T13:15:37.927Z"
             },
             {
               "type": "info",
               "message": "No SQL data to seed - skipping database seeding",
-              "timestamp": "2025-09-14T03:23:59.343Z"
+              "timestamp": "2025-09-14T13:15:37.927Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:59.344Z"
+              "timestamp": "2025-09-14T13:15:37.928Z"
             },
             {
               "type": "info",
               "message": "TypeScript type checking test - automatically passing",
-              "timestamp": "2025-09-14T03:23:59.426Z"
+              "timestamp": "2025-09-14T13:15:38.076Z"
             }
           ],
           "skip": true
@@ -3810,27 +3810,27 @@
             {
               "type": "info",
               "message": "Starting test: Complete Override type of object response",
-              "timestamp": "2025-09-14T03:23:59.427Z"
+              "timestamp": "2025-09-14T13:15:38.078Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:59.471Z"
+              "timestamp": "2025-09-14T13:15:38.143Z"
             },
             {
               "type": "info",
               "message": "No SQL data to seed - skipping database seeding",
-              "timestamp": "2025-09-14T03:23:59.471Z"
+              "timestamp": "2025-09-14T13:15:38.143Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:59.472Z"
+              "timestamp": "2025-09-14T13:15:38.144Z"
             },
             {
               "type": "info",
               "message": "TypeScript type checking test - automatically passing",
-              "timestamp": "2025-09-14T03:23:59.558Z"
+              "timestamp": "2025-09-14T13:15:38.258Z"
             }
           ],
           "skip": true
@@ -3849,27 +3849,27 @@
             {
               "type": "info",
               "message": "Starting test: Partial Override type of successful response",
-              "timestamp": "2025-09-14T03:23:59.559Z"
+              "timestamp": "2025-09-14T13:15:38.259Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:23:59.792Z"
+              "timestamp": "2025-09-14T13:15:38.314Z"
             },
             {
               "type": "info",
               "message": "No SQL data to seed - skipping database seeding",
-              "timestamp": "2025-09-14T03:23:59.792Z"
+              "timestamp": "2025-09-14T13:15:38.314Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:23:59.792Z"
+              "timestamp": "2025-09-14T13:15:38.314Z"
             },
             {
               "type": "info",
               "message": "TypeScript type checking test - automatically passing",
-              "timestamp": "2025-09-14T03:24:00.039Z"
+              "timestamp": "2025-09-14T13:15:38.416Z"
             }
           ],
           "skip": true
@@ -3888,27 +3888,27 @@
             {
               "type": "info",
               "message": "Starting test: Partial Override type of object response",
-              "timestamp": "2025-09-14T03:24:00.044Z"
+              "timestamp": "2025-09-14T13:15:38.417Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:24:00.284Z"
+              "timestamp": "2025-09-14T13:15:38.464Z"
             },
             {
               "type": "info",
               "message": "No SQL data to seed - skipping database seeding",
-              "timestamp": "2025-09-14T03:24:00.284Z"
+              "timestamp": "2025-09-14T13:15:38.464Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:24:00.385Z"
+              "timestamp": "2025-09-14T13:15:38.465Z"
             },
             {
               "type": "info",
               "message": "TypeScript type checking test - automatically passing",
-              "timestamp": "2025-09-14T03:24:00.719Z"
+              "timestamp": "2025-09-14T13:15:38.561Z"
             }
           ],
           "skip": true
@@ -3939,27 +3939,27 @@
             {
               "type": "info",
               "message": "Starting test: Get the execution plan",
-              "timestamp": "2025-09-14T03:24:00.721Z"
+              "timestamp": "2025-09-14T13:15:38.563Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:24:00.858Z"
+              "timestamp": "2025-09-14T13:15:38.604Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:24:00.911Z"
+              "timestamp": "2025-09-14T13:15:38.626Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:24:00.912Z"
+              "timestamp": "2025-09-14T13:15:38.626Z"
             },
             {
               "type": "info",
               "message": "Text response test (e.g., EXPLAIN plan) - automatically passing",
-              "timestamp": "2025-09-14T03:24:01.088Z"
+              "timestamp": "2025-09-14T13:15:38.745Z"
             }
           ],
           "skip": true
@@ -3982,27 +3982,27 @@
             {
               "type": "info",
               "message": "Starting test: Get the execution plan with analyze and verbose",
-              "timestamp": "2025-09-14T03:24:01.089Z"
+              "timestamp": "2025-09-14T13:15:38.746Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T03:24:01.147Z"
+              "timestamp": "2025-09-14T13:15:38.823Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T03:24:01.159Z"
+              "timestamp": "2025-09-14T13:15:38.845Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T03:24:01.160Z"
+              "timestamp": "2025-09-14T13:15:38.846Z"
             },
             {
               "type": "info",
               "message": "Text response test (e.g., EXPLAIN plan) - automatically passing",
-              "timestamp": "2025-09-14T03:24:01.251Z"
+              "timestamp": "2025-09-14T13:15:38.980Z"
             }
           ],
           "skip": true
