@@ -147,18 +147,10 @@ export class QueryEngine {
 
     } catch (error) {
       logger.error('Query engine error', { error, requestId: context.requestId })
-      // Use ErrorMapper static method
-      const errorResponse = ErrorMapper.mapAndLogError(error, {
-        operation: 'query_processing',
-        method: request.method,
-        table: request.params?.table
-      })
-      throw {
-        statusCode: errorResponse.status || 500,
-        errorCode: 'QUERY_ERROR',
-        message: errorResponse.data?.error?.message || 'Query processing failed',
-        details: errorResponse.data?.error || error
-      }
+
+      // Let PostgreSQL errors bubble up naturally for proper error mapping
+      // Don't wrap them - the REST executor will handle ApiError conversion
+      throw error
     }
   }
 

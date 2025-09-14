@@ -212,8 +212,21 @@ export class ApiError extends Error {
 
   /**
    * Convert to PostgREST-compatible error format
+   * Returns raw PostgreSQL error codes when available for full compatibility
    */
   public toPostgRESTFormat() {
+    // Check if we have original PostgreSQL error details
+    if (this.details && typeof this.details === 'object' && this.details.code) {
+      // Return PostgreSQL error format for database constraint violations
+      return {
+        code: this.details.code,           // Raw PostgreSQL code (e.g., "23505")
+        message: this.details.message || this.message,
+        details: this.details.detail || this.details.details || null,
+        hint: this.details.hint || this.hint || null
+      }
+    }
+
+    // Fallback to standard format for non-PostgreSQL errors
     return {
       code: this.errorCode,
       details: this.details,
