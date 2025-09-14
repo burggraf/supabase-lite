@@ -85,8 +85,8 @@ export const authHandlers = [
   http.get('/auth/v1/user', withProjectResolution(createAuthHandler('user'))),
   http.get('/:projectId/auth/v1/user', withProjectResolution(createAuthHandler('user'))),
   
-  http.put('/auth/v1/user', withProjectResolution(createAuthHandler('user_update'))),
-  http.put('/:projectId/auth/v1/user', withProjectResolution(createAuthHandler('user_update'))),
+  http.put('/auth/v1/user', withProjectResolution(createAuthHandler('user'))),
+  http.put('/:projectId/auth/v1/user', withProjectResolution(createAuthHandler('user'))),
   
   // OTP endpoints
   http.post('/auth/v1/otp', createAuthHandler('otp')),

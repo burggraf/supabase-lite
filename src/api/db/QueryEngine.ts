@@ -90,7 +90,28 @@ export class QueryEngine {
       // This is needed because PGlite doesn't properly enforce INSERT/UPDATE RLS policies
       await this.enforceRLSForWriteOperations(request, sessionContext, table)
 
-      const result = await this.dbManager.queryWithContext(sqlQuery.sql, sessionContext, sqlQuery.parameters)
+      // Execute query with enhanced error handling for complex operations
+      let result
+      try {
+        result = await this.dbManager.queryWithContext(sqlQuery.sql, sessionContext, sqlQuery.parameters)
+      } catch (error) {
+        // Enhanced error logging for session context issues
+        logger.error('Database query failed - checking session context', {
+          error: error.message,
+          sessionContext: {
+            projectId: sessionContext.projectId,
+            userId: sessionContext.userId,
+            role: sessionContext.role,
+            hasJwt: !!sessionContext.jwt
+          },
+          sql: sqlQuery.sql.substring(0, 200) + (sqlQuery.sql.length > 200 ? '...' : ''),
+          parameters: sqlQuery.parameters,
+          isComplexQuery: sqlQuery.sql.includes('SELECT') && sqlQuery.sql.includes('INSERT'),
+          table,
+          method: request.method
+        })
+        throw error
+      }
 
       logger.debug('QueryEngine: Database result', {
         result: result,

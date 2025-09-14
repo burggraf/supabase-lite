@@ -24,7 +24,7 @@ import type { SessionContext } from '../database/connection';
  * This approach lets users control RLS exactly like online Supabase.
  */
 export class RLSEnforcer {
-  private static readonly tablesWithRLS = ['peeps']; // Add other tables that need RLS here
+  private static readonly tablesWithRLS = ['peeps', 'test_projects', 'test_posts', 'test_comments', 'test_documents']; // Add other tables that need RLS here
   
   /**
    * Apply application-level RLS when database-level RLS isn't working
