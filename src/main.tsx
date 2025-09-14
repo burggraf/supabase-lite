@@ -434,130 +434,179 @@ async function handleAppNavigation(pathname: string) {
   }
 }
 
+// Add timeout wrapper to prevent infinite hangs
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`${errorMessage} (timeout after ${timeoutMs}ms)`))
+    }, timeoutMs)
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timeout))
+  })
+}
+
 // Start MSW for browser-based API simulation and cross-origin API handler
 async function initializeApp() {
+  console.log('🚀 Starting app initialization...')
+
+  // Always show error UI if initialization takes too long or fails
+  const initTimeout = setTimeout(() => {
+    console.error('❌ CRITICAL: App initialization timeout')
+    showErrorUI('Initialization timeout - taking too long to start')
+  }, 10000) // 10 second timeout
+
   try {
     // Register Service Worker for offline support BEFORE everything else
-    await registerServiceWorker()
-    
+    await withTimeout(registerServiceWorker(), 5000, 'Service Worker registration timeout')
+
     // Initialize WebSocket bridge BEFORE MSW to avoid WebSocket override conflicts
     initializeWebSocketBridge()
-    
+
     // Check if we're on an app route - if so, handle it separately
     if (window.location.pathname.startsWith('/app/')) {
       console.log('🎯 App route detected, setting up MSW and handling app navigation')
-      
-      const { worker } = await import('./mocks/browser')
-      await worker.start({
+
+      console.log('🚀 Starting MSW worker for app route...')
+      const { worker } = await withTimeout(import('./mocks/browser'), 3000, 'MSW import timeout')
+      console.log('✅ MSW worker imported successfully for app route')
+
+      await withTimeout(worker.start({
         onUnhandledRequest: 'bypass',
-      })
-      
+      }), 5000, 'MSW worker start timeout')
+      console.log('✅ MSW worker started for app route')
+
       // Wait for MSW to be ready, then handle the app navigation
-      await waitForMSW()
+      await withTimeout(waitForMSW(), 5000, 'MSW ready timeout')
+      console.log('✅ MSW worker is ready for app route')
 
       // Validate that MSW is actually intercepting requests
-      try {
-        const healthResponse = await fetch('/health', { method: 'GET' })
-        if (!healthResponse.ok) {
-          throw new Error(`Health check failed: ${healthResponse.status}`)
-        }
-        console.log('✅ MSW validation successful for app route - health endpoint responding')
-      } catch (validationError) {
-        throw new Error(`MSW is not intercepting requests properly: ${validationError}`)
+      const healthResponse = await withTimeout(fetch('/health', { method: 'GET' }), 3000, 'Health check timeout')
+      if (!healthResponse.ok) {
+        throw new Error(`Health check failed: ${healthResponse.status}`)
       }
+      console.log('✅ MSW validation successful for app route - health endpoint responding')
 
       // Initialize cross-origin API handler
       new CrossOriginAPIHandler()
 
       // Handle the app navigation instead of rendering React app
       await handleAppNavigation(window.location.pathname)
+      clearTimeout(initTimeout)
       return // Don't render the main app
     }
-    
+
     // Setup navigation interceptor for future navigation to app routes
     setupAppNavigationInterceptor()
-    
-    const { worker } = await import('./mocks/browser')
-    await worker.start({
+
+    console.log('🚀 Starting MSW worker...')
+    const { worker } = await withTimeout(import('./mocks/browser'), 3000, 'MSW import timeout')
+    console.log('✅ MSW worker imported successfully')
+
+    await withTimeout(worker.start({
       onUnhandledRequest: 'bypass',
-    })
-    
-    await waitForMSW()
+    }), 5000, 'MSW worker start timeout')
+    console.log('✅ MSW worker started')
+
+    await withTimeout(waitForMSW(), 5000, 'MSW ready timeout')
+    console.log('✅ MSW worker is ready')
 
     // Validate that MSW is actually intercepting requests
-    try {
-      const healthResponse = await fetch('/health', { method: 'GET' })
-      if (!healthResponse.ok) {
-        throw new Error(`Health check failed: ${healthResponse.status}`)
-      }
-      console.log('✅ MSW validation successful - health endpoint responding')
-    } catch (validationError) {
-      throw new Error(`MSW is not intercepting requests properly: ${validationError}`)
+    const healthResponse = await withTimeout(fetch('/health', { method: 'GET' }), 3000, 'Health check timeout')
+    if (!healthResponse.ok) {
+      throw new Error(`Health check failed: ${healthResponse.status}`)
     }
+    console.log('✅ MSW validation successful - health endpoint responding')
 
     // Initialize cross-origin API handler for test app communication
     new CrossOriginAPIHandler()
 
-  } catch (error) {
-    console.error('Failed to start MSW worker or cross-origin handler:', error)
+    clearTimeout(initTimeout)
 
-    // Show error UI instead of broken app
-    const rootElement = document.getElementById('root')!
-    rootElement.innerHTML = `
-      <div style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        padding: 2rem;
-        text-align: center;
-        font-family: system-ui, -apple-system, sans-serif;
-        background: #0f0f23;
-        color: #cccccc;
-      ">
-        <div style="
-          max-width: 600px;
-          padding: 2rem;
-          background: #1e1e3f;
-          border: 1px solid #333366;
-          border-radius: 8px;
-        ">
-          <h1 style="color: #ff6b6b; margin: 0 0 1rem 0; font-size: 1.5rem;">
-            🚨 Initialization Failed
-          </h1>
-          <p style="margin: 0 0 1.5rem 0; line-height: 1.5;">
-            Failed to start the database service. This usually happens on first load when the service worker isn't ready yet.
-          </p>
-          <button
-            onclick="window.location.reload()"
-            style="
-              background: #4f46e5;
-              color: white;
-              border: none;
-              padding: 0.75rem 1.5rem;
-              border-radius: 6px;
-              font-size: 1rem;
-              cursor: pointer;
-              transition: background-color 0.2s;
-            "
-            onmouseover="this.style.background='#4338ca'"
-            onmouseout="this.style.background='#4f46e5'"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
-    `
+  } catch (error) {
+    clearTimeout(initTimeout)
+    console.error('❌ CRITICAL: MSW initialization failed:', error)
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    })
+
+    showErrorUI(error.message)
     return // Don't render React app
   }
 
   // Only render React app if initialization succeeded
+  console.log('✅ All initialization complete - rendering React app')
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
     </StrictMode>,
   )
+}
+
+function showErrorUI(errorMessage: string) {
+  const rootElement = document.getElementById('root')!
+  rootElement.innerHTML = `
+    <div style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      text-align: center;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f23;
+      color: #cccccc;
+    ">
+      <div style="
+        max-width: 600px;
+        padding: 2rem;
+        background: #1e1e3f;
+        border: 1px solid #333366;
+        border-radius: 8px;
+      ">
+        <h1 style="color: #ff6b6b; margin: 0 0 1rem 0; font-size: 1.5rem;">
+          🚨 Initialization Failed
+        </h1>
+        <p style="margin: 0 0 1rem 0; line-height: 1.5;">
+          Failed to start the database service. This usually happens on first load when the service worker isn't ready yet.
+        </p>
+        <div style="
+          margin: 0 0 1.5rem 0;
+          padding: 1rem;
+          background: #2a2a4a;
+          border-radius: 4px;
+          font-family: monospace;
+          font-size: 0.875rem;
+          text-align: left;
+          word-break: break-all;
+        ">
+          ${errorMessage}
+        </div>
+        <button
+          onclick="window.location.reload()"
+          style="
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+          "
+          onmouseover="this.style.background='#4338ca'"
+          onmouseout="this.style.background='#4f46e5'"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
+  `
 }
 
 // Helper function to wait for MSW to be ready
