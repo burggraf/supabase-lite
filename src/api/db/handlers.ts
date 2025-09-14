@@ -1,12 +1,9 @@
 import { http } from 'msw'
-import { createApiHandler } from '../../api/kernel'
-import { restExecutor, headExecutor, rpcExecutor } from '../../api/db/executor'
-import type { ApiRequest, ApiContext, ApiResponse } from '../../api/types'
+import { createApiHandler } from '../kernel'
+import { restExecutor, rpcExecutor, headExecutor } from './executor'
 
-// Using executors from the unified API system
-
-// REST API handlers using the unified kernel
-export const restHandlers = [
+// Database/REST API handlers using the unified kernel
+export const dbHandlers = [
   // Non-project-scoped REST handlers
   http.get('/rest/v1/:table', createApiHandler(restExecutor)),
   http.head('/rest/v1/:table', createApiHandler(headExecutor)),

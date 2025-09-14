@@ -1,6 +1,6 @@
 // id: <id>
-// name: <name>       
-import { createClient } from '@supabase/supabase-js';
+// name: <name>
+import { createClient } from 'npm:@supabase/supabase-js';
 const SUPABASE_CONFIG = {
     url: '<project_url>',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',

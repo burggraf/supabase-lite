@@ -49,3 +49,4 @@ supabase-client-test-results*
 deno.lock
 tmp-script.ts
 rls-test-results-*.json
+postgrest-test-scripts/results/*

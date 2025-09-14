@@ -1,12 +1,14 @@
-import { http } from 'msw'
-import { createApiHandler } from '../../api/kernel'
-import type { ApiRequest, ApiContext, ApiResponse } from '../../api/types'
+/**
+ * Debug operation executors
+ */
+
+import type { ApiRequest, ApiContext, ApiResponse } from '../types'
 import { DatabaseManager } from '../../lib/database/connection'
 
 /**
  * Debug SQL executor
  */
-async function debugSqlExecutor(
+export async function debugSqlExecutor(
   request: ApiRequest,
   context: ApiContext
 ): Promise<ApiResponse> {
@@ -62,12 +64,3 @@ async function debugSqlExecutor(
     }
   }
 }
-
-// Debug handlers using the unified kernel
-export const debugHandlers = [
-  // Debug SQL endpoint - uses active project by default
-  http.post('/debug/sql', createApiHandler(debugSqlExecutor)),
-
-  // Debug SQL endpoint for specific project
-  http.post('/:projectId/debug/sql', createApiHandler(debugSqlExecutor)),
-]

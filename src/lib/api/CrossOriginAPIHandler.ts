@@ -2,7 +2,8 @@
 // Listens for postMessage requests from test app and executes them on browser database
 // Also handles WebSocket proxy connections from CLI
 
-import { EnhancedSupabaseAPIBridge } from '../../mocks/enhanced-bridge';
+import { QueryEngine } from '../../api/db/QueryEngine';
+import type { ApiRequest, ApiContext } from '../../api/types';
 import { vfsDirectHandler } from '../vfs/VFSDirectHandler';
 import { ProxyConnector } from './ProxyConnector';
 import { AuthBridge } from '../auth/AuthBridge';
@@ -24,13 +25,13 @@ interface APIResponse {
 }
 
 export class CrossOriginAPIHandler {
-  private apibridge: EnhancedSupabaseAPIBridge;
+  private queryEngine: QueryEngine;
   private broadcastChannel: BroadcastChannel | null = null;
   private proxyConnector: ProxyConnector;
   private authBridge: AuthBridge;
 
   constructor() {
-    this.apibridge = new EnhancedSupabaseAPIBridge();
+    this.queryEngine = new QueryEngine();
     this.proxyConnector = new ProxyConnector();
     this.authBridge = new AuthBridge();
     this.setupMessageListener();
@@ -233,16 +234,23 @@ export class CrossOriginAPIHandler {
         ...request.headers
       };
       
-      // Execute the request using the enhanced bridge
-      const supabaseRequest = {
-        table,
-        method: request.method,
-        body: request.body,
+      // Execute the request using the unified query engine
+      const apiRequest: ApiRequest = {
+        method: request.method as any,
+        url: url,
         headers,
-        url
+        body: request.body,
+        params: { table }
       };
-      
-      const result = await this.apibridge.handleRestRequest(supabaseRequest);
+
+      const apiContext: ApiContext = {
+        requestId: request.requestId || `req_${Date.now()}`,
+        projectId: 'default', // Cross-origin requests use default project
+        userId: headers.authorization ? 'cross-origin-user' : undefined,
+        role: 'authenticated'
+      };
+
+      const result = await this.queryEngine.processRequest(apiRequest, apiContext);
       return {
         data: result.data,
         status: result.status,

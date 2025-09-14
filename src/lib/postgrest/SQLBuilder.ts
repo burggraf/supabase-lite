@@ -2863,6 +2863,29 @@ export class SQLBuilder {
   }
 
   /**
+   * Build COUNT query for total record counting
+   */
+  async buildCountQuery(table: string, query: ParsedQuery, schema?: string): Promise<SQLQuery> {
+    this.paramIndex = 1
+    this.parameters = []
+
+    // URL decode and quote the table name for PostgreSQL compatibility
+    const decodedTable = decodeURIComponent(table)
+    const quotedTable = this.buildQuotedQualifiedTableName(decodedTable, schema)
+
+    // Build WHERE clause from filters
+    const whereClause = this.buildWhereClause(query.filters || [])
+
+    // Simple COUNT query - we just need the total count
+    const sql = `SELECT COUNT(*) as count FROM ${quotedTable}${whereClause ? ' ' + whereClause : ''}`
+
+    return {
+      sql,
+      parameters: this.parameters
+    }
+  }
+
+  /**
    * Centralized method to determine JOIN type for PostgREST compatibility
    * Simplifies the scattered inner join logic into a single decision point
    */
