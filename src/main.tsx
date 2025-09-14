@@ -462,6 +462,17 @@ async function initializeApp() {
     // Register Service Worker for offline support BEFORE everything else
     await withTimeout(registerServiceWorker(), 5000, 'Service Worker registration timeout')
 
+    // Clear any existing MSW service worker registrations to prevent conflicts
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations()
+      for (const registration of registrations) {
+        if (registration.scope.includes('mockServiceWorker') || registration.scope.endsWith('/')) {
+          console.log('🧹 Unregistering existing service worker:', registration.scope)
+          await registration.unregister()
+        }
+      }
+    }
+
     // Initialize WebSocket bridge BEFORE MSW to avoid WebSocket override conflicts
     initializeWebSocketBridge()
 
@@ -473,9 +484,16 @@ async function initializeApp() {
       const { worker } = await withTimeout(import('./mocks/browser'), 3000, 'MSW import timeout')
       console.log('✅ MSW worker imported successfully for app route')
 
+      // Wait a bit for the service worker to be fully ready before starting MSW
+      console.log('⏳ Waiting for service worker to be ready for app route...')
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
       await withTimeout(worker.start({
         onUnhandledRequest: 'bypass',
-      }), 5000, 'MSW worker start timeout')
+        serviceWorker: {
+          url: '/mockServiceWorker.js',
+        }
+      }), 10000, 'MSW worker start timeout')
       console.log('✅ MSW worker started for app route')
 
       // Wait for MSW to be ready, then handle the app navigation
@@ -505,9 +523,16 @@ async function initializeApp() {
     const { worker } = await withTimeout(import('./mocks/browser'), 3000, 'MSW import timeout')
     console.log('✅ MSW worker imported successfully')
 
+    // Wait a bit for the service worker to be fully ready before starting MSW
+    console.log('⏳ Waiting for service worker to be ready...')
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
     await withTimeout(worker.start({
       onUnhandledRequest: 'bypass',
-    }), 5000, 'MSW worker start timeout')
+      serviceWorker: {
+        url: '/mockServiceWorker.js',
+      }
+    }), 10000, 'MSW worker start timeout')
     console.log('✅ MSW worker started')
 
     await withTimeout(waitForMSW(), 5000, 'MSW ready timeout')
