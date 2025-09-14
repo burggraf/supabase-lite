@@ -21,12 +21,13 @@ interface ProjectMetrics {
 }
 
 export function Dashboard({ onPageChange }: DashboardProps) {
-  const { isConnected, isConnecting, error, getConnectionInfo, switchToProject, connectionId, getTableList, initialize, getDatabaseSize } = useDatabase();
+  const { isConnected, isConnecting, error, getConnectionInfo, switchToProject, connectionId, getTableList, initialize, getDatabaseSize, executeQuery } = useDatabase();
   const connectionInfo = getConnectionInfo();
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isProjectsLoading, setIsProjectsLoading] = useState(false);
   const [tableCount, setTableCount] = useState(0);
+  const [userCount, setUserCount] = useState(0);
   const [projectMetrics, setProjectMetrics] = useState<ProjectMetrics>({
     databaseSize: '0 B',
     storageFileCount: 0,
@@ -89,8 +90,9 @@ export function Dashboard({ onPageChange }: DashboardProps) {
           const tables = await getTableList();
           setTableCount(tables.length);
 
-          // Load project metrics asynchronously
+          // Load project metrics and user count asynchronously
           loadProjectMetrics();
+          loadUserCount();
         } catch (error) {
           console.error('🔍 Dashboard: failed to get table count:', error);
           setTableCount(0);
@@ -267,6 +269,20 @@ export function Dashboard({ onPageChange }: DashboardProps) {
     }
   };
 
+  const loadUserCount = async () => {
+    if (!isConnected || !executeQuery) return;
+
+    try {
+      const result = await executeQuery('SELECT COUNT(*) as usercount FROM auth.users');
+      const count = result.rows[0] as { usercount: string };
+      setUserCount(parseInt(count.usercount) || 0);
+    } catch (error) {
+      // Auth table might not exist yet or query might fail
+      console.debug('Could not load user count:', error);
+      setUserCount(0);
+    }
+  };
+
   const stats = [
     {
       title: "Database Status",
@@ -280,8 +296,8 @@ export function Dashboard({ onPageChange }: DashboardProps) {
       icon: Table,
     },
     {
-      title: "Sample Users",
-      value: "0", // Will be dynamic later
+      title: "Users",
+      value: userCount.toString(),
       icon: Users,
     },
     {
