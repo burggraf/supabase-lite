@@ -46,7 +46,10 @@ export const authenticationMiddleware: MiddlewareFunction = async (
 
       logger.debug(`API key authenticated: ${apiKeyRole}`, {
         requestId: context.requestId,
-        role: apiKeyRole
+        role: apiKeyRole,
+        sessionContextSet: !!context.sessionContext,
+        contextUserId: context.userId,
+        contextRole: context.role
       })
     } else {
       // This might be a user JWT token - try to verify it
@@ -74,7 +77,11 @@ export const authenticationMiddleware: MiddlewareFunction = async (
 
         logger.debug(`User JWT authenticated: ${context.sessionContext.userId}`, {
           requestId: context.requestId,
-          role: context.sessionContext.role
+          role: context.sessionContext.role,
+          sessionContextSet: !!context.sessionContext,
+          contextUserId: context.userId,
+          contextRole: context.role,
+          tokenPayload: payload
         })
       } catch (error) {
         // Token verification failed - continue with anonymous access
@@ -86,7 +93,10 @@ export const authenticationMiddleware: MiddlewareFunction = async (
         context.role = 'anon'
         logger.debug('JWT verification failed, proceeding as anonymous', {
           requestId: context.requestId,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
+          sessionContextSet: !!context.sessionContext,
+          contextUserId: context.userId,
+          contextRole: context.role
         })
       }
     }
@@ -98,6 +108,13 @@ export const authenticationMiddleware: MiddlewareFunction = async (
     // Set direct context properties for backward compatibility
     context.userId = undefined
     context.role = 'anon'
+
+    logger.debug('No authentication provided, proceeding as anonymous', {
+      requestId: context.requestId,
+      sessionContextSet: !!context.sessionContext,
+      contextUserId: context.userId,
+      contextRole: context.role
+    })
   }
 
   return next()

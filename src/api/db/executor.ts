@@ -34,7 +34,12 @@ export async function restExecutor(
     requestId: context.requestId,
     method: request.method,
     table: table,
-    projectId: context.projectId
+    projectId: context.projectId,
+    contextUserId: context.userId,
+    contextRole: context.role,
+    hasSessionContext: !!context.sessionContext,
+    sessionContextUserId: context.sessionContext?.userId,
+    sessionContextRole: context.sessionContext?.role
   })
 
   try {

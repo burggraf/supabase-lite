@@ -7,6 +7,8 @@ import type { ApiRequest, ApiContext } from '../../api/types';
 import { vfsDirectHandler } from '../vfs/VFSDirectHandler';
 import { ProxyConnector } from './ProxyConnector';
 import { AuthBridge } from '../auth/AuthBridge';
+import { apiKeyGenerator } from '../auth/api-keys';
+import { JWTService } from '../auth/core/JWTService';
 
 interface APIRequest {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -169,7 +171,7 @@ export class CrossOriginAPIHandler {
     // Parse the path to extract table and query parameters
     const url = new URL(request.path, 'http://localhost');
     const pathParts = url.pathname.split('/').filter(part => part);
-    
+
     // Handle VFS direct requests (bypass MSW)
     if (pathParts[0] === 'vfs-direct') {
       console.log('🚀 Handling VFS-direct request via CrossOriginAPIHandler');
@@ -233,7 +235,7 @@ export class CrossOriginAPIHandler {
         'Content-Type': 'application/json',
         ...request.headers
       };
-      
+
       // Execute the request using the unified query engine
       const apiRequest: ApiRequest = {
         method: request.method as any,
@@ -243,11 +245,64 @@ export class CrossOriginAPIHandler {
         params: { table }
       };
 
+      // Parse authentication headers to get proper user context
+      let userId: string | undefined = undefined;
+      let role: string = 'anon';
+      let sessionContext: any = undefined;
+
+      // Check for API key first
+      const apikeyHeader = headers.apikey || headers.Apikey;
+      if (apikeyHeader) {
+        const apiKeyRole = apiKeyGenerator.extractRole(apikeyHeader);
+        if (apiKeyRole) {
+          role = apiKeyRole;
+          console.log('🔑 CrossOrigin: Using API key role:', role);
+        }
+      }
+
+      // Check for JWT token
+      const authHeader = headers.authorization || headers.Authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+
+        // Check if it's an API key
+        const apiKeyRole = apiKeyGenerator.extractRole(token);
+
+        if (apiKeyRole) {
+          // This is an API key
+          role = apiKeyRole;
+          console.log('🔑 CrossOrigin: Using Bearer API key role:', role);
+        } else {
+          // This might be a user JWT token
+          try {
+            const jwtService = JWTService.getInstance();
+            await jwtService.initialize();
+
+            const payload = await jwtService.verifyToken(token);
+            userId = payload.sub || payload.user_id;
+            role = payload.role || 'authenticated';
+
+            sessionContext = {
+              userId: userId,
+              role: role,
+              claims: payload,
+              jwt: token
+            };
+
+            console.log('🔐 CrossOrigin: Verified JWT token:', { userId, role });
+          } catch (error) {
+            console.log('❌ CrossOrigin: JWT verification failed, using anon:', error);
+            role = 'anon';
+          }
+        }
+      }
+
       const apiContext: ApiContext = {
         requestId: request.requestId || `req_${Date.now()}`,
         projectId: 'default', // Cross-origin requests use default project
-        userId: headers.authorization ? 'cross-origin-user' : undefined,
-        role: 'authenticated'
+        userId: userId,
+        role: role,
+        sessionContext: sessionContext
       };
 
       const result = await this.queryEngine.processRequest(apiRequest, apiContext);
@@ -259,9 +314,9 @@ export class CrossOriginAPIHandler {
     } else if (pathParts[0] === 'auth' && pathParts[1] === 'v1') {
       // Authentication endpoint - handle directly via AuthBridge
       console.log('🔐 CrossOrigin: Handling auth request:', request.method, request.path);
-      
+
       const endpoint = pathParts[2]; // signup, signin, token, etc.
-      
+
       try {
         const result = await this.authBridge.handleAuthRequest({
           endpoint,
@@ -270,9 +325,9 @@ export class CrossOriginAPIHandler {
           headers: request.headers || {},
           body: request.body
         });
-        
+
         console.log('✅ CrossOrigin: Auth response:', { status: result.status, hasData: !!result.data, hasError: !!result.error });
-        
+
         if (result.error) {
           return {
             data: result.error,
@@ -280,7 +335,7 @@ export class CrossOriginAPIHandler {
             headers: result.headers || { 'Content-Type': 'application/json' }
           };
         }
-        
+
         return {
           data: result.data,
           status: result.status || 200,

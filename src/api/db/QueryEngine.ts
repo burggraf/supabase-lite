@@ -86,6 +86,20 @@ export class QueryEngine {
         jwt: context.sessionContext?.jwt
       }
 
+      // DEBUG: Log session context to trace RLS issues
+      logger.debug('QueryEngine: Session context created', {
+        sessionUserId: sessionContext.userId,
+        sessionRole: sessionContext.role,
+        contextUserId: context.userId,
+        contextRole: context.role,
+        hasSessionContext: !!context.sessionContext,
+        sessionContextUserId: context.sessionContext?.userId,
+        sessionContextRole: context.sessionContext?.role,
+        table,
+        method: request.method,
+        requestId: context.requestId
+      })
+
       // Add application-level RLS enforcement for INSERT/UPDATE operations
       // This is needed because PGlite doesn't properly enforce INSERT/UPDATE RLS policies
       await this.enforceRLSForWriteOperations(request, sessionContext, table)
