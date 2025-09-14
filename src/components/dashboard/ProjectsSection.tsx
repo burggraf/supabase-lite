@@ -165,8 +165,8 @@ export function ProjectsSection({
                           />
                         </div>
                       ) : (
-                        <div>
-                          <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-medium">{project.name}</h4>
                             {project.isActive && (
                               <Badge variant="default" className="text-xs">
@@ -174,12 +174,17 @@ export function ProjectsSection({
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Created {project.createdAt.toLocaleDateString()}
-                            {project.lastAccessed.getTime() !== project.createdAt.getTime() && (
-                              <span> · Last accessed {project.lastAccessed.toLocaleDateString()}</span>
-                            )}
-                          </p>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded max-w-fit">
+                              ID: {project.id}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Created {project.createdAt.toLocaleDateString()}
+                              {project.lastAccessed.getTime() !== project.createdAt.getTime() && (
+                                <span> • Last accessed {project.lastAccessed.toLocaleDateString()}</span>
+                              )}
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>

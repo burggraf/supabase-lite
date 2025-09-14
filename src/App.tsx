@@ -137,7 +137,7 @@ function App() {
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onPageChange={navigate} />;
       case 'sql-editor':
         return (
           <ErrorBoundary>

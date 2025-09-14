@@ -2,18 +2,39 @@ import { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Database, Users, Table, Clock } from 'lucide-react';
+import { Database, Users, Table, Clock, HardDrive, FileText, Code2, Globe } from 'lucide-react';
 import { ProjectsSection } from './ProjectsSection';
 import { projectManager } from '@/lib/projects/ProjectManager';
+import { vfsManager } from '@/lib/vfs/VFSManager';
 import type { Project } from '@/lib/projects/ProjectManager';
 
-export function Dashboard() {
-  const { isConnected, isConnecting, error, getConnectionInfo, switchToProject, connectionId, getTableList, initialize } = useDatabase();
+interface DashboardProps {
+  onPageChange?: (page: string) => void;
+}
+
+interface ProjectMetrics {
+  databaseSize: string;
+  storageFileCount: number;
+  storageTotalSize: string;
+  edgeFunctionsCount: number;
+  applicationsCount: number;
+}
+
+export function Dashboard({ onPageChange }: DashboardProps) {
+  const { isConnected, isConnecting, error, getConnectionInfo, switchToProject, connectionId, getTableList, initialize, getDatabaseSize } = useDatabase();
   const connectionInfo = getConnectionInfo();
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isProjectsLoading, setIsProjectsLoading] = useState(false);
   const [tableCount, setTableCount] = useState(0);
+  const [projectMetrics, setProjectMetrics] = useState<ProjectMetrics>({
+    databaseSize: '0 B',
+    storageFileCount: 0,
+    storageTotalSize: '0 B',
+    edgeFunctionsCount: 0,
+    applicationsCount: 0,
+  });
+  const [isMetricsLoading, setIsMetricsLoading] = useState(false);
   const hasInitialized = useRef(false);
 
   // Load projects on component mount and create first project if none exist
@@ -60,13 +81,16 @@ export function Dashboard() {
     initializeProjects();
   }, []); // Empty dependency array to run only once
 
-  // Update table count when database connection changes
+  // Update table count and project metrics when database connection changes
   useEffect(() => {
-    const updateTableCount = async () => {
+    const updateMetrics = async () => {
       if (isConnected && connectionId && getTableList) {
         try {
           const tables = await getTableList();
           setTableCount(tables.length);
+
+          // Load project metrics asynchronously
+          loadProjectMetrics();
         } catch (error) {
           console.error('🔍 Dashboard: failed to get table count:', error);
           setTableCount(0);
@@ -76,8 +100,8 @@ export function Dashboard() {
       }
     };
 
-    updateTableCount();
-  }, [isConnected, connectionId, getTableList]);
+    updateMetrics();
+  }, [isConnected, connectionId, getTableList, activeProject]);
 
   const handleCreateProject = async (name: string) => {
     setIsProjectsLoading(true);
@@ -163,30 +187,107 @@ export function Dashboard() {
     }
   };
 
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const loadProjectMetrics = async () => {
+    if (!isConnected || !activeProject) return;
+
+    setIsMetricsLoading(true);
+    try {
+      // Ensure VFS is initialized for the current project first
+      await vfsManager.initialize(activeProject.id);
+
+      const [databaseSize, buckets] = await Promise.all([
+        getDatabaseSize(),
+        vfsManager.listBuckets().catch(() => [])
+      ]);
+
+      // Update all bucket stats first to ensure current data
+      await Promise.all(
+        buckets.map(bucket => vfsManager.updateBucketStats(bucket.name))
+      );
+
+      // Get fresh bucket data with updated stats
+      const freshBuckets = await vfsManager.listBuckets();
+
+      // Get storage metrics from all buckets
+      let totalFiles = 0;
+      let totalSize = 0;
+      let edgeFunctionsCount = 0;
+      let applicationsCount = 0;
+
+      for (const bucket of freshBuckets) {
+        totalFiles += bucket.fileCount || 0;
+        totalSize += bucket.totalSize || 0;
+
+        // Count edge functions in edge-functions bucket
+        if (bucket.name === 'edge-functions') {
+          const functionFiles = await vfsManager.listFiles({ directory: 'edge-functions', recursive: true }).catch(() => []);
+          const functionNames = new Set<string>();
+          functionFiles.forEach(file => {
+            const match = file.path.match(/^edge-functions\/([^\/]+)\/index\.ts$/);
+            if (match) {
+              functionNames.add(match[1]);
+            }
+          });
+          edgeFunctionsCount = functionNames.size;
+        }
+
+        // Count applications in app bucket
+        if (bucket.name === 'app') {
+          const appFiles = await vfsManager.listFiles({ directory: 'app', recursive: true }).catch(() => []);
+          const appNames = new Set<string>();
+          appFiles.forEach(file => {
+            const segments = file.path.split('/');
+            if (segments.length >= 2 && segments[0] === 'app') {
+              appNames.add(segments[1]);
+            }
+          });
+          applicationsCount = appNames.size;
+        }
+      }
+
+      setProjectMetrics({
+        databaseSize,
+        storageFileCount: totalFiles,
+        storageTotalSize: formatBytes(totalSize),
+        edgeFunctionsCount,
+        applicationsCount,
+      });
+    } catch (error) {
+      console.error('Failed to load project metrics:', error);
+    } finally {
+      setIsMetricsLoading(false);
+    }
+  };
+
   const stats = [
     {
       title: "Database Status",
       value: isConnected ? "Connected" : "Disconnected",
       icon: Database,
-      badge: isConnected ? "success" : "destructive",
+      variant: isConnected ? "success" : "destructive",
     },
     {
       title: "Tables",
       value: tableCount.toString(),
       icon: Table,
-      badge: "secondary",
     },
     {
       title: "Sample Users",
       value: "0", // Will be dynamic later
       icon: Users,
-      badge: "secondary",
     },
     {
       title: "Last Access",
       value: connectionInfo ? new Date(connectionInfo.lastAccessed).toLocaleTimeString() : "Never",
       icon: Clock,
-      badge: "secondary",
     },
   ];
 
@@ -218,11 +319,13 @@ export function Dashboard() {
                 <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
                 <Icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-2">
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <Badge variant={stat.badge as "default" | "secondary" | "destructive" | "outline"}>{stat.badge}</Badge>
-                </div>
+              <CardContent className="text-center">
+                <div className="text-2xl font-bold">{stat.value}</div>
+                {stat.variant && (
+                  <Badge variant={stat.variant as "default" | "secondary" | "destructive" | "outline" | "success" | "warning"} className="mt-2">
+                    {stat.variant === "success" ? "Online" : "Offline"}
+                  </Badge>
+                )}
               </CardContent>
             </Card>
           );
@@ -260,9 +363,9 @@ export function Dashboard() {
               </p>
             </div>
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">🚀 More Features Coming</h4>
+              <h4 className="text-sm font-medium">🚀 Available Features</h4>
               <p className="text-xs text-muted-foreground">
-                Auth, Storage, Realtime, and Edge Functions are in development
+                Auth, Storage, Edge Functions, and App Hosting are ready to use
               </p>
             </div>
           </CardContent>
@@ -270,33 +373,66 @@ export function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Database Info</CardTitle>
+            <CardTitle>Project Info</CardTitle>
             <CardDescription>
-              Current database connection details
+              {activeProject?.name || 'Unknown Project'} resource usage and statistics
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {connectionInfo ? (
-              <>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Name:</span>
-                  <span>{connectionInfo.name}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">ID:</span>
-                  <span className="font-mono text-xs">{connectionInfo.id}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Created:</span>
-                  <span>{new Date(connectionInfo.createdAt).toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Status:</span>
-                  <Badge variant="success">Active</Badge>
-                </div>
-              </>
+          <CardContent>
+            {isMetricsLoading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 bg-muted animate-pulse rounded"></div>
+                      <div className="h-4 w-20 bg-muted animate-pulse rounded"></div>
+                    </div>
+                    <div className="h-4 w-12 bg-muted animate-pulse rounded"></div>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No connection info available</p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Database Size</span>
+                  </div>
+                  <span className="text-sm font-mono">{projectMetrics.databaseSize}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Storage Files</span>
+                  </div>
+                  <div className="text-sm font-mono">
+                    {projectMetrics.storageFileCount} files ({projectMetrics.storageTotalSize})
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Code2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Edge Functions</span>
+                  </div>
+                  <span className="text-sm font-mono">{projectMetrics.edgeFunctionsCount}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Applications</span>
+                  </div>
+                  <span className="text-sm font-mono">{projectMetrics.applicationsCount}</span>
+                </div>
+
+                <div className="pt-2 border-t">
+                  <div className="text-xs text-muted-foreground text-center">
+                    Last updated: {new Date().toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
