@@ -235,17 +235,22 @@ async function executeCleanup(logs: TestLog[]): Promise<any> {
 
     for (const table of tablesToDrop) {
       try {
-        const { error } = await testContext.serviceClient
-          .from('information_schema.tables')
-          .select('table_name')
-          .eq('table_name', table)
-          .single();
-
-        if (!error) {
-          await testContext.serviceClient.rpc('exec_sql', {
+        // Just drop the table directly without checking if it exists first
+        const response = await fetch(`${config.supabaseLiteUrl}/debug/sql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': config.serviceRoleKey
+          },
+          body: JSON.stringify({
             sql: `DROP TABLE IF EXISTS ${table} CASCADE;`
-          });
+          })
+        });
+
+        if (response.ok) {
           logs.push(logDebug(`Dropped table: ${table}`));
+        } else {
+          logs.push(logDebug(`Drop table warning for ${table}: HTTP ${response.status}`));
         }
       } catch (e) {
         // Ignore cleanup errors
@@ -253,21 +258,32 @@ async function executeCleanup(logs: TestLog[]): Promise<any> {
       }
     }
 
-    // Clean up test users (ignore errors)
-    const testEmails = ['alice@rlstest.com', 'bob@rlstest.com', 'charlie@rlstest.com'];
+    // Only clean up test users at the very beginning of the full test suite
+    // For individual test cleanups, preserve users but clean their data
+    const isFullCleanup = testContext.testData.get('isFirstCleanup') !== false;
+    if (isFullCleanup) {
+      testContext.testData.set('isFirstCleanup', false);
 
-    for (const email of testEmails) {
       try {
-        const { data: user } = await testContext.serviceClient.auth.admin.listUsers();
-        const testUser = user?.users?.find((u: any) => u.email === email);
+        const response = await fetch(`${config.supabaseLiteUrl}/debug/sql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': config.serviceRoleKey
+          },
+          body: JSON.stringify({
+            sql: `DELETE FROM auth.users WHERE email IN ('alice@rlstest.com', 'bob@rlstest.com', 'charlie@rlstest.com');`
+          })
+        });
 
-        if (testUser) {
-          await testContext.serviceClient.auth.admin.deleteUser(testUser.id);
-          logs.push(logDebug(`Cleaned up user: ${email}`));
+        if (response.ok) {
+          logs.push(logDebug('Full cleanup: Removed test users from auth.users'));
         }
       } catch (e) {
-        logs.push(logDebug(`Cleanup warning for user ${email}: ${e.message}`));
+        logs.push(logDebug(`User cleanup warning: ${e.message}`));
       }
+    } else {
+      logs.push(logDebug('Selective cleanup: Preserving users, cleaning only table data'));
     }
 
     // Reset context
@@ -586,6 +602,19 @@ async function executeTableUpdate(step: WorkflowStep, logs: TestLog[]): Promise<
     return { success: true, data, count: rowCount };
 
   } catch (error) {
+    // Check if this error was expected
+    if (step.expected_result?.should_error) {
+      if (step.expected_result.error_message && error.message.includes(step.expected_result.error_message)) {
+        logs.push(logInfo(`Expected error occurred: ${error.message}`));
+        return { success: true, expected_error: true, error_message: error.message };
+      } else if (!step.expected_result.error_message) {
+        logs.push(logInfo(`Expected error occurred: ${error.message}`));
+        return { success: true, expected_error: true, error_message: error.message };
+      } else {
+        logs.push(logError(`Expected error message "${step.expected_result.error_message}" but got: ${error.message}`));
+      }
+    }
+
     logs.push(logError(`Update failed: ${error.message}`));
     throw error;
   }
@@ -629,6 +658,19 @@ async function executeTableDelete(step: WorkflowStep, logs: TestLog[]): Promise<
     return { success: true, data, count: rowCount };
 
   } catch (error) {
+    // Check if this error was expected
+    if (step.expected_result?.should_error) {
+      if (step.expected_result.error_message && error.message.includes(step.expected_result.error_message)) {
+        logs.push(logInfo(`Expected error occurred: ${error.message}`));
+        return { success: true, expected_error: true, error_message: error.message };
+      } else if (!step.expected_result.error_message) {
+        logs.push(logInfo(`Expected error occurred: ${error.message}`));
+        return { success: true, expected_error: true, error_message: error.message };
+      } else {
+        logs.push(logError(`Expected error message "${step.expected_result.error_message}" but got: ${error.message}`));
+      }
+    }
+
     logs.push(logError(`Delete failed: ${error.message}`));
     throw error;
   }

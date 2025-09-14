@@ -20,7 +20,7 @@
             "operation": "auth_signup",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!",
+              "password": "Password123!",
               "data": { "full_name": "Alice Smith" }
             }
           },
@@ -30,7 +30,7 @@
             "operation": "auth_signup",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!",
+              "password": "Password123!",
               "data": { "full_name": "Bob Jones" }
             }
           },
@@ -40,26 +40,38 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
             "step": "create_posts_table",
             "name": "Alice creates posts table",
             "operation": "raw_sql",
-            "sql": "CREATE TABLE test_posts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), title TEXT NOT NULL, content TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
+            "sql": "CREATE TABLE IF NOT EXISTS test_posts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), title TEXT NOT NULL, content TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
           },
           {
             "step": "enable_rls",
             "name": "Alice enables RLS on posts table",
             "operation": "raw_sql",
-            "sql": "ALTER TABLE test_posts ENABLE ROW LEVEL SECURITY;"
+            "sql": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = 'public' AND c.relname = 'test_posts' AND c.relrowsecurity = true) THEN ALTER TABLE test_posts ENABLE ROW LEVEL SECURITY; END IF; END $$;"
+          },
+          {
+            "step": "drop_select_policy",
+            "name": "Drop existing SELECT policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users can view own posts\" ON test_posts;"
           },
           {
             "step": "create_select_policy",
             "name": "Alice creates SELECT policy",
             "operation": "raw_sql",
             "sql": "CREATE POLICY \"Users can view own posts\" ON test_posts FOR SELECT USING (auth.uid() = user_id);"
+          },
+          {
+            "step": "drop_insert_policy",
+            "name": "Drop existing INSERT policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users can create own posts\" ON test_posts;"
           },
           {
             "step": "create_insert_policy",
@@ -83,7 +95,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -118,7 +130,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -152,9 +164,44 @@
         "description": "Service role bypasses RLS and sees all user data",
         "workflow": [
           {
+            "step": "cleanup_before_service_test",
+            "name": "Clean up before service role test",
+            "operation": "cleanup"
+          },
+          {
             "step": "setup_service_role",
             "name": "Switch to service role",
             "operation": "set_service_role"
+          },
+          {
+            "step": "create_test_posts_table",
+            "name": "Create test_posts table",
+            "operation": "raw_sql",
+            "sql": "CREATE TABLE IF NOT EXISTS test_posts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), title TEXT NOT NULL, content TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
+          },
+          {
+            "step": "enable_rls",
+            "name": "Enable RLS",
+            "operation": "raw_sql",
+            "sql": "ALTER TABLE test_posts ENABLE ROW LEVEL SECURITY;"
+          },
+          {
+            "step": "drop_policy",
+            "name": "Drop existing policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users can view own posts\" ON test_posts;"
+          },
+          {
+            "step": "create_policy",
+            "name": "Create SELECT policy",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users can view own posts\" ON test_posts FOR SELECT USING (auth.uid() = user_id);"
+          },
+          {
+            "step": "insert_test_data",
+            "name": "Insert test data for Alice and Bob",
+            "operation": "raw_sql",
+            "sql": "INSERT INTO test_posts (user_id, title, content) VALUES ((SELECT id FROM auth.users WHERE email = 'alice@rlstest.com'), 'Alice Test Post', 'Alice content'), ((SELECT id FROM auth.users WHERE email = 'bob@rlstest.com'), 'Bob Test Post', 'Bob content');"
           },
           {
             "step": "service_query_all",
@@ -165,8 +212,8 @@
             "expected_result": {
               "row_count": 2,
               "contains": [
-                { "title": "Alice's First Post" },
-                { "title": "Bob's First Post" }
+                { "title": "Alice Test Post" },
+                { "title": "Bob Test Post" }
               ]
             }
           },
@@ -246,26 +293,38 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
             "step": "create_projects_table",
             "name": "Create projects table with complex RLS",
             "operation": "raw_sql",
-            "sql": "CREATE TABLE test_projects (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), owner_id UUID REFERENCES auth.users(id), name TEXT NOT NULL, is_public BOOLEAN DEFAULT false, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
+            "sql": "CREATE TABLE IF NOT EXISTS test_projects (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), owner_id UUID REFERENCES auth.users(id), name TEXT NOT NULL, is_public BOOLEAN DEFAULT false, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
           },
           {
             "step": "enable_projects_rls",
             "name": "Enable RLS on projects",
             "operation": "raw_sql",
-            "sql": "ALTER TABLE test_projects ENABLE ROW LEVEL SECURITY;"
+            "sql": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = 'public' AND c.relname = 'test_projects' AND c.relrowsecurity = true) THEN ALTER TABLE test_projects ENABLE ROW LEVEL SECURITY; END IF; END $$;"
+          },
+          {
+            "step": "drop_projects_select_policy",
+            "name": "Drop existing projects SELECT policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users see own or public projects\" ON test_projects;"
           },
           {
             "step": "create_complex_select_policy",
             "name": "Create policy: users see own projects OR public projects",
             "operation": "raw_sql",
             "sql": "CREATE POLICY \"Users see own or public projects\" ON test_projects FOR SELECT USING (auth.uid() = owner_id OR is_public = true);"
+          },
+          {
+            "step": "drop_projects_insert_policy",
+            "name": "Drop existing projects INSERT policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users create own projects\" ON test_projects;"
           },
           {
             "step": "create_complex_insert_policy",
@@ -299,7 +358,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -349,14 +408,100 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
+          },
+          {
+            "step": "create_test_posts_table",
+            "name": "Create test_posts table for UPDATE test",
+            "operation": "raw_sql",
+            "sql": "CREATE TABLE IF NOT EXISTS test_posts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES auth.users(id), title TEXT NOT NULL, content TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
+          },
+          {
+            "step": "enable_rls_posts",
+            "name": "Enable RLS on test_posts",
+            "operation": "raw_sql",
+            "sql": "ALTER TABLE test_posts ENABLE ROW LEVEL SECURITY;"
+          },
+          {
+            "step": "drop_select_policy_posts",
+            "name": "Drop existing SELECT policy for posts",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users can view own posts\" ON test_posts;"
+          },
+          {
+            "step": "create_select_policy_posts",
+            "name": "Create SELECT policy for posts",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users can view own posts\" ON test_posts FOR SELECT USING (auth.uid() = user_id);"
+          },
+          {
+            "step": "drop_insert_policy_posts",
+            "name": "Drop existing INSERT policy for posts",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users can create own posts\" ON test_posts;"
+          },
+          {
+            "step": "create_insert_policy_posts",
+            "name": "Create INSERT policy for posts",
+            "operation": "raw_sql",
+            "sql": "CREATE POLICY \"Users can create own posts\" ON test_posts FOR INSERT WITH CHECK (auth.uid() = user_id);"
+          },
+          {
+            "step": "alice_insert_test_post",
+            "name": "Alice inserts her test post",
+            "operation": "table_insert",
+            "table": "test_posts",
+            "data": {
+              "title": "Alice's First Post",
+              "content": "Initial content by Alice"
+            }
+          },
+          {
+            "step": "signin_bob_for_insert",
+            "name": "Sign in as Bob for insert",
+            "operation": "auth_signin",
+            "params": {
+              "email": "bob@rlstest.com",
+              "password": "Password123!"
+            }
+          },
+          {
+            "step": "bob_insert_test_post",
+            "name": "Bob inserts his test post",
+            "operation": "table_insert",
+            "table": "test_posts",
+            "data": {
+              "title": "Bob's First Post",
+              "content": "Initial content by Bob"
+            }
+          },
+          {
+            "step": "signin_alice_for_update",
+            "name": "Sign in as Alice for update test",
+            "operation": "auth_signin",
+            "params": {
+              "email": "alice@rlstest.com",
+              "password": "Password123!"
+            }
+          },
+          {
+            "step": "drop_update_policy",
+            "name": "Drop existing UPDATE policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users update own posts\" ON test_posts;"
           },
           {
             "step": "create_update_policy",
             "name": "Create UPDATE policy for posts",
             "operation": "raw_sql",
             "sql": "CREATE POLICY \"Users update own posts\" ON test_posts FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);"
+          },
+          {
+            "step": "drop_delete_policy",
+            "name": "Drop existing DELETE policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users delete own posts\" ON test_posts;"
           },
           {
             "step": "create_delete_policy",
@@ -391,7 +536,8 @@
               "title": { "eq": "Bob's First Post" }
             },
             "expected_result": {
-              "row_count": 0
+              "should_error": true,
+              "error_message": "UPDATE on table \"test_posts\" violates row level security policy"
             }
           },
           {
@@ -400,7 +546,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -424,7 +570,8 @@
               "title": { "eq": "Alice's First Post" }
             },
             "expected_result": {
-              "row_count": 0
+              "should_error": true,
+              "error_message": "DELETE on table \"test_posts\" violates row level security policy"
             }
           }
         ]
@@ -447,20 +594,26 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
             "step": "create_comments_table",
             "name": "Create comments table",
             "operation": "raw_sql",
-            "sql": "CREATE TABLE test_comments (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), post_id UUID REFERENCES test_posts(id), author_id UUID REFERENCES auth.users(id), content TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
+            "sql": "CREATE TABLE IF NOT EXISTS test_comments (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), post_id UUID REFERENCES test_posts(id), author_id UUID REFERENCES auth.users(id), content TEXT NOT NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
           },
           {
             "step": "enable_comments_rls",
             "name": "Enable RLS on comments",
             "operation": "raw_sql",
-            "sql": "ALTER TABLE test_comments ENABLE ROW LEVEL SECURITY;"
+            "sql": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = 'public' AND c.relname = 'test_comments' AND c.relrowsecurity = true) THEN ALTER TABLE test_comments ENABLE ROW LEVEL SECURITY; END IF; END $$;"
+          },
+          {
+            "step": "drop_comments_policy",
+            "name": "Drop existing comments policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"Users see comments on visible posts\" ON test_comments;"
           },
           {
             "step": "create_comments_policy",
@@ -469,10 +622,30 @@
             "sql": "CREATE POLICY \"Users see comments on visible posts\" ON test_comments FOR SELECT USING (EXISTS (SELECT 1 FROM test_posts WHERE test_posts.id = post_id AND (test_posts.user_id = auth.uid() OR auth.uid() = author_id)));"
           },
           {
+            "step": "ensure_alice_post_exists",
+            "name": "Ensure Alice has a post to comment on",
+            "operation": "table_insert",
+            "table": "test_posts",
+            "data": {
+              "title": "Alice's First Post",
+              "content": "Alice's content for relations test"
+            }
+          },
+          {
+            "step": "get_alice_post_id",
+            "name": "Get Alice's post ID",
+            "operation": "table_select",
+            "table": "test_posts",
+            "select": "id",
+            "filter": {
+              "title": { "eq": "Alice's First Post" }
+            }
+          },
+          {
             "step": "alice_add_comment_to_own_post",
             "name": "Alice comments on her own post",
             "operation": "raw_sql",
-            "sql": "INSERT INTO test_comments (post_id, content) VALUES ((SELECT id FROM test_posts WHERE title = 'Alice\\'s First Post'), 'Alice commenting on her own post');"
+            "sql": "INSERT INTO test_comments (post_id, author_id, content) VALUES ((SELECT id FROM test_posts WHERE title = 'Alice''s First Post' LIMIT 1), (SELECT id FROM auth.users WHERE email = 'alice@rlstest.com'), 'Alice commenting on her own post');"
           },
           {
             "step": "signin_bob",
@@ -480,7 +653,7 @@
             "operation": "auth_signin",
             "params": {
               "email": "bob@rlstest.com",
-              "password": "BobPassword123!"
+              "password": "Password123!"
             }
           },
           {
@@ -513,26 +686,38 @@
             "operation": "auth_signin",
             "params": {
               "email": "alice@rlstest.com",
-              "password": "AlicePassword123!"
+              "password": "Password123!"
             }
           },
           {
             "step": "create_documents_table",
             "name": "Create documents table",
             "operation": "raw_sql",
-            "sql": "CREATE TABLE test_documents (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), owner_id UUID REFERENCES auth.users(id), department TEXT, is_confidential BOOLEAN DEFAULT false, title TEXT NOT NULL);"
+            "sql": "CREATE TABLE IF NOT EXISTS test_documents (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), owner_id UUID REFERENCES auth.users(id), department TEXT, is_confidential BOOLEAN DEFAULT false, title TEXT NOT NULL);"
           },
           {
             "step": "enable_docs_rls",
             "name": "Enable RLS on documents",
             "operation": "raw_sql",
-            "sql": "ALTER TABLE test_documents ENABLE ROW LEVEL SECURITY;"
+            "sql": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = 'public' AND c.relname = 'test_documents' AND c.relrowsecurity = true) THEN ALTER TABLE test_documents ENABLE ROW LEVEL SECURITY; END IF; END $$;"
+          },
+          {
+            "step": "drop_owner_policy",
+            "name": "Drop existing owner policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"owners_see_docs\" ON test_documents;"
           },
           {
             "step": "create_owner_policy",
             "name": "Policy 1: Owners can see their docs",
             "operation": "raw_sql",
             "sql": "CREATE POLICY \"owners_see_docs\" ON test_documents FOR SELECT USING (auth.uid() = owner_id);"
+          },
+          {
+            "step": "drop_department_policy",
+            "name": "Drop existing department policy",
+            "operation": "raw_sql",
+            "sql": "DROP POLICY IF EXISTS \"department_see_non_confidential\" ON test_documents;"
           },
           {
             "step": "create_department_policy",

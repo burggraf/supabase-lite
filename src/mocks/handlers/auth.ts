@@ -24,13 +24,14 @@ const AUTH_HEADERS = {
  */
 const createAuthHandler = (endpoint: string) => async ({ request, params }: any) => {
   try {
-    console.log(`🔐 MSW: Handling ${endpoint} request`)
-    
     const body = await safeJsonParse(request)
+    const url = new URL(request.url)
+
+
     const response = await authBridge.handleAuthRequest({
       endpoint,
       method: request.method,
-      url: new URL(request.url),
+      url: url,
       headers: extractHeaders(request),
       body
     })

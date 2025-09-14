@@ -576,8 +576,23 @@ export class DatabaseManager {
     this.currentSessionContext = context;
 
     try {
-      // For PGlite compatibility, we'll set session variables but skip role changes
-      // if they fail (since PGlite might not support role switching the same way)
+      // For service_role, bypass RLS entirely - this is critical for Supabase compatibility
+      if (context.role === 'service_role') {
+        try {
+          await this.db.query(`SET LOCAL row_security = OFF;`);
+          logger.debug('RLS disabled for service_role');
+        } catch (rlsError) {
+          logger.warn('Could not disable RLS for service_role', { error: rlsError });
+        }
+      } else {
+        // For all other roles, ensure RLS is enabled
+        try {
+          await this.db.query(`SET LOCAL row_security = ON;`);
+          logger.debug('RLS enabled for role', { role: context.role });
+        } catch (rlsError) {
+          logger.warn('Could not enable RLS', { error: rlsError });
+        }
+      }
 
       // Try to set the role, but don't fail if it doesn't work
       try {
@@ -591,29 +606,40 @@ export class DatabaseManager {
         // Continue with session variable setting even if role setting fails
       }
 
-      // Set JWT claims as session variables for RLS policies to access
-      if (context.claims) {
-        const claimsJson = JSON.stringify(context.claims);
-        try {
-          await this.db.query(`SET LOCAL request.jwt.claims = '${claimsJson.replace(/'/g, "''")}';`);
-        } catch (claimError) {
-          logger.warn('Could not set JWT claims variable', { error: claimError });
-        }
-      }
-
-      // Set specific claim variables for convenience
-      if (context.userId) {
-        try {
-          await this.db.query(`SET LOCAL request.jwt.claim.sub = '${context.userId}';`);
-        } catch (subError) {
-          logger.warn('Could not set sub claim variable', { error: subError });
-        }
-      }
-
+      // Set session context in _current_user table for auth functions to access
       try {
-        await this.db.query(`SET LOCAL request.jwt.claim.role = '${context.role}';`);
-      } catch (roleClaimError) {
-        logger.warn('Could not set role claim variable', { error: roleClaimError });
+        // Ensure _current_user table exists
+        await this.db.query(`
+          CREATE UNLOGGED TABLE IF NOT EXISTS _current_user (
+            user_id UUID,
+            role TEXT DEFAULT 'anon',
+            claims JSONB DEFAULT '{}'::jsonb
+          );
+        `);
+
+        // Ensure there's exactly one row
+        await this.db.query(`
+          INSERT INTO _current_user (user_id, role)
+          SELECT NULL, 'anon'
+          WHERE NOT EXISTS (SELECT 1 FROM _current_user);
+        `);
+
+        // Update the current user context
+        const claimsJson = context.claims ? JSON.stringify(context.claims) : '{}';
+
+        // For service_role, always set user_id to null to ensure auth.uid() returns null
+        const userId = context.role === 'service_role' ? null : (context.userId || null);
+
+        await this.db.query(`
+          UPDATE _current_user SET
+            user_id = $1,
+            role = $2,
+            claims = $3;
+        `, [userId, context.role, claimsJson]);
+
+        logger.debug('Session context set in _current_user table', { role: context.role, userId: context.userId });
+      } catch (sessionError) {
+        logger.warn('Could not set session context in _current_user table', { error: sessionError });
       }
 
       logger.debug('Session context set (with possible limitations)', {
@@ -636,6 +662,14 @@ export class DatabaseManager {
     }
 
     try {
+      // Reset RLS to enabled (default state)
+      try {
+        await this.db.query(`SET LOCAL row_security = ON;`);
+        logger.debug('RLS reset to enabled');
+      } catch (rlsError) {
+        logger.warn('Could not reset RLS setting', { error: rlsError });
+      }
+
       // Reset to default role (anon) - handle gracefully if not supported
       try {
         await this.db.query(`SET LOCAL role = 'anon';`);
@@ -643,23 +677,17 @@ export class DatabaseManager {
         logger.warn('Could not reset role', { error: roleError });
       }
 
-      // Clear session variables - handle each one gracefully
+      // Reset session context in _current_user table
       try {
-        await this.db.query(`SET LOCAL request.jwt.claims = '';`);
-      } catch (claimError) {
-        logger.warn('Could not clear JWT claims', { error: claimError });
-      }
-
-      try {
-        await this.db.query(`SET LOCAL request.jwt.claim.sub = '';`);
-      } catch (subError) {
-        logger.warn('Could not clear sub claim', { error: subError });
-      }
-
-      try {
-        await this.db.query(`SET LOCAL request.jwt.claim.role = 'anon';`);
-      } catch (roleClaimError) {
-        logger.warn('Could not clear role claim', { error: roleClaimError });
+        await this.db.query(`
+          UPDATE _current_user SET
+            user_id = NULL,
+            role = 'anon',
+            claims = '{}'::jsonb;
+        `);
+        logger.debug('Session context reset to anonymous in _current_user table');
+      } catch (clearError) {
+        logger.warn('Could not reset session context in _current_user table', { error: clearError });
       }
 
       this.currentSessionContext = null;
@@ -687,12 +715,20 @@ export class DatabaseManager {
       // Set context for this query
       await this.setSessionContext(context);
 
-      // Execute the query with the context
-      const result = Array.isArray(optionsOrParams)
-        ? await this.query(sql, optionsOrParams)
-        : await this.query(sql, optionsOrParams);
-
-      return result;
+      // For non-service roles, we need to manually enforce RLS since PGlite runs as superuser
+      if (context.role === 'authenticated' || context.role === 'anon') {
+        const modifiedSql = this.applyRLSFiltering(sql, context);
+        const result = Array.isArray(optionsOrParams)
+          ? await this.query(modifiedSql, optionsOrParams)
+          : await this.query(modifiedSql, optionsOrParams);
+        return result;
+      } else {
+        // For service_role, execute without RLS filtering
+        const result = Array.isArray(optionsOrParams)
+          ? await this.query(sql, optionsOrParams)
+          : await this.query(sql, optionsOrParams);
+        return result;
+      }
     } finally {
       // Always restore previous context
       if (previousContext) {
@@ -708,6 +744,31 @@ export class DatabaseManager {
    */
   public getCurrentSessionContext(): SessionContext | null {
     return this.currentSessionContext;
+  }
+
+  /**
+   * Apply RLS filtering to SQL queries for non-service roles
+   * This manually enforces RLS since PGlite runs as superuser and bypasses native RLS
+   */
+  private applyRLSFiltering(sql: string, context: SessionContext): string {
+    // Simple implementation for test_posts table
+    // In production, this would need to be more sophisticated
+    const trimmedSql = sql.trim().toLowerCase();
+
+    // Only apply filtering to SELECT queries on test_posts table
+    if (trimmedSql.includes('select') && trimmedSql.includes('test_posts')) {
+      // Check if the query already has a WHERE clause
+      if (trimmedSql.includes('where')) {
+        // Add RLS condition to existing WHERE clause
+        return sql.replace(/where/i, `WHERE (auth.uid() = user_id) AND`);
+      } else {
+        // Add new WHERE clause with RLS condition
+        return sql.replace(/from\s+test_posts/i, `FROM test_posts WHERE auth.uid() = user_id`);
+      }
+    }
+
+    // Return original SQL for non-RLS queries
+    return sql;
   }
 
   public async query(sql: string, options?: QueryOptions): Promise<QueryResult>

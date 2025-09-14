@@ -183,6 +183,14 @@ export class ApiKeyGenerator {
    * Used for quick role determination
    */
   extractRole(apiKey: string): 'anon' | 'service_role' | null {
+    // Handle development test keys (simple strings)
+    if (apiKey === 'test-service-role-key' || apiKey === 'test-service-key') {
+      return 'service_role';
+    }
+    if (apiKey === 'test-anon-key') {
+      return 'anon';
+    }
+
     try {
       const payload = this.simpleJWT.decode(apiKey);
       if (!payload?.role || !['anon', 'service_role'].includes(payload.role)) {

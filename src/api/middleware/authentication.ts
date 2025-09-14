@@ -4,6 +4,7 @@
 
 import type { MiddlewareFunction, ApiRequest, ApiContext, ApiResponse, SessionContext } from '../types'
 import { JWTService } from '../../lib/auth/core/JWTService'
+import { apiKeyGenerator } from '../../lib/auth/api-keys'
 import { logger } from '../../lib/infrastructure/Logger'
 
 export const authenticationMiddleware: MiddlewareFunction = async (
@@ -26,40 +27,77 @@ export const authenticationMiddleware: MiddlewareFunction = async (
   }
 
   if (token) {
-    try {
-      const jwtService = JWTService.getInstance()
-      await jwtService.initialize()
+    // First check if this is an API key (service_role or anon)
+    const apiKeyRole = apiKeyGenerator.extractRole(token)
 
-      // Verify and decode the JWT token
-      const payload = await jwtService.verifyToken(token)
-
-      // Establish session context for RLS
+    if (apiKeyRole) {
+      // This is an API key - set up the session context accordingly
       context.sessionContext = {
-        userId: payload.sub || payload.user_id,
-        role: payload.role || 'authenticated',
-        claims: payload,
-        jwt: token
+        role: apiKeyRole,
+        claims: {
+          role: apiKeyRole,
+          iss: 'supabase-lite'
+        }
       }
 
-      logger.debug(`User authenticated: ${context.sessionContext.userId}`, {
+      // Set direct context properties for backward compatibility
+      context.userId = undefined
+      context.role = apiKeyRole
+
+      logger.debug(`API key authenticated: ${apiKeyRole}`, {
         requestId: context.requestId,
-        role: context.sessionContext.role
+        role: apiKeyRole
       })
-    } catch (error) {
-      // Token verification failed - continue with anonymous access
-      context.sessionContext = {
-        role: 'anon'
+    } else {
+      // This might be a user JWT token - try to verify it
+      try {
+        const jwtService = JWTService.getInstance()
+        await jwtService.initialize()
+
+        // Verify and decode the JWT token
+        const payload = await jwtService.verifyToken(token)
+
+        // Establish session context for RLS
+        const userId = payload.sub || payload.user_id
+        const role = payload.role || 'authenticated'
+
+        context.sessionContext = {
+          userId: userId,
+          role: role,
+          claims: payload,
+          jwt: token
+        }
+
+        // Also set direct context properties for backward compatibility
+        context.userId = userId
+        context.role = role
+
+        logger.debug(`User JWT authenticated: ${context.sessionContext.userId}`, {
+          requestId: context.requestId,
+          role: context.sessionContext.role
+        })
+      } catch (error) {
+        // Token verification failed - continue with anonymous access
+        context.sessionContext = {
+          role: 'anon'
+        }
+        // Set direct context properties for backward compatibility
+        context.userId = undefined
+        context.role = 'anon'
+        logger.debug('JWT verification failed, proceeding as anonymous', {
+          requestId: context.requestId,
+          error: error instanceof Error ? error.message : String(error)
+        })
       }
-      logger.debug('JWT verification failed, proceeding as anonymous', {
-        requestId: context.requestId,
-        error: error instanceof Error ? error.message : String(error)
-      })
     }
   } else {
     // No token provided - anonymous access
     context.sessionContext = {
       role: 'anon'
     }
+    // Set direct context properties for backward compatibility
+    context.userId = undefined
+    context.role = 'anon'
   }
 
   return next()

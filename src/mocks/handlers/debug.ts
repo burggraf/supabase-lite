@@ -1,7 +1,7 @@
 import { http } from 'msw'
 import { createApiHandler } from '../../api/kernel'
 import type { ApiRequest, ApiContext, ApiResponse } from '../../api/types'
-import { DatabaseManager } from '../../lib/database/connection'
+import { DatabaseManager, type SessionContext } from '../../lib/database/connection'
 
 /**
  * Debug SQL executor
@@ -33,11 +33,24 @@ async function debugSqlExecutor(
   }
 
   try {
-    const result = await dbManager.query(sql)
+    // Use session context if available from authentication middleware
+    const sessionContext = {
+      projectId: context.projectId || 'default',
+      userId: context.sessionContext?.userId || context.userId,
+      role: context.sessionContext?.role || context.role || 'anon',
+      claims: context.sessionContext?.claims,
+      jwt: context.sessionContext?.jwt
+    }
+
+    const result = await dbManager.queryWithContext(sql, sessionContext)
 
     console.log('✅ MSW: Debug SQL executed successfully:', {
       requestId: context.requestId,
-      rowCount: result.rows?.length || 0
+      rowCount: result.rows?.length || 0,
+      sessionContext: {
+        userId: sessionContext.userId,
+        role: sessionContext.role
+      }
     })
 
     return {

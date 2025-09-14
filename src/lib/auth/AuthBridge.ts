@@ -120,7 +120,8 @@ export class AuthBridge {
           return await this.handleSignIn(body as SignInRequest)
           
         case 'POST token':
-          return await this.handleTokenRefresh(body)
+          // Pass the full request object so we can access URL query params
+          return await this.handleTokenRefresh({ ...body, url: request.url })
           
         case 'POST logout':
           return await this.handleSignOut(body, headers)
@@ -246,12 +247,11 @@ export class AuthBridge {
   }
 
   private async handleTokenRefresh(request: any): Promise<AuthAPIResponse> {
-    // Debug logging
-    console.log('AuthBridge handleTokenRefresh received:', request)
-    console.log('Grant type from body:', request.grant_type)
-    
+    // Extract grant_type from URL if not in body (supabase.js sends it as query param)
+    const grantType = request.grant_type || (request.url ? request.url.searchParams?.get('grant_type') : null)
+
     // Handle both password authentication and token refresh
-    if (request.grant_type === 'password') {
+    if (grantType === 'password') {
       // This is a sign-in request using password
       console.log('AuthBridge calling authManager.signIn with:', {
         email: request.username || request.email,
@@ -279,7 +279,7 @@ export class AuthBridge {
         refresh_token: result.session.refresh_token,
         user: this.serializeUser(result.user)
       }, 200)
-    } else if (request.grant_type === 'refresh_token') {
+    } else if (grantType === 'refresh_token') {
       // This is a token refresh request
       try {
         const session = await this.authManager.refreshSession(request.refresh_token)
