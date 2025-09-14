@@ -35,18 +35,7 @@ export async function debugSqlExecutor(
   }
 
   try {
-    // Use queryWithContext to ensure proper RLS and session context
-    const sessionContext = {
-      projectId: context.projectId || 'default',
-      userId: context.sessionContext?.userId || context.userId,
-      role: context.sessionContext?.role || context.role || 'anon',
-      claims: context.sessionContext?.claims,
-      jwt: context.sessionContext?.jwt
-    }
-
-    console.log('🐛 Debug SQL: Session context', sessionContext)
-
-    const result = await dbManager.queryWithContext(sql, sessionContext)
+    const result = await dbManager.query(sql)
 
     console.log('✅ MSW: Debug SQL executed successfully:', {
       requestId: context.requestId,

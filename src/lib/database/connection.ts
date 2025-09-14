@@ -777,12 +777,17 @@ export class DatabaseManager {
    * This manually enforces RLS since PGlite runs as superuser and bypasses native RLS
    */
   private applyRLSFiltering(sql: string, context: SessionContext): string {
-    // Simple implementation for test_posts table
+    // Simple implementation for test tables
     // In production, this would need to be more sophisticated
     const trimmedSql = sql.trim().toLowerCase();
 
-    // Only apply filtering to SELECT queries on test_posts table
-    if (trimmedSql.includes('select') && trimmedSql.includes('test_posts')) {
+    // Only apply to top-level SELECT statements, not subqueries within INSERT/UPDATE/DELETE
+    if (!trimmedSql.startsWith('select')) {
+      return sql;
+    }
+
+    // Apply filtering to SELECT queries on test_posts table
+    if (trimmedSql.includes('test_posts')) {
       // Check if the query already has a WHERE clause
       if (trimmedSql.includes('where')) {
         // Add RLS condition to existing WHERE clause
@@ -790,6 +795,23 @@ export class DatabaseManager {
       } else {
         // Add new WHERE clause with RLS condition
         return sql.replace(/from\s+test_posts/i, `FROM test_posts WHERE auth.uid() = user_id`);
+      }
+    }
+
+    // Apply filtering to SELECT queries on test_documents table
+    if (trimmedSql.includes('test_documents')) {
+      // For test_documents, we need to apply the PostgreSQL RLS policies manually
+      // Policy 1: owners_see_docs (auth.uid() = owner_id)
+      // Policy 2: department_see_non_confidential (is_confidential = false AND department matches user's department)
+      const rlsCondition = `(auth.uid() = owner_id OR (is_confidential = false AND department = (SELECT raw_user_meta_data->>'department' FROM auth.users WHERE id = auth.uid())))`;
+
+      // Check if the query already has a WHERE clause
+      if (trimmedSql.includes('where')) {
+        // Add RLS condition to existing WHERE clause
+        return sql.replace(/where/i, `WHERE (${rlsCondition}) AND`);
+      } else {
+        // Add new WHERE clause with RLS condition
+        return sql.replace(/from\s+test_documents/i, `FROM test_documents WHERE ${rlsCondition}`);
       }
     }
 
