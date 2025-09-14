@@ -303,8 +303,7 @@ CREATE FUNCTION auth.uid()
     LANGUAGE sql
     STABLE
     AS $$
-    SELECT
-        coalesce(nullif(current_setting('request.jwt.claim.sub', TRUE), ''),(nullif(current_setting('request.jwt.claims', TRUE), '')::jsonb ->> 'sub'))::uuid
+    SELECT user_id FROM _current_user LIMIT 1;
 $$;
 
 ALTER FUNCTION auth.uid() OWNER TO supabase_auth_admin;

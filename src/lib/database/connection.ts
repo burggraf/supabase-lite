@@ -638,6 +638,32 @@ export class DatabaseManager {
         `, [userId, context.role, claimsJson]);
 
         logger.debug('Session context set in _current_user table', { role: context.role, userId: context.userId });
+
+        // Set PostgreSQL session variables for auth.uid() function
+        try {
+          const sessionUserId = context.role === 'service_role' ? null : (context.userId || null);
+          const claimsJson = context.claims ? JSON.stringify(context.claims) : '{}';
+
+          await this.db.query(`
+            SELECT set_config('request.jwt.claim.sub', $1, true);
+          `, [sessionUserId || '']);
+
+          await this.db.query(`
+            SELECT set_config('request.jwt.claims', $2, true);
+          `, [claimsJson]);
+
+          await this.db.query(`
+            SELECT set_config('request.jwt.claim.role', $3, true);
+          `, [context.role]);
+
+          logger.debug('PostgreSQL session variables set for auth.uid()', {
+            role: context.role,
+            userId: context.userId,
+            hasSessionVars: true
+          });
+        } catch (sessionVarError) {
+          logger.warn('Could not set PostgreSQL session variables', { error: sessionVarError });
+        }
       } catch (sessionError) {
         logger.warn('Could not set session context in _current_user table', { error: sessionError });
       }
