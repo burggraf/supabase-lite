@@ -7,6 +7,7 @@ The Supabase Lite API system is built on a **Unified Kernel Architecture** that 
 ## High-Level Architecture
 
 ### System Flow
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Browser Environment                      │
@@ -15,13 +16,13 @@ The Supabase Lite API system is built on a **Unified Kernel Architecture** that 
 ├─────────────────────────────────────────────────────────────┤
 │                    MSW HTTP Layer                           │
 ├─────────────────────────────────────────────────────────────┤
-│                   Unified Kernel                           │
+│                   Unified Kernel                            │
 ├─────────────────────────────────────────────────────────────┤
 │              7-Stage Middleware Pipeline                    │
-│  Error → Instrumentation → CORS → Project → Auth →         │
-│           Request Parsing → Response Formatting            │
+│  Error → Instrumentation → CORS → Project → Auth →          │
+│           Request Parsing → Response Formatting             │
 ├─────────────────────────────────────────────────────────────┤
-│      REST Executor  │  HEAD Executor  │  RPC Executor      │
+│      REST Executor  │  HEAD Executor  │  RPC Executor       │
 ├─────────────────────────────────────────────────────────────┤
 │                   Query Engine                              │
 │            (Unified PostgREST Processing)                   │
@@ -47,32 +48,30 @@ The Supabase Lite API system is built on a **Unified Kernel Architecture** that 
 The kernel is the heart of the system, providing:
 
 ### Request Processing Architecture
+
 ```typescript
 export function createApiHandler(executor: ExecutorFunction) {
-  return async (info: any) => {
-    // Convert MSW Request → ApiRequest
-    const apiRequest: ApiRequest = {
-      url: new URL(request.url),
-      method: request.method,
-      headers: Object.fromEntries(request.headers.entries()),
-      body: await getRequestBody(request),
-      params: params || {}
-    }
+	return async (info: any) => {
+		// Convert MSW Request → ApiRequest
+		const apiRequest: ApiRequest = {
+			url: new URL(request.url),
+			method: request.method,
+			headers: Object.fromEntries(request.headers.entries()),
+			body: await getRequestBody(request),
+			params: params || {},
+		}
 
-    // Execute middleware pipeline
-    const response = await executeMiddlewarePipeline(
-      apiRequest,
-      context,
-      executor
-    )
+		// Execute middleware pipeline
+		const response = await executeMiddlewarePipeline(apiRequest, context, executor)
 
-    // Handle response formatting (JSON/CSV/text)
-    return formatResponse(response)
-  }
+		// Handle response formatting (JSON/CSV/text)
+		return formatResponse(response)
+	}
 }
 ```
 
 ### Key Responsibilities
+
 - **Request Normalization**: Convert MSW requests to internal format
 - **Pipeline Orchestration**: Execute middleware in strict order
 - **Response Formatting**: Handle JSON, CSV, and text responses properly
@@ -80,45 +79,50 @@ export function createApiHandler(executor: ExecutorFunction) {
 - **Type Safety**: Ensure type-safe request/response handling
 
 ### Response Format Handling
+
 The kernel intelligently handles different response formats:
+
 ```typescript
 // CSV response handling
 if (contentType.startsWith('text/csv')) {
-  return new HttpResponse(response.data, {
-    status: response.status,
-    headers: response.headers
-  })
+	return new HttpResponse(response.data, {
+		status: response.status,
+		headers: response.headers,
+	})
 } else {
-  // JSON response handling
-  return HttpResponse.json(response.data, {
-    status: response.status,
-    headers: response.headers
-  })
+	// JSON response handling
+	return HttpResponse.json(response.data, {
+		status: response.status,
+		headers: response.headers,
+	})
 }
 ```
 
 ## Middleware Pipeline Architecture
 
 The 7-stage middleware pipeline processes every request in strict order. Each middleware can:
+
 - **Pre-process** the request before calling `next()`
 - **Post-process** the response after `next()` returns
 - **Short-circuit** the pipeline by returning early
 - **Add context** information for downstream middleware
 
 ### Pipeline Execution Pattern
+
 ```typescript
 const middlewareStack: MiddlewareFunction[] = [
-  errorHandlingMiddleware,        // Stage 1: Error handling wrapper
-  instrumentationMiddleware,      // Stage 2: Request tracking
-  corsMiddleware,                // Stage 3: CORS headers
-  projectResolutionMiddleware,    // Stage 4: Multi-tenant switching
-  authenticationMiddleware,       // Stage 5: JWT and RLS setup
-  requestParsingMiddleware,       // Stage 6: PostgREST parsing
-  responseFormattingMiddleware    // Stage 7: Response formatting
+	errorHandlingMiddleware, // Stage 1: Error handling wrapper
+	instrumentationMiddleware, // Stage 2: Request tracking
+	corsMiddleware, // Stage 3: CORS headers
+	projectResolutionMiddleware, // Stage 4: Multi-tenant switching
+	authenticationMiddleware, // Stage 5: JWT and RLS setup
+	requestParsingMiddleware, // Stage 6: PostgREST parsing
+	responseFormattingMiddleware, // Stage 7: Response formatting
 ]
 ```
 
 ### Stage 1: Error Handling Middleware
+
 - **File**: `src/api/middleware/error-handling.ts`
 - **Purpose**: Comprehensive error handling wrapper
 - **Functionality**:
@@ -129,6 +133,7 @@ const middlewareStack: MiddlewareFunction[] = [
   - Ensure consistent error response format
 
 ### Stage 2: Instrumentation Middleware
+
 - **File**: `src/api/middleware/instrumentation.ts`
 - **Purpose**: Request tracking and performance monitoring
 - **Functionality**:
@@ -139,6 +144,7 @@ const middlewareStack: MiddlewareFunction[] = [
   - Store request traces for debugging and analysis
 
 ### Stage 3: CORS Middleware
+
 - **File**: `src/api/middleware/cors.ts`
 - **Purpose**: Cross-origin request header management
 - **Functionality**:
@@ -148,6 +154,7 @@ const middlewareStack: MiddlewareFunction[] = [
   - Support credential-enabled cross-origin requests
 
 ### Stage 4: Project Resolution Middleware
+
 - **File**: `src/api/middleware/project-resolution.ts`
 - **Purpose**: Multi-tenant database context switching
 - **Functionality**:
@@ -157,6 +164,7 @@ const middlewareStack: MiddlewareFunction[] = [
   - Handle both project-scoped and global API requests
 
 ### Stage 5: Authentication Middleware
+
 - **File**: `src/api/middleware/authentication.ts`
 - **Purpose**: JWT decoding and Row Level Security setup
 - **Functionality**:
@@ -166,6 +174,7 @@ const middlewareStack: MiddlewareFunction[] = [
   - Handle both anonymous and authenticated request contexts
 
 ### Stage 6: Request Parsing Middleware
+
 - **File**: `src/api/middleware/request-parsing.ts`
 - **Purpose**: PostgREST query syntax processing
 - **Functionality**:
@@ -176,6 +185,7 @@ const middlewareStack: MiddlewareFunction[] = [
   - Build internal `ParsedQuery` representation
 
 ### Stage 7: Response Formatting Middleware
+
 - **File**: `src/api/middleware/response-formatting.ts`
 - **Purpose**: Standardized PostgREST-compatible response formatting
 - **Functionality**:
@@ -190,6 +200,7 @@ const middlewareStack: MiddlewareFunction[] = [
 Executors provide clean separation of concerns for different operation types:
 
 ### REST Executor (`restExecutor`)
+
 - **File**: `src/api/db/executor.ts`
 - **Operations**: GET, POST, PATCH, DELETE
 - **Functionality**:
@@ -200,6 +211,7 @@ Executors provide clean separation of concerns for different operation types:
   - Integration with unified Query Engine for SQL generation
 
 ### HEAD Executor (`headExecutor`)
+
 - **File**: `src/api/db/executor.ts`
 - **Operations**: HEAD requests
 - **Functionality**:
@@ -209,6 +221,7 @@ Executors provide clean separation of concerns for different operation types:
   - Performance optimization by skipping data serialization
 
 ### RPC Executor (`rpcExecutor`)
+
 - **File**: `src/api/db/executor.ts`
 - **Operations**: POST/GET to `/rpc/:functionName`
 - **Functionality**:
@@ -222,19 +235,21 @@ Executors provide clean separation of concerns for different operation types:
 The unified query engine replaces the previous dual-bridge system with a single, optimized processing engine:
 
 ### Core Architecture
+
 ```typescript
 export class QueryEngine {
-  private dbManager: DatabaseManager
-  private sqlBuilder: SQLBuilder
-  private rlsFilteringService: RLSFilteringService
+	private dbManager: DatabaseManager
+	private sqlBuilder: SQLBuilder
+	private rlsFilteringService: RLSFilteringService
 
-  async processRequest(request: ApiRequest, context: ApiContext): Promise<FormattedResponse>
-  private canUseFastPath(request: ApiRequest): boolean
-  private parseFastPath(request: ApiRequest): ParsedQuery
+	async processRequest(request: ApiRequest, context: ApiContext): Promise<FormattedResponse>
+	private canUseFastPath(request: ApiRequest): boolean
+	private parseFastPath(request: ApiRequest): ParsedQuery
 }
 ```
 
 ### Key Capabilities
+
 - **PostgREST Syntax Parsing**: Complete filter, order, select, embed parsing
 - **SQL Generation**: Type-safe parameterized query building with SQLBuilder
 - **RLS Integration**: Automatic row-level security filter application
@@ -243,6 +258,7 @@ export class QueryEngine {
 - **UPSERT Support**: Conflict resolution with `merge-duplicates` preference
 
 ### Query Processing Flow
+
 1. **Request Analysis**: Determine if fast path or full parsing needed
 2. **Query Parsing**: Convert PostgREST syntax to internal `ParsedQuery` format
 3. **RLS Application**: Apply user context filters if authentication present
@@ -256,60 +272,60 @@ export class QueryEngine {
 Comprehensive TypeScript interfaces ensure type safety throughout the system:
 
 ### Core Request/Response Types
+
 ```typescript
 export interface ApiRequest {
-  url: URL
-  method: string
-  headers: Record<string, string>
-  body?: any
-  params?: Record<string, string>
+	url: URL
+	method: string
+	headers: Record<string, string>
+	body?: any
+	params?: Record<string, string>
 }
 
 export interface ApiResponse {
-  data: any
-  status: number
-  headers: Record<string, string>
+	data: any
+	status: number
+	headers: Record<string, string>
 }
 
 export interface ApiContext {
-  requestId: string
-  projectId?: string
-  projectName?: string
-  sessionContext?: SessionContext
-  startTime: number
-  reportStage?: (stage: string, data?: any) => void
+	requestId: string
+	projectId?: string
+	projectName?: string
+	sessionContext?: SessionContext
+	startTime: number
+	reportStage?: (stage: string, data?: any) => void
 }
 ```
 
 ### Middleware and Executor Types
+
 ```typescript
 export type MiddlewareFunction = (
-  request: ApiRequest,
-  context: ApiContext,
-  next: () => Promise<ApiResponse>
+	request: ApiRequest,
+	context: ApiContext,
+	next: () => Promise<ApiResponse>
 ) => Promise<ApiResponse>
 
-export type ExecutorFunction = (
-  request: ApiRequest,
-  context: ApiContext
-) => Promise<ApiResponse>
+export type ExecutorFunction = (request: ApiRequest, context: ApiContext) => Promise<ApiResponse>
 ```
 
 ### PostgREST Query Types
+
 ```typescript
 export interface ParsedQuery {
-  table?: string
-  select?: string[]
-  filters?: QueryFilter[]
-  order?: QueryOrder[]
-  limit?: number
-  offset?: number
-  count?: boolean
-  preferReturn?: 'representation' | 'minimal'
-  preferResolution?: 'merge-duplicates' | 'ignore-duplicates'
-  returnSingle?: boolean
-  csvFormat?: boolean
-  schema?: string
+	table?: string
+	select?: string[]
+	filters?: QueryFilter[]
+	order?: QueryOrder[]
+	limit?: number
+	offset?: number
+	count?: boolean
+	preferReturn?: 'representation' | 'minimal'
+	preferResolution?: 'merge-duplicates' | 'ignore-duplicates'
+	returnSingle?: boolean
+	csvFormat?: boolean
+	schema?: string
 }
 ```
 
@@ -318,28 +334,30 @@ export interface ParsedQuery {
 Standardized error system with comprehensive error categorization:
 
 ### ApiError Class Architecture
+
 ```typescript
 export class ApiError extends Error {
-  constructor(
-    public code: ApiErrorCode,
-    message: string,
-    public details?: any,
-    public hint?: string,
-    public requestId?: string
-  ) {
-    super(message)
-    this.name = 'ApiError'
-  }
+	constructor(
+		public code: ApiErrorCode,
+		message: string,
+		public details?: any,
+		public hint?: string,
+		public requestId?: string
+	) {
+		super(message)
+		this.name = 'ApiError'
+	}
 
-  static fromError(
-    error: unknown,
-    fallbackCode: ApiErrorCode = ApiErrorCode.UNKNOWN,
-    requestId?: string
-  ): ApiError
+	static fromError(
+		error: unknown,
+		fallbackCode: ApiErrorCode = ApiErrorCode.UNKNOWN,
+		requestId?: string
+	): ApiError
 }
 ```
 
 ### Error Code Categories
+
 - **Generic**: UNKNOWN, BAD_REQUEST, NOT_FOUND, CONFLICT, etc.
 - **Authentication**: INVALID_TOKEN, TOKEN_EXPIRED, MFA_REQUIRED, etc.
 - **Database**: CONNECTION_ERROR, QUERY_ERROR, TRANSACTION_ERROR, etc.
@@ -347,11 +365,13 @@ export class ApiError extends Error {
 - **API**: MISSING_REQUIRED_PARAMETER, INVALID_REQUEST_FORMAT, etc.
 
 ### PostgreSQL Error Mapping
+
 The system automatically maps PostgreSQL error codes to appropriate HTTP status codes and ApiError instances, providing consistent error responses across all operations.
 
 ## Performance Characteristics
 
 ### Benchmarks and Metrics
+
 - **97.6% PostgREST Compatibility**: 80 out of 82 tests passing
 - **Single Execution Path**: Eliminates bridge selection overhead
 - **Request Tracing**: Enables precise performance bottleneck identification
@@ -359,6 +379,7 @@ The system automatically maps PostgreSQL error codes to appropriate HTTP status 
 - **Connection Pooling**: Efficient database connection reuse
 
 ### Monitoring and Instrumentation
+
 - **Request Timing**: End-to-end request performance tracking
 - **Pipeline Stage Tracking**: Per-middleware execution timing
 - **Database Query Analysis**: SQL execution performance monitoring
@@ -370,6 +391,7 @@ The system automatically maps PostgreSQL error codes to appropriate HTTP status 
 Centralized configuration system for runtime behavior control:
 
 ### Configuration Features
+
 - **Environment-based Settings**: Different configs for development/production
 - **Type-safe Access**: Comprehensive TypeScript interfaces for all config
 - **Runtime Validation**: Ensure configuration consistency at startup
@@ -378,43 +400,46 @@ Centralized configuration system for runtime behavior control:
 ## Extension and Customization
 
 ### Adding Custom Middleware
+
 ```typescript
 import type { MiddlewareFunction } from '../types'
 
 export const customMiddleware: MiddlewareFunction = async (request, context, next) => {
-  // Pre-processing logic
-  const startTime = performance.now()
+	// Pre-processing logic
+	const startTime = performance.now()
 
-  // Call next middleware in pipeline
-  const response = await next()
+	// Call next middleware in pipeline
+	const response = await next()
 
-  // Post-processing logic
-  const duration = performance.now() - startTime
-  response.headers['X-Processing-Time'] = duration.toString()
+	// Post-processing logic
+	const duration = performance.now() - startTime
+	response.headers['X-Processing-Time'] = duration.toString()
 
-  return response
+	return response
 }
 ```
 
 ### Creating Custom Executors
+
 ```typescript
 import type { ExecutorFunction } from '../types'
 
 export const customExecutor: ExecutorFunction = async (request, context) => {
-  // Custom processing logic
-  const result = await processCustomOperation(request, context)
+	// Custom processing logic
+	const result = await processCustomOperation(request, context)
 
-  return {
-    data: result,
-    status: 200,
-    headers: { 'Content-Type': 'application/json' }
-  }
+	return {
+		data: result,
+		status: 200,
+		headers: { 'Content-Type': 'application/json' },
+	}
 }
 ```
 
 ## Migration from Bridge System
 
 ### Architectural Changes
+
 - **Removed**: Dual bridge architecture (`enhanced-bridge.ts`, `simplified-bridge.ts`)
 - **Replaced**: Single unified kernel with composable middleware pipeline
 - **Added**: Comprehensive error handling with standardized `ApiError` system
@@ -422,6 +447,7 @@ export const customExecutor: ExecutorFunction = async (request, context) => {
 - **Improved**: Type safety with comprehensive TypeScript interfaces
 
 ### Benefits of New Architecture
+
 - **Simplified Debugging**: Single execution path vs multiple bridge selection logic
 - **Better Performance**: Reduced overhead and optimized request processing
 - **Enhanced Maintainability**: Composable middleware vs monolithic handler functions
@@ -430,7 +456,9 @@ export const customExecutor: ExecutorFunction = async (request, context) => {
 - **Advanced Instrumentation**: Built-in performance monitoring and debugging tools
 
 ### Compatibility Improvements
+
 The unified kernel architecture achieved **97.6% PostgREST compatibility** compared to the previous bridge system, with improvements in:
+
 - CSV response format handling
 - Count operations with Content-Range headers
 - UPSERT operations with conflict resolution
