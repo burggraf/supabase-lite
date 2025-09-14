@@ -454,10 +454,21 @@ async function initializeApp() {
       
       // Wait for MSW to be ready, then handle the app navigation
       await waitForMSW()
-      
+
+      // Validate that MSW is actually intercepting requests
+      try {
+        const healthResponse = await fetch('/health', { method: 'GET' })
+        if (!healthResponse.ok) {
+          throw new Error(`Health check failed: ${healthResponse.status}`)
+        }
+        console.log('✅ MSW validation successful for app route - health endpoint responding')
+      } catch (validationError) {
+        throw new Error(`MSW is not intercepting requests properly: ${validationError}`)
+      }
+
       // Initialize cross-origin API handler
       new CrossOriginAPIHandler()
-      
+
       // Handle the app navigation instead of rendering React app
       await handleAppNavigation(window.location.pathname)
       return // Don't render the main app
@@ -472,15 +483,76 @@ async function initializeApp() {
     })
     
     await waitForMSW()
-    
+
+    // Validate that MSW is actually intercepting requests
+    try {
+      const healthResponse = await fetch('/health', { method: 'GET' })
+      if (!healthResponse.ok) {
+        throw new Error(`Health check failed: ${healthResponse.status}`)
+      }
+      console.log('✅ MSW validation successful - health endpoint responding')
+    } catch (validationError) {
+      throw new Error(`MSW is not intercepting requests properly: ${validationError}`)
+    }
+
     // Initialize cross-origin API handler for test app communication
     new CrossOriginAPIHandler()
-    
+
   } catch (error) {
     console.error('Failed to start MSW worker or cross-origin handler:', error)
+
+    // Show error UI instead of broken app
+    const rootElement = document.getElementById('root')!
+    rootElement.innerHTML = `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 2rem;
+        text-align: center;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #0f0f23;
+        color: #cccccc;
+      ">
+        <div style="
+          max-width: 600px;
+          padding: 2rem;
+          background: #1e1e3f;
+          border: 1px solid #333366;
+          border-radius: 8px;
+        ">
+          <h1 style="color: #ff6b6b; margin: 0 0 1rem 0; font-size: 1.5rem;">
+            🚨 Initialization Failed
+          </h1>
+          <p style="margin: 0 0 1.5rem 0; line-height: 1.5;">
+            Failed to start the database service. This usually happens on first load when the service worker isn't ready yet.
+          </p>
+          <button
+            onclick="window.location.reload()"
+            style="
+              background: #4f46e5;
+              color: white;
+              border: none;
+              padding: 0.75rem 1.5rem;
+              border-radius: 6px;
+              font-size: 1rem;
+              cursor: pointer;
+              transition: background-color 0.2s;
+            "
+            onmouseover="this.style.background='#4338ca'"
+            onmouseout="this.style.background='#4f46e5'"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    `
+    return // Don't render React app
   }
 
-  // Only render React app if we're not handling an app route
+  // Only render React app if initialization succeeded
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
