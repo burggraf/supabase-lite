@@ -4,10 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion'
 import { Badge } from '../ui/badge'
 import { Alert, AlertDescription } from '../ui/alert'
-import { Loader2, Play, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { Loader2, Play, Clock, CheckCircle, XCircle, AlertTriangle, User, Shield, Database } from 'lucide-react'
 import { PostgreSTTestRunner } from '../../lib/testing/postgrest-test-runner'
 import { getPostgRESTTestData } from '../../lib/testing/postgrest-test-data'
 import type { PostgreSTCategory, PostgreSTTest, TestExecution } from '../../lib/testing/types'
+import { RLSTestRunner } from '../../lib/testing/rls-test-runner'
+import { getRLSTestData } from '../../lib/testing/rls-test-data'
+import type { RLSTestItem, RLSExample, RLSTestExecution } from '../../lib/testing/rls-types'
 
 interface TestResult {
 	test: string
@@ -18,6 +21,8 @@ interface TestResult {
 	category?: string
 	testId?: string
 	execution?: TestExecution
+	rlsExecution?: RLSTestExecution
+	testType?: 'postgrest' | 'rls' | 'basic'
 }
 
 export function APITester() {
@@ -30,6 +35,12 @@ export function APITester() {
 	const [postgrestCategories, setPostgrestCategories] = useState<PostgreSTCategory[]>([])
 	const [loadingPostgrestTest, setLoadingPostgrestTest] = useState<string | null>(null)
 	const [postgrestInitialized, setPostgrestInitialized] = useState(false)
+
+	// RLS testing state
+	const [rlsRunner, setRlsRunner] = useState<RLSTestRunner | null>(null)
+	const [rlsTestItems, setRlsTestItems] = useState<RLSTestItem[]>([])
+	const [loadingRlsTest, setLoadingRlsTest] = useState<string | null>(null)
+	const [rlsInitialized, setRlsInitialized] = useState(false)
 
 	const addResult = (test: string, status?: number, data?: unknown, error?: string) => {
 		const result: TestResult = {
@@ -151,6 +162,25 @@ export function APITester() {
 		initializePostgREST()
 	}, [])
 
+	// Initialize RLS test runner
+	useEffect(() => {
+		const initializeRLS = async () => {
+			try {
+				const testData = await getRLSTestData()
+				const runner = new RLSTestRunner()
+				runner.loadTestData(testData)
+				setRlsRunner(runner)
+				setRlsTestItems(testData)
+				setRlsInitialized(true)
+			} catch (error) {
+				console.error('Failed to initialize RLS test runner:', error)
+				setRlsInitialized(true) // Still mark as initialized to prevent infinite loading
+			}
+		}
+
+		initializeRLS()
+	}, [])
+
 	// Enhanced addResult for PostgREST tests
 	const addPostgRESTResult = (execution: TestExecution) => {
 		const result: TestResult = {
@@ -161,7 +191,24 @@ export function APITester() {
 			timestamp: new Date().toLocaleTimeString(),
 			category: execution.category.id,
 			testId: execution.test.id,
-			execution
+			execution,
+			testType: 'postgrest'
+		}
+		setResults((prev) => [result, ...prev])
+	}
+
+	// Enhanced addResult for RLS tests
+	const addRLSResult = (execution: RLSTestExecution) => {
+		const result: TestResult = {
+			test: `${execution.testItem.title} - ${execution.example.name}`,
+			status: execution.status === 'completed' ? 200 : execution.status === 'failed' ? 400 : undefined,
+			data: execution.stepResults,
+			error: execution.error,
+			timestamp: new Date().toLocaleTimeString(),
+			category: execution.testItem.id,
+			testId: execution.example.id,
+			rlsExecution: execution,
+			testType: 'rls'
 		}
 		setResults((prev) => [result, ...prev])
 	}
@@ -217,6 +264,57 @@ export function APITester() {
 		setLoadingPostgrestTest(null)
 	}
 
+	// Run a single RLS example
+	const runRLSExample = async (itemId: string, exampleId: string) => {
+		if (!rlsRunner) return
+
+		const testKey = `${itemId}.${exampleId}`
+		setIsLoading(true)
+		setLoadingRlsTest(testKey)
+
+		try {
+			const execution = await rlsRunner.executeExample(itemId, exampleId)
+			addRLSResult(execution)
+		} catch (error) {
+			addResult(
+				`RLS Test Error - ${itemId}.${exampleId}`,
+				undefined,
+				undefined,
+				error instanceof Error ? error.message : String(error),
+			)
+		}
+
+		setIsLoading(false)
+		setLoadingRlsTest(null)
+	}
+
+	// Run all examples in an RLS test item
+	const runRLSTestItemExamples = async (itemId: string) => {
+		if (!rlsRunner) return
+
+		const testItem = rlsRunner.getTestItem(itemId)
+		if (!testItem) return
+
+		setIsLoading(true)
+		setLoadingRlsTest(`item.${itemId}`)
+
+		try {
+			await rlsRunner.executeTestItemExamples(itemId, (execution) => {
+				addRLSResult(execution)
+			})
+		} catch (error) {
+			addResult(
+				`RLS Test Item Error - ${itemId}`,
+				undefined,
+				undefined,
+				error instanceof Error ? error.message : String(error)
+			)
+		}
+
+		setIsLoading(false)
+		setLoadingRlsTest(null)
+	}
+
 	// Get test status for UI
 	const getTestStatus = (test: PostgreSTTest) => {
 		if (test.unsupported) return 'unsupported'
@@ -253,6 +351,27 @@ export function APITester() {
 				{status}
 			</Badge>
 		)
+	}
+
+	// Get RLS example status for UI
+	const getRLSExampleStatus = (example: RLSExample) => {
+		if (example.results?.passed) return 'passed'
+		if (example.results?.passed === false) return 'failed'
+		return 'pending'
+	}
+
+	// Get auth context icon
+	const getAuthContextIcon = (runner: RLSTestRunner | null) => {
+		if (!runner) return <User className="h-3 w-3 text-gray-400" />
+
+		const authContext = runner.getAuthContext()
+		if (authContext.serviceRole) {
+			return <Shield className="h-3 w-3 text-purple-500" title="Service Role" />
+		}
+		if (authContext.currentUser) {
+			return <User className="h-3 w-3 text-blue-500" title={`User: ${authContext.currentUser.email}`} />
+		}
+		return <User className="h-3 w-3 text-gray-400" title="Anonymous" />
 	}
 
 	return (
@@ -469,6 +588,125 @@ export function APITester() {
 										</div>
 									</AccordionContent>
 								</AccordionItem>
+
+								<AccordionItem value="rls">
+									<AccordionTrigger className="text-sm font-medium">
+										RLS Tests
+										{getAuthContextIcon(rlsRunner)}
+										{rlsTestItems && rlsTestItems.length > 0 && (
+											<Badge variant="outline" className="ml-2 text-xs">
+												{rlsTestItems?.reduce((total, item) => total + (item.examples?.length || 0), 0) || 0}
+											</Badge>
+										)}
+									</AccordionTrigger>
+									<AccordionContent>
+										<div className="space-y-3">
+											<div className="text-xs text-gray-600 mb-3">
+												Row Level Security tests covering authentication, policies, and data isolation scenarios
+											</div>
+
+											{!rlsInitialized ? (
+												<div className="text-xs text-gray-500 italic">Loading RLS test items...</div>
+											) : !rlsTestItems || rlsTestItems.length === 0 ? (
+												<div className="text-xs text-gray-500 italic">No RLS test items found</div>
+											) : (
+												<Accordion type="single" collapsible className="w-full">
+													{rlsTestItems?.map((testItem) => {
+														const itemStats = rlsRunner?.getTestItemStats(testItem.id)
+														return (
+															<AccordionItem key={testItem.id} value={testItem.id} className="border-l-2 border-orange-100">
+																<AccordionTrigger className="text-xs font-medium py-2">
+																	<div className="flex items-center justify-between w-full mr-2">
+																		<span className="text-left">{testItem.title}</span>
+																		<div className="flex items-center space-x-1">
+																			<Badge variant="outline" className="text-xs">
+																				{testItem.examples?.length || 0}
+																			</Badge>
+																			{itemStats && (
+																				<div className="flex space-x-1">
+																					{itemStats.passed > 0 && (
+																						<Badge variant="default" className="text-xs">
+																							{itemStats.passed}
+																						</Badge>
+																					)}
+																					{itemStats.failed > 0 && (
+																						<Badge variant="destructive" className="text-xs">
+																							{itemStats.failed}
+																						</Badge>
+																					)}
+																				</div>
+																			)}
+																		</div>
+																	</div>
+																</AccordionTrigger>
+																<AccordionContent className="space-y-2 pl-2">
+																	<div className="flex items-center justify-between mb-2">
+																		<div className="text-xs text-gray-600">
+																			<div>{testItem.examples?.length || 0} workflow examples</div>
+																			<div className="text-xs text-gray-500 mt-1">{testItem.description}</div>
+																		</div>
+																		<Button
+																			onClick={() => runRLSTestItemExamples(testItem.id)}
+																			disabled={isLoading}
+																			variant="outline"
+																			size="sm"
+																			className="text-xs h-6 px-2"
+																		>
+																			{loadingRlsTest === `item.${testItem.id}` && (
+																				<Loader2 className="mr-1 h-2 w-2 animate-spin" />
+																			)}
+																			Run All
+																		</Button>
+																	</div>
+
+																	<div className="space-y-1 max-h-32 overflow-y-auto">
+																		{(testItem.examples || []).map((example) => {
+																			const status = getRLSExampleStatus(example)
+																			const testKey = `${testItem.id}.${example.id}`
+																			const isTestLoading = loadingRlsTest === testKey
+
+																			return (
+																				<div key={example.id} className="flex items-center justify-between p-2 rounded bg-gray-50 hover:bg-gray-100">
+																					<div className="flex items-center space-x-2 flex-1 min-w-0">
+																						{getStatusIcon(status)}
+																						<div className="flex flex-col min-w-0 flex-1">
+																							<span className="text-xs truncate" title={example.name}>
+																								{example.name}
+																							</span>
+																							<div className="text-xs text-gray-500 flex items-center space-x-2">
+																								<Database className="h-3 w-3" />
+																								<span>{example.workflow.length} steps</span>
+																							</div>
+																						</div>
+																						{getStatusBadge(status)}
+																					</div>
+																					<Button
+																						onClick={() => runRLSExample(testItem.id, example.id)}
+																						disabled={isLoading}
+																						variant="ghost"
+																						size="sm"
+																						className="text-xs h-6 w-6 p-0 ml-2 flex-shrink-0"
+																						title="Run RLS workflow"
+																					>
+																						{isTestLoading ? (
+																							<Loader2 className="h-3 w-3 animate-spin" />
+																						) : (
+																							<Play className="h-3 w-3" />
+																						)}
+																					</Button>
+																				</div>
+																			)
+																		})}
+																	</div>
+																</AccordionContent>
+															</AccordionItem>
+														)
+													})}
+												</Accordion>
+											)}
+										</div>
+									</AccordionContent>
+								</AccordionItem>
 							</Accordion>
 
 							<div className="mt-4 space-y-2">
@@ -502,6 +740,36 @@ export function APITester() {
 										🚀 Run All PostgREST Tests
 									</Button>
 								)}
+								{rlsRunner && (
+									<Button
+										onClick={async () => {
+											if (!rlsRunner) return
+											setIsLoading(true)
+											setLoadingRlsTest('all')
+											try {
+												await rlsRunner.executeAllTests((execution) => {
+													addRLSResult(execution)
+												})
+											} catch (error) {
+												addResult(
+													'RLS Bulk Test Error',
+													undefined,
+													undefined,
+													error instanceof Error ? error.message : String(error)
+												)
+											}
+											setIsLoading(false)
+											setLoadingRlsTest(null)
+										}}
+										disabled={isLoading}
+										variant="outline"
+										size="sm"
+										className="w-full"
+									>
+										{loadingRlsTest === 'all' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+										🔒 Run All RLS Tests
+									</Button>
+								)}
 								<Button
 									onClick={clearResults}
 									disabled={isLoading}
@@ -531,7 +799,9 @@ export function APITester() {
 							<div className='space-y-4 max-h-[600px] overflow-y-auto'>
 								{results.map((result, index) => {
 									const isPostgRESTTest = result.execution !== undefined
+									const isRLSTest = result.rlsExecution !== undefined
 									const execution = result.execution
+									const rlsExecution = result.rlsExecution
 
 									return (
 										<Card
@@ -548,6 +818,16 @@ export function APITester() {
 																	{result.status}
 																</span>
 															)}
+															{result.testType && (
+																<span className={`ml-2 text-xs px-2 py-1 rounded ${
+																	result.testType === 'postgrest' ? 'bg-blue-100 text-blue-800' :
+																	result.testType === 'rls' ? 'bg-orange-100 text-orange-800' :
+																	'bg-gray-100 text-gray-800'
+																}`}>
+																	{result.testType === 'postgrest' ? 'PostgREST' :
+																	 result.testType === 'rls' ? 'RLS' : 'Basic'}
+																</span>
+															)}
 														</CardTitle>
 														{isPostgRESTTest && execution && (
 															<div className="flex items-center space-x-2 text-xs text-gray-600">
@@ -562,12 +842,111 @@ export function APITester() {
 																)}
 															</div>
 														)}
+														{isRLSTest && rlsExecution && (
+															<div className="flex items-center space-x-2 text-xs text-gray-600">
+																<span>ID: {rlsExecution.example.id}</span>
+																<span>•</span>
+																<span>Test Item: {rlsExecution.testItem.id}</span>
+																<span>•</span>
+																<span>Steps: {rlsExecution.example.workflow.length}</span>
+																{rlsExecution.startTime && rlsExecution.endTime && (
+																	<>
+																		<span>•</span>
+																		<span>Duration: {rlsExecution.endTime - rlsExecution.startTime}ms</span>
+																	</>
+																)}
+															</div>
+														)}
 													</div>
 													<span className='text-xs text-gray-500'>{result.timestamp}</span>
 												</div>
 											</CardHeader>
 											<CardContent className='pt-0'>
-												{isPostgRESTTest && execution ? (
+												{isRLSTest && rlsExecution ? (
+													<div className="space-y-3">
+														{/* Workflow Description */}
+														<div>
+															<div className="text-xs font-medium text-gray-600 mb-1">Workflow Description:</div>
+															<div className="text-xs text-gray-700 bg-gray-50 p-2 rounded">
+																{rlsExecution.example.description}
+															</div>
+														</div>
+
+														{/* Workflow Steps */}
+														<Accordion type="single" collapsible className="w-full">
+															<AccordionItem value="workflow" className="border-none">
+																<AccordionTrigger className="text-xs font-medium py-1 hover:no-underline">
+																	Workflow Steps ({rlsExecution.example.workflow.length})
+																</AccordionTrigger>
+																<AccordionContent>
+																	<div className="space-y-2 max-h-32 overflow-y-auto">
+																		{rlsExecution.example.workflow.map((step, stepIndex) => (
+																			<div key={stepIndex} className="flex items-start space-x-2 text-xs">
+																				<span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs font-mono min-w-[2rem] text-center">
+																					{stepIndex + 1}
+																				</span>
+																				<div className="flex-1">
+																					<div className="font-medium">{step.name}</div>
+																					<div className="text-gray-600">Operation: {step.operation}</div>
+																					{step.sql && (
+																						<div className="text-xs text-gray-500 mt-1 font-mono bg-gray-50 p-1 rounded">
+																							{step.sql.substring(0, 100)}{step.sql.length > 100 ? '...' : ''}
+																						</div>
+																					)}
+																				</div>
+																			</div>
+																		))}
+																	</div>
+																</AccordionContent>
+															</AccordionItem>
+														</Accordion>
+
+														{/* Test Item Details */}
+														<div>
+															<div className="text-xs font-medium text-gray-600 mb-1">Test Item:</div>
+															<div className="text-xs text-gray-700">{rlsExecution.testItem.title}</div>
+															<div className="text-xs text-gray-500 mt-1">{rlsExecution.testItem.description}</div>
+														</div>
+
+														{/* Error Details */}
+														{result.error && (
+															<div>
+																<div className="text-xs font-medium text-red-600 mb-1">Error:</div>
+																<pre className='text-xs bg-white p-3 rounded border overflow-auto max-h-32 text-red-600'>
+																	{result.error}
+																</pre>
+															</div>
+														)}
+
+														{/* Step Results */}
+														{rlsExecution.stepResults && rlsExecution.stepResults.length > 0 && (
+															<Accordion type="single" collapsible className="w-full">
+																<AccordionItem value="results" className="border-none">
+																	<AccordionTrigger className="text-xs font-medium py-1 hover:no-underline">
+																		Step Results
+																	</AccordionTrigger>
+																	<AccordionContent>
+																		<div className="space-y-2 max-h-32 overflow-y-auto">
+																			{rlsExecution.stepResults.map((stepResult, stepIndex) => (
+																				<div key={stepIndex} className="text-xs border rounded p-2">
+																					<div className="flex items-center justify-between">
+																						<span className="font-medium">{stepResult.step.name}</span>
+																						<Badge variant={stepResult.status === 'completed' ? 'default' : stepResult.status === 'failed' ? 'destructive' : 'outline'} className="text-xs">
+																							{stepResult.status}
+																						</Badge>
+																					</div>
+																					{stepResult.error && (
+																						<div className="text-red-600 mt-1">{stepResult.error}</div>
+																					)}
+																				</div>
+																			))}
+																		</div>
+																	</AccordionContent>
+																</AccordionItem>
+															</Accordion>
+														)}
+													</div>
+												) : isPostgRESTTest && execution ? (
 													<div className="space-y-3">
 														{/* Test Code */}
 														{execution.test.code && (

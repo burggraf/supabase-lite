@@ -15,9 +15,10 @@ export class PostgreSTTestRunner {
 	private testData: PostgreSTCategory[] = [];
 
 	constructor(config?: Partial<TestConfig>) {
+		const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
 		this.config = {
-			supabaseLiteUrl: 'http://localhost:5173',
-			debugSqlEndpoint: 'http://localhost:5173/debug/sql',
+			supabaseLiteUrl: currentOrigin,
+			debugSqlEndpoint: `${currentOrigin}/debug/sql`,
 			anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
 			skipUnsupported: true,
 			stopOnFirstFailure: false,
