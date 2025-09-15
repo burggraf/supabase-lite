@@ -83,6 +83,13 @@ export const NAVIGATION_ITEMS = [
     icon: 'TestTube',
     path: '/api-test',
   },
+  {
+    id: 'api-docs',
+    label: 'API Docs',
+    icon: 'BookOpen',
+    path: '/api-docs',
+    disabled: false,
+  },
 ];
 
 export const QUERY_EXAMPLES = [

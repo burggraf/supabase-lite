@@ -105,10 +105,10 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
       section: 'Tools'
     },
     {
-      id: 'api',
+      id: 'api-docs',
       label: 'API Docs',
       icon: 'BookOpen' as keyof typeof iconMap,
-      badge: 'Coming Soon',
+      badge: null,
     },
     {
       id: 'api-test',

@@ -8,6 +8,7 @@ import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
 import { Storage } from '@/components/storage/Storage';
 import { AppHosting } from '@/components/app-hosting/AppHosting';
 import { EdgeFunctions } from '@/pages/EdgeFunctions';
+import APIDocs from '@/pages/APIDocs';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useRouter } from '@/hooks/useRouter';
@@ -199,6 +200,12 @@ function App() {
             <div className="flex-1 p-6 overflow-y-auto min-h-full">
               <APITester />
             </div>
+          </ErrorBoundary>
+        );
+      case 'api-docs':
+        return (
+          <ErrorBoundary>
+            <APIDocs />
           </ErrorBoundary>
         );
       case 'cache-manager':
