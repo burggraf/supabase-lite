@@ -116,6 +116,10 @@ export function useDatabase() {
     return await dbManager.getTableList();
   }, []);
 
+  const getTableSchema = useCallback(async (tableName: string, schema: string = 'public') => {
+    return await dbManager.getTableSchema(tableName, schema);
+  }, []);
+
   const close = useCallback(async () => {
     setIsConnecting(true);
     try {
@@ -200,6 +204,7 @@ export function useDatabase() {
     getConnectionInfo,
     getDatabaseSize,
     getTableList,
+    getTableSchema,
     switchToProject,
   };
 }

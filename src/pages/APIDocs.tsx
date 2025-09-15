@@ -7,8 +7,7 @@ export type APISection =
   | 'authentication'
   | 'user-management'
   | 'tables-intro'
-  | 'table-orders'
-  | 'table-products'
+  | `table-${string}` // Dynamic table names following the pattern table-{tableName}
   | 'procedures-intro'
   | 'procedure-get_category_summary'
   | 'procedure-get_product_stats'

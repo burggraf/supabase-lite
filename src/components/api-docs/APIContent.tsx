@@ -5,7 +5,7 @@ import Introduction from './sections/Introduction'
 import Authentication from './sections/Authentication'
 import UserManagement from './sections/UserManagement'
 import TablesIntro from './sections/TablesIntro'
-import TableDocs from './sections/TableDocs'
+import DynamicTableDocs from './sections/DynamicTableDocs'
 import StoredProcedures from './sections/StoredProcedures'
 
 interface APIContentProps {
@@ -16,6 +16,13 @@ interface APIContentProps {
 
 export default function APIContent({ activeSection, codeLanguage, onLanguageChange }: APIContentProps) {
   const renderContent = () => {
+    // Handle dynamic table sections
+    if (activeSection.startsWith('table-')) {
+      const tableName = activeSection.replace('table-', '')
+      return <DynamicTableDocs tableName={tableName} codeLanguage={codeLanguage} />
+    }
+
+    // Handle static sections
     switch (activeSection) {
       case 'introduction':
         return <Introduction codeLanguage={codeLanguage} />
@@ -25,10 +32,6 @@ export default function APIContent({ activeSection, codeLanguage, onLanguageChan
         return <UserManagement codeLanguage={codeLanguage} />
       case 'tables-intro':
         return <TablesIntro codeLanguage={codeLanguage} />
-      case 'table-orders':
-        return <TableDocs tableName="orders" codeLanguage={codeLanguage} />
-      case 'table-products':
-        return <TableDocs tableName="products" codeLanguage={codeLanguage} />
       case 'procedures-intro':
       case 'procedure-get_category_summary':
       case 'procedure-get_product_stats':
@@ -43,7 +46,7 @@ export default function APIContent({ activeSection, codeLanguage, onLanguageChan
     <div className="h-full">
       {/* Header with language toggle */}
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container max-w-screen-2xl h-14 flex items-center justify-end">
+        <div className="container max-w-screen-2xl h-14 flex items-center justify-end pr-8">
           <CodeToggle
             language={codeLanguage}
             onLanguageChange={onLanguageChange}
