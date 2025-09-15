@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { APISection } from '../../pages/APIDocs'
 import { useDynamicTables } from '../../hooks/useDynamicTables'
+import { useDynamicFunctions } from '../../hooks/useDynamicFunctions'
 
 interface APISidebarProps {
   activeSection: APISection
@@ -17,7 +18,7 @@ interface SidebarSection {
   }[]
 }
 
-// Static sections (excluding TABLES AND VIEWS which will be dynamic)
+// Static sections (excluding dynamic sections)
 const getStaticSections = (): SidebarSection[] => [
   {
     title: 'GETTING STARTED',
@@ -25,15 +26,6 @@ const getStaticSections = (): SidebarSection[] => [
       { id: 'introduction', label: 'Introduction' },
       { id: 'authentication', label: 'Authentication' },
       { id: 'user-management', label: 'User Management' },
-    ],
-  },
-  {
-    title: 'STORED PROCEDURES',
-    items: [
-      { id: 'procedures-intro', label: 'Introduction' },
-      { id: 'procedure-get_category_summary', label: 'get_category_summary' },
-      { id: 'procedure-get_product_stats', label: 'get_product_stats' },
-      { id: 'procedure-get_products_by_category', label: 'get_products_by_category' },
     ],
   },
   {
@@ -50,8 +42,9 @@ export default function APISidebar({ activeSection, onSectionChange }: APISideba
     new Set(['GETTING STARTED', 'TABLES AND VIEWS', 'STORED PROCEDURES', 'MORE RESOURCES'])
   )
 
-  // Dynamic tables hook
-  const { tables, hasMore, isLoading, error, loadMore } = useDynamicTables('public')
+  // Dynamic hooks
+  const { tables, hasMore: hasMoreTables, isLoading: isLoadingTables, error: tablesError, loadMore: loadMoreTables } = useDynamicTables('public')
+  const { functions, hasMore: hasMoreFunctions, isLoading: isLoadingFunctions, error: functionsError, loadMore: loadMoreFunctions } = useDynamicFunctions('public')
 
   // Generate dynamic TABLES AND VIEWS section
   const getTablesSection = (): SidebarSection => {
@@ -69,16 +62,34 @@ export default function APISidebar({ activeSection, onSectionChange }: APISideba
     }
   }
 
+  // Generate dynamic STORED PROCEDURES section
+  const getFunctionsSection = (): SidebarSection => {
+    const functionItems = functions.map(func => ({
+      id: `function-${func.name}` as APISection,
+      label: func.name
+    }))
+
+    return {
+      title: 'STORED PROCEDURES',
+      items: [
+        { id: 'procedures-intro', label: 'Introduction' },
+        ...functionItems
+      ]
+    }
+  }
+
   // Combine static and dynamic sections
   const getAllSections = (): SidebarSection[] => {
     const staticSections = getStaticSections()
     const tablesSection = getTablesSection()
+    const functionsSection = getFunctionsSection()
 
-    // Insert tables section after GETTING STARTED
+    // Insert dynamic sections in the correct order
     return [
       staticSections[0], // GETTING STARTED
       tablesSection,     // TABLES AND VIEWS (dynamic)
-      ...staticSections.slice(1) // STORED PROCEDURES, MORE RESOURCES
+      functionsSection,  // STORED PROCEDURES (dynamic)
+      staticSections[1]  // MORE RESOURCES
     ]
   }
 
@@ -172,7 +183,7 @@ export default function APISidebar({ activeSection, onSectionChange }: APISideba
                     {section.title === 'TABLES AND VIEWS' && (
                       <>
                         {/* Loading state */}
-                        {isLoading && (
+                        {isLoadingTables && (
                           <li>
                             <div className="flex items-center px-3 py-2 text-sm text-muted-foreground">
                               <Loader2 className="h-3 w-3 animate-spin mr-2" />
@@ -182,19 +193,19 @@ export default function APISidebar({ activeSection, onSectionChange }: APISideba
                         )}
 
                         {/* Error state */}
-                        {error && !isLoading && (
+                        {tablesError && !isLoadingTables && (
                           <li>
                             <div className="px-3 py-2 text-sm text-red-600 bg-red-50 rounded-md mx-1">
-                              Error: {error}
+                              Error: {tablesError}
                             </div>
                           </li>
                         )}
 
                         {/* More button for pagination */}
-                        {hasMore && !isLoading && !error && (
+                        {hasMoreTables && !isLoadingTables && !tablesError && (
                           <li>
                             <button
-                              onClick={loadMore}
+                              onClick={loadMoreTables}
                               className={cn(
                                 'w-full text-left px-3 py-2 text-sm rounded-md transition-colors',
                                 'hover:bg-muted text-muted-foreground border border-dashed border-muted-foreground/30',
@@ -202,6 +213,46 @@ export default function APISidebar({ activeSection, onSectionChange }: APISideba
                               )}
                             >
                               More tables...
+                            </button>
+                          </li>
+                        )}
+                      </>
+                    )}
+
+                    {/* Special handling for STORED PROCEDURES section */}
+                    {section.title === 'STORED PROCEDURES' && (
+                      <>
+                        {/* Loading state */}
+                        {isLoadingFunctions && (
+                          <li>
+                            <div className="flex items-center px-3 py-2 text-sm text-muted-foreground">
+                              <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                              Loading functions...
+                            </div>
+                          </li>
+                        )}
+
+                        {/* Error state */}
+                        {functionsError && !isLoadingFunctions && (
+                          <li>
+                            <div className="px-3 py-2 text-sm text-red-600 bg-red-50 rounded-md mx-1">
+                              Error: {functionsError}
+                            </div>
+                          </li>
+                        )}
+
+                        {/* More button for pagination */}
+                        {hasMoreFunctions && !isLoadingFunctions && !functionsError && (
+                          <li>
+                            <button
+                              onClick={loadMoreFunctions}
+                              className={cn(
+                                'w-full text-left px-3 py-2 text-sm rounded-md transition-colors',
+                                'hover:bg-muted text-muted-foreground border border-dashed border-muted-foreground/30',
+                                'flex items-center justify-center'
+                              )}
+                            >
+                              More functions...
                             </button>
                           </li>
                         )}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { dbManager } from '@/lib/database/connection';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import type { QueryResult, ScriptResult, QueryHistory } from '@/types';
+import { getFunctionListQuery, getFunctionDetailsQuery, type DatabaseFunction, type FunctionDetails } from '@/lib/utils/functionDiscovery';
 
 export function useDatabase() {
   
@@ -120,6 +121,51 @@ export function useDatabase() {
     return await dbManager.getTableSchema(tableName, schema);
   }, []);
 
+  const getFunctionList = useCallback(async (schema: string = 'public'): Promise<DatabaseFunction[]> => {
+    if (!isConnected) {
+      throw new Error('Database not connected');
+    }
+
+    try {
+      const query = getFunctionListQuery(schema);
+      const result = await dbManager.query(query.sql, query.params);
+      return result.rows as DatabaseFunction[];
+    } catch (err) {
+      console.error('Failed to get function list:', err);
+      throw err;
+    }
+  }, [isConnected]);
+
+  const getFunctionDetails = useCallback(async (functionName: string, schema: string = 'public'): Promise<FunctionDetails | null> => {
+    if (!isConnected) {
+      throw new Error('Database not connected');
+    }
+
+    try {
+      const query = getFunctionDetailsQuery(functionName, schema);
+      const result = await dbManager.query(query.sql, query.params);
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const row = result.rows[0] as any;
+      return {
+        name: row.name,
+        schema: row.schema,
+        return_type: row.return_type,
+        argument_types: row.argument_types,
+        argument_names: row.argument_names || [],
+        argument_defaults: row.argument_defaults || [],
+        description: row.description,
+        definition: row.definition,
+      };
+    } catch (err) {
+      console.error('Failed to get function details:', err);
+      throw err;
+    }
+  }, [isConnected]);
+
   const close = useCallback(async () => {
     setIsConnecting(true);
     try {
@@ -205,6 +251,8 @@ export function useDatabase() {
     getDatabaseSize,
     getTableList,
     getTableSchema,
+    getFunctionList,
+    getFunctionDetails,
     switchToProject,
   };
 }

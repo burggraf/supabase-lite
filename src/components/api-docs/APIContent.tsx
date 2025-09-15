@@ -6,7 +6,7 @@ import Authentication from './sections/Authentication'
 import UserManagement from './sections/UserManagement'
 import TablesIntro from './sections/TablesIntro'
 import DynamicTableDocs from './sections/DynamicTableDocs'
-import StoredProcedures from './sections/StoredProcedures'
+import DynamicStoredProcedures from './sections/DynamicStoredProcedures'
 
 interface APIContentProps {
   activeSection: APISection
@@ -22,6 +22,11 @@ export default function APIContent({ activeSection, codeLanguage, onLanguageChan
       return <DynamicTableDocs tableName={tableName} codeLanguage={codeLanguage} />
     }
 
+    // Handle dynamic function sections
+    if (activeSection.startsWith('function-')) {
+      return <DynamicStoredProcedures activeSection={activeSection} codeLanguage={codeLanguage} />
+    }
+
     // Handle static sections
     switch (activeSection) {
       case 'introduction':
@@ -33,10 +38,7 @@ export default function APIContent({ activeSection, codeLanguage, onLanguageChan
       case 'tables-intro':
         return <TablesIntro codeLanguage={codeLanguage} />
       case 'procedures-intro':
-      case 'procedure-get_category_summary':
-      case 'procedure-get_product_stats':
-      case 'procedure-get_products_by_category':
-        return <StoredProcedures activeSection={activeSection} codeLanguage={codeLanguage} />
+        return <DynamicStoredProcedures activeSection={activeSection} codeLanguage={codeLanguage} />
       default:
         return <Introduction codeLanguage={codeLanguage} />
     }

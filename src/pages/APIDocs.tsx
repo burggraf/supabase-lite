@@ -9,9 +9,7 @@ export type APISection =
   | 'tables-intro'
   | `table-${string}` // Dynamic table names following the pattern table-{tableName}
   | 'procedures-intro'
-  | 'procedure-get_category_summary'
-  | 'procedure-get_product_stats'
-  | 'procedure-get_products_by_category'
+  | `function-${string}` // Dynamic function names following the pattern function-{functionName}
   | 'guides'
   | 'api-reference'
 
