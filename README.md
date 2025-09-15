@@ -519,7 +519,7 @@ Supabase Lite includes comprehensive test runners that validate 100% API compati
 ### Features
 
 - **Perfect Test Parity**: Both runners execute exactly 87 identical tests for consistent validation
-- **Complete Coverage**: All 84 core test-app tests + 3 enhancement tests for comprehensive validation  
+- **Complete Coverage**: All 84 core test-app tests + 3 enhancement tests for comprehensive validation
 - **Dual Testing Approach**: HTTP-based testing and Supabase.js client library testing
 - **Random User Generation**: Prevents conflicts with existing users during test runs
 - **Detailed Reporting**: JSON reports with compatibility issue analysis and severity levels
@@ -558,7 +558,7 @@ This project is in active development. Contributions are welcome!
 
 ## 📄 License
 
-MIT License - feel free to use this project for learning and development.
+Apache2 License - feel free to use this project for learning and development.
 
 ## 🙏 Acknowledgments
 
