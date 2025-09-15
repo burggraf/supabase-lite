@@ -7,8 +7,6 @@ import UserManagement from './sections/UserManagement'
 import TablesIntro from './sections/TablesIntro'
 import TableDocs from './sections/TableDocs'
 import StoredProcedures from './sections/StoredProcedures'
-import GraphQL from './sections/GraphQL'
-import MoreResources from './sections/MoreResources'
 
 interface APIContentProps {
   activeSection: APISection
@@ -36,11 +34,6 @@ export default function APIContent({ activeSection, codeLanguage, onLanguageChan
       case 'procedure-get_product_stats':
       case 'procedure-get_products_by_category':
         return <StoredProcedures activeSection={activeSection} codeLanguage={codeLanguage} />
-      case 'graphql':
-        return <GraphQL codeLanguage={codeLanguage} />
-      case 'guides':
-      case 'api-reference':
-        return <MoreResources activeSection={activeSection} codeLanguage={codeLanguage} />
       default:
         return <Introduction codeLanguage={codeLanguage} />
     }

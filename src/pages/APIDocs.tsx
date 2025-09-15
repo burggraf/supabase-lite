@@ -13,7 +13,6 @@ export type APISection =
   | 'procedure-get_category_summary'
   | 'procedure-get_product_stats'
   | 'procedure-get_products_by_category'
-  | 'graphql'
   | 'guides'
   | 'api-reference'
 

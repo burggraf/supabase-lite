@@ -43,12 +43,6 @@ const sidebarSections: SidebarSection[] = [
     ],
   },
   {
-    title: 'GRAPHQL',
-    items: [
-      { id: 'graphql', label: 'GraphiQL' },
-    ],
-  },
-  {
     title: 'MORE RESOURCES',
     items: [
       { id: 'guides', label: 'Guides' },
@@ -59,7 +53,7 @@ const sidebarSections: SidebarSection[] = [
 
 export default function APISidebar({ activeSection, onSectionChange }: APISidebarProps) {
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
-    new Set(['GETTING STARTED', 'TABLES AND VIEWS', 'STORED PROCEDURES', 'GRAPHQL', 'MORE RESOURCES'])
+    new Set(['GETTING STARTED', 'TABLES AND VIEWS', 'STORED PROCEDURES', 'MORE RESOURCES'])
   )
 
   const toggleSection = (sectionTitle: string) => {
@@ -101,22 +95,50 @@ export default function APISidebar({ activeSection, onSectionChange }: APISideba
 
                 {isExpanded && (
                   <ul className="mt-3 space-y-1">
-                    {section.items.map((item) => (
-                      <li key={item.id}>
-                        <button
-                          onClick={() => onSectionChange(item.id)}
-                          className={cn(
-                            'w-full text-left px-3 py-2 text-sm rounded-md transition-colors',
-                            'hover:bg-muted',
-                            activeSection === item.id
-                              ? 'bg-muted font-medium text-foreground'
-                              : 'text-muted-foreground'
-                          )}
-                        >
-                          {item.label}
-                        </button>
-                      </li>
-                    ))}
+                    {section.items.map((item) => {
+                      // Handle external links for MORE RESOURCES section
+                      if (section.title === 'MORE RESOURCES') {
+                        const handleExternalClick = () => {
+                          if (item.id === 'guides') {
+                            window.open('https://supabase.com/docs', '_blank')
+                          } else if (item.id === 'api-reference') {
+                            window.open('https://supabase.com/docs/guides/api', '_blank')
+                          }
+                        }
+
+                        return (
+                          <li key={item.id}>
+                            <button
+                              onClick={handleExternalClick}
+                              className={cn(
+                                'w-full text-left px-3 py-2 text-sm rounded-md transition-colors',
+                                'hover:bg-muted text-muted-foreground'
+                              )}
+                            >
+                              {item.label}
+                            </button>
+                          </li>
+                        )
+                      }
+
+                      // Regular internal navigation
+                      return (
+                        <li key={item.id}>
+                          <button
+                            onClick={() => onSectionChange(item.id)}
+                            className={cn(
+                              'w-full text-left px-3 py-2 text-sm rounded-md transition-colors',
+                              'hover:bg-muted',
+                              activeSection === item.id
+                                ? 'bg-muted font-medium text-foreground'
+                                : 'text-muted-foreground'
+                            )}
+                          >
+                            {item.label}
+                          </button>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </div>
