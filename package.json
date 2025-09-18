@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.7",
+    "@leaningtech/cheerpx": "^1.1.7",
     "@monaco-editor/react": "^4.7.0",
     "@mswjs/http-middleware": "^0.10.3",
     "@radix-ui/react-accordion": "^1.2.12",

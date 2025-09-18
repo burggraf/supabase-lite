@@ -430,8 +430,8 @@ export class WebVMManager {
         break
       
       case 'cheerpx':
-        const { CheerpXProvider } = await import('./CheerpXProvider')
-        this.provider = new CheerpXProvider(this.config.webvm)
+        const { RealCheerpXProvider } = await import('./RealCheerpXProvider')
+        this.provider = new RealCheerpXProvider(this.config.webvm)
         break
       
       default:

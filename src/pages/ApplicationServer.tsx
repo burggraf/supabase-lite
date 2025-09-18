@@ -20,6 +20,7 @@ import { ApplicationDetails } from '@/components/application-server/ApplicationD
 import { RuntimeManager } from '@/components/application-server/RuntimeManager';
 import { CreateApplicationModal } from '@/components/application-server/CreateApplicationModal';
 import { EditApplicationModal } from '@/components/application-server/EditApplicationModal';
+import { WebVMDebugPanel } from '@/components/application-server/WebVMDebugPanel';
 
 export function ApplicationServer() {
   const [activeTab, setActiveTab] = useState('applications');
@@ -224,46 +225,7 @@ export function ApplicationServer() {
         </TabsContent>
         
         <TabsContent value="webvm" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>WebVM Instance</CardTitle>
-              <CardDescription>
-                Monitor and manage the browser-based virtual machine
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-semibold">Instance Status</h4>
-                    <p className="text-sm text-muted-foreground">WebVM is ready to host applications</p>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">Ready</Badge>
-                </div>
-                
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold">0 MB</div>
-                    <p className="text-sm text-muted-foreground">Memory Used</p>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold">0</div>
-                    <p className="text-sm text-muted-foreground">Active Apps</p>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold">0</div>
-                    <p className="text-sm text-muted-foreground">Snapshots</p>
-                  </div>
-                </div>
-                
-                <div className="flex space-x-2">
-                  <Button variant="outline">Initialize</Button>
-                  <Button variant="outline">Reset</Button>
-                  <Button variant="outline">Create Snapshot</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <WebVMDebugPanel />
         </TabsContent>
         
         <TabsContent value="deployments" className="space-y-4">
