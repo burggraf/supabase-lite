@@ -906,6 +906,135 @@ export const applicationServerHandlers = [
         timestamp: new Date().toISOString()
       }, { status: 500 });
     }
+  }),
+
+  // WebVM Console Command Execution
+  http.post('/api/debug/webvm/execute', async ({ request }) => {
+    try {
+      const body = await request.json();
+      const { command, workingDirectory = '/root' } = body;
+      
+      Logger.info('WebVM Console: Executing command', { command, workingDirectory });
+
+      // Simulate realistic command execution responses
+      const simulatedResponses: Record<string, { output: string; exitCode: number }> = {
+        'ps aux': {
+          output: `USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.1   2088   648 ?        Ss   12:00   0:00 /sbin/init
+root        42  0.0  0.2   3456  1024 ?        S    12:00   0:00 /usr/sbin/sshd
+root       123  0.0  0.3   4568  1536 ?        S    12:01   0:00 node /app/server.js
+root       156  0.0  0.1   2344   512 ?        R    12:02   0:00 ps aux`,
+          exitCode: 0
+        },
+        'ls -la': {
+          output: `total 32
+drwxr-xr-x  8 root root  256 Sep 18 12:00 .
+drwxr-xr-x  3 root root   96 Sep 18 12:00 ..
+-rw-r--r--  1 root root  220 Sep 18 12:00 .bashrc
+-rw-r--r--  1 root root  807 Sep 18 12:00 .profile
+drwxr-xr-x  2 root root   64 Sep 18 12:00 app
+drwxr-xr-x  2 root root   64 Sep 18 12:00 bin
+drwxr-xr-x  2 root root   64 Sep 18 12:00 etc
+drwxr-xr-x  2 root root   64 Sep 18 12:00 tmp`,
+          exitCode: 0
+        },
+        'uname -a': {
+          output: 'Linux webvm 5.15.0-cheerpx #1 SMP WebAssembly x86_64 GNU/Linux',
+          exitCode: 0
+        },
+        'free -h': {
+          output: `              total        used        free      shared  buff/cache   available
+Mem:          256Mi        128Mi         64Mi        8Mi        64Mi        120Mi
+Swap:           0B          0B          0B`,
+          exitCode: 0
+        },
+        'df -h': {
+          output: `Filesystem      Size  Used Avail Use% Mounted on
+/dev/root       512M  256M  256M  50% /
+tmpfs           128M     0  128M   0% /tmp
+/dev/app        100M   45M   55M  45% /app`,
+          exitCode: 0
+        },
+        'whoami': {
+          output: 'root',
+          exitCode: 0
+        },
+        'pwd': {
+          output: workingDirectory,
+          exitCode: 0
+        },
+        'date': {
+          output: new Date().toString(),
+          exitCode: 0
+        },
+        'cat /proc/cpuinfo': {
+          output: `processor	: 0
+vendor_id	: CheerpX
+cpu family	: 6
+model		: 158
+model name	: CheerpX WebAssembly Processor
+stepping	: 10
+microcode	: 0xb4
+cpu MHz		: 2400.000
+cache size	: 256 KB
+physical id	: 0
+siblings	: 1
+core id		: 0
+cpu cores	: 1`,
+          exitCode: 0
+        }
+      };
+
+      // Check for exact command match first
+      let response = simulatedResponses[command];
+      
+      // Handle dynamic commands
+      if (!response) {
+        if (command.startsWith('echo ')) {
+          const text = command.substring(5).replace(/['"]/g, '');
+          response = { output: text, exitCode: 0 };
+        } else if (command.startsWith('ls ')) {
+          response = { 
+            output: 'file1.txt  file2.txt  directory1/  directory2/', 
+            exitCode: 0 
+          };
+        } else if (command.startsWith('cat ')) {
+          const filename = command.substring(4);
+          response = { 
+            output: `Contents of ${filename}:\nThis is a simulated file content.`, 
+            exitCode: 0 
+          };
+        } else if (command.includes('grep') || command.includes('find')) {
+          response = { 
+            output: 'No matches found', 
+            exitCode: 1 
+          };
+        } else {
+          // Unknown command
+          response = { 
+            output: `bash: ${command.split(' ')[0]}: command not found`, 
+            exitCode: 127 
+          };
+        }
+      }
+
+      Logger.info('WebVM Console: Command executed', { 
+        command, 
+        exitCode: response.exitCode, 
+        outputLength: response.output.length 
+      });
+
+      // Add a small delay to simulate real execution
+      await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
+
+      return HttpResponse.json(response);
+    } catch (error) {
+      Logger.error('WebVM Console: Command execution failed', error as Error);
+      return HttpResponse.json({
+        output: `Error: ${(error as Error).message}`,
+        exitCode: -1
+      }, { status: 500 });
+    }
   })
 ]; // End of applicationServerHandlers array
 
