@@ -246,6 +246,7 @@ function websocketBridge(): Plugin {
           req.url.startsWith('/admin/') || // Admin routes for CLI
           req.url.startsWith('/vfs-direct/') || // Direct VFS access bypassing MSW
           req.url.startsWith('/app/') || // App hosting routes
+          req.url.startsWith('/api/') || // General API routes (including Application Server)
           // Project-prefixed API routes (pattern: /:projectId/rest|auth|debug|storage|app)
           /^\/[^/]+\/(rest|auth|debug|storage|vfs-direct|app)\//.test(req.url)
         );

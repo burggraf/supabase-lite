@@ -120,6 +120,34 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
   disconnect: vi.fn(),
 }))
 
+// Mock Worker for WebVM tests
+global.Worker = vi.fn().mockImplementation((scriptURL: string) => ({
+  postMessage: vi.fn(),
+  terminate: vi.fn(),
+  onmessage: null,
+  onerror: null,
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn()
+}))
+
+// Mock URL.createObjectURL and revokeObjectURL for Web Worker blob URLs
+global.URL = global.URL || {}
+global.URL.createObjectURL = vi.fn().mockImplementation((blob: Blob) => {
+  return 'mock-blob-url'
+})
+global.URL.revokeObjectURL = vi.fn()
+
+// Mock Blob for Web Workers
+global.Blob = vi.fn().mockImplementation((parts, options) => ({
+  size: parts.join('').length,
+  type: options?.type || '',
+  slice: vi.fn(),
+  stream: vi.fn(),
+  text: vi.fn().mockResolvedValue(parts.join('')),
+  arrayBuffer: vi.fn()
+}))
+
 // Mock additional DOM APIs required by Radix UI components
 Object.defineProperty(Element.prototype, 'hasPointerCapture', {
   value: vi.fn().mockReturnValue(false),
@@ -142,6 +170,59 @@ Object.defineProperty(Element.prototype, 'scrollIntoView', {
 })
 
 // Note: fetch is provided by MSW, don't mock it globally
+
+// Mock IndexedDB for Application Server services
+global.indexedDB = {
+  open: vi.fn().mockImplementation((name: string, version?: number) => {
+    const request = {
+      result: {
+        createObjectStore: vi.fn().mockReturnValue({}),
+        transaction: vi.fn().mockReturnValue({
+          objectStore: vi.fn().mockReturnValue({
+            get: vi.fn().mockImplementation(() => {
+              const req = { onsuccess: null, onerror: null, result: null };
+              setTimeout(() => req.onsuccess && req.onsuccess({ target: req }), 0);
+              return req;
+            }),
+            put: vi.fn().mockImplementation(() => {
+              const req = { onsuccess: null, onerror: null };
+              setTimeout(() => req.onsuccess && req.onsuccess({ target: req }), 0);
+              return req;
+            }),
+            delete: vi.fn().mockImplementation(() => {
+              const req = { onsuccess: null, onerror: null };
+              setTimeout(() => req.onsuccess && req.onsuccess({ target: req }), 0);
+              return req;
+            }),
+            getAll: vi.fn().mockImplementation(() => {
+              const req = { onsuccess: null, onerror: null, result: [] };
+              setTimeout(() => req.onsuccess && req.onsuccess({ target: req }), 0);
+              return req;
+            }),
+            clear: vi.fn().mockImplementation(() => {
+              const req = { onsuccess: null, onerror: null };
+              setTimeout(() => req.onsuccess && req.onsuccess({ target: req }), 0);
+              return req;
+            })
+          })
+        })
+      },
+      onsuccess: null,
+      onerror: null,
+      onupgradeneeded: null
+    };
+    
+    // Simulate successful database opening
+    setTimeout(() => {
+      if (request.onsuccess) {
+        request.onsuccess({ target: request } as any);
+      }
+    }, 0);
+    
+    return request;
+  }),
+  deleteDatabase: vi.fn()
+} as any;
 
 // Global database manager instance mock helpers
 global.mockPGliteInstance = {
@@ -203,6 +284,31 @@ vi.mock('jose', () => {
     })
   }
 })
+
+// Mock Logger globally
+vi.mock('../lib/infrastructure/Logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn()
+  },
+  Logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn()
+  },
+  InfrastructureLogger: vi.fn().mockImplementation(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn()
+  })),
+  logQuery: vi.fn(),
+  logError: vi.fn(),
+  logPerformance: vi.fn()
+}))
 
 // Reset database manager instance before each test
 beforeEach(() => {

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Application Server Test</title>
+</head>
+<body>
+    <h1>Testing Application Server</h1>
+    <button onclick="runTest()">Run Test</button>
+    <div id="output"></div>
+    
+    <script>
+    async function runTest() {
+        const output = document.getElementById('output');
+        output.innerHTML = '<p>🧪 Testing hello world application creation and serving...</p>';
+        
+        try {
+            // First, let's check if the health endpoint works
+            const healthResponse = await fetch('/api/debug/application-server/health');
+            output.innerHTML += `<p>📥 Health check status: ${healthResponse.status}</p>`;
+            
+            if (healthResponse.status === 503) {
+                output.innerHTML += '<p>❌ Database not connected. Please wait for the browser to initialize...</p>';
+                return;
+            }
+            
+            // Read the hello/index.html file content
+            const fileContent = '<h1>Hello, world!</h1>\\n\\n';
+            
+            // Create application request
+            const appRequest = {
+                id: 'hello-world-test-' + Date.now(),
+                name: 'Hello World Application',
+                description: 'Test application with hello/index.html content',
+                runtimeId: 'static',
+                metadata: {
+                    entryPoint: 'index.html',
+                    files: [{
+                        name: 'index.html',
+                        content: fileContent,
+                        size: fileContent.length,
+                        type: 'text/html'
+                    }]
+                }
+            };
+            
+            output.innerHTML += '<p>📤 Creating application...</p>';
+            
+            // Create the application
+            const createResponse = await fetch('/api/applications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(appRequest)
+            });
+            
+            output.innerHTML += `<p>📥 Create response status: ${createResponse.status}</p>`;
+            const createData = await createResponse.json();
+            output.innerHTML += `<p>📥 Create response data: ${JSON.stringify(createData, null, 2)}</p>`;
+            
+            if (!createResponse.ok) {
+                throw new Error(`Failed to create application: ${createData.error || createResponse.statusText}`);
+            }
+            
+            // Verify application is stored in localStorage
+            const storedApps = localStorage.getItem('supabase-lite-applications');
+            output.innerHTML += `<p>💾 Stored applications in localStorage: ${storedApps ? 'Found' : 'Not found'}</p>`;
+            
+            // Start the application
+            output.innerHTML += '<p>🚀 Starting application...</p>';
+            const startResponse = await fetch(`/api/applications/${createData.id}/start`, {
+                method: 'POST'
+            });
+            
+            output.innerHTML += `<p>📥 Start response status: ${startResponse.status}</p>`;
+            
+            // Wait a moment for any async processing
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Test accessing the application
+            output.innerHTML += `<p>🌐 Accessing application at /app/${createData.id}</p>`;
+            const appResponse = await fetch('/app/' + createData.id);
+            output.innerHTML += `<p>📥 App response status: ${appResponse.status}</p>`;
+            
+            if (appResponse.ok) {
+                const html = await appResponse.text();
+                output.innerHTML += `<p>📄 App HTML content preview: ${html.substring(0, 100)}...</p>`;
+                
+                // Check if we got the actual uploaded content
+                if (html.includes('Hello, world!') && !html.includes('demo app placeholder')) {
+                    output.innerHTML += '<p style="color: green;">✅ SUCCESS! Application is serving the uploaded HTML content</p>';
+                    output.innerHTML += `<p><a href="/app/${createData.id}" target="_blank">Open Application</a></p>`;
+                } else {
+                    output.innerHTML += '<p style="color: red;">❌ FAILURE! App is not serving the uploaded content</p>';
+                    output.innerHTML += `<p>Expected: Hello, world! content</p>`;
+                    output.innerHTML += `<p>Got: ${html.substring(0, 200)}...</p>`;
+                }
+            } else {
+                const errorText = await appResponse.text();
+                output.innerHTML += `<p style="color: red;">❌ FAILURE! App not accessible: ${errorText}</p>`;
+            }
+            
+        } catch (error) {
+            output.innerHTML += `<p style="color: red;">💥 Test failed with error: ${error.message}</p>`;
+        }
+    }
+    
+    // Auto-run test after a delay to let the page load
+    setTimeout(() => {
+        runTest();
+    }, 2000);
+    </script>
+</body>
+</html>

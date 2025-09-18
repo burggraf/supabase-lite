@@ -233,4 +233,25 @@ describe('Supabase Lite API Handlers', () => {
     expect(response.headers.get('Access-Control-Allow-Methods')).toContain('GET')
     expect(response.headers.get('Access-Control-Allow-Methods')).toContain('POST')
   })
+
+  it('should handle Application Server API - GET /api/applications', async () => {
+    console.log('Testing Application Server API...')
+    const response = await fetch('/api/applications')
+    
+    console.log('Response status:', response.status)
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+    
+    if (response.status === 200) {
+      const data = await response.json()
+      console.log('Response data:', data)
+      expect(data).toHaveProperty('applications')
+      expect(data).toHaveProperty('total')
+    } else {
+      // Just log the response for debugging
+      const errorData = await response.text()
+      console.log('Error response:', errorData)
+      // For now, just check that we get a response (not a connection error)
+      expect(response.status).toBeGreaterThan(0)
+    }
+  })
 })

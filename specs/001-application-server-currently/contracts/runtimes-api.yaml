@@ -1,0 +1,211 @@
+openapi: 3.0.3
+info:
+  title: Runtime Environments API
+  description: API for managing runtime environments in Application Server
+  version: 1.0.0
+
+paths:
+  /api/runtimes:
+    get:
+      summary: List available runtime environments
+      operationId: listRuntimes
+      parameters:
+        - name: type
+          in: query
+          description: Filter by runtime type
+          schema:
+            $ref: '#/components/schemas/RuntimeType'
+        - name: status
+          in: query
+          description: Filter by runtime status
+          schema:
+            $ref: '#/components/schemas/RuntimeStatus'
+      responses:
+        '200':
+          description: Runtime environments list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runtimes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RuntimeEnvironment'
+                  total:
+                    type: integer
+
+  /api/runtimes/{runtimeId}:
+    get:
+      summary: Get runtime environment by ID
+      operationId: getRuntime
+      parameters:
+        - name: runtimeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Runtime environment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeEnvironment'
+        '404':
+          description: Runtime not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/runtimes/{runtimeId}/install:
+    post:
+      summary: Install runtime environment
+      operationId: installRuntime
+      parameters:
+        - name: runtimeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Installation started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeEnvironment'
+        '409':
+          description: Runtime already installed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/runtimes/{runtimeId}/uninstall:
+    post:
+      summary: Uninstall runtime environment
+      operationId: uninstallRuntime
+      parameters:
+        - name: runtimeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: force
+          in: query
+          description: Force uninstall even if applications are using it
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Runtime uninstalled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeEnvironment'
+        '409':
+          description: Runtime in use by applications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    RuntimeEnvironment:
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - version
+        - status
+        - config
+      properties:
+        id:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/RuntimeType'
+        version:
+          type: string
+          pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+        dockerImage:
+          type: string
+        status:
+          $ref: '#/components/schemas/RuntimeStatus'
+        installedAt:
+          type: string
+          format: date-time
+        lastUsed:
+          type: string
+          format: date-time
+        config:
+          $ref: '#/components/schemas/RuntimeConfig'
+
+    RuntimeConfig:
+      type: object
+      required:
+        - defaultPort
+        - supportedExtensions
+        - buildRequired
+        - startupTimeout
+        - resourceLimits
+      properties:
+        defaultPort:
+          type: integer
+          minimum: 1024
+          maximum: 65535
+        supportedExtensions:
+          type: array
+          items:
+            type: string
+        buildRequired:
+          type: boolean
+        startupTimeout:
+          type: integer
+          minimum: 1
+          maximum: 300
+        resourceLimits:
+          type: object
+          properties:
+            memory:
+              type: integer
+              minimum: 64
+            cpu:
+              type: number
+              minimum: 0.1
+
+    RuntimeType:
+      type: string
+      enum:
+        - static
+        - nodejs
+        - nextjs
+        - python
+        - edge-functions
+
+    RuntimeStatus:
+      type: string
+      enum:
+        - available
+        - installing
+        - installed
+        - error
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object

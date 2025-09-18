@@ -12,7 +12,8 @@ import {
   Database,
   Settings,
   TestTube,
-  HardDrive
+  HardDrive,
+  Server
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +34,7 @@ const iconMap = {
   Settings,
   TestTube,
   HardDrive,
+  Server,
 };
 
 interface SidebarProps {
@@ -96,9 +98,9 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
       badge: 'Coming Soon',
     },
     {
-      id: 'app-hosting',
-      label: 'App Hosting',
-      icon: 'Globe' as keyof typeof iconMap,
+      id: 'application-server',
+      label: 'Application Server',
+      icon: 'Server' as keyof typeof iconMap,
       badge: null,
     },
     {

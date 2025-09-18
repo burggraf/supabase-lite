@@ -1,24 +1,36 @@
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Dashboard } from '@/components/dashboard/Dashboard';
-import { SQLEditor } from '@/components/sql-editor/SQLEditor';
-import { TableEditor } from '@/components/table-editor/TableEditor';
-import { DatabaseWorking as Database } from '@/components/database/DatabaseWorking';
-import { APITester } from '@/components/api-test/APITester';
-import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
-import { Storage } from '@/components/storage/Storage';
-import { AppHosting } from '@/components/app-hosting/AppHosting';
-import { EdgeFunctions } from '@/pages/EdgeFunctions';
-import APIDocs from '@/pages/APIDocs';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useRouter } from '@/hooks/useRouter';
-import { CacheManager } from '@/components/developer/CacheManager';
 // EnhancedOfflineIndicator import removed as it's not used in this component
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { initializeInfrastructure, logger } from '@/lib/infrastructure';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { CrossOriginAPIHandler } from '@/lib/api/CrossOriginAPIHandler';
 import { Toaster } from 'sonner';
+
+// Lazy load components for better performance
+const SQLEditor = lazy(() => import('@/components/sql-editor/SQLEditor').then(m => ({ default: m.SQLEditor })));
+const TableEditor = lazy(() => import('@/components/table-editor/TableEditor').then(m => ({ default: m.TableEditor })));
+const Database = lazy(() => import('@/components/database/DatabaseWorking').then(m => ({ default: m.DatabaseWorking })));
+const APITester = lazy(() => import('@/components/api-test/APITester').then(m => ({ default: m.APITester })));
+const AuthTestPanel = lazy(() => import('@/components/auth/AuthTestPanel').then(m => ({ default: m.AuthTestPanel })));
+const Storage = lazy(() => import('@/components/storage/Storage').then(m => ({ default: m.Storage })));
+const EdgeFunctions = lazy(() => import('@/pages/EdgeFunctions').then(m => ({ default: m.EdgeFunctions })));
+const ApplicationServer = lazy(() => import('@/pages/ApplicationServer').then(m => ({ default: m.ApplicationServer })));
+const APIDocs = lazy(() => import('@/pages/APIDocs'));
+const CacheManager = lazy(() => import('@/components/developer/CacheManager').then(m => ({ default: m.CacheManager })));
+
+// Loading component for Suspense fallback
+const LoadingFallback = () => (
+  <div className="flex-1 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+      <p className="text-sm text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 // Extend Window interface for global API handler
 declare global {
@@ -142,19 +154,25 @@ function App() {
       case 'sql-editor':
         return (
           <ErrorBoundary>
-            <SQLEditor />
+            <Suspense fallback={<LoadingFallback />}>
+              <SQLEditor />
+            </Suspense>
           </ErrorBoundary>
         );
       case 'table-editor':
         return (
           <ErrorBoundary>
-            <TableEditor />
+            <Suspense fallback={<LoadingFallback />}>
+              <TableEditor />
+            </Suspense>
           </ErrorBoundary>
         );
       case 'database':
         return (
           <ErrorBoundary>
-            <Database />
+            <Suspense fallback={<LoadingFallback />}>
+              <Database />
+            </Suspense>
           </ErrorBoundary>
         );
       case 'auth':
@@ -168,7 +186,9 @@ function App() {
                     Test and manage authentication features including signup, signin, MFA, and user management.
                   </p>
                 </div>
-                <AuthTestPanel />
+                <Suspense fallback={<LoadingFallback />}>
+                  <AuthTestPanel />
+                </Suspense>
               </div>
             </div>
           </ErrorBoundary>
@@ -176,13 +196,17 @@ function App() {
       case 'storage':
         return (
           <ErrorBoundary>
-            <Storage />
+            <Suspense fallback={<LoadingFallback />}>
+              <Storage />
+            </Suspense>
           </ErrorBoundary>
         );
-      case 'app-hosting':
+      case 'application-server':
         return (
           <ErrorBoundary>
-            <AppHosting />
+            <Suspense fallback={<LoadingFallback />}>
+              <ApplicationServer />
+            </Suspense>
           </ErrorBoundary>
         );
       case 'edge-functions':
@@ -190,7 +214,9 @@ function App() {
       case 'edge-functions-editor':
         return (
           <ErrorBoundary>
-            <EdgeFunctions />
+            <Suspense fallback={<LoadingFallback />}>
+              <EdgeFunctions />
+            </Suspense>
           </ErrorBoundary>
         );
       case 'api-test':
@@ -198,14 +224,18 @@ function App() {
         return (
           <ErrorBoundary>
             <div className="flex-1 p-6 overflow-y-auto min-h-full">
-              <APITester />
+              <Suspense fallback={<LoadingFallback />}>
+                <APITester />
+              </Suspense>
             </div>
           </ErrorBoundary>
         );
       case 'api-docs':
         return (
           <ErrorBoundary>
-            <APIDocs />
+            <Suspense fallback={<LoadingFallback />}>
+              <APIDocs />
+            </Suspense>
           </ErrorBoundary>
         );
       case 'cache-manager':
@@ -219,7 +249,9 @@ function App() {
                     Manage Service Worker caches and debug offline functionality.
                   </p>
                 </div>
-                <CacheManager autoRefresh={false} />
+                <Suspense fallback={<LoadingFallback />}>
+                  <CacheManager autoRefresh={false} />
+                </Suspense>
               </div>
             </div>
           </ErrorBoundary>

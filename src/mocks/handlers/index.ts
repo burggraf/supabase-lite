@@ -13,9 +13,10 @@ import { debugHandlers } from './debug'
 import { healthHandlers } from './health'
 import { storageHandlers } from './storage'
 import { vfsDirectHandlers } from './vfs-direct'
-import { appHandlers } from './app'
+// import { appHandlers } from './app' // REMOVED: Conflicts with Application Server /app/* routes
 import { functionsHandlers } from './functions'
 import { corsAndCatchAllHandler } from './shared/cors'
+import { applicationServerHandlers } from '../application-server-handlers'
 
 /**
  * Combined handlers array maintaining the original order:
@@ -28,7 +29,8 @@ import { corsAndCatchAllHandler } from './shared/cors'
  * 7. VFS direct handlers (direct file access)
  * 8. App hosting handlers (SPA serving)
  * 9. Edge Functions handlers
- * 10. CORS and catch-all handler (must be last)
+ * 10. Application Server handlers (WebVM-based application hosting)
+ * 11. CORS and catch-all handler (must be last)
  */
 export const handlers = [
   // ==== AUTHENTICATION HANDLERS FIRST (must come before catch-all) ====
@@ -53,10 +55,13 @@ export const handlers = [
   ...vfsDirectHandlers,
   
   // ==== APP HOSTING HANDLERS ====
-  ...appHandlers,
+  // ...appHandlers, // REMOVED: Old app hosting conflicts with Application Server /app/* routes
   
   // ==== EDGE FUNCTIONS HANDLERS ====
   ...functionsHandlers,
+  
+  // ==== APPLICATION SERVER HANDLERS ====
+  ...applicationServerHandlers,
   
   // ==== CORS PREFLIGHT AND CATCH-ALL (must be last) ====
   corsAndCatchAllHandler,

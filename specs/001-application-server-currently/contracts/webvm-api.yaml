@@ -1,0 +1,200 @@
+openapi: 3.0.3
+info:
+  title: WebVM Management API
+  description: API for managing WebVM instances and state
+  version: 1.0.0
+
+paths:
+  /api/webvm/status:
+    get:
+      summary: Get WebVM instance status
+      operationId: getWebVMStatus
+      responses:
+        '200':
+          description: WebVM status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebVMInstance'
+
+  /api/webvm/initialize:
+    post:
+      summary: Initialize WebVM instance
+      operationId: initializeWebVM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebVMInitRequest'
+      responses:
+        '202':
+          description: Initialization started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebVMInstance'
+        '409':
+          description: WebVM already initialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/webvm/snapshot:
+    post:
+      summary: Create state snapshot
+      operationId: createSnapshot
+      responses:
+        '202':
+          description: Snapshot creation started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotResponse'
+
+  /api/webvm/restore:
+    post:
+      summary: Restore from snapshot
+      operationId: restoreFromSnapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+      responses:
+        '202':
+          description: Restore started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebVMInstance'
+
+  /api/webvm/reset:
+    post:
+      summary: Reset WebVM instance
+      operationId: resetWebVM
+      responses:
+        '202':
+          description: Reset started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebVMInstance'
+
+components:
+  schemas:
+    WebVMInstance:
+      type: object
+      required:
+        - id
+        - status
+        - runtimeIds
+        - createdAt
+        - config
+      properties:
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/WebVMStatus'
+        runtimeIds:
+          type: array
+          items:
+            type: string
+        activeApplicationId:
+          type: string
+        lastSnapshot:
+          type: string
+          format: date-time
+        memoryUsage:
+          type: integer
+          description: Memory usage in MB
+        createdAt:
+          type: string
+          format: date-time
+        config:
+          $ref: '#/components/schemas/WebVMConfig'
+
+    WebVMInitRequest:
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/WebVMConfig'
+        restoreFromSnapshot:
+          type: boolean
+          default: true
+
+    WebVMConfig:
+      type: object
+      required:
+        - memoryLimit
+        - diskLimit
+        - networkEnabled
+        - snapshotEnabled
+      properties:
+        memoryLimit:
+          type: integer
+          minimum: 512
+          maximum: 4096
+          description: Memory limit in MB
+        diskLimit:
+          type: integer
+          minimum: 1024
+          maximum: 10240
+          description: Disk limit in MB
+        networkEnabled:
+          type: boolean
+        snapshotEnabled:
+          type: boolean
+
+    WebVMStatus:
+      type: string
+      enum:
+        - uninitialized
+        - initializing
+        - ready
+        - running
+        - error
+
+    SnapshotResponse:
+      type: object
+      required:
+        - snapshotId
+        - status
+        - createdAt
+      properties:
+        snapshotId:
+          type: string
+        status:
+          type: string
+          enum:
+            - creating
+            - completed
+            - failed
+        createdAt:
+          type: string
+          format: date-time
+        size:
+          type: integer
+          description: Snapshot size in bytes
+
+    RestoreRequest:
+      type: object
+      required:
+        - snapshotId
+      properties:
+        snapshotId:
+          type: string
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object

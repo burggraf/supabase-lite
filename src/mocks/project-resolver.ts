@@ -54,7 +54,7 @@ export async function resolveAndSwitchToProject(url: URL): Promise<ProjectResolu
     const isDirectApiCall = pathSegments.length === 0 || !pathSegments[0] || 
       pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || 
       pathSegments[0] === 'storage' || pathSegments[0] === 'app' ||
-      pathSegments[0] === 'debug';
+      pathSegments[0] === 'debug' || pathSegments[0] === 'api';
       
     if (isDirectApiCall) {
       // Check cache for active project
@@ -222,7 +222,7 @@ export function normalizeApiPath(url: URL): URL {
   const pathSegments = url.pathname.split('/').filter(segment => segment.length > 0);
   
   // If no segments or starts with API paths, return as-is
-  if (pathSegments.length === 0 || pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || pathSegments[0] === 'storage' || pathSegments[0] === 'app') {
+  if (pathSegments.length === 0 || pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || pathSegments[0] === 'storage' || pathSegments[0] === 'app' || pathSegments[0] === 'api') {
     return url;
   }
 
@@ -241,7 +241,7 @@ export function hasProjectInPath(url: URL): boolean {
   const pathSegments = url.pathname.split('/').filter(segment => segment.length > 0);
   
   // If no segments or starts with API paths, no project identifier
-  if (pathSegments.length === 0 || pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || pathSegments[0] === 'storage' || pathSegments[0] === 'app') {
+  if (pathSegments.length === 0 || pathSegments[0] === 'rest' || pathSegments[0] === 'auth' || pathSegments[0] === 'storage' || pathSegments[0] === 'app' || pathSegments[0] === 'api') {
     return false;
   }
 

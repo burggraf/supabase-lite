@@ -14,9 +14,10 @@ import { authHandlers } from '../mocks/handlers/auth'
 import { projectsHandlers } from '../mocks/handlers/projects'
 import { storageHandlers } from '../mocks/handlers/storage'
 import { vfsDirectHandlers } from '../mocks/handlers/vfs-direct'
-import { appHandlers } from '../mocks/handlers/app'
+// import { appHandlers } from '../mocks/handlers/app' // REMOVED: Conflicts with Application Server /app/* routes
 import { functionsHandlers } from '../mocks/handlers/functions'
 import { corsAndCatchAllHandler } from '../mocks/handlers/shared/cors'
+import { applicationServerHandlers } from '../mocks/application-server-handlers'
 
 /**
  * Combined handlers array maintaining the original order and functionality.
@@ -58,11 +59,14 @@ export const handlers = [
   // VFS direct handlers (direct file access)
   ...vfsDirectHandlers,
 
-  // App hosting handlers (SPA serving)
-  ...appHandlers,
+  // App hosting handlers (SPA serving) - REMOVED: Conflicts with Application Server
+  // ...appHandlers, // REMOVED: Conflicts with Application Server /app/* routes
 
   // Edge Functions handlers
   ...functionsHandlers,
+
+  // Application Server handlers (WebVM-based application hosting)
+  ...applicationServerHandlers,
 
   // CORS and catch-all handler (must be last)
   corsAndCatchAllHandler,

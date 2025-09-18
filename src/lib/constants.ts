@@ -64,10 +64,10 @@ export const NAVIGATION_ITEMS = [
     disabled: true,
   },
   {
-    id: 'app-hosting',
-    label: 'App Hosting',
-    icon: 'Globe',
-    path: '/app-hosting',
+    id: 'application-server',
+    label: 'Application Server',
+    icon: 'Server',
+    path: '/application-server',
     disabled: false,
   },
   {
