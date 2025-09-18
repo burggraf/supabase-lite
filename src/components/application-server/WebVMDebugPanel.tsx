@@ -43,11 +43,14 @@ export function WebVMDebugPanel() {
   // Check if WebVM system exists
   const checkWebVMSystem = async () => {
     try {
-      // Try to access WebVMManager
-      const response = await fetch('/api/debug/webvm/status');
-      const data = await response.json();
+      addDebugLog('debug', 'Checking WebVM system via API');
       
-      // Try to access the actual WebVM system
+      // Get WebVM status via API (safer than direct imports)
+      const [webvmResponse, applicationServerResponse] = await Promise.all([
+        fetch('/api/debug/webvm/status').catch(err => ({ ok: false, statusText: err.message })),
+        fetch('/api/application-server/status').catch(err => ({ ok: false, statusText: err.message }))
+      ]);
+
       let actualState: WebVMState = {
         initialized: false,
         providerType: 'unknown',
@@ -58,50 +61,47 @@ export function WebVMDebugPanel() {
         providerFallbackAttempted: false
       };
 
-      // Check if WebVM classes are available globally
-      if (typeof window !== 'undefined') {
-        try {
-          // Try to import and check WebVMManager
-          const { WebVMManager } = await import('../../lib/webvm/WebVMManager');
-          
-          // Check if we can get an instance (this will tell us if it's initialized)
-          try {
-            const manager = WebVMManager.getInstance({
-              type: 'mock',
-              mock: { simulateLatency: false }
-            });
-            
-            const systemStatus = await manager.getSystemStatus();
-            const metrics = manager.getSystemMetrics();
-            
-            actualState = {
-              initialized: systemStatus.initialized,
-              providerType: systemStatus.providerType as any,
-              runtimeCount: systemStatus.runtimeCount,
-              activeRuntimes: await manager.listRuntimes(),
-              systemStats: systemStatus.stats,
-              lastError: null,
-              providerFallbackAttempted: metrics.webvm.providerFallbackAttempted
-            };
-            
-            addDebugLog('info', 'WebVMManager accessible and responding', { systemStatus, metrics });
-          } catch (managerError) {
-            actualState.lastError = `WebVMManager error: ${managerError.message}`;
-            addDebugLog('error', 'WebVMManager not accessible', { error: managerError });
-          }
-        } catch (importError) {
-          actualState.lastError = `Import error: ${importError.message}`;
-          addDebugLog('error', 'Failed to import WebVMManager', { error: importError });
+      if (webvmResponse.ok) {
+        const webvmData = await webvmResponse.json();
+        addDebugLog('info', 'WebVM API responded successfully', { webvmData });
+        
+        actualState = {
+          initialized: webvmData.initialized || false,
+          providerType: webvmData.providerType || 'unknown',
+          runtimeCount: webvmData.runtimeCount || 0,
+          activeRuntimes: [], // Will be fetched separately if needed
+          systemStats: webvmData.stats || null,
+          lastError: null,
+          providerFallbackAttempted: webvmData.metrics?.webvm?.providerFallbackAttempted || false
+        };
+      } else {
+        const errorMsg = `WebVM API error: ${webvmResponse.statusText}`;
+        actualState.lastError = errorMsg;
+        addDebugLog('error', errorMsg);
+      }
+
+      if (applicationServerResponse.ok) {
+        const appServerData = await applicationServerResponse.json();
+        addDebugLog('info', 'Application Server API responded successfully', { appServerData });
+        
+        // Merge application server data
+        if (appServerData.webvm) {
+          actualState.initialized = appServerData.webvm.initialized || actualState.initialized;
+          actualState.providerType = appServerData.webvm.providerType || actualState.providerType;
+          actualState.runtimeCount = appServerData.webvm.runtimeCount || actualState.runtimeCount;
         }
+      } else {
+        addDebugLog('warn', `Application Server API error: ${applicationServerResponse.statusText}`);
       }
 
       setWebvmState(actualState);
       
     } catch (error) {
-      addDebugLog('error', 'Failed to check WebVM system', { error });
+      const errorMsg = `System check failed: ${error.message}`;
+      addDebugLog('error', errorMsg, { error });
       setWebvmState(prev => ({
         ...prev,
-        lastError: `Check failed: ${error.message}`
+        lastError: errorMsg
       }));
     }
   };
@@ -118,90 +118,100 @@ export function WebVMDebugPanel() {
   };
 
   const testWebVMOperations = async () => {
-    addDebugLog('info', 'Starting WebVM operation tests');
+    addDebugLog('info', 'Starting WebVM API tests');
     
     try {
-      // Test 1: Try to initialize WebVM
-      addDebugLog('debug', 'Test 1: Attempting WebVM initialization');
-      const { WebVMManager } = await import('../../lib/webvm/WebVMManager');
+      // Test 1: Check API endpoints
+      addDebugLog('debug', 'Test 1: Testing API endpoints');
       
-      const manager = WebVMManager.getInstance({
-        type: 'cheerpx', // Try real provider first
-        webvm: {
-          diskImage: 'https://disks.webvm.io/debian_large_20230522_5044875776.ext2',
-          persistent: true,
-          memorySize: 256
+      const endpoints = [
+        '/api/debug/webvm/status',
+        '/api/webvm/status', 
+        '/api/application-server/status',
+        '/api/applications',
+        '/api/runtimes'
+      ];
+      
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint);
+          if (response.ok) {
+            const data = await response.json();
+            addDebugLog('info', `✅ ${endpoint} - OK`, { status: response.status, dataKeys: Object.keys(data) });
+          } else {
+            addDebugLog('warn', `⚠️ ${endpoint} - ${response.status}`, { status: response.status, statusText: response.statusText });
+          }
+        } catch (endpointError) {
+          addDebugLog('error', `❌ ${endpoint} - Failed`, { error: endpointError.message });
         }
-      });
-
-      await manager.initialize();
-      addDebugLog('info', 'WebVM initialized successfully with CheerpX provider');
+      }
       
-      // Test 2: Try to start a runtime
-      addDebugLog('debug', 'Test 2: Attempting to start Node.js runtime');
-      const runtime = await manager.startRuntime('node', '20', {
-        appId: 'debug-test-app',
-        autoRestart: false
-      });
+      // Test 2: Try to create a test application
+      addDebugLog('debug', 'Test 2: Testing application creation');
+      try {
+        const testApp = {
+          id: `debug-test-${Date.now()}`,
+          name: 'Debug Test App',
+          description: 'Test application for WebVM debugging',
+          runtimeId: 'static',
+          metadata: {
+            files: [{
+              name: 'index.html',
+              content: '<html><body><h1>Debug Test</h1></body></html>',
+              size: 50
+            }]
+          }
+        };
+        
+        const createResponse = await fetch('/api/applications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(testApp)
+        });
+        
+        if (createResponse.ok) {
+          const createdApp = await createResponse.json();
+          addDebugLog('info', 'Test application created successfully', { app: createdApp });
+          
+          // Clean up - try to delete the test app
+          try {
+            const deleteResponse = await fetch(`/api/applications/${testApp.id}`, {
+              method: 'DELETE'
+            });
+            if (deleteResponse.ok) {
+              addDebugLog('info', 'Test application cleaned up successfully');
+            }
+          } catch (cleanupError) {
+            addDebugLog('warn', 'Failed to clean up test application', { error: cleanupError.message });
+          }
+        } else {
+          addDebugLog('warn', 'Failed to create test application', { 
+            status: createResponse.status, 
+            statusText: createResponse.statusText 
+          });
+        }
+      } catch (appError) {
+        addDebugLog('error', 'Application test failed', { error: appError.message });
+      }
       
-      addDebugLog('info', 'Runtime started successfully', { runtime });
-      
-      // Test 3: Try to execute a command
-      addDebugLog('debug', 'Test 3: Executing test command');
-      const result = await manager.executeCommand(runtime.id, 'echo "Hello from WebVM!"');
-      addDebugLog('info', 'Command executed', { result });
-      
-      // Test 4: Try HTTP proxy
-      addDebugLog('debug', 'Test 4: Testing HTTP proxy capabilities');
-      const testRequest = new Request('http://localhost:3000/test', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      const proxyResponse = await manager.proxyHTTPRequest(runtime.id, testRequest);
-      addDebugLog('info', 'HTTP proxy test completed', { 
-        status: proxyResponse.status,
-        body: await proxyResponse.text()
-      });
-      
-      // Clean up
-      await manager.stopRuntime(runtime.id);
-      addDebugLog('info', 'Test runtime stopped');
+      // Test 3: Test WebVM status monitoring
+      addDebugLog('debug', 'Test 3: Testing WebVM status monitoring');
+      try {
+        const statusResponse = await fetch('/api/debug/webvm/status');
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          addDebugLog('info', 'WebVM status monitoring working', { 
+            provider: statusData.provider,
+            initialized: statusData.initialized,
+            runtimeCount: statusData.runtimeCount
+          });
+        }
+      } catch (statusError) {
+        addDebugLog('error', 'WebVM status monitoring failed', { error: statusError.message });
+      }
       
     } catch (error) {
-      addDebugLog('error', 'WebVM operation test failed', { error });
-      
-      // If CheerpX failed, try with mock provider
-      try {
-        addDebugLog('warn', 'CheerpX failed, trying mock provider');
-        const { WebVMManager } = await import('../../lib/webvm/WebVMManager');
-        
-        const mockManager = WebVMManager.getInstance({
-          type: 'mock',
-          mock: {
-            simulateLatency: true,
-            minLatency: 10,
-            maxLatency: 50,
-            errorRate: 0
-          }
-        });
-
-        await mockManager.initialize();
-        addDebugLog('info', 'Mock WebVM provider initialized successfully');
-        
-        const mockRuntime = await mockManager.startRuntime('node', '20', {
-          appId: 'mock-test-app',
-          autoRestart: false
-        });
-        
-        addDebugLog('info', 'Mock runtime started', { mockRuntime });
-        
-        await mockManager.stopRuntime(mockRuntime.id);
-        addDebugLog('info', 'Mock runtime stopped');
-        
-      } catch (mockError) {
-        addDebugLog('error', 'Even mock provider failed', { error: mockError });
-      }
+      addDebugLog('error', 'WebVM API tests failed', { error: error.message });
     }
     
     // Refresh state after tests

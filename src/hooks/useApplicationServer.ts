@@ -117,17 +117,33 @@ export function useApplicationServer(): UseApplicationServerReturn {
   // Refresh all data
   const refreshData = useCallback(async () => {
     setLoading(true);
-    try {
-      await Promise.all([
-        loadApplications(),
-        loadRuntimes(),
-        loadWebVMStatus()
-      ]);
-    } catch (err) {
-      // Error is already handled by withErrorHandling
-    } finally {
-      setLoading(false);
+    setError(null); // Clear any previous errors
+    
+    // Load each API independently to avoid Promise.all failing if one fails
+    const results = await Promise.allSettled([
+      loadApplications().catch(err => ({ error: err, type: 'applications' })),
+      loadRuntimes().catch(err => ({ error: err, type: 'runtimes' })),
+      loadWebVMStatus().catch(err => ({ error: err, type: 'webvm' }))
+    ]);
+
+    // Check if all succeeded - if any failed, keep the last error
+    const failures = results
+      .map((result, index) => ({ result, index }))
+      .filter(({ result }) => result.status === 'rejected')
+      .map(({ result, index }) => ({
+        type: ['applications', 'runtimes', 'webvm'][index],
+        error: (result as PromiseRejectedResult).reason
+      }));
+
+    if (failures.length > 0) {
+      // Set error to the most critical failure (prioritize WebVM > Applications > Runtimes)
+      const criticalFailure = failures.find(f => f.type === 'webvm') || 
+                              failures.find(f => f.type === 'applications') || 
+                              failures[0];
+      setError(criticalFailure.error);
     }
+
+    setLoading(false);
   }, [loadApplications, loadRuntimes, loadWebVMStatus]);
 
   // Application management functions
