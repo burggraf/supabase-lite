@@ -134,11 +134,10 @@ export const applicationServerHandlers = [
       const webvm = WebVMManager.getInstance({
         type: 'cheerpx',
         webvm: {
-          memoryMB: 256,
-          diskSizeMB: 512,
-          networkingEnabled: true,
-          debugMode: true,
-          linuxDistribution: 'debian'
+          memorySize: 256,
+          persistent: true,
+          diskImage: 'https://disks.webvm.io/debian_small_20230522_0234.ext2',
+          logLevel: 'debug'
         }
       });
 
@@ -509,21 +508,39 @@ export const applicationServerHandlers = [
       const webvm = WebVMManager.getInstance({
         type: 'cheerpx',
         webvm: {
-          memoryMB: 256,
-          diskSizeMB: 512,
-          networkingEnabled: true,
-          debugMode: true,
-          linuxDistribution: 'debian'
+          memorySize: 256,
+          persistent: true,
+          diskImage: 'https://disks.webvm.io/debian_small_20230522_0234.ext2',
+          logLevel: 'debug'
         }
       });
 
-      // Initialize if not already done
-      if (!webvm.getSystemMetrics().webvm.initialized) {
+      // Check initialization status and initialize if needed
+      const metrics = webvm.getSystemMetrics();
+      Logger.info('WebVM metrics before initialization', { metrics });
+      
+      if (!metrics.webvm.initialized) {
+        Logger.info('WebVM not initialized, initializing now...');
         await webvm.initialize();
       }
       
-      const status = await webvm.getSystemStatus();
-      const metrics = webvm.getSystemMetrics();
+      // Get status after initialization with error handling
+      let status;
+      try {
+        status = await webvm.getSystemStatus();
+      } catch (statusError) {
+        Logger.warn('Failed to get WebVM status, returning metrics-based status', { error: statusError });
+        // Fallback to metrics-based status
+        const fallbackMetrics = webvm.getSystemMetrics();
+        status = {
+          initialized: fallbackMetrics.webvm.initialized,
+          providerType: fallbackMetrics.webvm.providerType,
+          stats: null,
+          runtimeCount: fallbackMetrics.webvm.runtimeCount
+        };
+      }
+      
+      const updatedMetrics = webvm.getSystemMetrics();
       
       return HttpResponse.json({
         status: status.initialized ? 'ready' : 'initializing',
@@ -532,7 +549,7 @@ export const applicationServerHandlers = [
         initialized: status.initialized,
         runtimeCount: status.runtimeCount,
         stats: status.stats,
-        metrics: metrics,
+        metrics: updatedMetrics,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -595,11 +612,10 @@ export const applicationServerHandlers = [
       const webvm = WebVMManager.getInstance({
         type: 'cheerpx',
         webvm: {
-          memoryMB: 256,
-          diskSizeMB: 512,
-          networkingEnabled: true,
-          debugMode: true,
-          linuxDistribution: 'debian'
+          memorySize: 256,
+          persistent: true,
+          diskImage: 'https://disks.webvm.io/debian_small_20230522_0234.ext2',
+          logLevel: 'debug'
         }
       });
 

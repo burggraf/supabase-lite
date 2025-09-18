@@ -122,12 +122,18 @@ export class ProxyError extends WebVMError {
 
 // Configuration types
 export interface WebVMConfig {
-  maxMemory: number // MB
-  maxDisk: number // MB
-  maxRuntimes: number
-  defaultTimeout: number // ms
-  enableSnapshots: boolean
-  logLevel: 'debug' | 'info' | 'warn' | 'error'
+  // CheerpX-specific properties
+  diskImage?: string
+  memorySize?: number // MB
+  persistent?: boolean
+  
+  // General WebVM properties
+  maxMemory?: number // MB
+  maxDisk?: number // MB
+  maxRuntimes?: number
+  defaultTimeout?: number // ms
+  enableSnapshots?: boolean
+  logLevel?: 'debug' | 'info' | 'warn' | 'error'
 }
 
 export interface ProviderConfig {
