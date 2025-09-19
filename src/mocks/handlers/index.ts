@@ -13,7 +13,7 @@ import { debugHandlers } from './debug'
 import { healthHandlers } from './health'
 import { storageHandlers } from './storage'
 import { vfsDirectHandlers } from './vfs-direct'
-import { appHandlers } from './app'
+import { applicationServerHandlers } from '../application-server/webvm-handlers'
 import { functionsHandlers } from './functions'
 import { corsAndCatchAllHandler } from './shared/cors'
 
@@ -26,7 +26,7 @@ import { corsAndCatchAllHandler } from './shared/cors'
  * 5. Health handlers
  * 6. Storage handlers (bucket management and object operations)
  * 7. VFS direct handlers (direct file access)
- * 8. App hosting handlers (SPA serving)
+ * 8. Application server handlers (WebVM routing)
  * 9. Edge Functions handlers
  * 10. CORS and catch-all handler (must be last)
  */
@@ -52,8 +52,8 @@ export const handlers = [
   // ==== VFS DIRECT FILE ACCESS HANDLERS ====
   ...vfsDirectHandlers,
   
-  // ==== APP HOSTING HANDLERS ====
-  ...appHandlers,
+  // ==== APPLICATION SERVER HANDLERS ====
+  ...applicationServerHandlers,
   
   // ==== EDGE FUNCTIONS HANDLERS ====
   ...functionsHandlers,

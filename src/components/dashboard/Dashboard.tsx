@@ -381,7 +381,7 @@ export function Dashboard({ onPageChange }: DashboardProps) {
             <div className="space-y-2">
               <h4 className="text-sm font-medium">🚀 Available Features</h4>
               <p className="text-xs text-muted-foreground">
-                Auth, Storage, Edge Functions, and App Hosting are ready to use
+                Auth, Storage, Edge Functions, and the Application Server are ready to use
               </p>
             </div>
           </CardContent>

@@ -6,7 +6,7 @@ import { DatabaseWorking as Database } from '@/components/database/DatabaseWorki
 import { APITester } from '@/components/api-test/APITester';
 import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
 import { Storage } from '@/components/storage/Storage';
-import { AppHosting } from '@/components/app-hosting/AppHosting';
+import { ApplicationServer } from '@/components/application-server';
 import { EdgeFunctions } from '@/pages/EdgeFunctions';
 import APIDocs from '@/pages/APIDocs';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -182,7 +182,7 @@ function App() {
       case 'app-hosting':
         return (
           <ErrorBoundary>
-            <AppHosting />
+            <ApplicationServer />
           </ErrorBoundary>
         );
       case 'edge-functions':

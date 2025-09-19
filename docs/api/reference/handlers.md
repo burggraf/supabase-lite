@@ -500,7 +500,7 @@ GET /rest/v1/users?order=name.asc.nullsfirst
 **Pattern**: `GET /functions/v1`  
 **Pattern**: `POST /functions/v1/:functionName/deploy`
 
-## App Hosting Handlers
+## Application Server Handlers
 
 ### App Deployment
 **Pattern**: `POST /app/deploy`  

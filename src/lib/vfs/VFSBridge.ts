@@ -815,11 +815,11 @@ export class VFSBridge {
       if (apps.length === 0) {
         return new Response(
           `<html>
-            <head><title>Supabase Lite - App Hosting</title></head>
+            <head><title>Supabase Lite - Application Server</title></head>
             <body style="font-family: system-ui; padding: 2rem; max-width: 600px; margin: 0 auto;">
-              <h1>📱 App Hosting</h1>
+              <h1>🖥️ Application Server</h1>
               <p>No applications are currently deployed.</p>
-              <p>Deploy your static web applications through the Supabase Lite dashboard.</p>
+              <p>Install runtimes and deploy applications through the Application Server dashboard.</p>
               <a href="/" style="color: #3b82f6;">← Back to Dashboard</a>
             </body>
           </html>`,

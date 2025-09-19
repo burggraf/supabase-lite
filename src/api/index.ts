@@ -14,7 +14,7 @@ import { authHandlers } from '../mocks/handlers/auth'
 import { projectsHandlers } from '../mocks/handlers/projects'
 import { storageHandlers } from '../mocks/handlers/storage'
 import { vfsDirectHandlers } from '../mocks/handlers/vfs-direct'
-import { appHandlers } from '../mocks/handlers/app'
+import { applicationServerHandlers } from '../mocks/application-server/webvm-handlers'
 import { functionsHandlers } from '../mocks/handlers/functions'
 import { corsAndCatchAllHandler } from '../mocks/handlers/shared/cors'
 
@@ -30,7 +30,7 @@ import { corsAndCatchAllHandler } from '../mocks/handlers/shared/cors'
  * 🚧 Functions handlers - still in mocks/handlers/functions
  * 🚧 Projects handlers - still in mocks/handlers/projects
  * 🚧 VFS/Files handlers - still in mocks/handlers/vfs-direct
- * 🚧 App hosting handlers - still in mocks/handlers/app
+ * 🚧 Application Server handlers - still in mocks/application-server/webvm-handlers
  */
 export const handlers = [
   // ==== MIGRATED TO PHASE 2 STRUCTURE ====
@@ -58,8 +58,8 @@ export const handlers = [
   // VFS direct handlers (direct file access)
   ...vfsDirectHandlers,
 
-  // App hosting handlers (SPA serving)
-  ...appHandlers,
+  // Application Server handlers
+  ...applicationServerHandlers,
 
   // Edge Functions handlers
   ...functionsHandlers,

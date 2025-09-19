@@ -97,7 +97,7 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
     },
     {
       id: 'app-hosting',
-      label: 'App Hosting',
+      label: 'Application Server',
       icon: 'Globe' as keyof typeof iconMap,
       badge: null,
     },

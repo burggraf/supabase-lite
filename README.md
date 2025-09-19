@@ -43,12 +43,12 @@ A browser-based implementation of the Supabase stack using PGlite as the core Po
 - **Deployment System**: Environment variables, versioning, and rollback capabilities
 - **Developer Tools**: Real-time console logs, performance metrics, and debugging tools
 
-**🚀 App Hosting**
+**🚀 Application Server (MVP)**
 
-- **Static Deployment**: Deploy and serve static web applications with proper MIME type handling
-- **Drag & Drop**: Simple folder upload for instant app deployment
-- **Version Management**: App versioning with rollback capabilities
-- **Domain Routing**: Serve apps on custom paths with proper routing
+- **WebVM Powered**: Lazy-loads an in-browser Linux VM to run server runtimes completely offline
+- **Runtime Manager**: Install and remove nginx + Node.js bundles from an additive runtime catalog
+- **State Persistence**: Persists VM state and runtime metadata with IndexedDB to survive reloads
+- **Proxy Ready**: MSW handler stubbed to proxy `/app/*` requests into WebVM applications as networking lands
 
 **🧪 API Testing**
 

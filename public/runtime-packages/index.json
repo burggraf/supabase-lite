@@ -1,0 +1,43 @@
+{
+  "version": "2025.03.05",
+  "generatedAt": "2025-03-05T00:00:00.000Z",
+  "packages": [
+    {
+      "id": "nginx",
+      "name": "nginx 1.24",
+      "description": "Web server runtime used to proxy requests into application runtimes.",
+      "category": "web-server",
+      "version": "1.24.0",
+      "size": 25,
+      "extractedSize": 80,
+      "dependencies": [],
+      "conflicts": [],
+      "sourceUrl": "/runtime-packages/nginx/nginx-runtime.tar",
+      "documentationUrl": "https://nginx.org/en/docs/",
+      "serviceUnits": [
+        {
+          "name": "nginx.service",
+          "enable": true,
+          "start": true
+        }
+      ]
+    },
+    {
+      "id": "nodejs",
+      "name": "Node.js 20 LTS",
+      "description": "Primary JavaScript runtime for server-side applications.",
+      "category": "runtime",
+      "version": "20.12.2",
+      "size": 90,
+      "extractedSize": 220,
+      "dependencies": ["nginx"],
+      "conflicts": [],
+      "sourceUrl": "/runtime-packages/nodejs/nodejs-runtime.tar",
+      "documentationUrl": "https://nodejs.org/docs/latest-v20.x/api/",
+      "postInstallCommands": [
+        "npm config set prefix /opt/supabase/runtimes/nodejs",
+        "echo \"Node.js runtime ready\""
+      ]
+    }
+  ]
+}

@@ -65,7 +65,7 @@ export const NAVIGATION_ITEMS = [
   },
   {
     id: 'app-hosting',
-    label: 'App Hosting',
+    label: 'Application Server',
     icon: 'Globe',
     path: '/app-hosting',
     disabled: false,
