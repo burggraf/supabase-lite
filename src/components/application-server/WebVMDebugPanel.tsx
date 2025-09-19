@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { WebVMTerminal } from './WebVMTerminal';
 // Dynamic imports for xterm.js to handle loading errors gracefully
 // import { Terminal } from '@xterm/xterm';
 // import { FitAddon } from '@xterm/addon-fit';
@@ -612,9 +613,10 @@ export function WebVMDebugPanel() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="state" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="state">System State</TabsTrigger>
               <TabsTrigger value="runtimes">Active Runtimes</TabsTrigger>
+              <TabsTrigger value="terminal">Terminal</TabsTrigger>
               <TabsTrigger value="console">Console</TabsTrigger>
               <TabsTrigger value="logs">Debug Logs</TabsTrigger>
             </TabsList>
@@ -701,6 +703,10 @@ export function WebVMDebugPanel() {
                   No active runtimes detected
                 </div>
               )}
+            </TabsContent>
+            
+            <TabsContent value="terminal" className="space-y-4">
+              <WebVMTerminal />
             </TabsContent>
             
             <TabsContent value="console" className="space-y-4">

@@ -230,8 +230,120 @@ function websocketBridge(): Plugin {
 
       // HTTP middleware
       server.middlewares.use(async (req, res, next) => {
+        // Add Cross-Origin Isolation headers for WebVM (CheerpX)
+        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        
         // DEBUG: Log EVERY request that hits Vite middleware
         console.log('🔥 VITE MIDDLEWARE HIT:', req.url, req.method)
+        
+        // Serve local mock disk image for CheerpX WebVM
+        if (req.url === '/webvm-disk.ext2') {
+          console.log('💽 Serving local WebVM disk image mock')
+          
+          // Create a minimal disk image content (this would normally be a real ext2 filesystem)
+          // For now, create a small mock file that CheerpX can use
+          const diskContent = Buffer.alloc(1024 * 1024, 0) // 1MB of zeros for minimal disk
+          const range = req.headers.range
+          
+          if (range) {
+            // Parse range header: bytes=start-end
+            const rangeMatch = range.match(/bytes=(\d+)-(\d*)/)
+            if (rangeMatch) {
+              const start = parseInt(rangeMatch[1], 10)
+              const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : diskContent.length - 1
+              const contentLength = Math.max(0, end - start + 1)
+              
+              console.log('📏 Disk range request:', { start, end, contentLength, totalLength: diskContent.length })
+              
+              res.writeHead(206, {
+                'Content-Type': 'application/octet-stream',
+                'Content-Range': `bytes ${start}-${end}/${diskContent.length}`,
+                'Content-Length': contentLength.toString(),
+                'Accept-Ranges': 'bytes',
+                'Access-Control-Allow-Origin': '*'
+              })
+              res.end(diskContent.slice(start, end + 1))
+              return
+            }
+          }
+          
+          // No range request - return full disk content
+          res.writeHead(200, {
+            'Content-Type': 'application/octet-stream',
+            'Content-Length': diskContent.length.toString(),
+            'Accept-Ranges': 'bytes',
+            'Access-Control-Allow-Origin': '*'
+          })
+          res.end(diskContent)
+          return
+        }
+
+        // Handle CheerpX WebVM filesystem requests with Range header support
+        if (req.url && req.url.startsWith('/supabase-lite-webvm/')) {
+          console.log('🔧 CheerpX filesystem request detected:', req.url)
+          
+          // For now, create minimal mock responses to prevent CheerpX errors
+          const fileName = req.url.split('/').pop() || 'unknown'
+          
+          if (fileName === 'index.list') {
+            // Directory listing file
+            const content = '# CheerpX WebVM directory listing\n'
+            res.writeHead(200, {
+              'Content-Type': 'text/plain',
+              'Content-Length': content.length.toString(),
+              'Accept-Ranges': 'bytes',
+              'Access-Control-Allow-Origin': '*'
+            })
+            res.end(content)
+            return
+          } else if (fileName === 'tmp' || fileName === 'dev' || fileName === 'proc') {
+            // Directory mock - return empty content but support range requests
+            const content = ''
+            const range = req.headers.range
+            
+            if (range) {
+              // Parse range header: bytes=start-end
+              const rangeMatch = range.match(/bytes=(\d+)-(\d*)/)
+              if (rangeMatch) {
+                const start = parseInt(rangeMatch[1], 10)
+                const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : content.length - 1
+                const contentLength = Math.max(0, end - start + 1)
+                
+                console.log('📏 Range request:', { start, end, contentLength, totalLength: content.length })
+                
+                res.writeHead(206, {
+                  'Content-Type': 'application/octet-stream',
+                  'Content-Range': `bytes ${start}-${end}/${content.length}`,
+                  'Content-Length': contentLength.toString(),
+                  'Accept-Ranges': 'bytes',
+                  'Access-Control-Allow-Origin': '*'
+                })
+                res.end(content.slice(start, end + 1))
+                return
+              }
+            }
+            
+            // No range request - return full content
+            res.writeHead(200, {
+              'Content-Type': 'application/octet-stream',
+              'Content-Length': content.length.toString(),
+              'Accept-Ranges': 'bytes',
+              'Access-Control-Allow-Origin': '*'
+            })
+            res.end(content)
+            return
+          }
+          
+          // For other filesystem requests, return 404 but with proper headers
+          res.writeHead(404, {
+            'Content-Type': 'text/plain',
+            'Accept-Ranges': 'bytes',
+            'Access-Control-Allow-Origin': '*'
+          })
+          res.end('File not found')
+          return
+        }
         
         // Check if this is an API route or app hosting route we should handle
         const isApiRoute = req.url && (

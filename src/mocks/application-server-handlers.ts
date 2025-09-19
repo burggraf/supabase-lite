@@ -53,30 +53,25 @@ export const applicationServerHandlers = [
         updatedAt: new Date().toISOString()
       };
 
-      // Process uploaded files and store them in VFS
+      // Process uploaded files and deploy them to WebVM
       if (body.metadata && body.metadata.files && body.metadata.files.length > 0) {
-        const { vfsManager } = await import('../lib/vfs/VFSManager');
-        const projectId = 'default'; // Use default project for Application Server
-        await vfsManager.initialize(projectId);
+        Logger.info('Processing uploaded files for WebVM deployment', { fileCount: body.metadata.files.length });
         
-        Logger.info('Processing uploaded files', { fileCount: body.metadata.files.length });
-        
-        for (const fileData of body.metadata.files) {
-          const filePath = `app-hosting/${application.id}/${fileData.name}`;
-          const mimeType = getContentType(fileData.name);
+        try {
+          const { WebVMBridge } = await import('../lib/webvm/WebVMBridge');
+          const bridge = WebVMBridge.getInstance();
+          await bridge.initialize(); // Initialize REAL WebVM
           
-          await vfsManager.createFile(filePath, {
-            content: fileData.content,
-            mimeType,
-            metadata: {
-              originalName: fileData.name,
-              size: fileData.size,
-              uploadedAt: new Date().toISOString(),
-              applicationId: application.id
-            }
+          // Deploy files to WebVM filesystem
+          await bridge.deployApplication(application.id, body.metadata.files, application.runtimeId);
+          
+          Logger.info('Files deployed to WebVM successfully', { 
+            appId: application.id, 
+            fileCount: body.metadata.files.length 
           });
-          
-          Logger.info('File stored in VFS', { filePath, mimeType, size: fileData.size });
+        } catch (deployError) {
+          Logger.error('Failed to deploy files to WebVM', deployError as Error, { appId: application.id });
+          throw new Error('Failed to deploy application files to WebVM');
         }
       }
 
@@ -86,8 +81,14 @@ export const applicationServerHandlers = [
       return HttpResponse.json(application, { status: 201 });
     } catch (error) {
       Logger.error('Error creating application', error as Error);
+      console.error('🚨 Application creation error:', error);
+      console.error('🚨 Error stack:', (error as Error).stack);
       return HttpResponse.json(
-        { error: 'Failed to create application' },
+        { 
+          error: 'Failed to create application',
+          details: (error as Error).message,
+          stack: (error as Error).stack
+        },
         { status: 500 }
       );
     }
@@ -152,27 +153,10 @@ export const applicationServerHandlers = [
         }
       }
 
-      // Delete application files from VFS if they exist
-      try {
-        const { vfsManager } = await import('../lib/vfs/VFSManager');
-        await vfsManager.initialize('default');
-        
-        // Try to delete application folder
-        const appFolderPath = `app-hosting/${appId}`;
-        const files = await vfsManager.listFiles(appFolderPath);
-        
-        for (const file of files) {
-          try {
-            await vfsManager.deleteFile(`${appFolderPath}/${file.name}`);
-          } catch (fileError) {
-            Logger.warn('Failed to delete application file', { error: fileError, file: file.name });
-          }
-        }
-        
-        Logger.info('Deleted application files', { appId, fileCount: files.length });
-      } catch (vfsError) {
-        Logger.warn('Failed to clean up application files', { error: vfsError, appId });
-      }
+      // Note: Application files are stored in WebVM filesystem and are automatically 
+      // cleaned up when the WebVM application is stopped and the runtime is shutdown.
+      // No manual file cleanup needed as WebVM manages its own filesystem lifecycle.
+      Logger.info('Application files cleanup handled by WebVM filesystem lifecycle', { appId });
 
       // Remove from persistence
       await applicationPersistence.deleteApplication(appId);
@@ -202,77 +186,40 @@ export const applicationServerHandlers = [
         );
       }
       
-      // Start REAL WebVM runtime for this application
-      const { WebVMManager } = await import('../lib/webvm/WebVMManager');
-      const webvm = WebVMManager.getInstance({
-        type: 'cheerpx',
-        webvm: {
-          memorySize: 256,
-          persistent: true,
-          diskImage: 'https://disks.webvm.io/debian_small_20230522_0234.ext2',
-          logLevel: 'debug'
-        }
+      // Start application using WebVM Bridge
+      const { WebVMBridge } = await import('../lib/webvm/WebVMBridge');
+      const bridge = WebVMBridge.getInstance();
+
+      Logger.info('Starting application in WebVM', { 
+        appId, 
+        runtimeId: application.runtimeId 
       });
 
-      // Ensure WebVM is initialized
-      if (!webvm.getSystemMetrics().webvm.initialized) {
-        await webvm.initialize();
-      }
+      // Start the application in WebVM
+      const webvmApp = await bridge.startApplication(appId, application.runtimeId);
 
-      // Handle different runtime types
-      if (application.runtimeId === 'static') {
-        // Static applications don't need a runtime - just mark as running
-        Logger.info('Starting static application (no runtime required)', { 
-          appId, 
-          runtimeId: application.runtimeId 
-        });
-        
-        application.status = 'RUNNING';
-        application.updatedAt = new Date().toISOString();
-        application.metadata = {
-          ...application.metadata,
-          staticApp: true,
-          realWebVM: false // Static apps don't use WebVM
-        };
-        await applicationPersistence.saveApplication(application);
-        
-        Logger.info('Static application started successfully', { appId });
-      } else {
-        // For non-static applications, start the appropriate runtime
-        const runtimeType = application.runtimeId.includes('nodejs') ? 'node' : 'python';
-        const runtimeVersion = application.runtimeId.includes('20') ? '20' : '18';
-        
-        Logger.info('Starting REAL WebVM runtime for application', { 
-          appId, 
-          runtimeType, 
-          runtimeVersion,
-          runtimeId: application.runtimeId 
-        });
-
-        const runtimeInstance = await webvm.startRuntime(runtimeType, runtimeVersion, {
-          appId: application.id,
-          name: application.name,
-          environment: {},
-          port: 3000,
-          autoRestart: true
-        });
-
-        Logger.info('REAL WebVM runtime started successfully', { 
-          appId, 
-          instanceId: runtimeInstance.id,
-          status: runtimeInstance.status 
-        });
-        
-        application.status = 'RUNNING';
-        application.updatedAt = new Date().toISOString();
-        // Store runtime instance ID in application metadata
-        application.metadata = {
-          ...application.metadata,
-          runtimeInstanceId: runtimeInstance.id,
-          realWebVM: true
-        };
-        await applicationPersistence.saveApplication(application);
-      }
+      Logger.info('Application started successfully in WebVM', { 
+        appId, 
+        status: webvmApp.status,
+        port: webvmApp.port,
+        pid: webvmApp.pid
+      });
+      
+      application.status = 'RUNNING';
+      application.updatedAt = new Date().toISOString();
+      // Store WebVM application info in metadata
+      application.metadata = {
+        ...application.metadata,
+        webvmApp: {
+          id: webvmApp.id,
+          status: webvmApp.status,
+          port: webvmApp.port,
+          pid: webvmApp.pid,
+          runtimeId: webvmApp.runtimeId
+        },
+        realWebVM: true
+      };
+      await applicationPersistence.saveApplication(application);
       
       Logger.info('Application started successfully', { 
         appId,
@@ -302,42 +249,30 @@ export const applicationServerHandlers = [
         );
       }
       
-      // Stop REAL WebVM runtime if it exists
-      if (application.metadata?.runtimeInstanceId) {
-        const { WebVMManager } = await import('../lib/webvm/WebVMManager');
-        const webvm = WebVMManager.getInstance({
-          type: 'cheerpx',
-          webvm: {
-            memoryMB: 256,
-            diskSizeMB: 512,
-            networkingEnabled: true,
-            debugMode: true,
-            linuxDistribution: 'debian'
-          }
-        });
+      // Stop application in WebVM
+      if (application.metadata?.webvmApp) {
+        const { WebVMBridge } = await import('../lib/webvm/WebVMBridge');
+        const bridge = WebVMBridge.getInstance();
 
-        Logger.info('Stopping REAL WebVM runtime for application', { 
+        Logger.info('Stopping application in WebVM', { 
           appId, 
-          runtimeInstanceId: application.metadata.runtimeInstanceId 
+          webvmAppId: application.metadata.webvmApp.id,
+          pid: application.metadata.webvmApp.pid
         });
 
         try {
-          await webvm.stopRuntime(application.metadata.runtimeInstanceId);
-          Logger.info('REAL WebVM runtime stopped successfully', { 
-            appId, 
-            runtimeInstanceId: application.metadata.runtimeInstanceId 
-          });
+          await bridge.stopApplication(appId);
+          Logger.info('WebVM application stopped successfully', { appId });
           
-          // Clear runtime instance ID from metadata
+          // Clear WebVM application info from metadata
           application.metadata = {
             ...application.metadata,
-            runtimeInstanceId: undefined,
+            webvmApp: undefined,
             realWebVM: false
           };
         } catch (runtimeError) {
-          Logger.warn('Failed to stop WebVM runtime, but continuing with app stop', { 
-            appId, 
-            runtimeInstanceId: application.metadata.runtimeInstanceId,
+          Logger.warn('Failed to stop WebVM application, but continuing with app stop', { 
+            appId,
             error: runtimeError 
           });
         }
@@ -373,224 +308,131 @@ export const applicationServerHandlers = [
       }
 
       // Check if application has a REAL WebVM runtime running
-      if (application.status === 'RUNNING' && application.metadata?.runtimeInstanceId && application.metadata?.realWebVM) {
-        Logger.info('REAL WebVM: Proxying HTTP request to runtime instance', { 
+      if (application.status === 'RUNNING' && application.metadata?.webvmApp && application.metadata?.realWebVM) {
+        Logger.info('REAL WebVM: Proxying HTTP request to WebVM application', { 
           appId, 
-          runtimeInstanceId: application.metadata.runtimeInstanceId 
+          webvmApp: application.metadata.webvmApp
         });
 
         try {
-          const { WebVMManager } = await import('../lib/webvm/WebVMManager');
-          const webvm = WebVMManager.getInstance({
-            type: 'cheerpx',
-            webvm: {
-              memoryMB: 256,
-              diskSizeMB: 512,
-              networkingEnabled: true,
-              debugMode: true,
-              linuxDistribution: 'debian'
-            }
-          });
+          const { WebVMBridge } = await import('../lib/webvm/WebVMBridge');
+          const bridge = WebVMBridge.getInstance();
 
-          // Proxy the HTTP request to the WebVM runtime
-          const response = await webvm.proxyHTTPRequest(application.metadata.runtimeInstanceId, request);
+          // Convert MSW request to WebVM format
+          const webvmRequest = {
+            method: request.method,
+            url: new URL(request.url).pathname,
+            headers: Object.fromEntries(request.headers.entries()),
+            body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.text() : undefined
+          };
+
+          // Proxy the HTTP request to the WebVM application
+          const webvmResponse = await bridge.proxyHTTPRequest(appId, webvmRequest);
           
-          Logger.info('REAL WebVM: HTTP request proxied successfully', { 
+          Logger.info('WebVM HTTP request proxied successfully', { 
             appId, 
-            runtimeInstanceId: application.metadata.runtimeInstanceId,
-            status: response.status 
+            method: webvmRequest.method,
+            url: webvmRequest.url,
+            status: webvmResponse.status 
           });
           
-          return response;
+          return new HttpResponse(webvmResponse.body, {
+            status: webvmResponse.status,
+            statusText: webvmResponse.statusText,
+            headers: webvmResponse.headers
+          });
         } catch (proxyError) {
-          Logger.error('REAL WebVM: HTTP proxy failed, falling back to static content', { 
+          Logger.error('WebVM HTTP proxy failed', { 
             appId, 
-            runtimeInstanceId: application.metadata.runtimeInstanceId,
             error: proxyError 
           });
-          // Fall through to static content serving
+          throw proxyError;
         }
       }
 
-      // For non-running apps or static apps, serve from VFS
-      const { vfsManager } = await import('../lib/vfs/VFSManager');
-      const projectId = projectInfo?.projectId || 'default';
-      await vfsManager.initialize(projectId);
-      
-      const filePath = `app-hosting/${appId}/index.html`;
-      Logger.info('Looking for static file in VFS', { filePath });
-      
-      const file = await vfsManager.readFile(filePath);
-      if (file && file.content) {
-        Logger.info('Serving static file from VFS', { filePath, contentType: file.mimeType });
-        return new HttpResponse(file.content, {
-          status: 200,
-          headers: {
-            'Content-Type': file.mimeType || 'text/html'
-          }
+      // Application exists but is not running - start it or return error
+      if (application.status !== 'RUNNING') {
+        Logger.warn('Application not running, cannot serve', { appId, status: application.status });
+        return new HttpResponse(`Application "${application.name}" is not running (status: ${application.status})`, { 
+          status: 503,
+          headers: { 'Content-Type': 'text/plain' }
         });
       }
-      
-      // Fallback to demo content with WebVM status
-      Logger.info('No VFS file found, serving demo content with WebVM status');
-      const webvmStatus = application.metadata?.realWebVM ? 'REAL WebVM' : 'Static Files';
-      const runtimeInfo = application.metadata?.runtimeInstanceId 
-        ? `Runtime ID: ${application.metadata.runtimeInstanceId}` 
-        : 'No runtime instance';
 
-      return new HttpResponse(
-        `<!DOCTYPE html>
-<html>
-<head>
-    <title>${application.name} - Supabase Lite Application Server</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            max-width: 600px; 
-            margin: 50px auto; 
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .container {
-            background: rgba(255,255,255,0.1);
-            padding: 30px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
-        }
-        h1 { color: #fff; text-align: center; }
-        p { line-height: 1.6; }
-        .status { 
-            background: rgba(0,255,0,0.2); 
-            padding: 10px; 
-            border-radius: 5px; 
-            margin: 10px 0;
-        }
-        .webvm-status {
-            background: rgba(255,165,0,0.3);
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>${application.name}</h1>
-        <p><strong>Description:</strong> ${application.description}</p>
-        <p><strong>Runtime:</strong> ${application.runtimeId}</p>
-        <div class="status">
-            <strong>Status:</strong> ${application.status}
-        </div>
-        <div class="webvm-status">
-            <strong>WebVM Type:</strong> ${webvmStatus}<br>
-            <strong>Runtime Info:</strong> ${runtimeInfo}
-        </div>
-        <p><strong>Created:</strong> ${new Date(application.createdAt).toLocaleString()}</p>
-        <p><em>This is the demo app placeholder. ${application.status === 'RUNNING' && application.metadata?.realWebVM ? 'WebVM runtime is active but serving demo content.' : 'Upload files or start the application to see your content.'}</em></p>
-    </div>
-</body>
-</html>`,
-        {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/html'
-          }
-        }
-      );
+      // Application should be running but no WebVM integration
+      Logger.error('Application marked as running but no WebVM runtime found', { appId });
+      return new HttpResponse('Application runtime not available', { status: 502 });
     } catch (error) {
       Logger.error('Error serving application via REAL WebVM', error as Error, { appId: params.appId });
       return new HttpResponse('Internal Server Error', { status: 500 });
     }
   })),
 
-  // Get available runtimes
+  // Get available runtimes - REAL WebVM runtime list
   http.get('/api/runtimes', async () => {
-    const runtimes = [
-      {
-        id: 'static',
-        name: 'Static Files',
-        type: 'static',
-        version: '1.0.0',
-        status: 'installed',
-        installedAt: new Date('2024-01-01').toISOString(),
-        config: {
-          defaultPort: 8080,
-          supportedExtensions: ['html', 'css', 'js', 'json', 'png', 'jpg', 'gif', 'svg'],
-          buildRequired: false,
-          startupTimeout: 1000,
-          resourceLimits: {
-            memory: 256,
-            cpu: 0.5
-          }
+    try {
+      const { WebVMBridge } = await import('../lib/webvm/WebVMBridge');
+      const bridge = WebVMBridge.getInstance();
+      
+      // Get installed runtimes from WebVM
+      const runtimes = await bridge.getRuntimes();
+      
+      Logger.info('Retrieved runtimes from WebVM', { runtimeCount: runtimes.length });
+      return HttpResponse.json({ runtimes });
+    } catch (error) {
+      Logger.error('Failed to get runtimes from WebVM', error as Error);
+      
+      // Fallback to default runtimes list if WebVM not available
+      const fallbackRuntimes = [
+        {
+          id: 'static',
+          name: 'Static Files',
+          type: 'static',
+          version: '1.0.0',
+          status: 'installed',
+          installedAt: new Date('2024-01-01').toISOString()
+        },
+        {
+          id: 'nodejs-20',
+          name: 'Node.js 20.x',
+          type: 'nodejs',
+          version: '20.10.0',
+          status: 'available'
         }
-      },
-      {
-        id: 'nodejs-20',
-        name: 'Node.js 20.x',
-        type: 'nodejs',
-        version: '20.10.0',
-        status: 'available',
-        config: {
-          defaultPort: 3000,
-          supportedExtensions: ['js', 'ts', 'json'],
-          buildRequired: true,
-          startupTimeout: 5000,
-          resourceLimits: {
-            memory: 512,
-            cpu: 1.0
-          }
-        }
-      },
-      {
-        id: 'nextjs-15',
-        name: 'Next.js 15',
-        type: 'nextjs',
-        version: '15.0.0',
-        status: 'available',
-        config: {
-          defaultPort: 3000,
-          supportedExtensions: ['js', 'jsx', 'ts', 'tsx'],
-          buildRequired: true,
-          startupTimeout: 10000,
-          resourceLimits: {
-            memory: 1024,
-            cpu: 1.5
-          }
-        }
-      }
-    ];
-    
-    Logger.info('GET /api/runtimes called', { runtimeCount: runtimes.length });
-    return HttpResponse.json({ runtimes });
+      ];
+      
+      Logger.info('Using fallback runtimes list', { runtimeCount: fallbackRuntimes.length });
+      return HttpResponse.json({ runtimes: fallbackRuntimes });
+    }
   }),
 
-  // Install runtime endpoint
+  // Install runtime endpoint - REAL WebVM runtime installation
   http.post('/api/runtimes/:runtimeId/install', async ({ params }) => {
     const runtimeId = params.runtimeId as string;
-    Logger.info('POST /api/runtimes/:runtimeId/install called', { runtimeId });
+    Logger.info('Installing runtime in WebVM', { runtimeId });
     
-    // Simulate runtime installation
-    const runtime = {
-      id: runtimeId,
-      name: `Runtime ${runtimeId}`,
-      type: runtimeId.includes('nodejs') ? 'nodejs' : runtimeId.includes('nextjs') ? 'nextjs' : 'static',
-      version: '1.0.0',
-      status: 'installed',
-      installedAt: new Date().toISOString(),
-      config: {
-        defaultPort: 3000,
-        supportedExtensions: ['js', 'json'],
-        buildRequired: true,
-        startupTimeout: 5000,
-        resourceLimits: {
-          memory: 512,
-          cpu: 1.0
-        }
-      }
-    };
-    
-    return HttpResponse.json(runtime);
+    try {
+      // Install runtime using WebVM Bridge
+      const { WebVMBridge } = await import('../lib/webvm/WebVMBridge');
+      const bridge = WebVMBridge.getInstance();
+      
+      const runtime = await bridge.installRuntime(runtimeId);
+      
+      Logger.info('Runtime installed successfully in WebVM', { 
+        runtimeId, 
+        status: runtime.status,
+        type: runtime.type,
+        version: runtime.version
+      });
+      
+      return HttpResponse.json(runtime);
+    } catch (error) {
+      Logger.error('Failed to install runtime in WebVM', error as Error);
+      return HttpResponse.json(
+        { error: `Failed to install runtime: ${(error as Error).message}` },
+        { status: 500 }
+      );
+    }
   }),
 
   // WebVM API endpoint as per contract - Get WebVM instance status
@@ -867,6 +709,86 @@ export const applicationServerHandlers = [
       return HttpResponse.json({
         status: 'error',
         error: (error as Error).message,
+        timestamp: new Date().toISOString()
+      }, { status: 500 });
+    }
+  }),
+
+  // WebVM status endpoint - v1 API compatibility
+  http.get('/api/v1/application-server/webvm/status', async () => {
+    try {
+      const { WebVMManager } = await import('../lib/webvm/WebVMManager');
+      
+      // Initialize WebVM with real CheerpX configuration
+      const webvm = WebVMManager.getInstance({
+        type: 'cheerpx',
+        webvm: {
+          memorySize: 256,
+          persistent: true,
+          diskImage: 'https://disks.webvm.io/debian_small_20230522_0234.ext2',
+          logLevel: 'debug' as const
+        }
+      });
+
+      // Initialize if not already done
+      if (!(webvm as any).initialized) {
+        await webvm.initialize();
+      }
+
+      let status;
+      try {
+        status = await webvm.getSystemStatus();
+        Logger.info('WebVM v1 status retrieved successfully', { status });
+      } catch (statusError) {
+        Logger.warn('Failed to get WebVM v1 status, returning metrics-based status', { error: statusError });
+        // Return basic status based on metrics
+        const metrics = webvm.getSystemMetrics();
+        status = {
+          initialized: metrics.webvm.initialized,
+          providerType: metrics.webvm.providerType,
+          runtimeCount: metrics.webvm.runtimeCount,
+          stats: null
+        };
+      }
+
+      return HttpResponse.json({
+        id: 'default-webvm-instance',
+        status: status.initialized ? 'ready' : 'initializing', // WebVMStatus values
+        runtimeIds: [],
+        lastSnapshot: new Date().toISOString(),
+        memoryUsage: status.stats?.memoryUsage || 0,
+        createdAt: new Date().toISOString(),
+        config: {
+          memorySize: 256,
+          persistent: true,
+          diskImage: 'https://disks.webvm.io/debian_small_20230522_0234.ext2',
+          logLevel: 'debug'
+        },
+        provider: 'cheerpx-real',
+        providerType: status.providerType,
+        initialized: status.initialized,
+        runtimeCount: status.runtimeCount,
+        stats: status.stats || {
+          memoryUsage: 256,
+          diskUsage: 0,
+          uptime: Date.now(),
+          processCount: 0,
+          networkConnections: 0,
+          provider: 'cheerpx-real',
+          version: '1.1.7'
+        },
+        metrics: webvm.getSystemMetrics(),
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      Logger.error('Failed to get WebVM v1 status', error as Error);
+      console.error('WebVM v1 status error:', error); // Extra console log
+      return HttpResponse.json({
+        id: 'default-webvm-instance',
+        status: 'error' as const, // WebVMStatus.ERROR
+        error: (error as Error).message,
+        provider: 'cheerpx-real',
+        initialized: false,
         timestamp: new Date().toISOString()
       }, { status: 500 });
     }

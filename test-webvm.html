@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Real WebVM Iframe</title>
+</head>
+<body>
+    <h1>Testing Real WebVM Integration</h1>
+    <button onclick="testWebVM()">Create Real WebVM Iframe</button>
+    <div id="output"></div>
+    
+    <script>
+        async function testWebVM() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>🚀 Starting WebVM Bridge test...</p>';
+            
+            try {
+                // Import the WebVM Bridge module
+                const { WebVMBridge } = await import('./src/lib/webvm/WebVMBridge.ts');
+                
+                output.innerHTML += '<p>✅ WebVMBridge imported successfully</p>';
+                
+                // Get bridge instance and initialize
+                const bridge = WebVMBridge.getInstance();
+                output.innerHTML += '<p>🔥 Initializing REAL WebVM Bridge...</p>';
+                
+                await bridge.initialize();
+                output.innerHTML += '<p>✅ WebVM Bridge initialized!</p>';
+                
+                // Check if iframe was created
+                const iframe = document.getElementById('webvm-instance');
+                if (iframe) {
+                    output.innerHTML += '<p>✅ WebVM iframe found in DOM!</p>';
+                    output.innerHTML += `<p>📋 Iframe src: ${iframe.src.substring(0, 100)}...</p>`;
+                } else {
+                    output.innerHTML += '<p>❌ WebVM iframe not found in DOM</p>';
+                }
+                
+                // Test command execution
+                output.innerHTML += '<p>🔥 Testing command execution...</p>';
+                const result = await bridge.executeCommand('echo "Hello from WebVM"');
+                output.innerHTML += `<p>✅ Command result: ${result}</p>`;
+                
+            } catch (error) {
+                output.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+                console.error('WebVM test error:', error);
+            }
+        }
+        
+        // Add message listener to see WebVM iframe messages
+        window.addEventListener('message', (event) => {
+            console.log('📥 Received message:', event.data);
+            const output = document.getElementById('output');
+            if (event.data && event.data.type) {
+                output.innerHTML += `<p>📨 Message: ${event.data.type} - ${JSON.stringify(event.data)}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -52,48 +52,104 @@ class ApplicationPersistenceManager {
         return;
       }
 
-      const request = indexedDB.open(this.dbName, this.dbVersion);
-
-      request.onerror = () => {
-        Logger.error('Failed to open IndexedDB', request.error);
-        reject(new Error('Failed to initialize application persistence'));
-      };
-
-      request.onsuccess = () => {
-        this.db = request.result;
-        this.initialized = true;
-        Logger.info('Application persistence initialized with IndexedDB');
-        resolve();
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
+      try {
+        let request: IDBOpenDBRequest;
         
-        // Create object stores
-        if (!db.objectStoreNames.contains('applications')) {
-          const applicationsStore = db.createObjectStore('applications', { keyPath: 'id' });
-          applicationsStore.createIndex('status', 'status', { unique: false });
-          applicationsStore.createIndex('runtimeId', 'runtimeId', { unique: false });
+        try {
+          request = indexedDB.open(this.dbName, this.dbVersion);
+        } catch (openError) {
+          const errorMessage = openError.message || 'Unknown IndexedDB open error';
+          
+          if (errorMessage.includes('access to the Indexed Database API is denied') || 
+              errorMessage.includes('SecurityError') ||
+              openError.name === 'SecurityError') {
+            Logger.warn('⚠️ IndexedDB.open() blocked by browser security, using localStorage fallback', { 
+              error: errorMessage 
+            });
+            this.initialized = true;
+            resolve();
+            return;
+          }
+          
+          Logger.error('Failed to open IndexedDB during open call', openError);
+          reject(new Error('Failed to initialize application persistence'));
+          return;
         }
 
-        if (!db.objectStoreNames.contains('deployments')) {
-          const deploymentsStore = db.createObjectStore('deployments', { keyPath: 'id' });
-          deploymentsStore.createIndex('applicationId', 'applicationId', { unique: false });
-          deploymentsStore.createIndex('status', 'status', { unique: false });
-        }
+        request.onerror = () => {
+          const errorMessage = request.error?.message || 'Unknown IndexedDB error';
+          
+          if (errorMessage.includes('access to the Indexed Database API is denied') || 
+              errorMessage.includes('SecurityError')) {
+            Logger.warn('⚠️ IndexedDB access denied due to browser security restrictions, falling back to localStorage', { 
+              error: errorMessage 
+            });
+            this.initialized = true;
+            resolve();
+            return;
+          }
+          
+          Logger.error('Failed to open IndexedDB', request.error);
+          reject(new Error('Failed to initialize application persistence'));
+        };
 
-        if (!db.objectStoreNames.contains('runtimes')) {
-          const runtimesStore = db.createObjectStore('runtimes', { keyPath: 'id' });
-          runtimesStore.createIndex('type', 'type', { unique: false });
-          runtimesStore.createIndex('status', 'status', { unique: false });
-        }
+        request.onsuccess = () => {
+          this.db = request.result;
+          this.initialized = true;
+          Logger.info('Application persistence initialized with IndexedDB');
+          resolve();
+        };
 
-        if (!db.objectStoreNames.contains('webvm_state')) {
-          db.createObjectStore('webvm_state', { keyPath: 'key' });
-        }
+        request.onupgradeneeded = (event) => {
+          try {
+            const db = (event.target as IDBOpenDBRequest).result;
+            
+            // Create object stores
+            if (!db.objectStoreNames.contains('applications')) {
+              const applicationsStore = db.createObjectStore('applications', { keyPath: 'id' });
+              applicationsStore.createIndex('status', 'status', { unique: false });
+              applicationsStore.createIndex('runtimeId', 'runtimeId', { unique: false });
+            }
 
-        Logger.info('IndexedDB schema updated');
-      };
+            if (!db.objectStoreNames.contains('deployments')) {
+              const deploymentsStore = db.createObjectStore('deployments', { keyPath: 'id' });
+              deploymentsStore.createIndex('applicationId', 'applicationId', { unique: false });
+              deploymentsStore.createIndex('status', 'status', { unique: false });
+            }
+
+            if (!db.objectStoreNames.contains('runtimes')) {
+              const runtimesStore = db.createObjectStore('runtimes', { keyPath: 'id' });
+              runtimesStore.createIndex('type', 'type', { unique: false });
+              runtimesStore.createIndex('status', 'status', { unique: false });
+            }
+
+            if (!db.objectStoreNames.contains('webvm_state')) {
+              db.createObjectStore('webvm_state', { keyPath: 'key' });
+            }
+
+            Logger.info('IndexedDB schema updated');
+          } catch (schemaError) {
+            Logger.warn('⚠️ IndexedDB schema creation failed, will fallback to localStorage', { 
+              error: schemaError.message 
+            });
+          }
+        };
+      } catch (initError) {
+        const errorMessage = initError.message || 'Unknown initialization error';
+        
+        if (errorMessage.includes('access to the Indexed Database API is denied') || 
+            errorMessage.includes('SecurityError')) {
+          Logger.warn('⚠️ IndexedDB initialization blocked by browser security, using localStorage fallback', { 
+            error: errorMessage 
+          });
+          this.initialized = true;
+          resolve();
+          return;
+        }
+        
+        Logger.error('Failed to initialize IndexedDB', initError);
+        reject(new Error('Failed to initialize application persistence'));
+      }
     });
   }
 

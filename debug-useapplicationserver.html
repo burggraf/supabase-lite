@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug useApplicationServer Hook</title>
+</head>
+<body>
+    <h1>useApplicationServer Hook Debug</h1>
+    <div id="logs"></div>
+    
+    <script>
+        // Capture all console logs
+        const logDiv = document.getElementById('logs');
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        function addLog(type, ...args) {
+            const logEntry = document.createElement('div');
+            logEntry.style.margin = '2px 0';
+            logEntry.style.padding = '4px';
+            logEntry.style.fontFamily = 'monospace';
+            logEntry.style.fontSize = '12px';
+            
+            if (type === 'error') {
+                logEntry.style.backgroundColor = '#ffebee';
+                logEntry.style.color = '#c62828';
+            } else if (type === 'warn') {
+                logEntry.style.backgroundColor = '#fff3e0';
+                logEntry.style.color = '#ef6c00';
+            } else {
+                logEntry.style.backgroundColor = '#f1f8e9';
+                logEntry.style.color = '#2e7d32';
+            }
+            
+            logEntry.textContent = `[${type.toUpperCase()}] ${args.join(' ')}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = (...args) => {
+            originalLog(...args);
+            addLog('log', ...args);
+        };
+        
+        console.warn = (...args) => {
+            originalWarn(...args);
+            addLog('warn', ...args);
+        };
+        
+        console.error = (...args) => {
+            originalError(...args);
+            addLog('error', ...args);
+        };
+        
+        // Test the endpoints directly
+        async function testEndpoints() {
+            console.log('🔍 Testing individual endpoints...');
+            
+            try {
+                console.log('Testing health endpoint...');
+                const healthResponse = await fetch('/api/debug/application-server/health');
+                const healthData = await healthResponse.json();
+                console.log('Health response:', healthData);
+                
+                if (healthData.ready) {
+                    console.log('✅ Health check passed, testing individual APIs...');
+                    
+                    // Test WebVM status
+                    console.log('Testing WebVM status...');
+                    const webvmResponse = await fetch('/api/debug/webvm/status');
+                    if (webvmResponse.ok) {
+                        const webvmData = await webvmResponse.json();
+                        console.log('✅ WebVM status OK:', webvmData.status);
+                    } else {
+                        console.error('❌ WebVM status failed:', webvmResponse.status, webvmResponse.statusText);
+                    }
+                    
+                    // Test applications
+                    console.log('Testing applications...');
+                    const appsResponse = await fetch('/api/applications');
+                    if (appsResponse.ok) {
+                        const appsData = await appsResponse.json();
+                        console.log('✅ Applications OK:', appsData);
+                    } else {
+                        console.error('❌ Applications failed:', appsResponse.status, appsResponse.statusText);
+                    }
+                    
+                    // Test runtimes
+                    console.log('Testing runtimes...');
+                    const runtimesResponse = await fetch('/api/runtimes');
+                    if (runtimesResponse.ok) {
+                        const runtimesData = await runtimesResponse.json();
+                        console.log('✅ Runtimes OK:', runtimesData);
+                    } else {
+                        console.error('❌ Runtimes failed:', runtimesResponse.status, runtimesResponse.statusText);
+                    }
+                } else {
+                    console.warn('Health check says not ready:', healthData);
+                }
+            } catch (error) {
+                console.error('Test failed:', error);
+            }
+        }
+        
+        // Run test immediately
+        testEndpoints();
+        
+        // Also check for React hook execution
+        console.log('Looking for React hook logs in the actual application...');
+        console.log('Navigate to http://localhost:5173/application-server to see React app behavior');
+    </script>
+</body>
+</html>
