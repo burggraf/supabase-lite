@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type {
+  Application,
   RuntimePackage,
   RuntimeRepositorySnapshot,
   WebVMStatus,
@@ -14,16 +15,23 @@ interface ApplicationServerDB extends DBSchema {
     key: string
     value: SerializedRuntimeSnapshot
   }
+  applications: {
+    key: string
+    value: SerializedApplications
+  }
 }
 
 type SerializedWebVMStatus = ReturnType<typeof serializeWebVMStatus>
 
 type SerializedRuntimeSnapshot = ReturnType<typeof serializeRuntimeSnapshot>
 
+type SerializedApplications = ReturnType<typeof serializeApplications>
+
 const DB_NAME = 'supabase-lite.application-server'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const WEBVM_STATUS_KEY = 'singleton'
 const RUNTIME_SNAPSHOT_KEY = 'snapshot'
+const APPLICATIONS_KEY = 'applications'
 
 export class PersistenceManager {
   private static instance: PersistenceManager
@@ -65,18 +73,34 @@ export class PersistenceManager {
     await Promise.all([
       db.delete('webvm-status', WEBVM_STATUS_KEY),
       db.delete('runtime-packages', RUNTIME_SNAPSHOT_KEY),
+      db.delete('applications', APPLICATIONS_KEY),
     ])
+  }
+
+  async saveApplications(applications: Application[]): Promise<void> {
+    const db = await this.getDb()
+    await db.put('applications', serializeApplications(applications), APPLICATIONS_KEY)
+  }
+
+  async loadApplications(): Promise<Application[]> {
+    const db = await this.getDb()
+    const stored = await db.get('applications', APPLICATIONS_KEY)
+    if (!stored) return []
+    return deserializeApplications(stored)
   }
 
   private async getDb(): Promise<IDBPDatabase<ApplicationServerDB>> {
     if (!this.dbPromise) {
       this.dbPromise = openDB<ApplicationServerDB>(DB_NAME, DB_VERSION, {
-        upgrade(db) {
+        upgrade(db, oldVersion) {
           if (!db.objectStoreNames.contains('webvm-status')) {
             db.createObjectStore('webvm-status')
           }
           if (!db.objectStoreNames.contains('runtime-packages')) {
             db.createObjectStore('runtime-packages')
+          }
+          if (oldVersion < 2 && !db.objectStoreNames.contains('applications')) {
+            db.createObjectStore('applications')
           }
         },
       })
@@ -121,4 +145,20 @@ function deserializeRuntimeSnapshot(value: SerializedRuntimeSnapshot): RuntimeRe
       lastUsed: pkg.lastUsed ? new Date(pkg.lastUsed) : undefined,
     })),
   }
+}
+
+function serializeApplications(applications: Application[]) {
+  return applications.map((app) => ({
+    ...app,
+    lastDeployedAt: app.lastDeployedAt?.toISOString() ?? null,
+    lastStartedAt: app.lastStartedAt?.toISOString() ?? null,
+  }))
+}
+
+function deserializeApplications(records: SerializedApplications): Application[] {
+  return records.map((app) => ({
+    ...app,
+    lastDeployedAt: app.lastDeployedAt ? new Date(app.lastDeployedAt) : undefined,
+    lastStartedAt: app.lastStartedAt ? new Date(app.lastStartedAt) : undefined,
+  }))
 }

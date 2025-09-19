@@ -1,9 +1,10 @@
 import { PersistenceManager } from './persistence/PersistenceManager'
 import { RuntimeBundleStore } from './persistence/RuntimeBundleStore'
 import { WebVMFileStore } from './persistence/WebVMFileStore'
-import { WebVMBridge } from './WebVMBridge'
+import { WebVMBridge, WebVMUnavailableError } from './WebVMBridge'
 import { extractTar } from './utils/tar'
 import type {
+  Application,
   EventCallback,
   EventUnsubscribe,
   InstallOptions,
@@ -73,6 +74,10 @@ export class WebVMManager {
 
   getStatus(): WebVMStatus {
     return this.status
+  }
+
+  hasBridge(): boolean {
+    return this.bridge.isAvailable()
   }
 
   async initialize(): Promise<void> {
@@ -305,6 +310,56 @@ export class WebVMManager {
 
   private async execInShell(command: string): Promise<void> {
     await this.bridge.exec('/bin/sh', ['-lc', command])
+  }
+
+  async startStaticApplication(app: Application, port: number): Promise<void> {
+    if (!this.bridge.isAvailable()) {
+      console.warn('[WebVMManager] bridge unavailable, marking static app as running without VM process')
+      return
+    }
+    const publicPath = app.deployPath
+    const logsPath = app.logsPath ?? `${this.runtimeRoot(app.id)}/server.log`
+    const pidFile = app.pidFile ?? `${this.runtimeRoot(app.id)}/server.pid`
+
+    await this.bridge.ensureDirectory(this.runtimeRoot(app.id))
+    await this.bridge.ensureDirectory(publicPath)
+    await this.execInShell(
+      `cd ${publicPath} && nohup python3 -m http.server ${port} >${logsPath} 2>&1 & echo $! > ${pidFile}`,
+    )
+  }
+
+  async stopStaticApplication(app: Application): Promise<void> {
+    if (!this.bridge.isAvailable()) {
+      console.warn('[WebVMManager] bridge unavailable, treating static app as stopped')
+      return
+    }
+    const pidFile = app.pidFile ?? `${this.runtimeRoot(app.id)}/server.pid`
+    await this.execInShell(
+      `if [ -f ${pidFile} ]; then kill $(cat ${pidFile}) >/dev/null 2>&1 || true; rm -f ${pidFile}; fi`,
+    )
+  }
+
+  async proxyStaticApplication(app: Application, relativePath: string, request: Request): Promise<Response | null> {
+    if (!this.bridge.isAvailable() || !app.port) {
+      return null
+    }
+
+    const targetUrl = `http://127.0.0.1:${app.port}/${relativePath}`.replace(/\/+/, '/').replace(/(?<!:)\/\//g, '/')
+    const init: RequestInit = {
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries()),
+    }
+
+    if (!['GET', 'HEAD'].includes(request.method.toUpperCase())) {
+      init.body = await request.clone().arrayBuffer()
+    }
+
+    try {
+      return await this.bridge.fetch(targetUrl, init)
+    } catch (error) {
+      console.warn('[WebVMManager] proxyStaticApplication failed', error)
+      return null
+    }
   }
 
   on<T extends WebVMEventType>(type: T, callback: EventCallback<T>): EventUnsubscribe {

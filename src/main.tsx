@@ -5,6 +5,10 @@ import App from './App.tsx'
 import { CrossOriginAPIHandler } from './lib/api/CrossOriginAPIHandler'
 import { vfsDirectHandler } from './lib/vfs/VFSDirectHandler'
 import { registerServiceWorker } from './sw-register'
+import '@/lib/application-server/shims/registerWebVMShim'
+import { ApplicationServerStore } from '@/lib/application-server/state/ApplicationServerStore'
+import { WebVMManager } from '@/lib/application-server/WebVMManager'
+import { WebVMFileStore } from '@/lib/application-server/persistence/WebVMFileStore'
 
 // WebSocket bridge client for external API access
 function initializeWebSocketBridge() {
@@ -21,7 +25,7 @@ function initializeWebSocketBridge() {
   }
   
   function setupWebSocketBridge() {
-  
+
   // Store reference to native WebSocket before MSW can override it
   const NativeWebSocket = window.WebSocket
   let ws: WebSocket
@@ -123,6 +127,16 @@ function initializeWebSocketBridge() {
               }
             }
             
+            const appResponse = await handleAppBridgeRequest(message)
+            if (appResponse) {
+              ws.send(JSON.stringify({
+                type: 'response',
+                requestId: message.requestId,
+                response: appResponse,
+              }))
+              return
+            }
+
             // Process the request using fetch (which will be intercepted by MSW)
             const fetchOptions: RequestInit = {
               method: message.method,
@@ -378,6 +392,174 @@ function initializeWebSocketBridge() {
   }
 }
 
+const appStore = ApplicationServerStore.getInstance()
+const webvmManager = WebVMManager.getInstance()
+const webvmFileStore = WebVMFileStore.getInstance()
+
+function normalizeAppRequestPath(appName: string, requestPath: string, wildcard: string | undefined): string {
+  if (wildcard && wildcard.length > 0) {
+    return wildcard.replace(/^\//, '')
+  }
+  const pattern = new RegExp(`^/?app/${appName}/?`, 'i')
+  return requestPath.replace(pattern, '').replace(/^\//, '')
+}
+
+function resolveAppCandidatePaths(appDeployPath: string, relative: string): string[] {
+  const base = appDeployPath.replace(/\/+$/, '')
+  const candidates: string[] = []
+  if (!relative) {
+    candidates.push(`${base}/index.html`)
+  } else {
+    candidates.push(`${base}/${relative}`)
+    if (relative.endsWith('/')) {
+      candidates.push(`${base}/${relative}index.html`)
+    }
+    if (!relative.includes('.')) {
+      candidates.push(`${base}/${relative}/index.html`)
+    }
+  }
+  return candidates.map((path) => path.replace(/\/+/, '/'))
+}
+
+function inferStaticContentType(path: string): string {
+  const lower = path.toLowerCase()
+  if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'text/html; charset=utf-8'
+  if (lower.endsWith('.js')) return 'application/javascript; charset=utf-8'
+  if (lower.endsWith('.css')) return 'text/css; charset=utf-8'
+  if (lower.endsWith('.json')) return 'application/json; charset=utf-8'
+  if (lower.endsWith('.png')) return 'image/png'
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg'
+  if (lower.endsWith('.gif')) return 'image/gif'
+  if (lower.endsWith('.svg')) return 'image/svg+xml'
+  if (lower.endsWith('.ico')) return 'image/x-icon'
+  if (lower.endsWith('.webmanifest')) return 'application/manifest+json'
+  return 'application/octet-stream'
+}
+
+async function handleAppBridgeRequest(message: any) {
+  if (!message?.url?.startsWith('/app/')) return null
+
+  await appStore.initialize()
+  const url = new URL(message.url, window.location.origin)
+  const pathSegments = url.pathname.split('/').filter(Boolean)
+  const appName = pathSegments[1]
+  if (!appName) {
+    return {
+      status: 400,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      body: 'Application name missing in path',
+    }
+  }
+
+  const snapshot = appStore.getSnapshot()
+  const app = snapshot.applications.find((candidate) => candidate.name === appName)
+  if (!app) {
+    return {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      body: 'Application not found',
+    }
+  }
+
+  if (app.status !== 'running' && app.status !== 'stopped') {
+    return {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      body: 'Application is not ready yet',
+    }
+  }
+
+  const wildcard = pathSegments.length > 2 ? pathSegments.slice(2).join('/') : undefined
+  const relativePath = normalizeAppRequestPath(appName, url.pathname, wildcard)
+
+  if (app.status === 'running' && webvmManager.hasBridge() && app.port) {
+    try {
+      const request = new Request(url.toString(), {
+        method: message.method ?? 'GET',
+        headers: message.headers ?? {},
+        body: message.body,
+      })
+      const proxied = await webvmManager.proxyStaticApplication(app, relativePath, request)
+      if (proxied) {
+        console.debug('[AppBridge] proxied request to running app', {
+          appId: app.id,
+          port: app.port,
+          relativePath,
+        })
+        return serializeResponse(proxied)
+      }
+    } catch (error) {
+      console.warn('[WebVM bridge] proxyStaticApplication failed', error)
+    }
+  }
+
+  const candidates = resolveAppCandidatePaths(app.deployPath, relativePath)
+  for (const candidate of candidates) {
+    const data = await webvmFileStore.readFile(app.id, candidate)
+    if (data) {
+      const contentType = inferStaticContentType(candidate)
+      let body: string
+      const headers: Record<string, string> = { 'Content-Type': contentType }
+      if (contentType.startsWith('text/') || contentType.includes('json')) {
+        body = new TextDecoder().decode(data)
+      } else {
+        body = bufferToBase64(data)
+        headers['X-Content-Encoding'] = 'base64'
+      }
+      console.debug('[AppBridge] serving static asset', {
+        appId: app.id,
+        candidate,
+        contentType,
+        bodyLength: body.length,
+      })
+      return {
+        status: 200,
+        headers,
+        body,
+      }
+    }
+  }
+
+  return {
+    status: 404,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    body: 'File not found',
+  }
+}
+
+function bufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  bytes.forEach((b) => {
+    binary += String.fromCharCode(b)
+  })
+  return btoa(binary)
+}
+
+async function serializeResponse(response: Response) {
+  const headers: Record<string, string> = {}
+  response.headers.forEach((value, key) => {
+    headers[key] = value
+  })
+  let body: string | ArrayBuffer | null = null
+  const contentType = response.headers.get('Content-Type') ?? ''
+  if (contentType.includes('application/json')) {
+    const json = await response.json()
+    body = JSON.stringify(json)
+  } else if (contentType.startsWith('text/')) {
+    body = await response.text()
+  } else {
+    const arrayBuffer = await response.arrayBuffer()
+    body = bufferToBase64(arrayBuffer)
+    headers['X-Content-Encoding'] = 'base64'
+  }
+  return {
+    status: response.status,
+    headers,
+    body,
+  }
+}
+
 // Navigation interceptor for /app/* routes to work around MSW navigation bypass
 function setupAppNavigationInterceptor() {
   console.log('🔧 Setting up app navigation interceptor')
@@ -421,6 +603,10 @@ async function handleAppNavigation(pathname: string) {
     
     if (response.ok) {
       const html = await response.text()
+      console.debug('[AppNavigation] fetched HTML', {
+        length: html.length,
+        sample: html.slice(0, 200),
+      })
       // Replace current page content
       document.open()
       document.write(html)

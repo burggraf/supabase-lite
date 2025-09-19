@@ -15,6 +15,7 @@ export class WebVMUnsupportedError extends Error {
 type WebVMLike = {
   writeFile?: (path: string, data: Uint8Array) => Promise<void> | void
   exec?: (command: string, args?: string[]) => Promise<unknown> | unknown
+  fetch?: (url: string, init?: RequestInit) => Promise<any> | any
   fs?: {
     writeFile?: (path: string, data: Uint8Array) => Promise<void> | void
   }
@@ -105,6 +106,40 @@ export class WebVMBridge {
       console.warn('[WebVMBridge] failed to remove directory', path, error)
       return false
     }
+  }
+
+  async fetch(url: string, init?: RequestInit): Promise<Response> {
+    const vm = this.getVM(true)
+    if (typeof vm.fetch === 'function') {
+      const result = await vm.fetch(url, init)
+      return this.normalizeResponse(result)
+    }
+    throw new WebVMUnsupportedError('fetch')
+  }
+
+  private normalizeResponse(result: any): Response {
+    if (result instanceof Response) return result
+    if (!result) return new Response(null)
+
+    const status = typeof result.status === 'number' ? result.status : 200
+    const statusText = typeof result.statusText === 'string' ? result.statusText : 'OK'
+    const headers = new Headers(result.headers ?? {})
+
+    let body: BodyInit | null = null
+    if (result.body instanceof ArrayBuffer || result.body instanceof Uint8Array) {
+      body = result.body
+    } else if (typeof result.body === 'string') {
+      body = result.body
+    } else if (result.body == null) {
+      body = null
+    } else if (typeof result.body === 'object') {
+      body = JSON.stringify(result.body)
+      if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json; charset=utf-8')
+      }
+    }
+
+    return new Response(body, { status, statusText, headers })
   }
 
   private getVM(throwOnMissing = false): WebVMLike | null {

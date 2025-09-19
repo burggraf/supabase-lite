@@ -5,6 +5,11 @@ import type { Plugin } from 'vite'
 import { WebSocketServer } from 'ws'
 import type { IncomingMessage } from 'http'
 
+const crossOriginIsolationHeaders = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'credentialless',
+}
+
 interface PendingRequest {
   resolve: (response: unknown) => void
   reject: (error: unknown) => void
@@ -230,6 +235,8 @@ function websocketBridge(): Plugin {
 
       // HTTP middleware
       server.middlewares.use(async (req, res, next) => {
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
+        res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless')
         // DEBUG: Log EVERY request that hits Vite middleware
         console.log('🔥 VITE MIDDLEWARE HIT:', req.url, req.method)
         
@@ -610,6 +617,7 @@ export default defineConfig({
     }
   },
   server: {
+    headers: crossOriginIsolationHeaders,
     fs: {
       strict: false
     },
@@ -624,5 +632,8 @@ export default defineConfig({
       overlay: true, // Show overlay for build errors
       clientPort: 5173 // Explicit client port for HMR
     }
+  },
+  preview: {
+    headers: crossOriginIsolationHeaders,
   }
 })

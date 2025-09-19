@@ -103,7 +103,26 @@ export interface ApplicationServerState {
   isBusy: boolean
   isLoading: boolean
   manifestError: string | null
+  bridgeAvailable: boolean
   lastOperation?: RuntimeOperation
+  applications: Application[]
+}
+
+export type ApplicationKind = 'static'
+
+export interface Application {
+  id: string
+  name: string
+  kind: ApplicationKind
+  runtime: string
+  deployPath: string
+  entryPoint?: string
+  status: ApplicationStatus
+  port?: number
+  lastDeployedAt?: Date
+  lastStartedAt?: Date
+  pidFile?: string
+  logsPath?: string
 }
 
 export interface RuntimeOperation {
@@ -132,3 +151,12 @@ export type WebVMEventType = keyof WebVMEventMap
 export type EventUnsubscribe = () => void
 
 export type EventCallback<T extends WebVMEventType> = (payload: WebVMEventMap[T]) => void
+
+export type ApplicationStatus =
+  | 'idle'
+  | 'deploying'
+  | 'stopped'
+  | 'starting'
+  | 'running'
+  | 'stopping'
+  | 'error'

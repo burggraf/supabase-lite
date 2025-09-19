@@ -8,6 +8,9 @@ export function useApplicationServer(): {
   installRuntime: (id: string, options?: InstallOptions) => Promise<void>
   removeRuntime: (id: string, options?: RemoveOptions) => Promise<void>
   refreshCatalog: () => Promise<void>
+  deployStaticApplication: (name: string, files: File[]) => Promise<void>
+  startApplication: (appId: string) => Promise<void>
+  stopApplication: (appId: string) => Promise<void>
 } {
   const store = useMemo(() => ApplicationServerStore.getInstance(), [])
 
@@ -26,5 +29,8 @@ export function useApplicationServer(): {
     installRuntime: (id, options) => store.installRuntime(id, options),
     removeRuntime: (id, options) => store.removeRuntime(id, options),
     refreshCatalog: () => store.refreshPackages({ force: true }),
+    deployStaticApplication: (name, files) => store.deployStaticApplication(name, files),
+    startApplication: (appId) => store.startApplication(appId),
+    stopApplication: (appId) => store.stopApplication(appId),
   }
 }
