@@ -14,11 +14,13 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useRouter } from '@/hooks/useRouter';
 import { CacheManager } from '@/components/developer/CacheManager';
 // EnhancedOfflineIndicator import removed as it's not used in this component
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { initializeInfrastructure, logger } from '@/lib/infrastructure';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { CrossOriginAPIHandler } from '@/lib/api/CrossOriginAPIHandler';
 import { Toaster } from 'sonner';
+
+const ApplicationServers = lazy(() => import('@/pages/ApplicationServers'));
 
 // Extend Window interface for global API handler
 declare global {
@@ -183,6 +185,23 @@ function App() {
         return (
           <ErrorBoundary>
             <AppHosting />
+          </ErrorBoundary>
+        );
+      case 'app-servers':
+        return (
+          <ErrorBoundary>
+            <Suspense
+              fallback={(
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-sm text-muted-foreground">Loading Application Servers...</p>
+                  </div>
+                </div>
+              )}
+            >
+              <ApplicationServers />
+            </Suspense>
           </ErrorBoundary>
         );
       case 'edge-functions':
