@@ -271,9 +271,16 @@ export class WebVMManager {
     const escapedSource = escapeShellArg(vmPath);
     const escapedTemp = escapeShellArg(tempPath);
 
-    const { status } = await instance.runShellCommand(`cat ${escapedSource} > ${escapedTemp}`);
+    const copyExit = await instance.runShellCommand(
+      `[ -f ${escapedSource} ] && cat ${escapedSource} > ${escapedTemp} || exit 44`
+    );
 
-    if (status !== 0) {
+    if (copyExit.status === 44) {
+      await instance.runShellCommand(`rm -f ${escapedTemp}`);
+      throw new WebVMStaticAssetError('File not found', 404);
+    }
+
+    if (copyExit.status !== 0) {
       await instance.runShellCommand(`rm -f ${escapedTemp}`);
       throw new WebVMStaticAssetError('File not found', 404);
     }

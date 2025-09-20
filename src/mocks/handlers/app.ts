@@ -90,7 +90,7 @@ const createWebVMStaticHandler = () =>
     const normalizedPath = relativePath === '/' ? '/index.html' : relativePath;
 
     try {
-      const asset = await webvmManager.fetchStaticAsset(appName, relativePath);
+      const asset = await webvmManager.fetchStaticAsset(appName, normalizedPath);
       const headers = new Headers({
         'Content-Type': asset.contentType,
         'Cache-Control': 'no-cache',
@@ -100,30 +100,31 @@ const createWebVMStaticHandler = () =>
         return new HttpResponse(null, { status: asset.status, headers });
       }
 
-      return new HttpResponse(asset.body, { status: asset.status, headers });
+      const buffer = await asset.body.arrayBuffer();
+      return new HttpResponse(buffer, { status: asset.status, headers });
     } catch (error) {
-      if (error instanceof WebVMStaticAssetError) {
-        if (
-          error.status === 404 &&
-          appName === 'default' &&
-          (normalizedPath === '/index.html' || normalizedPath === '/index.htm') &&
-          method === 'GET'
-        ) {
-          return new HttpResponse(DEFAULT_STATIC_PLACEHOLDER_HTML, {
-            status: 200,
-            headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
-          });
-        }
+      console.error('MSW WebVM proxy error', { appName, normalizedPath, error });
 
-        if (method === 'HEAD') {
-          return new HttpResponse(null, {
-            status: error.status,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          });
-        }
+      const status = typeof error === 'object' && error && 'status' in error ? (error as any).status : undefined;
+      const message = typeof error === 'object' && error && 'message' in error ? (error as any).message : 'Unknown error';
 
-        return new HttpResponse(error.message, {
-          status: error.status,
+      if (appName === 'default' && (normalizedPath === '/index.html' || normalizedPath === '/index.htm') && method === 'GET') {
+        return new HttpResponse(DEFAULT_STATIC_PLACEHOLDER_HTML, {
+          status: 200,
+          headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
+        });
+      }
+
+      if (method === 'HEAD') {
+        return new HttpResponse(null, {
+          status: status ?? 500,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
+      }
+
+      if (typeof status === 'number') {
+        return new HttpResponse(message, {
+          status,
           headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });
       }
