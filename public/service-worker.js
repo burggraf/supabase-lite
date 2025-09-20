@@ -7,9 +7,10 @@ const STATIC_ASSETS = [
   '/assets/monaco-editor.js'
 ];
 
+const IS_LOCALHOST = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(self.location.host);
+
 function applyCrossOriginIsolationHeaders(response) {
-  if (!response) return response;
-  if (response.status === 0 || response.type === 'opaque') {
+  if (!response || response.status === 0 || response.type === 'opaque') {
     return response;
   }
 
@@ -37,8 +38,7 @@ function applyCrossOriginIsolationHeaders(response) {
 function isHMRRequest(url) {
   try {
     const parsedUrl = new URL(url);
-    const host = parsedUrl.hostname;
-    const isDevHost = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.');
+    const isDevHost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(parsedUrl.host);
     if (!isDevHost) return false;
 
     const vitePatterns = ['/@vite/client', '/@vite/hmr-update', '/@id/', '/@fs/', '/@react-refresh'];
@@ -68,73 +68,55 @@ function shouldBypassServiceWorker(request) {
 }
 
 async function handleAssetRequest(request, isProduction) {
-  if (!isProduction && isHMRRequest(request.url)) {
+  if (!isProduction) {
     const networkResponse = await fetch(request);
     return applyCrossOriginIsolationHeaders(networkResponse.clone());
   }
 
-  const cache = await caches.open(CACHE_NAME);
-
-  if (isProduction) {
-    const cached = await cache.match(request);
-    if (cached) {
-      return applyCrossOriginIsolationHeaders(cached.clone());
-    }
-
-    try {
-      const networkResponse = await fetch(request);
-      const isolated = applyCrossOriginIsolationHeaders(networkResponse.clone());
-      if (networkResponse.ok) {
-        await cache.put(request, isolated.clone());
-      }
-      return isolated;
-    } catch (error) {
-      const fallback = await cache.match(request);
-      if (fallback) {
-        return applyCrossOriginIsolationHeaders(fallback.clone());
-      }
-      throw error;
-    }
-  }
-
-  try {
-    const networkResponse = await fetch(request);
-    return applyCrossOriginIsolationHeaders(networkResponse.clone());
-  } catch (error) {
-    const cached = await cache.match(request);
-    if (cached) {
-      return applyCrossOriginIsolationHeaders(cached.clone());
-    }
-    throw error;
-  }
-}
-
-async function handleMonacoRequest(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
   if (cached) {
     return applyCrossOriginIsolationHeaders(cached.clone());
   }
 
-  try {
-    const networkResponse = await fetch(request);
-    const isolated = applyCrossOriginIsolationHeaders(networkResponse.clone());
-    if (networkResponse.ok) {
-      await cache.put(request, isolated.clone());
-    }
-    return isolated;
-  } catch (error) {
-    const fallback = await cache.match(request);
-    if (fallback) {
-      return applyCrossOriginIsolationHeaders(fallback.clone());
-    }
-    throw error;
+  const networkResponse = await fetch(request);
+  const isolated = applyCrossOriginIsolationHeaders(networkResponse.clone());
+  if (networkResponse.ok) {
+    await cache.put(request, isolated.clone());
   }
+  return isolated;
+}
+
+async function handleMonacoRequest(request, isProduction) {
+  if (!isProduction) {
+    const networkResponse = await fetch(request);
+    return applyCrossOriginIsolationHeaders(networkResponse.clone());
+  }
+
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) {
+    return applyCrossOriginIsolationHeaders(cached.clone());
+  }
+
+  const networkResponse = await fetch(request);
+  const isolated = applyCrossOriginIsolationHeaders(networkResponse.clone());
+  if (networkResponse.ok) {
+    await cache.put(request, isolated.clone());
+  }
+  return isolated;
 }
 
 self.addEventListener('install', (event) => {
+  if (IS_LOCALHOST) {
+    self.skipWaiting();
+    return;
+  }
+
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -155,24 +137,21 @@ self.addEventListener('fetch', (event) => {
     (async () => {
       const request = event.request;
 
-      const forwardRequest = async () => {
+      if (shouldBypassServiceWorker(request)) {
         const networkResponse = await fetch(request);
         return applyCrossOriginIsolationHeaders(networkResponse.clone());
-      };
+      }
 
       if (request.method !== 'GET') {
-        return forwardRequest();
+        const networkResponse = await fetch(request);
+        return applyCrossOriginIsolationHeaders(networkResponse.clone());
       }
 
-      if (shouldBypassServiceWorker(request)) {
-        return forwardRequest();
-      }
+      const isProduction = !IS_LOCALHOST;
 
       if (request.url.includes('monaco-editor')) {
-        return handleMonacoRequest(request);
+        return handleMonacoRequest(request, isProduction);
       }
-
-      const isProduction = true;
 
       if (
         request.destination === 'script' ||
@@ -183,7 +162,8 @@ self.addEventListener('fetch', (event) => {
         return handleAssetRequest(request, isProduction);
       }
 
-      return forwardRequest();
+      const networkResponse = await fetch(request);
+      return applyCrossOriginIsolationHeaders(networkResponse.clone());
     })()
   );
 });

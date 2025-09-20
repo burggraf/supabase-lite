@@ -5,7 +5,7 @@ type CheerpXLinux = Awaited<ReturnType<CheerpXModule['Linux']['create']>>;
 type CheerpXIDBDevice = Awaited<ReturnType<CheerpXModule['IDBDevice']['create']>>;
 type XtermTerminal = import('@xterm/xterm').Terminal;
 type IDisposable = import('@xterm/xterm').IDisposable;
-	export type WebVMStatus = 'unloaded' | 'downloading' | 'initializing' | 'ready' | 'error';
+export type WebVMStatus = 'unloaded' | 'downloading' | 'initializing' | 'ready' | 'error';
 
 export interface WebVMState {
   status: WebVMStatus;
@@ -35,26 +35,24 @@ export interface WebVMInstance {
 type StateListener = (state: WebVMState) => void;
 
 const DEFAULT_CONFIG: WebVMConfiguration = {
-  diskImageUrl: 'wss://disks.webvm.io/debian_large_20230522_5044875331.ext2',
-  diskImageType: 'cloud',
+  diskImageUrl: '/webvm/v2/static-http.ext2',
+  diskImageType: 'bytes',
   cacheId: 'supabase-lite-webvm-cache',
-  command: '/bin/bash',
-  args: ['--login'],
+  command: '/bin/sh',
+  args: ['-c', 'busybox httpd -p 8080 -h /home/user/www >/dev/null 2>&1 & exec /bin/sh'],
   environment: [
     'HOME=/home/user',
     'TERM=xterm-256color',
     'USER=user',
-    'SHELL=/bin/bash',
-    'EDITOR=vim',
-    'LANG=en_US.UTF-8',
-    'LC_ALL=C',
+    'SHELL=/bin/sh',
+    'PS1=static-webvm:\w$ ',
   ],
   workingDirectory: '/home/user',
   userId: 1000,
   groupId: 1000,
   introLines: [
-    'Connected to WebVM 2.0 runtime.',
-    'The environment runs entirely inside your browser. Type `help` to get started.',
+    'Connected to Supabase Lite static server VM.',
+    'Serving /home/user/www via busybox httpd on port 8080. Shell available below.',
   ],
 };
 
@@ -71,7 +69,7 @@ export class WebVMManager {
   private instance: WebVMInstance | null = null;
   private runtimeModulePromise: Promise<CheerpXModule> | null = null;
 
-  constructor(private readonly config: WebVMConfiguration = DEFAULT_CONFIG) {}
+  constructor(private readonly config: WebVMConfiguration = DEFAULT_CONFIG) { }
 
   subscribe(listener: StateListener): () => void {
     this.listeners.add(listener);
@@ -256,7 +254,7 @@ class CheerpXWebVMInstance implements WebVMInstance {
     private readonly config: WebVMConfiguration,
     private readonly onReady: () => void,
     private readonly onError: (error: unknown) => void
-  ) {}
+  ) { }
 
   async attachTerminal(term: XtermTerminal): Promise<void> {
     if (this.terminal === term) {
