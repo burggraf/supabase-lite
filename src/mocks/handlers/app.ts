@@ -7,6 +7,30 @@ import { initializeVFS } from './shared/common-handlers'
 // Initialize the VFS bridge
 const vfsBridge = new VFSBridge()
 
+const DEFAULT_STATIC_PLACEHOLDER_HTML = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Supabase Lite Static Hosting</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 3rem; background: #0f172a; color: #e2e8f0; }
+      main { max-width: 720px; margin: 0 auto; }
+      code { background: rgba(148, 163, 184, 0.15); padding: 0.2rem 0.4rem; border-radius: 4px; }
+      a { color: #38bdf8; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Static hosting inside WebVM</h1>
+      <p>The WebVM static server is running. Drop files into <code>/home/user/www</code> from the terminal to see them here.</p>
+      <p>Example commands:</p>
+      <pre><code>echo "&lt;h1&gt;Hello from WebVM&lt;/h1&gt;" &gt; index.html
+mkdir -p assets && echo "body { font-family: sans-serif; }" &gt; assets/site.css</code></pre>
+      <p>Then refresh this page: <code>/app/default/</code>.</p>
+    </main>
+  </body>
+</html>`;
+
 /**
  * SPA (Single Page Application) hosting handler
  * Handles requests forwarded from Vite middleware via WebSocket
@@ -63,6 +87,8 @@ const createWebVMStaticHandler = () =>
       relativePath = `/${relativePath}`;
     }
 
+    const normalizedPath = relativePath === '/' ? '/index.html' : relativePath;
+
     try {
       const asset = await webvmManager.fetchStaticAsset(appName, relativePath);
       const headers = new Headers({
@@ -77,6 +103,25 @@ const createWebVMStaticHandler = () =>
       return new HttpResponse(asset.body, { status: asset.status, headers });
     } catch (error) {
       if (error instanceof WebVMStaticAssetError) {
+        if (
+          error.status === 404 &&
+          appName === 'default' &&
+          (normalizedPath === '/index.html' || normalizedPath === '/index.htm') &&
+          method === 'GET'
+        ) {
+          return new HttpResponse(DEFAULT_STATIC_PLACEHOLDER_HTML, {
+            status: 200,
+            headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
+          });
+        }
+
+        if (method === 'HEAD') {
+          return new HttpResponse(null, {
+            status: error.status,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          });
+        }
+
         return new HttpResponse(error.message, {
           status: error.status,
           headers: { 'Content-Type': 'text/plain; charset=utf-8' },

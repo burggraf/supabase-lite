@@ -17,6 +17,7 @@
 ### Current Status
 - `WebVMManager.fetchStaticAsset` copies files from `/home/user/www` into a temporary path, reads them via the overlay IDB device, and returns the bytes with a MIME guess.
 - MSW intercepts `/app/:appName/*` (and `/app/:appName`) and proxies GET/HEAD requests through the WebVM bridge before falling back to legacy VFS handlers.
+- `/app/default/` falls back to a hosted placeholder HTML page when `index.html` isn’t present inside the VM.
 - Application Servers and MSW share the singleton `webvmManager` instance.
 - Remaining work: caching, richer error messaging, optional index listing, tests, and documentation tweaks.
 
