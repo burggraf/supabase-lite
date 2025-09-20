@@ -3,9 +3,13 @@ import { VFSBridge } from '../../lib/vfs/VFSBridge'
 import { webvmManager, WebVMStaticAssetError } from '@/lib/webvm'
 import { withProjectResolution } from './shared/project-resolution'
 import { initializeVFS } from './shared/common-handlers'
+import { projectManager } from '@/lib/projects/ProjectManager'
+import { vfsManager } from '@/lib/vfs/VFSManager'
+import type { VFSFile } from '@/types/vfs'
 
 // Initialize the VFS bridge
 const vfsBridge = new VFSBridge()
+const APPLICATION_ROOT = 'app'
 
 const DEFAULT_STATIC_PLACEHOLDER_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -123,10 +127,20 @@ const createWebVMStaticHandler = () =>
       }
 
       if (typeof status === 'number') {
+        const fallback = await serveFromVFS(appName, normalizedPath, method === 'HEAD');
+        if (fallback) {
+          return fallback;
+        }
+
         return new HttpResponse(message, {
           status,
           headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });
+      }
+
+      const fallback = await serveFromVFS(appName, normalizedPath, method === 'HEAD');
+      if (fallback) {
+        return fallback;
       }
 
       console.error('MSW: WebVM static proxy error', error);
@@ -136,6 +150,67 @@ const createWebVMStaticHandler = () =>
       });
     }
   };
+
+async function serveFromVFS(appName: string, normalizedPath: string, isHead: boolean): Promise<HttpResponse | null> {
+  try {
+    const activeProject = projectManager.getActiveProject();
+    if (!activeProject) {
+      return null;
+    }
+
+    await vfsManager.initialize(activeProject.id);
+
+    const relativePath = normalizedPath === '/' ? 'index.html' : normalizedPath.replace(/^\//, '');
+    const vfsPath = `${APPLICATION_ROOT}/${appName}/${relativePath}`;
+
+    const file: VFSFile | null = await vfsManager.readFile(vfsPath);
+    if (!file) {
+      return null;
+    }
+
+    if (isHead) {
+      return new HttpResponse(null, {
+        status: 200,
+        headers: {
+          'Content-Type': file.mimeType,
+          'Cache-Control': 'no-cache',
+        },
+      });
+    }
+
+    const content = await vfsManager.readFileContent(vfsPath);
+    if (content === null) {
+      return null;
+    }
+
+    let body: BodyInit;
+    if (file.encoding === 'base64') {
+      body = base64ToUint8Array(content);
+    } else {
+      body = content;
+    }
+
+    return new HttpResponse(body, {
+      status: 200,
+      headers: {
+        'Content-Type': file.mimeType,
+        'Cache-Control': 'no-cache',
+      },
+    });
+  } catch (fallbackError) {
+    console.warn('VFS fallback failed', fallbackError, { appName, normalizedPath });
+    return null;
+  }
+}
+
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
 
 // App hosting handlers
 export const appHandlers = [

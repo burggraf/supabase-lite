@@ -265,28 +265,39 @@ export class WebVMManager {
       throw new WebVMStaticAssetError('Invalid request path', 400);
     }
 
-    const tempPath = `/tmp/supabase-lite-proxy-${Date.now().toString(36)}-${Math.random()
-      .toString(36)
-      .slice(2)}.bin`;
-    const escapedSource = escapeShellArg(vmPath);
-    const escapedTemp = escapeShellArg(tempPath);
+    const directBlob = await instance.readFileAsBlob(vmPath);
+    let blob = directBlob;
 
-    const copyExit = await instance.runShellCommand(
-      `[ -f ${escapedSource} ] && cat ${escapedSource} > ${escapedTemp} || exit 44`
-    );
+    if (!blob) {
+      const tempPath = `/tmp/supabase-lite-proxy-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2)}.bin`;
+      const escapedSource = escapeShellArg(vmPath);
+      const escapedTemp = escapeShellArg(tempPath);
 
-    if (copyExit.status === 44) {
+      const copyExit = await instance.runShellCommand(
+        `[ -f ${escapedSource} ] && cat ${escapedSource} > ${escapedTemp} || exit 44`
+      );
+
+      if (copyExit.status === 44) {
+        await instance.runShellCommand(`rm -f ${escapedTemp}`);
+        throw new WebVMStaticAssetError('File not found', 404);
+      }
+
+      if (copyExit.status !== 0) {
+        await instance.runShellCommand(`rm -f ${escapedTemp}`);
+        throw new WebVMStaticAssetError('File not found', 404);
+      }
+
+      await instance.runShellCommand('sync');
+
+      blob = await instance.readFileAsBlob(tempPath);
       await instance.runShellCommand(`rm -f ${escapedTemp}`);
-      throw new WebVMStaticAssetError('File not found', 404);
     }
 
-    if (copyExit.status !== 0) {
-      await instance.runShellCommand(`rm -f ${escapedTemp}`);
-      throw new WebVMStaticAssetError('File not found', 404);
+    if (!blob) {
+      throw new WebVMStaticAssetError('File not available', 404);
     }
-
-    const blob = await instance.readFileAsBlob(tempPath);
-    await instance.runShellCommand(`rm -f ${escapedTemp}`);
 
     return {
       status: 200,
