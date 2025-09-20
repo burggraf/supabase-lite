@@ -30,6 +30,24 @@ export interface WebVMConfiguration {
 export interface WebVMInstance {
   attachTerminal(term: XtermTerminal): Promise<void>;
   shutdown(): Promise<void>;
+  runShellCommand(command: string): Promise<{ status: number }>;
+  readFileAsBlob(path: string): Promise<Blob>;
+}
+
+export interface WebVMStaticAssetResponse {
+  status: number;
+  body: Blob;
+  contentType: string;
+}
+
+export class WebVMStaticAssetError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'WebVMStaticAssetError';
+    this.status = status;
+  }
 }
 
 type StateListener = (state: WebVMState) => void;
@@ -237,6 +255,38 @@ export class WebVMManager {
       listener(this.state);
     }
   }
+
+  async fetchStaticAsset(appName: string, requestPath: string): Promise<WebVMStaticAssetResponse> {
+    const instance = await this.ensureStarted();
+    const sanitizedAppName = sanitizeAppName(appName);
+    const vmPath = resolveStaticPath(sanitizedAppName, requestPath);
+
+    if (!vmPath) {
+      throw new WebVMStaticAssetError('Invalid request path', 400);
+    }
+
+    const tempPath = `/tmp/supabase-lite-proxy-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2)}.bin`;
+    const escapedSource = escapeShellArg(vmPath);
+    const escapedTemp = escapeShellArg(tempPath);
+
+    const { status } = await instance.runShellCommand(`cat ${escapedSource} > ${escapedTemp}`);
+
+    if (status !== 0) {
+      await instance.runShellCommand(`rm -f ${escapedTemp}`);
+      throw new WebVMStaticAssetError('File not found', 404);
+    }
+
+    const blob = await instance.readFileAsBlob(tempPath);
+    await instance.runShellCommand(`rm -f ${escapedTemp}`);
+
+    return {
+      status: 200,
+      body: blob,
+      contentType: getMimeType(vmPath),
+    };
+  }
 }
 
 class CheerpXWebVMInstance implements WebVMInstance {
@@ -246,6 +296,7 @@ class CheerpXWebVMInstance implements WebVMInstance {
   private consoleReader: ((code: number) => void) | null = null;
   private running = false;
   private runLoopPromise: Promise<void> | null = null;
+  private commandQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly module: CheerpXModule,
@@ -338,6 +389,30 @@ class CheerpXWebVMInstance implements WebVMInstance {
     this.consoleReader = null;
   }
 
+  async runShellCommand(command: string): Promise<{ status: number }> {
+    return this.enqueueCommand(() =>
+      this.linux.run('/bin/sh', ['-c', command], {
+        env: this.config.environment,
+        cwd: this.config.workingDirectory,
+        uid: this.config.userId,
+        gid: this.config.groupId,
+      })
+    );
+  }
+
+  async readFileAsBlob(path: string): Promise<Blob> {
+    return this.cacheDevice.readFileAsBlob(path);
+  }
+
+  private enqueueCommand<T>(task: () => Promise<T>): Promise<T> {
+    const chain = this.commandQueue.then(task);
+    this.commandQueue = chain.then(
+      () => undefined,
+      () => undefined
+    );
+    return chain;
+  }
+
   private startShellLoop() {
     if (this.running) {
       return;
@@ -367,5 +442,99 @@ class CheerpXWebVMInstance implements WebVMInstance {
         return;
       }
     }
+  }
+}
+
+function sanitizeAppName(appName: string | undefined): string {
+  if (!appName) {
+    return 'default';
+  }
+
+  const normalized = appName.toLowerCase().trim();
+  if (/^[a-z0-9_-]+$/.test(normalized)) {
+    return normalized;
+  }
+
+  return 'default';
+}
+
+function resolveStaticPath(appName: string, requestPath: string): string | null {
+  const baseDir = appName === 'default' ? '/home/user/www' : `/home/user/www/${appName}`;
+  const cleaned = cleanRequestPath(requestPath);
+
+  if (!cleaned) {
+    return null;
+  }
+
+  const segments = cleaned.split('/').filter(Boolean);
+  if (segments.some((segment) => segment === '..')) {
+    return null;
+  }
+
+  const needsIndex = cleaned.endsWith('/') || segments.length === 0;
+  const joined = segments.join('/');
+  const relative = needsIndex ? `${joined}/index.html` : joined;
+  const normalized = relative.startsWith('/') ? relative.slice(1) : relative;
+  const combined = `${baseDir}/${normalized}`;
+  return combined.replace(/\/{2,}/g, '/');
+}
+
+function cleanRequestPath(requestPath: string): string | null {
+  try {
+    const withoutQuery = requestPath.split('?')[0].split('#')[0];
+    const decoded = decodeURIComponent(withoutQuery);
+    if (!decoded.startsWith('/')) {
+      return `/${decoded}`;
+    }
+    return decoded;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function escapeShellArg(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function getMimeType(path: string): string {
+  const extIndex = path.lastIndexOf('.');
+  const ext = extIndex >= 0 ? path.slice(extIndex + 1).toLowerCase() : '';
+
+  switch (ext) {
+    case 'html':
+    case 'htm':
+      return 'text/html; charset=utf-8';
+    case 'css':
+      return 'text/css; charset=utf-8';
+    case 'js':
+      return 'text/javascript; charset=utf-8';
+    case 'json':
+      return 'application/json; charset=utf-8';
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'gif':
+      return 'image/gif';
+    case 'svg':
+      return 'image/svg+xml';
+    case 'txt':
+    case 'log':
+      return 'text/plain; charset=utf-8';
+    case 'xml':
+      return 'application/xml; charset=utf-8';
+    case 'ico':
+      return 'image/x-icon';
+    case 'webp':
+      return 'image/webp';
+    case 'woff':
+      return 'font/woff';
+    case 'woff2':
+      return 'font/woff2';
+    case 'ttf':
+      return 'font/ttf';
+    default:
+      return ext ? 'application/octet-stream' : 'text/plain; charset=utf-8';
   }
 }

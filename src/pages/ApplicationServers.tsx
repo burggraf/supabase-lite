@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Terminal as XtermTerminal } from '@xterm/xterm';
 import type { FitAddon as XtermFitAddon } from '@xterm/addon-fit';
 import {
   WebVMInstance,
-  WebVMManager,
   WebVMState,
   WebVMStatus,
 } from '@/lib/webvm/WebVMManager';
+import { webvmManager } from '@/lib/webvm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -65,7 +65,7 @@ function progressForStatus(status: WebVMStatus): number {
 }
 
 function ApplicationServersComponent() {
-  const manager = useMemo(() => new WebVMManager(), []);
+  const manager = webvmManager;
   const [state, setState] = useState<WebVMState>(manager.getState());
   const [vmInstance, setVmInstance] = useState<WebVMInstance | null>(null);
   const [terminalError, setTerminalError] = useState<string | null>(null);
