@@ -16,17 +16,16 @@
 
 ### Current Status
 - `WebVMManager.fetchStaticAsset` copies files from `/home/user/www` into a temporary path, reads them via the overlay IDB device, and returns the bytes with a MIME guess.
-- New MSW handlers intercept `/api/app/:appName/*` (and `/api/app/:appName`) and proxy GET/HEAD requests through the WebVM bridge.
+- MSW intercepts `/app/:appName/*` (and `/app/:appName`) and proxies GET/HEAD requests through the WebVM bridge before falling back to legacy VFS handlers.
 - Application Servers and MSW share the singleton `webvmManager` instance.
-- Remaining work: response caching, richer error messaging, optional index listing, tests, and documentation tweaks.
+- Remaining work: caching, richer error messaging, optional index listing, tests, and documentation tweaks.
 
 ### Goal
 Expose static apps running inside WebVM at host routes like `/app/<app-name>/*`, routing browser requests through MSW to the in-VM HTTP server listening on port 8080.
 
 ### High-Level Architecture
 1. **Request Interception**
-   - Use MSW’s `http.all('/app/:appName/*', ...)` handler in `src/mocks/handlers/app.ts` (or a new module) to capture requests targeting `/app/<appName>/*`.
-   - Optionally support `/api/app-name/*` if legacy routes exist, and redirect internally to `/app/<appName>/*` or vice versa.
+   - MSW handles `/app/:appName` and `/app/:appName/*` to proxy static assets from WebVM while leaving legacy project-scoped routes intact.
 
 2. **Bridge Layer**
    - `WebVMManager.fetchStaticAsset` now reads files directly from the VM file system by copying them to `/tmp` and streaming the overlay blob back to the host.
@@ -45,23 +44,10 @@ Expose static apps running inside WebVM at host routes like `/app/<app-name>/*`,
 
 ### Implementation Steps
 1. **Bridge Utility**
-   - Add `WebVMManager.fetch(path: string, init?: RequestInit)` that:
-     - Ensures the VM is booted (`ensureStarted`).
-     - Runs `busybox wget -qO-` (or similar) to fetch the file.
-     - Returns `{ status, headers, body }` (status fallback 200, allow interceptors to adjust).
+   - `WebVMManager.fetchStaticAsset` ensures the VM is booted, copies the requested file into `/tmp`, reads it via the overlay IDB device, and returns `{ status, body, contentType }`.
 2. **MSW Handler**
-   - In `src/mocks/handlers/app.ts` (or new module), add:
-     ```ts
-     http.all('/app/:appName/*', async ({ request, params }) => {
-       const vmPath = request.url.pathname.replace(/^\/app\/[^/]+/, '');
-       const vmResponse = await webvmBridge.fetch(vmPath || '/');
-       return new Response(vmResponse.body, {
-         status: vmResponse.status,
-         headers: vmResponse.headers,
-       });
-     });
-     ```
-   - Handle method distinctions (GET only for now; respond 405 for others).
+   - Handlers now live in `src/mocks/handlers/app.ts`, intercepting `/app/:appName` and `/app/:appName/*` (GET/HEAD) before falling back to the legacy VFS-based SPA handler.
+   - Unsupported methods return 405.
 3. **Content-Type Support**
    - Map file extensions to MIME types (use a tiny lookup table).
    - If you can fetch headers from BusyBox httpd, parse them; otherwise, fallback to the lookup table.

@@ -55,9 +55,9 @@ const createWebVMStaticHandler = () =>
       return new HttpResponse('Method Not Allowed', { status: 405 });
     }
 
-    const appName = params.appName || 'default';
+    const appName = params?.appName || 'default';
     const url = new URL(request.url);
-    const basePath = `/api/app/${appName}`;
+    const basePath = `/app/${appName}`;
     let relativePath = url.pathname.slice(basePath.length);
     if (!relativePath.startsWith('/')) {
       relativePath = `/${relativePath}`;
@@ -93,9 +93,9 @@ const createWebVMStaticHandler = () =>
 
 // App hosting handlers
 export const appHandlers = [
-  // SPA (Single Page Application) hosting
+  http.all('/app/:appName', createWebVMStaticHandler()),
+  http.all('/app/:appName/*', createWebVMStaticHandler()),
+  // SPA (Single Page Application) hosting (legacy VFS path)
   http.get('/app/*', withProjectResolution(createSPAHandler())),
   http.get('/:projectId/app/*', withProjectResolution(createSPAHandler())),
-  http.all('/api/app/:appName', withProjectResolution(createWebVMStaticHandler())),
-  http.all('/api/app/:appName/*', withProjectResolution(createWebVMStaticHandler())),
 ]
