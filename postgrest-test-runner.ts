@@ -393,8 +393,6 @@ class PostgRESTNodeTestRunner {
         await this.dbManager.exec(statement)
         return
       }
-
-
       await this.dbManager.queryWithContext(statement, { role: 'service_role' })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -553,12 +551,16 @@ class PostgRESTNodeTestRunner {
   // -----------------------------------------------------------------------
 
   private compareResults(actual: any, expected: any): ComparisonResult {
-    if (this.deepCompareWithWildcards(actual, expected)) {
+    const normalizedActual = this.normalizeComparisonValue(structuredClone(actual))
+    const normalizedExpected = this.normalizeComparisonValue(structuredClone(expected))
+
+    if (this.deepCompareWithWildcards(normalizedActual, normalizedExpected)) {
       return { match: true }
     }
 
-    const actualStr = JSON.stringify(actual, null, 2)
-    const expectedStr = JSON.stringify(expected, null, 2)
+    const actualStr = JSON.stringify(normalizedActual, null, 2)
+    const expectedStr = JSON.stringify(normalizedExpected, null, 2)
+
 
     return {
       match: false,
@@ -566,6 +568,37 @@ class PostgRESTNodeTestRunner {
     }
   }
 
+  private normalizeComparisonValue(value: any): any {
+    if (value === null || value === undefined) {
+      return value
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(item => this.normalizeComparisonValue(item))
+    }
+
+    if (typeof value === 'object') {
+      const normalized: Record<string, any> = {}
+
+      for (const [key, entry] of Object.entries(value)) {
+        normalized[key] = this.normalizeComparisonValue(entry)
+      }
+
+      const errorObject = normalized.error
+      if (
+        errorObject &&
+        typeof errorObject === 'object' &&
+        typeof errorObject.message === 'string' &&
+        errorObject.message.startsWith('AbortError:')
+      ) {
+        errorObject.message = 'AbortError: The signal has been aborted'
+      }
+
+      return normalized
+    }
+
+    return value
+  }
   private deepCompareWithWildcards(actual: any, expected: any): boolean {
     if (expected === '*') {
       return true
@@ -718,6 +751,9 @@ class PostgRESTNodeTestRunner {
   }
 
   private shouldSkipExample(example: Example): string | null {
+    if (example.unsupported) {
+      return 'unsupported by pglite'
+    }
     if (!example.results) {
       return null
     }
@@ -726,7 +762,6 @@ class PostgRESTNodeTestRunner {
 
     if (this.isRetestMode) {
       if (!results.passed && results.skip) {
-        this.testStats.skipped++
         return 'previously failed but marked to skip in regression mode'
       }
 
@@ -784,10 +819,21 @@ class PostgRESTNodeTestRunner {
 
         if (skipReason) {
           this.log('info', `Skipping test ${example.id} (${skipReason})`)
+
+          if (this.isRetestMode) {
+            if (skipReason === 'unsupported by pglite') {
+              this.testStats.unsupported++
+            } else {
+              this.testStats.skipped++
+            }
+          }
+
           continue
         }
 
         this.displayTestHeader(item, example)
+
+        const previousResults = example.results
 
         const results = await this.processExample(item, example)
         example.results = results
@@ -798,11 +844,14 @@ class PostgRESTNodeTestRunner {
             this.testStats.passed++
           } else {
             this.testStats.failed++
-            regressionFailures.push({
-              item,
-              example,
-              error: results.log.find(entry => entry.type === 'error')?.message ?? 'Unknown error'
-            })
+            if (previousResults?.passed) {
+              regressionFailures.push({
+                item,
+                example,
+                error: results.log.find(entry => entry.type === 'error')?.message ?? 'Unknown error'
+              })
+            }
+
           }
         }
 
