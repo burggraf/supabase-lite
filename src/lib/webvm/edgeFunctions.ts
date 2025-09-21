@@ -11,6 +11,7 @@ const EDGE_FUNCTIONS_CONFIG: WebVMConfiguration = {
     'TERM=xterm-256color',
     'USER=user',
     'SHELL=/bin/bash',
+    'PATH=/usr/local/bin:/usr/bin:/bin:/opt/supabase/bin:/home/user/.supabase/bin',
     'PS1=edge-functions-webvm:\w$ ',
   ],
   workingDirectory: '/home/user/project',
