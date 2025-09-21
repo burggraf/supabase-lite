@@ -18,7 +18,7 @@
     "test:performance": "vitest run src/__tests__/performance/",
     "test:ci": "vitest run --coverage --reporter=junit --outputFile=test-results.xml",
     "test:summary": "node scripts/test-summary.js",
-    "test:postgrest": "tsx --tsconfig tsconfig.app.json postgrest-test-runner.ts"
+    "test:postgrest": "node --loader ./ts-esm-loader.mjs postgrest-test-runner.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.7",
