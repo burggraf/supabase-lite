@@ -383,7 +383,18 @@ class PostgRESTNodeTestRunner {
   }
 
   private async executeSingleSQL(statement: string): Promise<void> {
+    const trimmed = statement.trim()
+    const normalized = trimmed.toUpperCase()
+    const isSchemaMutation = /^(DROP|CREATE)\s+SCHEMA\b/.test(normalized)
+      || normalized.startsWith('GRANT ALL ON SCHEMA')
+
     try {
+      if (isSchemaMutation) {
+        await this.dbManager.exec(statement)
+        return
+      }
+
+
       await this.dbManager.queryWithContext(statement, { role: 'service_role' })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
