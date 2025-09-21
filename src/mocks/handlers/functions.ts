@@ -1,235 +1,197 @@
 import { http, HttpResponse } from 'msw'
-import { vfsManager } from '../../lib/vfs/VFSManager'
 import { logger } from '../../lib/infrastructure/Logger'
 import { edgeFunctionsWebvmManager, EDGE_FUNCTIONS_VM_ROOT } from '../../lib/webvm'
+import { writeBase64FileToWebVM, encodeStringToBase64, escapeShellArg } from '@/lib/webvm/fileTransfer'
 import { withProjectResolution } from './shared/project-resolution'
 import { 
-  createErrorResponse, 
-  safeJsonParse
+  createErrorResponse
 } from './shared/common-handlers'
 
-/**
- * Helper function for Edge Function simulation
- * Simulates realistic edge function execution with code parsing
- */
-async function simulateEdgeFunctionExecution(
-  functionName: string,
-  code: string,
-  requestBody: unknown
-): Promise<{
-  status: number;
-  response: unknown;
-  executionTime: number;
-  headers: Record<string, string>;
-}> {
-  const startTime = performance.now();
-  
+const EDGE_RUNNER_PATH = '/home/user/.supabase-lite/edge-runtime/runner.ts';
+const EDGE_RUNTIME_ROOT = '/home/user/.supabase-lite/edge-runtime';
+
+async function ensureEdgeRuntimeReady() {
+  if (typeof window === 'undefined' || !window.crossOriginIsolated) {
+    throw new Error('Edge runtime requires cross-origin isolation.');
+  }
+
+  const instance = await edgeFunctionsWebvmManager.ensureStarted();
   try {
-    // Simulate realistic execution delay
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 80 + 20));
-    
-    let response: any;
-    const status = 200;
-    
-    // Try to extract response patterns from the actual code
-    try {
-      // Look for Response constructor with JSON.stringify - improved regex to handle multiline objects
-      const responseMatch = code.match(/new Response\(JSON\.stringify\((\{[\s\S]*?\})\)/);
-      if (responseMatch) {
-        let responseCode = responseMatch[1];
-        
-        // Simple variable substitution for common patterns
-        responseCode = responseCode.replace(/new Date\(\)\.toISOString\(\)/g, `"${new Date().toISOString()}"`);
-        responseCode = responseCode.replace(/req\.method/g, '"POST"');
-        responseCode = responseCode.replace(/req\.url/g, `"${functionName}"`);
-        
-        // Handle variable substitution - if responseCode is just a variable name, find its definition
-        if (responseCode.trim().match(/^\w+$/)) {
-          const varName = responseCode.trim();
-          const varMatch = code.match(new RegExp(`const\\s+${varName}\\s*=\\s*(\\{[\\s\\S]*?\\});`, 'm'));
-          if (varMatch) {
-            responseCode = varMatch[1];
-          }
-        }
-        
-        // Handle request body access patterns and string concatenation
-        if (code.includes('await req.json()') && requestBody) {
-          // Handle direct property access like name
-          if (typeof requestBody === 'object' && requestBody !== null) {
-            for (const [key, value] of Object.entries(requestBody as any)) {
-              // Replace patterns like: "Hello " + (name || "World") + "!"
-              const pattern = new RegExp(`"([^"]*)" \\+ \\(${key} \\|\\| "([^"]*)"\\) \\+ "([^"]*)"`, 'g');
-              responseCode = responseCode.replace(pattern, `"$1${value}$3"`);
-              
-              // Replace simple variable access
-              responseCode = responseCode.replace(new RegExp(`\\b${key}\\b`, 'g'), `"${value}"`);
-            }
-          }
-        }
-        
-        // Safely evaluate the response object
-        try {
-          response = eval(`(${responseCode})`);
-        } catch {
-          // Fallback if evaluation fails
-          response = {
-            message: `Function executed successfully`,
-            timestamp: new Date().toISOString(),
-            input: requestBody
-          };
-        }
-      }
-      // If we didn't find the full Response constructor, try just JSON.stringify pattern
-      else if (code.includes('JSON.stringify')) {
-        const jsonMatch = code.match(/JSON\.stringify\(([^)]+)\)/);
-        if (jsonMatch) {
-          let responseCode = jsonMatch[1].trim();
-          
-          // Handle variable substitution - if responseCode is just a variable name, find its definition
-          if (responseCode.match(/^\w+$/)) {
-            const varName = responseCode.trim();
-            const varMatch = code.match(new RegExp(`const\\s+${varName}\\s*=\\s*(\\{[\\s\\S]*?\\});`, 'm'));
-            if (varMatch) {
-              responseCode = varMatch[1];
-            }
-          }
-          
-          // Handle request body access patterns and string concatenation
-          if (code.includes('await req.json()') && requestBody) {
-            // Handle direct property access like name
-            if (typeof requestBody === 'object' && requestBody !== null) {
-              for (const [key, value] of Object.entries(requestBody as any)) {
-                // Replace patterns like: "Hello " + (name || "World") + "!"
-                const pattern = new RegExp(`"([^"]*)" \\+ \\(${key} \\|\\| "([^"]*)"\\) \\+ "([^"]*)"`, 'g');
-                responseCode = responseCode.replace(pattern, `"$1${value}$3"`);
-                
-                // Replace simple variable access
-                responseCode = responseCode.replace(new RegExp(`\\b${key}\\b`, 'g'), `"${value}"`);
-              }
-            }
-          }
-          
-          // Safely evaluate the response object
-          try {
-            response = eval(`(${responseCode})`);
-          } catch {
-            // Fallback if evaluation fails
-            response = {
-              message: `Function executed successfully`,
-              timestamp: new Date().toISOString(),
-              input: requestBody
-            };
-          }
-        }
-      }
-      // Look for simple object returns
-      else if (code.includes('return') && code.includes('{')) {
-        const returnMatch = code.match(/return\s+({[^}]+})/s);
-        if (returnMatch) {
-          try {
-            let returnCode = returnMatch[1];
-            returnCode = returnCode.replace(/new Date\(\)\.toISOString\(\)/g, `"${new Date().toISOString()}"`);
-            response = eval(`(${returnCode})`);
-          } catch {
-            response = {
-              result: 'Function executed',
-              timestamp: new Date().toISOString()
-            };
-          }
-        }
-      }
-    } catch {
-      // Ignore parsing errors, use fallback
+    // Create runtime directory and runner script if missing
+    const runtimeDir = escapeShellArg(EDGE_RUNTIME_ROOT);
+    await instance.runShellCommand(`mkdir -p ${runtimeDir}`);
+
+    // Check if runner exists
+    const runnerCheck = await instance.runShellCommand(`[ -f ${escapeShellArg(EDGE_RUNNER_PATH)} ]`);
+    if (runnerCheck.status !== 0) {
+      const runnerSource = getRunnerSource();
+      await writeBase64FileToWebVM(
+        instance,
+        EDGE_RUNNER_PATH,
+        encodeStringToBase64(runnerSource)
+      );
+      await instance.runShellCommand(`chmod +x ${escapeShellArg(EDGE_RUNNER_PATH)}`);
     }
-    
-    // Error simulation based on code content
-    if ((code.includes('throw') || code.includes('Error')) && Math.random() > 0.8) {
-      return {
-        status: 500,
-        response: { 
-          error: 'Runtime Error',
-          message: 'Function execution failed'
-        },
-        executionTime: performance.now() - startTime,
-        headers: {
-          'X-Edge-Runtime': 'deno',
-          'X-Function-Status': 'error',
-          'Access-Control-Allow-Origin': '*'
-        }
-      };
-    }
-    
-    // Fallback response if we couldn't parse the code
-    if (!response) {
-      response = {
-        message: `Function executed successfully`,
-        timestamp: new Date().toISOString(),
-        requestBody: requestBody || null
-      };
-    }
-    
-    return {
-      status,
-      response,
-      executionTime: performance.now() - startTime,
-      headers: {
-        'X-Edge-Runtime': 'deno',
-        'X-Function-Version': '1',
-        'X-Function-Status': 'success',
-        'Access-Control-Allow-Origin': '*'
-      }
-    };
+
+    return instance;
   } catch (error) {
-    return {
-      status: 500,
-      response: { 
-        error: 'Function execution error',
-        message: (error as Error).message
-      },
-      executionTime: performance.now() - startTime,
-      headers: {
-        'X-Edge-Runtime': 'deno',
-        'X-Function-Status': 'error',
-        'Access-Control-Allow-Origin': '*'
-      }
-    };
+    logger.error('Failed to prepare Edge Functions runtime', error as Error);
+    throw error;
   }
 }
 
-async function readDeployedEdgeFunction(functionName: string): Promise<string | null> {
-  if (typeof window === 'undefined' || !window.crossOriginIsolated) {
-    return null;
+function getRunnerSource(): string {
+  return `// Supabase Lite Edge Function runner
+const [modulePath, requestPath, responsePath] = Deno.args;
+
+const decoder = new TextDecoder();
+const encoder = new TextEncoder();
+
+const requestData = JSON.parse(await Deno.readTextFile(requestPath));
+
+const requestHeaders = new Headers(requestData.headers || {});
+let requestBody: Uint8Array | undefined = undefined;
+if (requestData.bodyBase64) {
+  const binaryString = atob(requestData.bodyBase64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  requestBody = bytes;
+}
+
+const request = new Request(requestData.url, {
+  method: requestData.method,
+  headers: requestHeaders,
+  body: requestBody,
+});
+
+let capturedHandler: ((req: Request) => Promise<Response> | Response) | null = null;
+
+function capture(handler: (req: Request) => Promise<Response> | Response) {
+  capturedHandler = handler;
+}
+
+const originalDenoServe = Deno.serve;
+(Deno as any).serve = function (optionsOrHandler: unknown, maybeHandler?: unknown) {
+  if (typeof optionsOrHandler === 'function') {
+    capture(optionsOrHandler as (req: Request) => Promise<Response> | Response);
+  } else if (typeof maybeHandler === 'function') {
+    capture(maybeHandler as (req: Request) => Promise<Response> | Response);
+  } else {
+    throw new Error('Unsupported usage of Deno.serve in Supabase Lite runner');
+  }
+  return {
+    addr: { hostname: '127.0.0.1', port: 0 },
+    finished: Promise.resolve(),
+    shutdown: async () => {},
+    [Symbol.asyncIterator]: async function* asyncIterator() {},
+  };
+};
+
+(globalThis as any).serve = function (handlerOrOptions: unknown, maybeHandler?: unknown) {
+  if (typeof handlerOrOptions === 'function') {
+    capture(handlerOrOptions as (req: Request) => Promise<Response> | Response);
+  } else if (typeof maybeHandler === 'function') {
+    capture(maybeHandler as (req: Request) => Promise<Response> | Response);
+  } else {
+    throw new Error('Unsupported usage of serve() in Supabase Lite runner');
+  }
+};
+
+await import(modulePath + '?v=' + Date.now());
+
+if (!capturedHandler) {
+  throw new Error('Edge function did not register a handler via serve or Deno.serve');
+}
+
+const response = await capturedHandler(request);
+const bodyBuffer = new Uint8Array(await response.arrayBuffer());
+let bodyBase64: string | null = null;
+if (bodyBuffer.length > 0) {
+  let binary = '';
+  for (let i = 0; i < bodyBuffer.length; i++) {
+    binary += String.fromCharCode(bodyBuffer[i]);
+  }
+  bodyBase64 = btoa(binary);
+}
+
+const headers: Record<string, string> = {};
+for (const [key, value] of response.headers.entries()) {
+  headers[key] = value;
+}
+
+const payload = {
+  status: response.status,
+  headers,
+  bodyBase64,
+};
+
+await Deno.writeTextFile(responsePath, JSON.stringify(payload));
+
+if (typeof originalDenoServe === 'function') {
+  (Deno as any).serve = originalDenoServe;
+}
+`;}
+
+async function executeEdgeFunctionInWebVM(functionName: string, request: Request, rawBody: string | null) {
+  const instance = await ensureEdgeRuntimeReady();
+
+  const functionPath = `${EDGE_FUNCTIONS_VM_ROOT}/${functionName}/index.ts`;
+  const tempId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const requestPath = `/tmp/edge-request-${tempId}.json`;
+  const responsePath = `/tmp/edge-response-${tempId}.json`;
+
+  const requestPayload = {
+    method: request.method,
+    url: request.url,
+    headers: Object.fromEntries(request.headers.entries()),
+    bodyBase64: rawBody ? encodeStringToBase64(rawBody) : null,
+  };
+
+  await writeBase64FileToWebVM(
+    instance,
+    requestPath,
+    encodeStringToBase64(JSON.stringify(requestPayload))
+  );
+
+  const command = [
+    'deno run',
+    '--allow-read',
+    '--allow-write',
+    '--allow-env',
+    escapeShellArg(EDGE_RUNNER_PATH),
+    escapeShellArg(functionPath),
+    escapeShellArg(requestPath),
+    escapeShellArg(responsePath),
+  ].join(' ');
+
+  const result = await instance.runShellCommand(command);
+
+  if (result.status !== 0) {
+    await instance.runShellCommand(`rm -f ${escapeShellArg(requestPath)} ${escapeShellArg(responsePath)}`);
+    throw new Error(`Edge function runtime exited with status ${result.status}`);
   }
 
-  try {
-    const instance = await edgeFunctionsWebvmManager.ensureStarted();
-    const candidatePaths = [
-      `${EDGE_FUNCTIONS_VM_ROOT}/${functionName}/index.ts`,
-      `${EDGE_FUNCTIONS_VM_ROOT}/${functionName}/index.js`,
-      `${EDGE_FUNCTIONS_VM_ROOT}/${functionName}.ts`,
-      `${EDGE_FUNCTIONS_VM_ROOT}/${functionName}.js`,
-    ];
+  const responseBlob = await instance.readFileAsBlob(responsePath);
+  const responseText = await responseBlob.text();
 
-    for (const path of candidatePaths) {
-      try {
-        const blob = await instance.readFileAsBlob(path);
-        if (!blob) {
-          continue;
-        }
+  await instance.runShellCommand(`rm -f ${escapeShellArg(requestPath)} ${escapeShellArg(responsePath)}`);
 
-        const text = await blob.text();
-        if (text) {
-          return text;
-        }
-      } catch (error) {
-        logger.debug('Unable to read deployed edge function from WebVM', { path, error });
-      }
-    }
-  } catch (error) {
-    logger.warn('Failed to access Edge Functions WebVM for deployed code', error as Error);
+  return JSON.parse(responseText) as {
+    status: number;
+    headers: Record<string, string>;
+    bodyBase64: string | null;
+  };
+}
+
+function decodeBase64ToUint8Array(value: string): Uint8Array {
+  const binaryString = atob(value);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let index = 0; index < binaryString.length; index += 1) {
+    bytes[index] = binaryString.charCodeAt(index);
   }
-
-  return null;
+  return bytes;
 }
 
 /**
@@ -250,58 +212,63 @@ const createEdgeFunctionHandler = () => async ({ params, request }: any) => {
       method: request.method
     });
 
-    const possiblePaths = [
-      `edge-functions/${functionName}.ts`,
-      `edge-functions/${functionName}/index.ts`,
-      `edge-functions/${functionName}.js`,
-    ];
+    // Ensure the function has been deployed to the WebVM runtime
+    const instance = await ensureEdgeRuntimeReady();
 
-    let functionSource = await readDeployedEdgeFunction(functionName);
+    const functionPathCheck = await instance.runShellCommand(
+      `[ -f ${escapeShellArg(`${EDGE_FUNCTIONS_VM_ROOT}/${functionName}/index.ts`)} ]`
+    );
 
-    if (!functionSource) {
-      for (const path of possiblePaths) {
-        const file = await vfsManager.readFile(path);
-        if (file?.content) {
-          functionSource = file.content;
-          break;
-        }
-      }
-    }
-
-    if (!functionSource) {
+    if (functionPathCheck.status !== 0) {
       return createErrorResponse(
         'Function not found',
-        `Function '${functionName}' not found. Tried paths: ${possiblePaths.join(', ')}`,
+        `Function '${functionName}' not found in WebVM runtime. Deploy the function before invoking it.`,
         404
       );
     }
 
     // Get request body
-    const requestBody = await safeJsonParse(request);
+    let rawBody: string | null = null;
+    const requestClone = request.clone();
+    if (requestClone.method !== 'GET' && requestClone.method !== 'HEAD') {
+      rawBody = await requestClone.text();
+    }
 
-    // Simulate function execution
-    const executionResult = await simulateEdgeFunctionExecution(
-      functionName,
-      functionSource,
-      requestBody
-    );
+    const executionResult = await executeEdgeFunctionInWebVM(functionName, request, rawBody);
 
     logger.info('Edge function executed', { 
       functionName,
       status: executionResult.status,
-      duration: executionResult.executionTime
     });
 
-    return HttpResponse.json(executionResult.response as any, {
-      status: executionResult.status,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Function-Name': functionName,
-        'X-Execution-Time': executionResult.executionTime.toString(),
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
-        ...executionResult.headers
+    const headers = {
+      ...executionResult.headers,
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'apikey, authorization, content-type',
+      'X-Function-Name': functionName,
+    } as Record<string, string>;
+
+    const bodyBase64 = executionResult.bodyBase64;
+    let responseBody: BodyInit | undefined;
+    if (bodyBase64) {
+      const bytes = decodeBase64ToUint8Array(bodyBase64);
+      const contentType = headers['Content-Type']?.toLowerCase() ?? '';
+      if (contentType.includes('json') || contentType.startsWith('text/')) {
+        responseBody = new TextDecoder().decode(bytes);
+        if (!headers['Content-Type']) {
+          headers['Content-Type'] = contentType || 'text/plain; charset=utf-8';
+        }
+      } else {
+        responseBody = bytes;
+        if (!headers['Content-Type']) {
+          headers['Content-Type'] = 'application/octet-stream';
+        }
       }
+    }
+
+    return new HttpResponse(responseBody, {
+      status: executionResult.status,
+      headers,
     });
   } catch (error) {
     logger.error('Edge function execution failed', error as Error);
