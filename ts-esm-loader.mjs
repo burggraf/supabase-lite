@@ -142,9 +142,15 @@ export async function resolve(specifier, context, defaultResolve) {
   }
 
   if (isPathSpecifier(specifier)) {
-    const resolved = await tryResolveWithExtensions(specifier, context, defaultResolve)
-    if (resolved) {
-      return { ...resolved, shortCircuit: true }
+    try {
+      return await defaultResolve(specifier, context, defaultResolve)
+    } catch (error) {
+      const resolved = await tryResolveWithExtensions(specifier, context, defaultResolve)
+      if (resolved) {
+        return { ...resolved, shortCircuit: true }
+      }
+      throw error
+
     }
   }
 
