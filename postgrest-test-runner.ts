@@ -153,9 +153,10 @@ interface Example {
 interface TestItem {
   id: string
   title: string
-  $ref: string
-  notes: string
-  examples: Example[]
+  $ref?: string
+  notes?: string
+  description?: string
+  examples?: Example[]
 }
 
 interface RunnerConfig {
@@ -452,6 +453,7 @@ class PostgRESTNodeTestRunner {
 
     cleanedCode = cleanedCode.replace(/const\s*{\s*error\s*}/g, 'const { data, error }')
     cleanedCode = cleanedCode.replace(/const\s*{\s*count,\s*error\s*}/g, 'const { data, count, error }')
+    cleanedCode = cleanedCode.replace(/\.(\w+)\s*<([\s\S]*?)>\s*\(/g, (_, methodName: string) => `.${methodName}(`)
 
     return cleanedCode
   }
@@ -740,7 +742,9 @@ class PostgRESTNodeTestRunner {
 
     if (targetTestId) {
       for (const item of testData) {
-        for (const example of item.examples) {
+        const examples = Array.isArray(item.examples) ? item.examples : []
+
+        for (const example of examples) {
           if (example.id === targetTestId) {
             this.displayTestHeader(item, example)
             const results = await this.processExample(item, example)
@@ -756,7 +760,15 @@ class PostgRESTNodeTestRunner {
     }
 
     for (const item of testData) {
-      for (const example of item.examples) {
+      const examples = Array.isArray(item.examples) ? item.examples : []
+
+      if (examples.length === 0) {
+        this.log('info', `Skipping test group ${item.id} (no runnable examples defined)${item.description ? ' - description only' : ''}`)
+        this.testStats.unsupported++
+        continue
+      }
+
+      for (const example of examples) {
         const skipReason = this.shouldSkipExample(example)
 
         if (skipReason) {
