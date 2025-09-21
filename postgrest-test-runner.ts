@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto'
 import { loadConfig, register as registerTsPaths } from 'tsconfig-paths'
 import { webcrypto } from 'node:crypto'
 import type { Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { BroadcastChannel as NodeBroadcastChannel } from 'worker_threads'
 import { createServer as createMswServer } from '@mswjs/http-middleware'
 import { fileURLToPath } from 'node:url'
@@ -198,7 +199,17 @@ class PostgRESTNodeTestRunner {
     this.isRetestMode = isRetestMode
 
     const currentDir = moduleDir
-    const port = 54321
+    const envPort = process.env.POSTGREST_TEST_PORT
+    let port = 54321
+
+    if (envPort) {
+      const parsedPort = Number.parseInt(envPort, 10)
+      if (!Number.isNaN(parsedPort) && parsedPort >= 0 && parsedPort <= 65535) {
+        port = parsedPort
+      } else {
+        console.warn(`Ignoring invalid POSTGREST_TEST_PORT value: ${envPort}`)
+      }
+    }
 
     this.config = {
       supabaseLiteUrl: `http://127.0.0.1:${port}`,
@@ -237,24 +248,66 @@ class PostgRESTNodeTestRunner {
 
     this.log('info', 'Starting Supabase Lite API middleware server (MSW)...')
 
-    const app = createMswServer(...handlers)
+    const preferredPort = this.config.serverPort
+    const portsToTry: number[] = [preferredPort]
+    if (preferredPort !== 0) {
+      portsToTry.push(0)
+    }
 
-    await new Promise<void>((resolve, reject) => {
+    let lastError: unknown
+
+    for (const portOption of portsToTry) {
+      const app = createMswServer(...handlers)
+
       try {
-        const server = app.listen(this.config.serverPort, () => {
-          this.log('info', `Server listening on ${this.config.supabaseLiteUrl}`)
-          resolve()
+        await new Promise<void>((resolve, reject) => {
+          const server = app.listen(portOption, '127.0.0.1')
+
+          const cleanup = () => {
+            server.off('listening', onListening)
+            server.off('error', onError)
+          }
+
+          const onListening = () => {
+            cleanup()
+            const address = server.address()
+            if (!address || typeof address === 'string') {
+              reject(new Error('Unable to determine server address'))
+              return
+            }
+
+            const { port: activePort } = address as AddressInfo
+            this.httpServer = server
+            this.config.serverPort = activePort
+            this.config.supabaseLiteUrl = `http://127.0.0.1:${activePort}`
+            this.log('info', `Server listening on ${this.config.supabaseLiteUrl}`)
+            resolve()
+          }
+
+          const onError = (error: NodeJS.ErrnoException) => {
+            cleanup()
+            reject(error)
+          }
+
+          server.once('listening', onListening)
+          server.once('error', onError)
         })
 
-        server.on('error', error => {
-          reject(error)
-        })
-
-        this.httpServer = server
+        return
       } catch (error) {
-        reject(error)
+        lastError = error
+        this.httpServer = null
+
+        if ((error as NodeJS.ErrnoException)?.code === 'EADDRINUSE' && portOption !== 0) {
+          this.log('info', `Port ${portOption} is already in use. Retrying with a random available port...`)
+          continue
+        }
+
+        throw error
       }
-    })
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(String(lastError))
   }
 
   private async stopServer(): Promise<void> {
