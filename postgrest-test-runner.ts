@@ -394,6 +394,7 @@ class PostgRESTNodeTestRunner {
         return
       }
 
+
       await this.dbManager.queryWithContext(statement, { role: 'service_role' })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
