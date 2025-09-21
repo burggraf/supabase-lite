@@ -68,29 +68,18 @@ describe('Constants', () => {
       })
     })
 
-    it('should have disabled auth navigation item', () => {
+    it('should include auth navigation item', () => {
       const auth = NAVIGATION_ITEMS.find(item => item.id === 'auth')
       expect(auth).toEqual({
         id: 'auth',
         label: 'Authentication',
         icon: 'Shield',
         path: '/auth',
-        disabled: true,
+        disabled: false,
       })
     })
 
-    it('should have disabled storage navigation item', () => {
-      const storage = NAVIGATION_ITEMS.find(item => item.id === 'storage')
-      expect(storage).toEqual({
-        id: 'storage',
-        label: 'Storage',
-        icon: 'FolderOpen',
-        path: '/storage',
-        disabled: true,
-      })
-    })
-
-    it('should have disabled realtime navigation item', () => {
+    it('should mark realtime navigation item as coming soon', () => {
       const realtime = NAVIGATION_ITEMS.find(item => item.id === 'realtime')
       expect(realtime).toEqual({
         id: 'realtime',
@@ -101,30 +90,19 @@ describe('Constants', () => {
       })
     })
 
-    it('should have disabled edge-functions navigation item', () => {
-      const edgeFunctions = NAVIGATION_ITEMS.find(item => item.id === 'edge-functions')
-      expect(edgeFunctions).toEqual({
-        id: 'edge-functions',
-        label: 'Edge Functions',
-        icon: 'Code',
-        path: '/edge-functions',
-        disabled: true,
-      })
-    })
-
-    it('should have disabled api navigation item', () => {
+    it('should include API tester navigation item', () => {
       const api = NAVIGATION_ITEMS.find(item => item.id === 'api')
       expect(api).toEqual({
         id: 'api',
-        label: 'API Docs',
-        icon: 'BookOpen',
+        label: 'API Tester',
+        icon: 'TestTube',
         path: '/api',
-        disabled: true,
+        disabled: false,
       })
     })
 
     it('should have correct number of navigation items', () => {
-      expect(NAVIGATION_ITEMS).toHaveLength(10)
+      expect(NAVIGATION_ITEMS).toHaveLength(11)
     })
 
     it('should have unique IDs for all navigation items', () => {
@@ -149,9 +127,9 @@ describe('Constants', () => {
 
     it('should have correct disabled items', () => {
       const disabledItems = NAVIGATION_ITEMS.filter(item => item.disabled === true)
-      const expectedDisabledIds = ['auth', 'storage', 'realtime', 'edge-functions', 'api']
-      
-      expect(disabledItems).toHaveLength(5)
+      const expectedDisabledIds = ['realtime']
+
+      expect(disabledItems).toHaveLength(expectedDisabledIds.length)
       expect(disabledItems.map(item => item.id)).toEqual(expectedDisabledIds)
     })
   })

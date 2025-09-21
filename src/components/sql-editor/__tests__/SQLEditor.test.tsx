@@ -60,17 +60,21 @@ vi.mock('@/hooks/useSQLSnippets', () => ({
 }))
 
 // Mock Lucide React icons
-vi.mock('lucide-react', () => ({
-  Play: () => <div data-testid="play-icon" />,
-  Save: () => <div data-testid="save-icon" />,
-  History: () => <div data-testid="history-icon" />,
-  Plus: () => <div data-testid="plus-icon" />,
-  X: () => <div data-testid="x-icon" />,
-  Edit2: () => <div data-testid="edit-icon" />,
-  Pencil: () => <div data-testid="pencil-icon" />,
-  PanelLeftClose: () => <div data-testid="panel-left-close-icon" />,
-  PanelLeftOpen: () => <div data-testid="panel-left-open-icon" />,
-}))
+vi.mock('lucide-react', async () => {
+  const actual = await vi.importActual<typeof import('lucide-react')>('lucide-react')
+  return {
+    ...actual,
+    Play: () => <div data-testid="play-icon" />,
+    Save: () => <div data-testid="save-icon" />,
+    History: () => <div data-testid="history-icon" />,
+    Plus: () => <div data-testid="plus-icon" />,
+    X: () => <div data-testid="x-icon" />,
+    Edit2: () => <div data-testid="edit-icon" />,
+    Pencil: () => <div data-testid="pencil-icon" />,
+    PanelLeftClose: () => <div data-testid="panel-left-close-icon" />,
+    PanelLeftOpen: () => <div data-testid="panel-left-open-icon" />,
+  }
+})
 
 describe('SQLEditor', () => {
   const user = userEvent.setup()

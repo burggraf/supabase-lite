@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Database, Users, Table, Clock, HardDrive, FileText, Code2, Globe } from 'lucide-react';
+import { Database, Users, Table, Clock, HardDrive, FileText, Globe } from 'lucide-react';
 import { ProjectsSection } from './ProjectsSection';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { vfsManager } from '@/lib/vfs/VFSManager';
@@ -16,7 +16,6 @@ interface ProjectMetrics {
   databaseSize: string;
   storageFileCount: number;
   storageTotalSize: string;
-  edgeFunctionsCount: number;
   applicationsCount: number;
 }
 
@@ -32,7 +31,6 @@ export function Dashboard({ onPageChange }: DashboardProps) {
     databaseSize: '0 B',
     storageFileCount: 0,
     storageTotalSize: '0 B',
-    edgeFunctionsCount: 0,
     applicationsCount: 0,
   });
   const [isMetricsLoading, setIsMetricsLoading] = useState(false);
@@ -221,25 +219,11 @@ export function Dashboard({ onPageChange }: DashboardProps) {
       // Get storage metrics from all buckets
       let totalFiles = 0;
       let totalSize = 0;
-      let edgeFunctionsCount = 0;
       let applicationsCount = 0;
 
       for (const bucket of freshBuckets) {
         totalFiles += bucket.fileCount || 0;
         totalSize += bucket.totalSize || 0;
-
-        // Count edge functions in edge-functions bucket
-        if (bucket.name === 'edge-functions') {
-          const functionFiles = await vfsManager.listFiles({ directory: 'edge-functions', recursive: true }).catch(() => []);
-          const functionNames = new Set<string>();
-          functionFiles.forEach(file => {
-            const match = file.path.match(/^edge-functions\/([^\/]+)\/index\.ts$/);
-            if (match) {
-              functionNames.add(match[1]);
-            }
-          });
-          edgeFunctionsCount = functionNames.size;
-        }
 
         // Count applications in app bucket
         if (bucket.name === 'app') {
@@ -259,7 +243,6 @@ export function Dashboard({ onPageChange }: DashboardProps) {
         databaseSize,
         storageFileCount: totalFiles,
         storageTotalSize: formatBytes(totalSize),
-        edgeFunctionsCount,
         applicationsCount,
       });
     } catch (error) {
@@ -381,7 +364,7 @@ export function Dashboard({ onPageChange }: DashboardProps) {
             <div className="space-y-2">
               <h4 className="text-sm font-medium">🚀 Available Features</h4>
               <p className="text-xs text-muted-foreground">
-                Auth, Storage, Edge Functions, and App Hosting are ready to use
+                Auth, Storage, and App Hosting are ready to use
               </p>
             </div>
           </CardContent>
@@ -425,14 +408,6 @@ export function Dashboard({ onPageChange }: DashboardProps) {
                   <div className="text-sm font-mono">
                     {projectMetrics.storageFileCount} files ({projectMetrics.storageTotalSize})
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Code2 className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Edge Functions</span>
-                  </div>
-                  <span className="text-sm font-mono">{projectMetrics.edgeFunctionsCount}</span>
                 </div>
 
                 <div className="flex items-center justify-between">

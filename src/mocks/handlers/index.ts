@@ -14,7 +14,6 @@ import { healthHandlers } from './health'
 import { storageHandlers } from './storage'
 import { vfsDirectHandlers } from './vfs-direct'
 import { appHandlers } from './app'
-import { functionsHandlers } from './functions'
 import { corsAndCatchAllHandler } from './shared/cors'
 
 /**
@@ -27,8 +26,7 @@ import { corsAndCatchAllHandler } from './shared/cors'
  * 6. Storage handlers (bucket management and object operations)
  * 7. VFS direct handlers (direct file access)
  * 8. App hosting handlers (SPA serving)
- * 9. Edge Functions handlers
- * 10. CORS and catch-all handler (must be last)
+ * 9. CORS and catch-all handler (must be last)
  */
 export const handlers = [
   // ==== AUTHENTICATION HANDLERS FIRST (must come before catch-all) ====
@@ -54,9 +52,6 @@ export const handlers = [
   
   // ==== APP HOSTING HANDLERS ====
   ...appHandlers,
-  
-  // ==== EDGE FUNCTIONS HANDLERS ====
-  ...functionsHandlers,
   
   // ==== CORS PREFLIGHT AND CATCH-ALL (must be last) ====
   corsAndCatchAllHandler,

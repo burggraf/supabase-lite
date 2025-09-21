@@ -7,7 +7,6 @@ import { APITester } from '@/components/api-test/APITester';
 import { AuthTestPanel } from '@/components/auth/AuthTestPanel';
 import { Storage } from '@/components/storage/Storage';
 import { AppHosting } from '@/components/app-hosting/AppHosting';
-import { EdgeFunctions } from '@/pages/EdgeFunctions';
 import APIDocs from '@/pages/APIDocs';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -202,14 +201,6 @@ function App() {
             >
               <ApplicationServers />
             </Suspense>
-          </ErrorBoundary>
-        );
-      case 'edge-functions':
-      case 'edge-functions-secrets':  
-      case 'edge-functions-editor':
-        return (
-          <ErrorBoundary>
-            <EdgeFunctions />
           </ErrorBoundary>
         );
       case 'api-test':

@@ -229,10 +229,14 @@ vi.mock('../RowEditPanel', () => ({
 }));
 
 // Mock Lucide React icons
-vi.mock('lucide-react', () => ({
-  AlertCircle: () => <div data-testid="alert-circle-icon" />,
-  Loader2: () => <div data-testid="loader2-icon" />,
-}));
+vi.mock('lucide-react', async () => {
+  const actual = await vi.importActual<typeof import('lucide-react')>('lucide-react')
+  return {
+    ...actual,
+    AlertCircle: () => <div data-testid="alert-circle-icon" />,
+    Loader2: () => <div data-testid="loader2-icon" />,
+  }
+});
 
 describe('TableEditor', () => {
   beforeEach(() => {

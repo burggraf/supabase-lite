@@ -1,19 +1,18 @@
 import { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Table, 
-  Shield, 
-  FolderOpen, 
-  Code2,
-  Zap, 
-  Globe, 
+import {
+  LayoutDashboard,
+  FileText,
+  Table,
+  Shield,
+  FolderOpen,
+  Zap,
+  Globe,
   BookOpen,
   Database,
   Settings,
   TestTube,
   HardDrive,
-  Server
+  Server,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +25,6 @@ const iconMap = {
   Table,
   Shield,
   FolderOpen,
-  Code2,
   Zap,
   Globe,
   BookOpen,
@@ -83,12 +81,6 @@ export function Sidebar({ currentPage, onPageChange, currentProjectName }: Sideb
       id: 'storage',
       label: 'Storage',
       icon: 'FolderOpen' as keyof typeof iconMap,
-      badge: null,
-    },
-    {
-      id: 'edge-functions',
-      label: 'Edge Functions',
-      icon: 'Code2' as keyof typeof iconMap,
       badge: null,
     },
     {

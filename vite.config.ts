@@ -239,7 +239,6 @@ function websocketBridge(): Plugin {
           req.url.startsWith('/rest/') || 
           req.url.startsWith('/auth/') || 
           req.url.startsWith('/storage/') ||
-          req.url.startsWith('/functions/') ||
           req.url.startsWith('/health') ||
           req.url.startsWith('/projects') ||
           req.url.startsWith('/debug/sql') ||
@@ -492,7 +491,7 @@ function websocketBridge(): Plugin {
               // For non-CSV responses, preserve existing Content-Type or default to JSON only for API responses
               if (!responseHeaders['Content-Type']) {
                 // Only default to JSON for API endpoints, not for app hosting
-                if (req.url && (req.url.startsWith('/rest/') || req.url.startsWith('/auth/') || req.url.startsWith('/functions/') || req.url.includes('/rpc/'))) {
+                if (req.url && (req.url.startsWith('/rest/') || req.url.startsWith('/auth/') || req.url.includes('/rpc/'))) {
                   responseHeaders['Content-Type'] = 'application/json'
                 } else {
                   // For app hosting and other non-API responses, don't override Content-Type

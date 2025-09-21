@@ -8,8 +8,6 @@ export const ROUTES = {
   REALTIME: '/realtime',
   APP_HOSTING: '/app-hosting',
   API: '/api',
-  EDGE_FUNCTIONS: '/edge-functions',
-  EDGE_FUNCTIONS_SECRETS: '/edge-functions/secrets',
 } as const;
 
 export const ROUTE_TO_PAGE: Record<string, string> = {
@@ -22,8 +20,6 @@ export const ROUTE_TO_PAGE: Record<string, string> = {
   [ROUTES.REALTIME]: 'realtime',
   [ROUTES.APP_HOSTING]: 'app-hosting',
   [ROUTES.API]: 'api',
-  [ROUTES.EDGE_FUNCTIONS]: 'edge-functions',
-  [ROUTES.EDGE_FUNCTIONS_SECRETS]: 'edge-functions-secrets',
 };
 
 export const PAGE_TO_ROUTE: Record<string, string> = {
@@ -36,8 +32,6 @@ export const PAGE_TO_ROUTE: Record<string, string> = {
   'realtime': ROUTES.REALTIME,
   'app-hosting': ROUTES.APP_HOSTING,
   'api': ROUTES.API,
-  'edge-functions': ROUTES.EDGE_FUNCTIONS,
-  'edge-functions-secrets': ROUTES.EDGE_FUNCTIONS_SECRETS,
 };
 
 export function getPageFromPath(path: string): string {
@@ -45,40 +39,10 @@ export function getPageFromPath(path: string): string {
   if (ROUTE_TO_PAGE[path]) {
     return ROUTE_TO_PAGE[path];
   }
-  
-  // Handle dynamic routes
-  if (path.startsWith('/edge-functions/')) {
-    const segments = path.split('/');
-    if (segments[2] === 'secrets') {
-      return 'edge-functions-secrets';
-    }
-    // If it's not secrets, it's a function editor route
-    return 'edge-functions-editor';
-  }
-  
+
   return 'dashboard';
 }
 
 export function getPathFromPage(page: string): string {
   return PAGE_TO_ROUTE[page] || ROUTES.DASHBOARD;
 }
-
-// Helper functions for dynamic routes
-export function getFunctionNameFromPath(path: string): string | null {
-  if (path.startsWith('/edge-functions/')) {
-    const segments = path.split('/');
-    if (segments[2] && segments[2] !== 'secrets') {
-      return segments[2];
-    }
-  }
-  return null;
-}
-
-export function buildFunctionEditorPath(functionName: string): string {
-  return `/edge-functions/${functionName}`;
-}
-
-export function buildFunctionEditorUrl(functionName: string): string {
-  return buildFunctionEditorPath(functionName);
-}
-

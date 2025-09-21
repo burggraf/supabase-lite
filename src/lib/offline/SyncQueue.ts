@@ -5,7 +5,7 @@
 
 export interface QueuedOperation {
   id: string;
-  type: 'database' | 'storage' | 'auth' | 'functions';
+  type: 'database' | 'storage' | 'auth';
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   url: string;
   data?: any;

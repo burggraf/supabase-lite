@@ -50,13 +50,6 @@ export const NAVIGATION_ITEMS = [
     disabled: false,
   },
   {
-    id: 'edge-functions',
-    label: 'Edge Functions',
-    icon: 'Code2',
-    path: '/edge-functions',
-    disabled: false,
-  },
-  {
     id: 'realtime',
     label: 'Realtime',
     icon: 'Zap',

@@ -4,33 +4,33 @@ import { AuthTestPanel } from '../AuthTestPanel'
 import type { User, Session } from '@/lib/auth/types/auth.types'
 
 // Mock dependencies
-const mockAuthManager = {
+const mockAuthManager = vi.hoisted(() => ({
 	initialize: vi.fn(),
 	signUp: vi.fn(),
 	signIn: vi.fn(),
 	signOut: vi.fn(),
 	updateUser: vi.fn(),
 	resetPassword: vi.fn(),
-}
+}))
 
-const mockSessionManager = {
+const mockSessionManager = vi.hoisted(() => ({
 	onAuthStateChange: vi.fn(),
 	getUser: vi.fn(),
 	getSession: vi.fn(),
 	refreshSession: vi.fn(),
-}
+}))
 
-const mockMFAService = {
+const mockMFAService = vi.hoisted(() => ({
 	enroll: vi.fn(),
 	challenge: vi.fn(),
 	verify: vi.fn(),
 	listFactors: vi.fn(),
 	unenroll: vi.fn(),
-}
+}))
 
-const mockApiKeyGenerator = {
+const mockApiKeyGenerator = vi.hoisted(() => ({
 	generateApiKeys: vi.fn(),
-}
+}))
 
 vi.mock('@/lib/auth', () => ({
 	AuthManager: {
@@ -49,12 +49,16 @@ vi.mock('@/lib/auth/api-keys', () => ({
 }))
 
 // Mock Lucide React icons
-vi.mock('lucide-react', () => ({
-	Copy: () => <div data-testid='copy-icon' />,
-	Eye: () => <div data-testid='eye-icon' />,
-	EyeOff: () => <div data-testid='eye-off-icon' />,
-	Check: () => <div data-testid='check-icon' />,
-}))
+vi.mock('lucide-react', async () => {
+	const actual = await vi.importActual<typeof import('lucide-react')>('lucide-react')
+	return {
+		...actual,
+		Copy: () => <div data-testid='copy-icon' />,
+		Eye: () => <div data-testid='eye-icon' />,
+		EyeOff: () => <div data-testid='eye-off-icon' />,
+		Check: () => <div data-testid='check-icon' />,
+	}
+})
 
 describe('AuthTestPanel', () => {
 	const mockUser: User = {
