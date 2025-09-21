@@ -150,6 +150,7 @@ export async function resolve(specifier, context, defaultResolve) {
         return { ...resolved, shortCircuit: true }
       }
       throw error
+
     }
   }
 
