@@ -21,12 +21,14 @@ interface FunctionsListProps {
   onCreateFunction: (template?: string, functionName?: string) => void;
   onEditFunction: (functionId: string) => void;
   onGoToSecrets?: () => void;
+  onGoToRuntime?: () => void;
 }
 
 export const FunctionsList: React.FC<FunctionsListProps> = ({
   onCreateFunction,
   onEditFunction,
   onGoToSecrets: _onGoToSecrets,
+  onGoToRuntime,
 }) => {
   const [functions, setFunctions] = useState<Function[]>([]);
   const [loading, setLoading] = useState(true);
@@ -303,6 +305,10 @@ export const FunctionsList: React.FC<FunctionsListProps> = ({
             <p className="text-gray-600 dark:text-gray-300">Deploy edge functions to handle complex business logic</p>
           </div>
           <div className="flex items-center space-x-3">
+            <Button variant="outline" size="sm" onClick={onGoToRuntime}>
+              <Code2 className="w-4 h-4 mr-2" />
+              Runtime
+            </Button>
             <Button variant="outline" size="sm">
               <ExternalLink className="w-4 h-4 mr-2" />
               Docs

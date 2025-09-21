@@ -50,3 +50,4 @@ deno.lock
 tmp-script.ts
 rls-test-results-*.json
 postgrest-test-scripts/results/*
+public/webvm/

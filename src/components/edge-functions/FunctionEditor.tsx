@@ -7,6 +7,8 @@ import { SimpleCodeEditor } from './SimpleCodeEditor';
 import { vfsManager } from '../../lib/vfs/VFSManager';
 import { projectManager } from '../../lib/projects/ProjectManager';
 import { toast } from 'sonner';
+import { edgeFunctionsWebvmManager, EDGE_FUNCTIONS_VM_ROOT } from '@/lib/webvm';
+import { encodeStringToBase64, escapeShellArg, writeBase64FileToWebVM } from '@/lib/webvm/fileTransfer';
 
 interface FunctionEditorProps {
   functionName: string;
@@ -29,6 +31,7 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
   const [currentFunctionName, setCurrentFunctionName] = useState(functionName);
   const [template, setTemplate] = useState('hello-world');
   const [loading, setLoading] = useState(true);
+  const [isDeploying, setIsDeploying] = useState(false);
 
   const loadFunctionFiles = useCallback(async () => {
     try {
@@ -104,11 +107,60 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
 
   const handleDeploy = async () => {
     try {
-      // TODO: Implement actual deployment
-      toast.success(`Function "${currentFunctionName}" deployed successfully!`);
+      setIsDeploying(true);
+
+      const activeProject = projectManager.getActiveProject();
+      if (!activeProject) {
+        toast.error('No active project found');
+        return;
+      }
+
+      await vfsManager.initialize(activeProject.id);
+
+      const functionDirectory = `edge-functions/${functionName}`;
+      const filesToDeploy = await vfsManager.listFiles({ directory: functionDirectory, recursive: true });
+
+      if (!filesToDeploy || filesToDeploy.length === 0) {
+        toast.error('No function files found to deploy');
+        return;
+      }
+
+      const instance = await edgeFunctionsWebvmManager.ensureStarted();
+      const deploymentRoot = `${EDGE_FUNCTIONS_VM_ROOT}/${currentFunctionName}`;
+
+      await instance.runShellCommand(`rm -rf ${escapeShellArg(deploymentRoot)} 2>/dev/null || true`);
+      await instance.runShellCommand(`mkdir -p ${escapeShellArg(deploymentRoot)}`);
+
+      for (const file of filesToDeploy) {
+        const relativePath = file.path.slice(functionDirectory.length + 1);
+        if (!relativePath) {
+          continue;
+        }
+
+        const targetPath = `${deploymentRoot}/${relativePath}`;
+        const directoryName = targetPath.split('/').slice(0, -1).join('/');
+        if (directoryName) {
+          await instance.runShellCommand(`mkdir -p ${escapeShellArg(directoryName)}`);
+        }
+
+        const fileContent = await vfsManager.readFileContent(file.path);
+        if (fileContent === null) {
+          continue;
+        }
+
+        const base64Payload = file.encoding === 'base64' ? fileContent : encodeStringToBase64(fileContent);
+        await writeBase64FileToWebVM(instance, targetPath, base64Payload);
+      }
+
+      await instance.runShellCommand(`find ${escapeShellArg(deploymentRoot)} -type d -empty -delete 2>/dev/null || true`);
+      await instance.runShellCommand('sync');
+
+      toast.success(`Function "${currentFunctionName}" deployed to Edge Functions runtime`);
     } catch (error) {
       console.error('Failed to deploy function:', error);
       toast.error('Failed to deploy function');
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -237,8 +289,9 @@ export const FunctionEditor: React.FC<FunctionEditorProps> = ({
           <Button
             onClick={handleDeploy}
             className="bg-green-600 hover:bg-green-700 ml-4"
+            disabled={isDeploying}
           >
-            Deploy function
+            {isDeploying ? 'Deploying…' : 'Deploy function'}
           </Button>
         </div>
       </div>

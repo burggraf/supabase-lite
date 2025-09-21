@@ -6,9 +6,10 @@ import { templates } from '@/components/edge-functions/FunctionTemplates';
 import { vfsManager } from '@/lib/vfs/VFSManager';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { toast } from 'sonner';
+import { EdgeFunctionRuntimeManager } from '@/components/edge-functions/EdgeFunctionRuntimeManager';
 
 export function EdgeFunctions() {
-  const [currentView, setCurrentView] = useState<'functions' | 'secrets'>('functions');
+  const [currentView, setCurrentView] = useState<'functions' | 'secrets' | 'runtime'>('functions');
   const [currentFunctionName, setCurrentFunctionName] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -154,6 +155,7 @@ Deno.serve(async (req: Request) => {
   const handleBackToFunctions = () => {
     setCurrentFunctionName(null);
     setIsCreating(false);
+    setCurrentView('functions');
   };
 
   const handleGoToSecrets = () => {
@@ -164,6 +166,12 @@ Deno.serve(async (req: Request) => {
 
   const handleGoToFunctions = () => {
     setCurrentView('functions');
+    setCurrentFunctionName(null);
+    setIsCreating(false);
+  };
+
+  const handleGoToRuntime = () => {
+    setCurrentView('runtime');
     setCurrentFunctionName(null);
     setIsCreating(false);
   };
@@ -196,12 +204,26 @@ Deno.serve(async (req: Request) => {
           >
             Secrets
           </div>
+          <div
+            className={`text-sm px-3 py-2 cursor-pointer rounded-md ${
+              currentView === 'runtime'
+                ? 'font-medium text-gray-900 bg-gray-200'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+            onClick={handleGoToRuntime}
+          >
+            Runtime
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1">
-        {isCreating && currentFunctionName ? (
+        {currentView === 'runtime' ? (
+          <div className="p-6">
+            <EdgeFunctionRuntimeManager />
+          </div>
+        ) : isCreating && currentFunctionName ? (
           <FunctionEditor
             functionName={currentFunctionName}
             onBack={handleBackToFunctions}
@@ -211,6 +233,7 @@ Deno.serve(async (req: Request) => {
             onCreateFunction={handleCreateFunction}
             onEditFunction={handleEditFunction}
             onGoToSecrets={handleGoToSecrets}
+            onGoToRuntime={handleGoToRuntime}
           />
         ) : (
           <SecretsManager projectId={projectManager.getActiveProject()?.id} />

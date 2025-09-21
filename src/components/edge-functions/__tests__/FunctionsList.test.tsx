@@ -22,6 +22,7 @@ const mockProps = {
   onCreateFunction: vi.fn(),
   onEditFunction: vi.fn(),
   onGoToSecrets: vi.fn(),
+  onGoToRuntime: vi.fn(),
 };
 
 describe('FunctionsList', () => {
@@ -58,17 +59,31 @@ describe('FunctionsList', () => {
       expect(screen.getByText('Start with a template')).toBeInTheDocument();
     });
 
-    it('should call onCreateFunction when Deploy a new function button is clicked', async () => {
+    it('should call onCreateFunction when a function is created via modal', async () => {
       mockVfsManager.listFiles.mockResolvedValue([]);
 
       render(<FunctionsList {...mockProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Deploy a new function')).toBeInTheDocument();
+        expect(screen.getByText('Open Editor')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText('Deploy a new function'));
-      expect(mockProps.onCreateFunction).toHaveBeenCalledWith();
+      fireEvent.click(screen.getByText('Open Editor'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Create New Function')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByPlaceholderText('my-function'), {
+        target: { value: 'my-function' },
+      });
+
+      const createButton = screen.getByText('Create Function');
+      fireEvent.click(createButton);
+
+      await waitFor(() => {
+        expect(mockProps.onCreateFunction).toHaveBeenCalledWith(undefined, 'my-function');
+      });
     });
   });
 
@@ -140,7 +155,7 @@ describe('FunctionsList', () => {
 
     it('should handle function deletion with confirmation', async () => {
       mockVfsManager.listFiles.mockResolvedValue(mockFunctions as unknown as VirtualFile[]);
-      mockVfsManager.deleteFile.mockResolvedValue(true);
+      mockVfsManager.deleteDirectory.mockResolvedValue(true as unknown as boolean);
 
       // Mock window.confirm
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -159,7 +174,10 @@ describe('FunctionsList', () => {
       if (deleteButton) {
         fireEvent.click(deleteButton);
         expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete the function "hello-world"?');
-        expect(mockVfsManager.deleteFile).toHaveBeenCalledWith('edge-functions/hello-world');
+
+        await waitFor(() => {
+          expect(mockVfsManager.deleteDirectory).toHaveBeenCalledWith('edge-functions/hello-world', true);
+        });
       }
 
       confirmSpy.mockRestore();

@@ -1,11 +1,11 @@
 import { http, HttpResponse } from 'msw'
 import { vfsManager } from '../../lib/vfs/VFSManager'
 import { logger } from '../../lib/infrastructure/Logger'
+import { edgeFunctionsWebvmManager, EDGE_FUNCTIONS_VM_ROOT } from '../../lib/webvm'
 import { withProjectResolution } from './shared/project-resolution'
 import { 
   createErrorResponse, 
-  safeJsonParse,
-  BASIC_CORS_HEADERS
+  safeJsonParse
 } from './shared/common-handlers'
 
 /**
@@ -196,6 +196,42 @@ async function simulateEdgeFunctionExecution(
   }
 }
 
+async function readDeployedEdgeFunction(functionName: string): Promise<string | null> {
+  if (typeof window === 'undefined' || !window.crossOriginIsolated) {
+    return null;
+  }
+
+  try {
+    const instance = await edgeFunctionsWebvmManager.ensureStarted();
+    const candidatePaths = [
+      `${EDGE_FUNCTIONS_VM_ROOT}/${functionName}/index.ts`,
+      `${EDGE_FUNCTIONS_VM_ROOT}/${functionName}/index.js`,
+      `${EDGE_FUNCTIONS_VM_ROOT}/${functionName}.ts`,
+      `${EDGE_FUNCTIONS_VM_ROOT}/${functionName}.js`,
+    ];
+
+    for (const path of candidatePaths) {
+      try {
+        const blob = await instance.readFileAsBlob(path);
+        if (!blob) {
+          continue;
+        }
+
+        const text = await blob.text();
+        if (text) {
+          return text;
+        }
+      } catch (error) {
+        logger.debug('Unable to read deployed edge function from WebVM', { path, error });
+      }
+    }
+  } catch (error) {
+    logger.warn('Failed to access Edge Functions WebVM for deployed code', error as Error);
+  }
+
+  return null;
+}
+
 /**
  * Common Edge Function execution handler
  */
@@ -213,24 +249,26 @@ const createEdgeFunctionHandler = () => async ({ params, request }: any) => {
       hasAuth: !!authorization,
       method: request.method
     });
-    
-    // Try multiple possible paths for the function file
+
     const possiblePaths = [
       `edge-functions/${functionName}.ts`,
       `edge-functions/${functionName}/index.ts`,
       `edge-functions/${functionName}.js`,
     ];
-    
-    let functionFile = null;
-    
-    for (const path of possiblePaths) {
-      functionFile = await vfsManager.readFile(path);
-      if (functionFile) {
-        break;
+
+    let functionSource = await readDeployedEdgeFunction(functionName);
+
+    if (!functionSource) {
+      for (const path of possiblePaths) {
+        const file = await vfsManager.readFile(path);
+        if (file?.content) {
+          functionSource = file.content;
+          break;
+        }
       }
     }
-    
-    if (!functionFile) {
+
+    if (!functionSource) {
       return createErrorResponse(
         'Function not found',
         `Function '${functionName}' not found. Tried paths: ${possiblePaths.join(', ')}`,
@@ -244,7 +282,7 @@ const createEdgeFunctionHandler = () => async ({ params, request }: any) => {
     // Simulate function execution
     const executionResult = await simulateEdgeFunctionExecution(
       functionName,
-      functionFile.content || '',
+      functionSource,
       requestBody
     );
 
@@ -284,14 +322,5 @@ export const functionsHandlers = [
   http.all('/:projectId/functions/:functionName', withProjectResolution(createEdgeFunctionHandler())),
 
   // Legacy /functions/v1/ prefix support (Supabase.js compatibility)
-  http.all('/functions/v1/:functionName', async ({ params, request: _request }: any) => {
-    console.log('✅ EDGE FUNCTION HANDLER CALLED:', params.functionName)
-    return HttpResponse.json({ 
-      message: 'Edge function handler working', 
-      function: params.functionName 
-    }, { 
-      status: 200,
-      headers: BASIC_CORS_HEADERS
-    })
-  }),
+  http.all('/functions/v1/:functionName', withProjectResolution(createEdgeFunctionHandler())),
 ]
