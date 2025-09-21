@@ -2982,30 +2982,30 @@
             {
               "type": "info",
               "message": "Starting test: Use `or` on referenced tables",
-              "timestamp": "2025-09-12T15:35:06.743Z"
+              "timestamp": "2025-09-21T11:35:44.564Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-12T15:35:06.810Z"
+              "timestamp": "2025-09-21T11:35:44.626Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-12T15:35:06.867Z"
+              "timestamp": "2025-09-21T11:35:44.683Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-12T15:35:06.868Z"
+              "timestamp": "2025-09-21T11:35:44.688Z"
             },
             {
               "type": "error",
               "message": "Test failed - results don't match:\nExpected:\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"instruments\": [\n        {\n          \"name\": \"violin\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n\nActual:\n{\n  \"data\": [\n    {\n      \"name\": \"strings\",\n      \"instruments\": {\n        \"name\": \"violin\"\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}",
-              "timestamp": "2025-09-12T15:35:07.127Z"
+              "timestamp": "2025-09-21T11:35:47.547Z"
             }
           ],
-          "skip": true
+          "skip": false
         }
       }
     ]
