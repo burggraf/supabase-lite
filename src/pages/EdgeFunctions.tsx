@@ -7,11 +7,13 @@ import { vfsManager } from '@/lib/vfs/VFSManager';
 import { projectManager } from '@/lib/projects/ProjectManager';
 import { toast } from 'sonner';
 import { EdgeFunctionRuntimeManager } from '@/components/edge-functions/EdgeFunctionRuntimeManager';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 export function EdgeFunctions() {
-  const [currentView, setCurrentView] = useState<'functions' | 'secrets' | 'runtime'>('functions');
+  const [currentView, setCurrentView] = useState<'functions' | 'secrets'>('functions');
   const [currentFunctionName, setCurrentFunctionName] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isRuntimePanelOpen, setIsRuntimePanelOpen] = useState(true);
 
   const generateUniqueFunctionName = async (): Promise<string> => {
     try {
@@ -170,14 +172,12 @@ Deno.serve(async (req: Request) => {
     setIsCreating(false);
   };
 
-  const handleGoToRuntime = () => {
-    setCurrentView('runtime');
-    setCurrentFunctionName(null);
-    setIsCreating(false);
+  const handleOpenRuntimePanel = () => {
+    setIsRuntimePanelOpen(true);
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden">
       {/* Sidebar Navigation */}
       <div className="w-48 bg-gray-50 border-r border-gray-200 p-4">
         <div className="space-y-2">
@@ -204,40 +204,53 @@ Deno.serve(async (req: Request) => {
           >
             Secrets
           </div>
-          <div
-            className={`text-sm px-3 py-2 cursor-pointer rounded-md ${
-              currentView === 'runtime'
-                ? 'font-medium text-gray-900 bg-gray-200'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-            onClick={handleGoToRuntime}
-          >
-            Runtime
-          </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1">
-        {currentView === 'runtime' ? (
-          <div className="p-6">
-            <EdgeFunctionRuntimeManager />
+      {/* Main Content with runtime panel */}
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 overflow-auto">
+          {isCreating && currentFunctionName ? (
+            <FunctionEditor
+              functionName={currentFunctionName}
+              onBack={handleBackToFunctions}
+            />
+          ) : currentView === 'functions' ? (
+            <FunctionsList
+              onCreateFunction={handleCreateFunction}
+              onEditFunction={handleEditFunction}
+              onGoToSecrets={handleGoToSecrets}
+              onOpenRuntime={handleOpenRuntimePanel}
+            />
+          ) : (
+            <SecretsManager projectId={projectManager.getActiveProject()?.id} />
+          )}
+        </div>
+
+        {/* Runtime side panel */}
+        <div
+          className={`border-l border-gray-200 bg-gray-50 transition-all duration-200 ease-in-out flex flex-col ${
+            isRuntimePanelOpen ? 'w-[420px]' : 'w-12'
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => setIsRuntimePanelOpen((prev) => !prev)}
+            className="flex items-center justify-center border-b border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:bg-gray-100 h-10"
+            aria-label={isRuntimePanelOpen ? 'Collapse Edge Runtime panel' : 'Expand Edge Runtime panel'}
+          >
+            {isRuntimePanelOpen ? (
+              <ChevronsRight className="w-4 h-4" />
+            ) : (
+              <ChevronsLeft className="w-4 h-4" />
+            )}
+          </button>
+          <div className={`flex-1 overflow-auto ${isRuntimePanelOpen ? 'block' : 'hidden'}`}>
+            <div className="p-4">
+              <EdgeFunctionRuntimeManager />
+            </div>
           </div>
-        ) : isCreating && currentFunctionName ? (
-          <FunctionEditor
-            functionName={currentFunctionName}
-            onBack={handleBackToFunctions}
-          />
-        ) : currentView === 'functions' ? (
-          <FunctionsList
-            onCreateFunction={handleCreateFunction}
-            onEditFunction={handleEditFunction}
-            onGoToSecrets={handleGoToSecrets}
-            onGoToRuntime={handleGoToRuntime}
-          />
-        ) : (
-          <SecretsManager projectId={projectManager.getActiveProject()?.id} />
-        )}
+        </div>
       </div>
     </div>
   );

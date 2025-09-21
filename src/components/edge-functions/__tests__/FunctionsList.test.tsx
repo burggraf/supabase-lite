@@ -22,7 +22,7 @@ const mockProps = {
   onCreateFunction: vi.fn(),
   onEditFunction: vi.fn(),
   onGoToSecrets: vi.fn(),
-  onGoToRuntime: vi.fn(),
+  onOpenRuntime: vi.fn(),
 };
 
 describe('FunctionsList', () => {
@@ -119,6 +119,19 @@ describe('FunctionsList', () => {
       expect(screen.getByText('hello-world')).toBeInTheDocument();
       expect(screen.getByText('api-handler')).toBeInTheDocument();
       expect(screen.getAllByText('active')).toHaveLength(2);
+    });
+
+    it('should notify when runtime button is clicked', async () => {
+      mockVfsManager.listFiles.mockResolvedValue(mockFunctions as unknown as VirtualFile[]);
+
+      render(<FunctionsList {...mockProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Runtime')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Runtime'));
+      expect(mockProps.onOpenRuntime).toHaveBeenCalled();
     });
 
     it('should call onEditFunction when Edit button is clicked', async () => {

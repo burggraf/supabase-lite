@@ -140,7 +140,6 @@ export function EdgeFunctionRuntimeManager() {
 
     return () => {
       unsubscribe();
-      void manager.shutdown();
     };
   }, [manager]);
 

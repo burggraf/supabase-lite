@@ -186,12 +186,28 @@ async function executeEdgeFunctionInWebVM(functionName: string, request: Request
 }
 
 function decodeBase64ToUint8Array(value: string): Uint8Array {
-  const binaryString = atob(value);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let index = 0; index < binaryString.length; index += 1) {
-    bytes[index] = binaryString.charCodeAt(index);
+  if (typeof atob === 'function') {
+    const binaryString = atob(value);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let index = 0; index < binaryString.length; index += 1) {
+      bytes[index] = binaryString.charCodeAt(index);
+    }
+    return bytes;
   }
-  return bytes;
+
+  const bufferConstructor = (globalThis as unknown as {
+    Buffer?: {
+      from(input: string, encoding: string): { buffer: ArrayBufferLike; byteOffset: number; byteLength: number };
+    };
+  }).Buffer;
+
+  if (bufferConstructor) {
+    const buffer = bufferConstructor.from(value, 'base64');
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    return new Uint8Array(arrayBuffer);
+  }
+
+  throw new Error('Base64 decoding is not supported in this environment.');
 }
 
 /**
