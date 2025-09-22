@@ -18,6 +18,7 @@ export interface ParsedOrder {
   ascending: boolean
   nullsFirst?: boolean
   referencedTable?: string  // For ordering by referenced table columns (e.g., section(name))
+  applyToEmbeddedOnly?: boolean  // True when the order should not affect the parent table ordering
 }
 
 export interface EmbeddedResource {
@@ -109,10 +110,12 @@ export class QueryParser {
         
         // Parse the order value and convert it to referenced table format
         const orderItems = this.parseOrder(value)
-        
+
         // Add referencedTable to each order item
         for (const orderItem of orderItems) {
           orderItem.referencedTable = referencedTable
+          // Orders coming from table-qualified parameters should only affect the embedded table
+          orderItem.applyToEmbeddedOnly = true
         }
         
         // Initialize order array if needed
@@ -259,22 +262,27 @@ export class QueryParser {
         if (orderItem.referencedTable) {
           // Find the embedded resource that matches this referencedTable
           const embeddedResource = this.findEmbeddedResource(query.embedded, orderItem.referencedTable)
-          
+
           if (embeddedResource) {
             // Initialize order array for embedded resource if needed
             if (!embeddedResource.order) {
               embeddedResource.order = []
             }
-            
+
             // Create a copy without referencedTable for the embedded resource
             const embeddedOrderItem: ParsedOrder = {
               column: orderItem.column,
               ascending: orderItem.ascending,
               nullsFirst: orderItem.nullsFirst
             }
-            
+
             embeddedResource.order.push(embeddedOrderItem)
             console.log(`🔄 Transferred order for ${orderItem.referencedTable}.${orderItem.column} to embedded resource`)
+
+            // Keep the order item on the main query when it should influence parent ordering
+            if (!orderItem.applyToEmbeddedOnly) {
+              mainOrderItems.push(orderItem)
+            }
           } else {
             console.warn(`⚠️  No embedded resource found for referencedTable: ${orderItem.referencedTable}`)
             // Keep it in main order as fallback (this shouldn't happen in normal cases)
@@ -285,7 +293,7 @@ export class QueryParser {
           mainOrderItems.push(orderItem)
         }
       }
-      
+
       // Update the main query's order to only include items without referencedTable
       query.order = mainOrderItems.length > 0 ? mainOrderItems : undefined
     }

@@ -938,7 +938,20 @@ export class SQLBuilder {
     }
 
     // Build GROUP BY clause (required when using JSON aggregation)
-    const groupByColumns = this.buildGroupByColumns(quotedMainTableAlias, query)
+    const extraGroupByColumns = new Set<string>()
+
+    if (query.order) {
+      for (const orderItem of query.order) {
+        if (orderItem.referencedTable) {
+          const resolvedColumn = await this.resolveReferencedTableColumn(orderItem.referencedTable, orderItem.column, query, quotedMainTable)
+          if (resolvedColumn) {
+            extraGroupByColumns.add(resolvedColumn)
+          }
+        }
+      }
+    }
+
+    const groupByColumns = this.buildGroupByColumns(quotedMainTableAlias, query, Array.from(extraGroupByColumns))
     const groupByClause = groupByColumns ? `GROUP BY ${groupByColumns}` : ''
 
     // Build ORDER BY clause
@@ -1685,32 +1698,37 @@ export class SQLBuilder {
   /**
    * Build GROUP BY columns for main table when using embedded resources
    */
-  private buildGroupByColumns(table: string, query: ParsedQuery): string {
-    const columns: string[] = []
-    
+  private buildGroupByColumns(table: string, query: ParsedQuery, extraColumns: string[] = []): string {
+    const columns = new Set<string>()
+
     // Always include the primary key when using embedded resources (needed for JSON aggregation subqueries)
-    columns.push(`${table}.id`)
-    
+    columns.add(`${table}.id`)
+
     // Add all main table columns that are selected
     if (query.select && query.select.length > 0) {
       const embeddedTableNames = (query.embedded || []).map(e => e.table)
-      
+
       for (const col of query.select) {
         // Skip embedded table names
         if (embeddedTableNames.includes(col)) {
           continue
         }
-        
+
         if (col === '*') {
           // For *, the id is already included above
           continue
         } else if (col !== 'id') { // Don't duplicate id
-          columns.push(`${table}.${col}`)
+          columns.add(`${table}.${col}`)
         }
       }
     }
 
-    return columns.join(', ')
+    // Include any additional columns required for ORDER BY clauses on referenced tables
+    for (const extraColumn of extraColumns) {
+      columns.add(extraColumn)
+    }
+
+    return Array.from(columns).join(', ')
   }
 
   /**
