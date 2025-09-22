@@ -501,7 +501,7 @@ class PostgRESTNodeTestRunner {
       .replace('<id>', example.id)
       .replace('<name>', example.name)
       .replace('<project_url>', this.config.supabaseLiteUrl)
-      .replaceAll('<code>', code)
+      .replaceAll('<code>', () => code)
       .replaceAll('<code_content>', escapedCodeContent)
       .replace('<response>', JSON.stringify(expectedResponse, null, 2))
       .replace("debugSqlEndpoint: 'http://localhost:5173/debug/sql'", `debugSqlEndpoint: '${this.config.supabaseLiteUrl}/debug/sql'`)
