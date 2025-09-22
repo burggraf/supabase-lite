@@ -1,6 +1,5 @@
 import 'fake-indexeddb/auto'
 
-import { loadConfig, register as registerTsPaths } from 'tsconfig-paths'
 import { webcrypto } from 'node:crypto'
 import type { Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
@@ -38,12 +37,6 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 
   return originalFetch(input as any, init as any)
 }
-
-const tsconfigResult = loadConfig(join(moduleDir, 'tsconfig.app.json'))
-if (tsconfigResult.resultType === 'failed') {
-  throw new Error(`Failed to load tsconfig: ${tsconfigResult.message}`)
-}
-registerTsPaths({ baseUrl: tsconfigResult.absoluteBaseUrl, paths: tsconfigResult.paths })
 
 // ---------------------------------------------------------------------------
 // Minimal browser-like polyfills for Node environments
