@@ -330,7 +330,63 @@ class PostgRESTNodeTestRunner {
       this.currentProject = await projectManager.createProject('postgrest-tests')
     }
 
-    await this.dbManager.initialize(this.currentProject.databasePath)
+    await this.initializeDatabaseWithRetry()
+  }
+
+  private getErrnoDetails(error: unknown): { errno?: number, code?: string, message?: string } {
+    if (!error || typeof error !== 'object') {
+      return { message: typeof error === 'string' ? error : undefined }
+    }
+
+    const errorObject = error as Record<string, unknown>
+    const errno = typeof errorObject.errno === 'number'
+      ? errorObject.errno
+      : typeof (errorObject.originalError as { errno?: number } | undefined)?.errno === 'number'
+        ? (errorObject.originalError as { errno?: number }).errno
+        : undefined
+
+    const code = typeof errorObject.code === 'string'
+      ? errorObject.code
+      : typeof (errorObject.originalError as { code?: string } | undefined)?.code === 'string'
+        ? (errorObject.originalError as { code?: string }).code
+        : undefined
+
+    const message = typeof errorObject.message === 'string'
+      ? errorObject.message
+      : typeof (errorObject.originalError as { message?: string } | undefined)?.message === 'string'
+        ? (errorObject.originalError as { message?: string }).message
+        : undefined
+
+    return { errno, code, message }
+  }
+
+  private async initializeDatabaseWithRetry(attempt = 1): Promise<void> {
+    if (!this.currentProject) {
+      throw new Error('Cannot initialize database without an active project')
+    }
+
+    const maxAttempts = 5
+
+    try {
+      await this.dbManager.initialize(this.currentProject.databasePath)
+    } catch (error) {
+      const { errno, code, message } = this.getErrnoDetails(error)
+      const normalizedMessage = message?.toUpperCase() ?? ''
+      const isTooManyRefsError = errno === 44
+        || code === 'ETOOMANYREFS'
+        || normalizedMessage.includes('ETOOMANYREFS')
+
+      if (isTooManyRefsError && attempt < maxAttempts) {
+        const backoffMs = Math.min(1000, 200 * attempt)
+        this.log('info', `Database initialization hit transient errno 44 (attempt ${attempt}/${maxAttempts}). Retrying in ${backoffMs}ms...`)
+        await this.dbManager.close().catch(() => {})
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+        await this.initializeDatabaseWithRetry(attempt + 1)
+        return
+      }
+
+      throw error
+    }
   }
 
   private async ensureServerReady(): Promise<void> {
@@ -501,7 +557,7 @@ class PostgRESTNodeTestRunner {
       .replace('<id>', example.id)
       .replace('<name>', example.name)
       .replace('<project_url>', this.config.supabaseLiteUrl)
-      .replaceAll('<code>', code)
+      .replaceAll('<code>', () => code)
       .replaceAll('<code_content>', escapedCodeContent)
       .replace('<response>', JSON.stringify(expectedResponse, null, 2))
       .replace("debugSqlEndpoint: 'http://localhost:5173/debug/sql'", `debugSqlEndpoint: '${this.config.supabaseLiteUrl}/debug/sql'`)
@@ -938,6 +994,7 @@ class PostgRESTNodeTestRunner {
       throw error
     } finally {
       await this.stopServer()
+      await this.dbManager.close().catch(() => {})
     }
   }
 }
