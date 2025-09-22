@@ -2316,31 +2316,23 @@ export class SQLBuilder {
     console.log(`🔍 Resolving referenced table column: ${referencedTable}(${column})`)
     console.log(`🔍 Main table: ${mainTable}`)
     console.log(`🔍 Query embedded:`, query?.embedded)
-    
-    // First, try to find the referenced table in embedded resources
-    if (query?.embedded) {
-      for (const embedded of query.embedded) {
-        console.log(`🔍 Checking embedded resource:`, embedded)
-        // Check if this embedded resource matches the referenced table alias
-        if (embedded.alias === referencedTable) {
-          console.log(`✅ Found matching embedded resource by alias! Using table: ${embedded.table}`)
-          // When we found by alias, we should use the actual table name, not the alias
-          const actualTableName = embedded.table
-          const quotedTable = this.quoteIdentifier(actualTableName)
-          const quotedColumn = this.quoteIdentifier(column)
-          const result = `${quotedTable}.${quotedColumn}`
-          console.log(`✅ Resolved to: ${result}`)
-          return result
-        } else if (embedded.table === referencedTable) {
-          console.log(`✅ Found matching embedded resource by table name! Using table: ${embedded.table}`)
-          // Direct table name match
-          const quotedTable = this.quoteIdentifier(embedded.table)
-          const quotedColumn = this.quoteIdentifier(column)
-          const result = `${quotedTable}.${quotedColumn}`
-          console.log(`✅ Resolved to: ${result}`)
-          return result
-        }
+
+    const embeddedMatch = this.findEmbeddedResourceByName(query?.embedded, referencedTable)
+
+    if (embeddedMatch) {
+      const { table: embeddedTable, alias } = embeddedMatch
+      const quotedTable = this.quoteIdentifier(embeddedTable)
+      const quotedColumn = this.quoteIdentifier(column)
+      const result = `${quotedTable}.${quotedColumn}`
+
+      if (alias && alias === referencedTable) {
+        console.log(`✅ Found matching embedded resource by alias (${alias}). Using table: ${embeddedTable}`)
+      } else {
+        console.log(`✅ Found matching embedded resource by table name (${embeddedTable})`)
       }
+
+      console.log(`✅ Resolved to: ${result}`)
+      return result
     }
     
     // If not found in embedded resources, try to resolve as a direct table reference
@@ -2377,6 +2369,31 @@ export class SQLBuilder {
     const fallback = `${referencedTable}.${column}`
     console.warn(`⚠️ Using fallback: ${fallback}`)
     return fallback
+  }
+
+  /**
+   * Recursively search embedded resources for a table or alias match
+   */
+  private findEmbeddedResourceByName(
+    embedded: EmbeddedResource[] | undefined,
+    referencedTable: string
+  ): EmbeddedResource | null {
+    if (!embedded) {
+      return null
+    }
+
+    for (const resource of embedded) {
+      if (resource.table === referencedTable || resource.alias === referencedTable) {
+        return resource
+      }
+
+      const nestedMatch = this.findEmbeddedResourceByName(resource.embedded, referencedTable)
+      if (nestedMatch) {
+        return nestedMatch
+      }
+    }
+
+    return null
   }
 
   /**
