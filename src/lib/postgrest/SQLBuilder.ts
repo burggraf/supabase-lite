@@ -1344,69 +1344,38 @@ export class SQLBuilder {
           subquery = `SELECT json_build_array(json_build_object('count', (SELECT COUNT(*) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition})))`
         } else {
           const selectClause = await this.buildEmbeddedSelectClause(embedded, quotedEmbeddedTable, table, schema)
-          
-          // For PostgREST compatibility: when filtering on embedded table columns,
-          // return NULL if no rows match the filter, otherwise return the matching rows
-          if (embeddedTableFilters.length > 0) {
-            // Build separate conditions for relationship and embedded filters
+          const hasEmbeddedFilters = embeddedTableFilters.length > 0
+          const orderLogSuffix = hasEmbeddedFilters ? ' (with filters)' : ''
+
+          let jsonAggClause = `json_agg(${selectClause})`
+          if (embedded.order && embedded.order.length > 0) {
+            const orderItems = await Promise.all(embedded.order.map(async (item) => {
+              const columnRef = `${quotedEmbeddedAlias}.${this.quoteIdentifier(item.column)}`
+              let orderItem = `${columnRef} ${item.ascending ? 'ASC' : 'DESC'}`
+              if (item.nullsFirst !== undefined) {
+                orderItem += ` NULLS ${item.nullsFirst ? 'FIRST' : 'LAST'}`
+              }
+              return orderItem
+            }))
+            const orderByClause = `ORDER BY ${orderItems.join(', ')}`
+            jsonAggClause = `json_agg(${selectClause} ${orderByClause})`
+            console.log(`🎯 Added ORDER BY for embedded resource ${embedded.table}${orderLogSuffix}:`, orderByClause)
+          }
+
+          if (hasEmbeddedFilters) {
             const relationshipCondition = `${quotedEmbeddedAlias}.${this.quoteIdentifier(fkRelationship.fromColumn)} = ${quotedMainAlias}.${this.quoteIdentifier(fkRelationship.toColumn)}`
             const embeddedFiltersCondition = additionalWhere
-            
+
             console.log(`🔧 Applying embedded table filter condition: ${embeddedFiltersCondition}`)
-            
-            // Simplified subquery with embedded filters - inner join filtering handled by proper SQL INNER JOINs
-            if (embedded.fkHint === 'inner') {
-              // For inner joins, return single object (not array)
-              subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition} LIMIT 1`
-            } else {
-              // For left joins with embedded filters, return NULL when no matches (PostgREST compatibility)
-              // Add ORDER BY support for embedded resources within json_agg
-              let jsonAggClause = `json_agg(${selectClause})`
-              if (embedded.order && embedded.order.length > 0) {
-                const orderItems = await Promise.all(embedded.order.map(async (item) => {
-                  const columnRef = `${quotedEmbeddedAlias}.${this.quoteIdentifier(item.column)}`
-                  let orderItem = `${columnRef} ${item.ascending ? 'ASC' : 'DESC'}`
-                  if (item.nullsFirst !== undefined) {
-                    orderItem += ` NULLS ${item.nullsFirst ? 'FIRST' : 'LAST'}`
-                  }
-                  return orderItem
-                }))
-                const orderByClause = `ORDER BY ${orderItems.join(', ')}`
-                jsonAggClause = `json_agg(${selectClause} ${orderByClause})`
-                console.log(`🎯 Added ORDER BY for embedded resource ${embedded.table} (with filters):`, orderByClause)
-              }
-              
-              subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}) 
-                                 THEN COALESCE(${jsonAggClause}, '[]'::json) 
-                                 ELSE NULL 
-                                 END 
+            console.log(`🔧 Relationship condition for filtering: ${relationshipCondition}`)
+
+            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition})
+                               THEN COALESCE(${jsonAggClause}, '[]'::json)
+                               ELSE NULL
+                               END
                           FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}`
-            }
           } else {
-            // No embedded filters - simplified logic
-            if (embedded.fkHint === 'inner') {
-              // For inner joins, return single object (not array)
-              subquery = `SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition} LIMIT 1`
-            } else {
-              // For LEFT JOIN (default), return array
-              // Add ORDER BY support for embedded resources within json_agg
-              let jsonAggClause = `json_agg(${selectClause})`
-              if (embedded.order && embedded.order.length > 0) {
-                const orderItems = await Promise.all(embedded.order.map(async (item) => {
-                  const columnRef = `${quotedEmbeddedAlias}.${this.quoteIdentifier(item.column)}`
-                  let orderItem = `${columnRef} ${item.ascending ? 'ASC' : 'DESC'}`
-                  if (item.nullsFirst !== undefined) {
-                    orderItem += ` NULLS ${item.nullsFirst ? 'FIRST' : 'LAST'}`
-                  }
-                  return orderItem
-                }))
-                const orderByClause = `ORDER BY ${orderItems.join(', ')}`
-                jsonAggClause = `json_agg(${selectClause} ${orderByClause})`
-                console.log(`🎯 Added ORDER BY for embedded resource ${embedded.table}:`, orderByClause)
-              }
-              
-              subquery = `SELECT COALESCE(${jsonAggClause}, '[]'::json) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}`
-            }
+            subquery = `SELECT COALESCE(${jsonAggClause}, '[]'::json) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${whereCondition}`
           }
         }
         
@@ -1510,58 +1479,58 @@ export class SQLBuilder {
           const combinedCondition = `${relationshipCondition}${embeddedFiltersCondition}`
           
           // For inner joins, ensure NULL is returned when no matches exist to enable main query filtering
+          let jsonAggClause = `json_agg(${selectClause})`
+          if (embedded.order && embedded.order.length > 0) {
+            const orderItems = await Promise.all(embedded.order.map(async (item) => {
+              const columnRef = `${quotedEmbeddedAlias}.${this.quoteIdentifier(item.column)}`
+              let orderItem = `${columnRef} ${item.ascending ? 'ASC' : 'DESC'}`
+              if (item.nullsFirst !== undefined) {
+                orderItem += ` NULLS ${item.nullsFirst ? 'FIRST' : 'LAST'}`
+              }
+              return orderItem
+            }))
+            const orderByClause = `ORDER BY ${orderItems.join(', ')}`
+            jsonAggClause = `json_agg(${selectClause} ${orderByClause})`
+            console.log(`🎯 Added ORDER BY for embedded resource ${embedded.table} (embedded filters):`, orderByClause)
+          }
+
           if (embedded.fkHint === 'inner') {
-            // For inner joins, return single object or NULL (NULL triggers main query filtering)
-            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition}) 
-                               THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition} LIMIT 1)
-                               ELSE NULL 
-                               END`
+            // For inner joins, keep array semantics but still null out parents when filters remove matches
+            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition})
+                               THEN COALESCE(${jsonAggClause}, '[]'::json)
+                               ELSE NULL
+                               END
+                      FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition}`
           } else {
             // For left joins, return array
-            // Add ORDER BY support for embedded resources within json_agg
-            let jsonAggClause = `json_agg(${selectClause})`
-            if (embedded.order && embedded.order.length > 0) {
-              const orderItems = await Promise.all(embedded.order.map(async (item) => {
-                const columnRef = `${quotedEmbeddedAlias}.${this.quoteIdentifier(item.column)}`
-                let orderItem = `${columnRef} ${item.ascending ? 'ASC' : 'DESC'}`
-                if (item.nullsFirst !== undefined) {
-                  orderItem += ` NULLS ${item.nullsFirst ? 'FIRST' : 'LAST'}`
-                }
-                return orderItem
-              }))
-              const orderByClause = `ORDER BY ${orderItems.join(', ')}`
-              jsonAggClause = `json_agg(${selectClause} ${orderByClause})`
-              console.log(`🎯 Added ORDER BY for embedded resource ${embedded.table} (embedded filters):`, orderByClause)
-            }
-            
             subquery = `SELECT COALESCE(${jsonAggClause}, '[]'::json) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${combinedCondition}`
           }
         } else {
           // No embedded filters - ensure NULL handling for inner joins
+          let jsonAggClause = `json_agg(${selectClause})`
+          if (embedded.order && embedded.order.length > 0) {
+            const orderItems = await Promise.all(embedded.order.map(async (item) => {
+              const columnRef = `${quotedEmbeddedAlias}.${this.quoteIdentifier(item.column)}`
+              let orderItem = `${columnRef} ${item.ascending ? 'ASC' : 'DESC'}`
+              if (item.nullsFirst !== undefined) {
+                orderItem += ` NULLS ${item.nullsFirst ? 'FIRST' : 'LAST'}`
+              }
+              return orderItem
+            }))
+            const orderByClause = `ORDER BY ${orderItems.join(', ')}`
+            jsonAggClause = `json_agg(${selectClause} ${orderByClause})`
+            console.log(`🎯 Added ORDER BY for embedded resource ${embedded.table} (no embedded filters):`, orderByClause)
+          }
+
           if (embedded.fkHint === 'inner') {
-            // For inner joins, return single object or NULL (NULL triggers main query filtering)
-            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition}) 
-                               THEN (SELECT ${selectClause} FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition} LIMIT 1)
-                               ELSE NULL 
-                               END`
+            // For inner joins, keep array semantics but still null out parents when no children remain
+            subquery = `SELECT CASE WHEN EXISTS(SELECT 1 FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition})
+                               THEN COALESCE(${jsonAggClause}, '[]'::json)
+                               ELSE NULL
+                               END
+                      FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition}`
           } else {
             // For left joins, return array
-            // Add ORDER BY support for embedded resources within json_agg
-            let jsonAggClause = `json_agg(${selectClause})`
-            if (embedded.order && embedded.order.length > 0) {
-              const orderItems = await Promise.all(embedded.order.map(async (item) => {
-                const columnRef = `${quotedEmbeddedAlias}.${this.quoteIdentifier(item.column)}`
-                let orderItem = `${columnRef} ${item.ascending ? 'ASC' : 'DESC'}`
-                if (item.nullsFirst !== undefined) {
-                  orderItem += ` NULLS ${item.nullsFirst ? 'FIRST' : 'LAST'}`
-                }
-                return orderItem
-              }))
-              const orderByClause = `ORDER BY ${orderItems.join(', ')}`
-              jsonAggClause = `json_agg(${selectClause} ${orderByClause})`
-              console.log(`🎯 Added ORDER BY for embedded resource ${embedded.table} (no embedded filters):`, orderByClause)
-            }
-            
             subquery = `SELECT COALESCE(${jsonAggClause}, '[]'::json) FROM ${quotedEmbeddedTable} AS ${quotedEmbeddedAlias} WHERE ${fullWhereCondition}`
           }
         }

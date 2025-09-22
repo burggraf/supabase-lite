@@ -561,7 +561,6 @@ class PostgRESTNodeTestRunner {
     const actualStr = JSON.stringify(normalizedActual, null, 2)
     const expectedStr = JSON.stringify(normalizedExpected, null, 2)
 
-
     return {
       match: false,
       differences: `Expected:\n${expectedStr}\n\nActual:\n${actualStr}`
@@ -819,7 +818,6 @@ class PostgRESTNodeTestRunner {
 
         if (skipReason) {
           this.log('info', `Skipping test ${example.id} (${skipReason})`)
-
           if (this.isRetestMode) {
             if (skipReason === 'unsupported by pglite') {
               this.testStats.unsupported++
@@ -827,14 +825,12 @@ class PostgRESTNodeTestRunner {
               this.testStats.skipped++
             }
           }
-
           continue
         }
 
         this.displayTestHeader(item, example)
 
         const previousResults = example.results
-
         const results = await this.processExample(item, example)
         example.results = results
         await this.saveResults(testData)
@@ -851,7 +847,6 @@ class PostgRESTNodeTestRunner {
                 error: results.log.find(entry => entry.type === 'error')?.message ?? 'Unknown error'
               })
             }
-
           }
         }
 

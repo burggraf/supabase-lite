@@ -1468,7 +1468,7 @@
         "data": {
           "sql": "```sql\nCREATE TABLE\n  orchestral_sections (id int8 primary key, name text);\nCREATE TABLE\n  instruments (\n    id int8 primary key,\n    section_id int8 not null references orchestral_sections,\n    name text\n  );\n\nINSERT INTO\n  orchestral_sections (id, name)\nVALUES\n  (1, 'strings'),\n  (2, 'woodwinds');\nINSERT INTO\n  instruments (id, section_id, name)\nVALUES\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": {\n        \"name\": \"flute\"\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "description": "You can filter on referenced tables in your `select()` query using dot\nnotation.\n",
         "results": {
           "passed": true,
@@ -1476,27 +1476,27 @@
             {
               "type": "info",
               "message": "Starting test: Filter referenced tables",
-              "timestamp": "2025-09-14T22:49:18.950Z"
+              "timestamp": "2025-09-21T15:46:37.320Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T22:49:18.999Z"
+              "timestamp": "2025-09-21T15:46:37.325Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T22:49:19.032Z"
+              "timestamp": "2025-09-21T15:46:37.355Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T22:49:19.033Z"
+              "timestamp": "2025-09-21T15:46:37.364Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T22:49:19.174Z"
+              "timestamp": "2025-09-21T15:46:37.929Z"
             }
           ],
           "skip": true
@@ -3065,7 +3065,7 @@
         "data": {
           "sql": "```sql\nCREATE TABLE\n  orchestral_sections (id int8 primary key, name text);\nCREATE TABLE\n   instruments (\n    id int8 primary key,\n    section_id int8 not null references orchestral_sections,\n    name text\n  );\n\nINSERT INTO\n  orchestral_sections (id, name)\nVALUES\n  (1, 'strings'),\n  (2, 'woodwinds');\nINSERT INTO\n  instruments (id, section_id, name)\nVALUES\n  (1, 2, 'flute'),\n  (2, 1, 'violin');\n```\n"
         },
-        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": {\n        \"name\": \"flute\"\n      }\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
+        "response": "```json\n{\n  \"data\": [\n    {\n      \"name\": \"woodwinds\",\n      \"instruments\": [\n        {\n          \"name\": \"flute\"\n        }\n      ]\n    }\n  ],\n  \"status\": 200,\n  \"statusText\": \"OK\"\n}\n```\n",
         "hideCodeBlock": true,
         "results": {
           "passed": true,
@@ -3073,27 +3073,27 @@
             {
               "type": "info",
               "message": "Starting test: On a referenced table",
-              "timestamp": "2025-09-14T22:49:24.733Z"
+              "timestamp": "2025-09-21T15:46:48.108Z"
             },
             {
               "type": "info",
               "message": "Public schema reset for test isolation",
-              "timestamp": "2025-09-14T22:49:24.780Z"
+              "timestamp": "2025-09-21T15:46:48.114Z"
             },
             {
               "type": "info",
               "message": "Database seeded successfully",
-              "timestamp": "2025-09-14T22:49:24.812Z"
+              "timestamp": "2025-09-21T15:46:48.146Z"
             },
             {
               "type": "info",
               "message": "Test script generated",
-              "timestamp": "2025-09-14T22:49:24.813Z"
+              "timestamp": "2025-09-21T15:46:48.148Z"
             },
             {
               "type": "info",
               "message": "Test passed - results match expected output",
-              "timestamp": "2025-09-14T22:49:24.935Z"
+              "timestamp": "2025-09-21T15:46:48.778Z"
             }
           ],
           "skip": true
