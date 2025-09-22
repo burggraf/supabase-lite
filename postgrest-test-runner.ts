@@ -520,6 +520,14 @@ class PostgRESTNodeTestRunner {
 
       let stdout = ''
       let stderr = ''
+      let settled = false
+
+      const finalize = (result: { success: boolean, output: string, error?: string }) => {
+        if (!settled) {
+          settled = true
+          resolve(result)
+        }
+      }
 
       child.stdout.on('data', chunk => {
         stdout += chunk.toString()
@@ -529,8 +537,17 @@ class PostgRESTNodeTestRunner {
         stderr += chunk.toString()
       })
 
+      child.on('error', error => {
+        const message = error instanceof Error ? error.message : String(error)
+        finalize({
+          success: false,
+          output: stdout,
+          error: `${message}${stderr ? `\n${stderr}` : ''}`
+        })
+      })
+
       child.on('close', code => {
-        resolve({
+        finalize({
           success: code === 0,
           output: stdout,
           error: stderr || undefined
