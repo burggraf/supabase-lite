@@ -190,6 +190,7 @@ class PostgRESTNodeTestRunner {
   private httpServer: Server | null = null
   private currentProject: Project | null = null
   private testStats: TestStatistics = { passed: 0, failed: 0, skipped: 0, unsupported: 0 }
+  private testsProcessed = 0
 
   constructor(isRetestMode = false) {
     this.isRetestMode = isRetestMode
@@ -511,11 +512,13 @@ class PostgRESTNodeTestRunner {
       .map(stmt => (stmt.endsWith(';') ? stmt : `${stmt};`))
   }
 
-  private async executeSingleSQL(statement: string): Promise<void> {
+  private async executeSingleSQL(statement: string, attempt = 1): Promise<void> {
     const trimmed = statement.trim()
     const normalized = trimmed.toUpperCase()
     const isSchemaMutation = /^(DROP|CREATE)\s+SCHEMA\b/.test(normalized)
       || normalized.startsWith('GRANT ALL ON SCHEMA')
+
+    const maxAttempts = 3
 
     try {
       if (isSchemaMutation) {
@@ -524,17 +527,35 @@ class PostgRESTNodeTestRunner {
       }
       await this.dbManager.queryWithContext(statement, { role: 'service_role' })
     } catch (error) {
+      const { errno } = this.getErrnoDetails(error)
+
+      if (errno === 44 && attempt < maxAttempts) {
+        this.log('info', `SQL execution hit errno 44, retrying (attempt ${attempt}/${maxAttempts})...`)
+        await this.handleIndexedDbTooManyRefs()
+        await new Promise(resolve => setTimeout(resolve, 200 * attempt))
+        await this.executeSingleSQL(statement, attempt + 1)
+        return
+      }
+
       const message = error instanceof Error ? error.message : String(error)
       throw new Error(`SQL execution failed: ${message}`)
     }
   }
 
   private async resetPublicSchema(): Promise<void> {
-    const schemasToDrop = ['public', 'myschema', 'test_schema', 'custom_schema', 'temp_schema']
+    // Batch all drops into single transaction to reduce handle usage
+    const dropStatements = [
+      'DROP SCHEMA IF EXISTS "public" CASCADE',
+      'DROP SCHEMA IF EXISTS "myschema" CASCADE',
+      'DROP SCHEMA IF EXISTS "test_schema" CASCADE',
+      'DROP SCHEMA IF EXISTS "custom_schema" CASCADE',
+      'DROP SCHEMA IF EXISTS "temp_schema" CASCADE'
+    ].join('; ')
 
-    for (const schema of schemasToDrop) {
-      await this.executeSingleSQL(`DROP SCHEMA IF EXISTS "${schema}" CASCADE;`)
-    }
+    await this.executeSingleSQL(dropStatements)
+
+    // Small delay before creating new schema to prevent handle exhaustion
+    await new Promise(resolve => setTimeout(resolve, 100))
 
     await this.executeSingleSQL('CREATE SCHEMA public;')
     await this.executeSingleSQL('GRANT ALL ON SCHEMA public TO postgres;')
@@ -552,13 +573,35 @@ class PostgRESTNodeTestRunner {
 
     for (let index = 0; index < statements.length; index++) {
       const statement = statements[index]
+      let lastError: Error | null = null
 
-      try {
-        await this.executeSingleSQL(statement)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        this.log('error', `Failed to execute statement ${index + 1}: ${message}`)
-        throw new Error(`Database seeding failed on statement ${index + 1}: ${message}`)
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await this.executeSingleSQL(statement)
+
+          // Add small delay between statements to prevent IndexedDB handle exhaustion
+          if (index < statements.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 50))
+          }
+          break
+        } catch (error) {
+          lastError = error as Error
+          const { errno } = this.getErrnoDetails(error)
+
+          if (errno === 44 && attempt < 3) {
+            this.log('info', `Statement ${index + 1} hit errno 44, retrying (attempt ${attempt}/3)...`)
+            await this.handleIndexedDbTooManyRefs()
+            await new Promise(resolve => setTimeout(resolve, 200 * attempt))
+          } else {
+            const message = error instanceof Error ? error.message : String(error)
+            this.log('error', `Failed to execute statement ${index + 1}: ${message}`)
+            throw new Error(`Database seeding failed on statement ${index + 1}: ${message}`)
+          }
+        }
+      }
+
+      if (lastError && lastError.message.includes('errno 44')) {
+        throw lastError
       }
     }
 
@@ -839,8 +882,21 @@ class PostgRESTNodeTestRunner {
     const log: TestLog[] = []
 
     try {
+      // Add periodic cleanup every 5 tests
+      if (this.testsProcessed % 5 === 0 && this.testsProcessed > 0) {
+        this.log('info', 'Performing periodic IndexedDB cleanup...')
+        await this.dbManager.close()
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        await this.ensureProject()
+      }
+
+      this.testsProcessed++
+
       this.log('info', `Processing example: ${example.id} - ${example.name}`)
       log.push(this.createTestLog('info', `Starting test: ${example.name}`))
+
+      // Small delay before schema reset to allow handle cleanup
+      await new Promise(resolve => setTimeout(resolve, 50))
 
       await this.resetPublicSchema()
       log.push(this.createTestLog('info', 'Public schema reset for test isolation'))
@@ -893,6 +949,9 @@ class PostgRESTNodeTestRunner {
       const message = error instanceof Error ? error.message : String(error)
       log.push(this.createTestLog('error', `Test execution error: ${message}`))
       return { passed: false, log, skip: false }
+    } finally {
+      // Add small delay after each test to help with IndexedDB handle cleanup
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
   }
 
