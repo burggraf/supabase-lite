@@ -386,7 +386,6 @@ class PostgRESTNodeTestRunner {
         await this.dbManager.exec(statement)
         return
       }
-
       await this.dbManager.queryWithContext(statement, { role: 'service_role' })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -592,7 +591,6 @@ class PostgRESTNodeTestRunner {
 
     return value
   }
-
   private deepCompareWithWildcards(actual: any, expected: any): boolean {
     if (expected === '*') {
       return true
@@ -748,7 +746,6 @@ class PostgRESTNodeTestRunner {
     if (example.unsupported) {
       return 'unsupported by pglite'
     }
-
     if (!example.results) {
       return null
     }

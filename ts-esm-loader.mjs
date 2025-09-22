@@ -86,7 +86,6 @@ async function loadPathAliases() {
 
   return pathAliasesPromise
 }
-
 async function resolveMatchedFile(matchedPath) {
   const currentExt = extname(matchedPath)
   const basePath = currentExt ? matchedPath.slice(0, -currentExt.length) : matchedPath
