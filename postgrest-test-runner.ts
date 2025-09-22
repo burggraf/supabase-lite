@@ -591,6 +591,7 @@ class PostgRESTNodeTestRunner {
 
     return value
   }
+
   private deepCompareWithWildcards(actual: any, expected: any): boolean {
     if (expected === '*') {
       return true
@@ -746,6 +747,7 @@ class PostgRESTNodeTestRunner {
     if (example.unsupported) {
       return 'unsupported by pglite'
     }
+
     if (!example.results) {
       return null
     }
