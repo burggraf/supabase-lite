@@ -938,7 +938,20 @@ export class SQLBuilder {
     }
 
     // Build GROUP BY clause (required when using JSON aggregation)
-    const groupByColumns = this.buildGroupByColumns(quotedMainTableAlias, query)
+    const extraGroupByColumns = new Set<string>()
+
+    if (query.order) {
+      for (const orderItem of query.order) {
+        if (orderItem.referencedTable) {
+          const resolvedColumn = await this.resolveReferencedTableColumn(orderItem.referencedTable, orderItem.column, query, quotedMainTable)
+          if (resolvedColumn) {
+            extraGroupByColumns.add(resolvedColumn)
+          }
+        }
+      }
+    }
+
+    const groupByColumns = this.buildGroupByColumns(quotedMainTableAlias, query, Array.from(extraGroupByColumns))
     const groupByClause = groupByColumns ? `GROUP BY ${groupByColumns}` : ''
 
     // Build ORDER BY clause
@@ -1685,32 +1698,37 @@ export class SQLBuilder {
   /**
    * Build GROUP BY columns for main table when using embedded resources
    */
-  private buildGroupByColumns(table: string, query: ParsedQuery): string {
-    const columns: string[] = []
-    
+  private buildGroupByColumns(table: string, query: ParsedQuery, extraColumns: string[] = []): string {
+    const columns = new Set<string>()
+
     // Always include the primary key when using embedded resources (needed for JSON aggregation subqueries)
-    columns.push(`${table}.id`)
-    
+    columns.add(`${table}.id`)
+
     // Add all main table columns that are selected
     if (query.select && query.select.length > 0) {
       const embeddedTableNames = (query.embedded || []).map(e => e.table)
-      
+
       for (const col of query.select) {
         // Skip embedded table names
         if (embeddedTableNames.includes(col)) {
           continue
         }
-        
+
         if (col === '*') {
           // For *, the id is already included above
           continue
         } else if (col !== 'id') { // Don't duplicate id
-          columns.push(`${table}.${col}`)
+          columns.add(`${table}.${col}`)
         }
       }
     }
 
-    return columns.join(', ')
+    // Include any additional columns required for ORDER BY clauses on referenced tables
+    for (const extraColumn of extraColumns) {
+      columns.add(extraColumn)
+    }
+
+    return Array.from(columns).join(', ')
   }
 
   /**
@@ -2298,31 +2316,23 @@ export class SQLBuilder {
     console.log(`🔍 Resolving referenced table column: ${referencedTable}(${column})`)
     console.log(`🔍 Main table: ${mainTable}`)
     console.log(`🔍 Query embedded:`, query?.embedded)
-    
-    // First, try to find the referenced table in embedded resources
-    if (query?.embedded) {
-      for (const embedded of query.embedded) {
-        console.log(`🔍 Checking embedded resource:`, embedded)
-        // Check if this embedded resource matches the referenced table alias
-        if (embedded.alias === referencedTable) {
-          console.log(`✅ Found matching embedded resource by alias! Using table: ${embedded.table}`)
-          // When we found by alias, we should use the actual table name, not the alias
-          const actualTableName = embedded.table
-          const quotedTable = this.quoteIdentifier(actualTableName)
-          const quotedColumn = this.quoteIdentifier(column)
-          const result = `${quotedTable}.${quotedColumn}`
-          console.log(`✅ Resolved to: ${result}`)
-          return result
-        } else if (embedded.table === referencedTable) {
-          console.log(`✅ Found matching embedded resource by table name! Using table: ${embedded.table}`)
-          // Direct table name match
-          const quotedTable = this.quoteIdentifier(embedded.table)
-          const quotedColumn = this.quoteIdentifier(column)
-          const result = `${quotedTable}.${quotedColumn}`
-          console.log(`✅ Resolved to: ${result}`)
-          return result
-        }
+
+    const embeddedMatch = this.findEmbeddedResourceByName(query?.embedded, referencedTable)
+
+    if (embeddedMatch) {
+      const { table: embeddedTable, alias } = embeddedMatch
+      const quotedTable = this.quoteIdentifier(embeddedTable)
+      const quotedColumn = this.quoteIdentifier(column)
+      const result = `${quotedTable}.${quotedColumn}`
+
+      if (alias && alias === referencedTable) {
+        console.log(`✅ Found matching embedded resource by alias (${alias}). Using table: ${embeddedTable}`)
+      } else {
+        console.log(`✅ Found matching embedded resource by table name (${embeddedTable})`)
       }
+
+      console.log(`✅ Resolved to: ${result}`)
+      return result
     }
     
     // If not found in embedded resources, try to resolve as a direct table reference
@@ -2359,6 +2369,31 @@ export class SQLBuilder {
     const fallback = `${referencedTable}.${column}`
     console.warn(`⚠️ Using fallback: ${fallback}`)
     return fallback
+  }
+
+  /**
+   * Recursively search embedded resources for a table or alias match
+   */
+  private findEmbeddedResourceByName(
+    embedded: EmbeddedResource[] | undefined,
+    referencedTable: string
+  ): EmbeddedResource | null {
+    if (!embedded) {
+      return null
+    }
+
+    for (const resource of embedded) {
+      if (resource.table === referencedTable || resource.alias === referencedTable) {
+        return resource
+      }
+
+      const nestedMatch = this.findEmbeddedResourceByName(resource.embedded, referencedTable)
+      if (nestedMatch) {
+        return nestedMatch
+      }
+    }
+
+    return null
   }
 
   /**
