@@ -184,6 +184,8 @@ class PostgRESTNodeTestRunner {
   private readonly dbManager = DatabaseManager.getInstance()
   private readonly supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
   private readonly isRetestMode: boolean
+  private readonly testProjectName = 'PostgREST Test Runner'
+  private readonly legacyTestProjectNames = new Set(['postgrest-tests'])
 
   private httpServer: Server | null = null
   private currentProject: Project | null = null
@@ -322,15 +324,148 @@ class PostgRESTNodeTestRunner {
     this.httpServer = null
   }
 
-  private async ensureProject(): Promise<void> {
-    this.currentProject = projectManager.getActiveProject()
-
-    if (!this.currentProject) {
-      this.log('info', 'No active project detected. Creating isolated test project...')
-      this.currentProject = await projectManager.createProject('postgrest-tests')
+  private isTestProject(project: Project | null): boolean {
+    if (!project) {
+      return false
     }
 
-    await this.dbManager.initialize(this.currentProject.databasePath)
+    const normalized = project.name.toLowerCase()
+    if (normalized === this.testProjectName.toLowerCase()) {
+      return true
+    }
+
+    for (const legacyName of this.legacyTestProjectNames) {
+      if (normalized === legacyName.toLowerCase()) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  private async prepareTestDatabaseForRun(): Promise<void> {
+    if (!this.currentProject) {
+      return
+    }
+
+    await this.dbManager.close().catch(() => {})
+
+    if (!this.isTestProject(this.currentProject)) {
+      return
+    }
+
+    if (!this.currentProject.databasePath.startsWith('idb://')) {
+      return
+    }
+
+    try {
+      await this.dbManager.deleteDatabase(this.currentProject.databasePath)
+      this.log('info', 'Cleared previous PostgREST test database from IndexedDB before run')
+    } catch (error) {
+      this.log('debug', `Unable to delete previous test database: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  private async ensureProject(): Promise<void> {
+    const projects = projectManager.getProjects()
+    const normalizedTargetName = this.testProjectName.toLowerCase()
+
+    let testProject = projects.find(project => project.name.toLowerCase() === normalizedTargetName)
+
+    if (!testProject) {
+      const legacyProject = projects.find(project => this.legacyTestProjectNames.has(project.name.toLowerCase()))
+
+      if (legacyProject) {
+        this.log('info', `Reusing existing legacy PostgREST test project (${legacyProject.name}). Renaming for consistency...`)
+        testProject = projectManager.updateProjectName(legacyProject.id, this.testProjectName)
+      }
+    }
+
+    if (!testProject) {
+      this.log('info', 'No dedicated PostgREST test project detected. Creating isolated project...')
+      testProject = await projectManager.createProject(this.testProjectName)
+    }
+
+    if (!testProject.isActive) {
+      this.log('info', 'Switching to dedicated PostgREST test project for the runner')
+      testProject = await projectManager.switchToProject(testProject.id)
+    }
+
+    this.currentProject = testProject
+
+    await this.prepareTestDatabaseForRun()
+    await this.initializeDatabaseWithRetry()
+  }
+
+  private getErrnoDetails(error: unknown): { errno?: number, code?: string, message?: string } {
+    if (!error || typeof error !== 'object') {
+      return { message: typeof error === 'string' ? error : undefined }
+    }
+
+    const errorObject = error as Record<string, unknown>
+    const errno = typeof errorObject.errno === 'number'
+      ? errorObject.errno
+      : typeof (errorObject.originalError as { errno?: number } | undefined)?.errno === 'number'
+        ? (errorObject.originalError as { errno?: number }).errno
+        : undefined
+
+    const code = typeof errorObject.code === 'string'
+      ? errorObject.code
+      : typeof (errorObject.originalError as { code?: string } | undefined)?.code === 'string'
+        ? (errorObject.originalError as { code?: string }).code
+        : undefined
+
+    const message = typeof errorObject.message === 'string'
+      ? errorObject.message
+      : typeof (errorObject.originalError as { message?: string } | undefined)?.message === 'string'
+        ? (errorObject.originalError as { message?: string }).message
+        : undefined
+
+    return { errno, code, message }
+  }
+
+  private async initializeDatabaseWithRetry(attempt = 1): Promise<void> {
+    if (!this.currentProject) {
+      throw new Error('Cannot initialize database without an active project')
+    }
+
+    const maxAttempts = 5
+
+    try {
+      await this.dbManager.initialize(this.currentProject.databasePath)
+    } catch (error) {
+      const { errno, code, message } = this.getErrnoDetails(error)
+      const normalizedMessage = message?.toUpperCase() ?? ''
+      const isTooManyRefsError = errno === 44
+        || code === 'ETOOMANYREFS'
+        || normalizedMessage.includes('ETOOMANYREFS')
+
+      if (isTooManyRefsError && attempt < maxAttempts) {
+        const backoffMs = Math.min(1000, 200 * attempt)
+        this.log('info', `Database initialization hit transient errno 44 (attempt ${attempt}/${maxAttempts}). Releasing IndexedDB handles and retrying in ${backoffMs}ms...`)
+        await this.handleIndexedDbTooManyRefs()
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+        await this.initializeDatabaseWithRetry(attempt + 1)
+        return
+      }
+
+      throw error
+    }
+  }
+
+  private async handleIndexedDbTooManyRefs(): Promise<void> {
+    await this.dbManager.close().catch(() => {})
+
+    if (!this.currentProject || !this.isTestProject(this.currentProject)) {
+      return
+    }
+
+    try {
+      await this.dbManager.deleteDatabase(this.currentProject.databasePath)
+      this.log('info', 'Deleted stale PostgREST test database to recover from errno 44')
+    } catch (error) {
+      this.log('debug', `Failed to delete IndexedDB during errno 44 recovery: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   private async ensureServerReady(): Promise<void> {
@@ -501,7 +636,7 @@ class PostgRESTNodeTestRunner {
       .replace('<id>', example.id)
       .replace('<name>', example.name)
       .replace('<project_url>', this.config.supabaseLiteUrl)
-      .replaceAll('<code>', code)
+      .replaceAll('<code>', () => code)
       .replaceAll('<code_content>', escapedCodeContent)
       .replace('<response>', JSON.stringify(expectedResponse, null, 2))
       .replace("debugSqlEndpoint: 'http://localhost:5173/debug/sql'", `debugSqlEndpoint: '${this.config.supabaseLiteUrl}/debug/sql'`)
@@ -938,6 +1073,7 @@ class PostgRESTNodeTestRunner {
       throw error
     } finally {
       await this.stopServer()
+      await this.dbManager.close().catch(() => {})
     }
   }
 }
