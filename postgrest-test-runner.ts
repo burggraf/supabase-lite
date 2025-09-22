@@ -465,6 +465,7 @@ class PostgRESTNodeTestRunner {
       this.log('info', 'Deleted stale PostgREST test database to recover from errno 44')
     } catch (error) {
       this.log('debug', `Failed to delete IndexedDB during errno 44 recovery: ${error instanceof Error ? error.message : String(error)}`)
+
     }
   }
 
